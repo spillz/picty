@@ -6,15 +6,19 @@ import Image
 import threading
 import os
 import time
+import gnome.ui
+import gnomevfs
 
 gtk.gdk.threads_init()
 
 class ImageCacheItem(gobject.GObject):
     def __init__(self,filename,thumb=None,qviewjpeg=None):
         self.filename=filename
+        self.mtime=None
         self.thumbsize=(0,0)
         self.thumb=thumb
         self.qviewjpeg=qviewjpeg
+        self.cannot_thumb=False
 
 #gobject.signal_new("cache-image-added", gtk.Widget, gobject.SIGNAL_ACTION, gobject.TYPE_BOOLEAN, (gtk.Widget, ImageCacheItem))
 
@@ -24,12 +28,39 @@ class ThumbManager:
         thumb manager creates thumbnails asynchronously
         takes requests from and notifies viewers
         '''
+        self.thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
+        self.thumb_factory_l = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
         self.thread=threading.Thread(target=self._make_thumb)
         self.thumbqueue=[]
         self.viewers=[]
         self.memthumbs=[]
-        self.max_memthumbs=500
+        self.max_memthumbs=1000
         self.vlock=threading.Lock()
+
+
+        '''
+        uri = gnomevfs.get_uri_from_local_path(path)
+        mime = gnomevfs.get_mime_type(uri)
+
+        thumbFactory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
+        if thumbFactory.can_thumbnail(uri ,mime, 0):
+            thumbnail = thumbFactory.generate_thumbnail(uri, mime)
+            if thumbnail != None:
+                thumbFactory.save_thumbnail(thumbnail, uri, 0)
+        '''
+
+    def request_thumbs(self,viewer,items):
+        self.vlock.acquire()
+        #print items
+        for item in items:
+            #print item.filename
+            if not (viewer,item) in self.thumbqueue:
+                if not item.thumb:
+                    self.thumbqueue.append((viewer,item))
+        if len(self.thumbqueue)>0 and not self.thread.isAlive():
+            self.thread=threading.Thread(target=self._make_thumb)
+            self.thread.start()
+        self.vlock.release()
 
     def request_thumb(self,viewer,item):
         self.vlock.acquire()
@@ -59,11 +90,25 @@ class ThumbManager:
         self.vlock.acquire()
         viewer,item=self.thumbqueue.pop()
         fullpath=item.filename
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        mtime=item.mtime
         self.vlock.release()
         while 1:
             try:
-                image = Image.open(fullpath)
-                image.thumbnail((128,128))
+                thumburi=self.thumb_factory.lookup(uri,mtime)
+                if thumburi:
+                    image = Image.open(thumburi)
+                    #image.thumbnail((128,128))
+                else:
+                    thumburi=self.thumb_factory_large.lookup(uri,mtime)
+                    if thumburi:
+                        print 'using large thumb'
+                        image = Image.open(thumburi)
+                        image.thumbnail((128,128))
+                    else:
+                        image=None
+                        #image = Image.open(fullpath)
+                        #image.thumbnail((128,128))
             except:
                 image=None
             self.vlock.acquire()
@@ -75,6 +120,7 @@ class ThumbManager:
             else:
                 item.thumbsize=(0,0)
                 item.thumb=None
+                item.cannot_thumb=True
             gobject.idle_add(viewer.Thumb_cb,item)
             if len(self.thumbqueue)>0:
                 viewer,item=self.thumbqueue.pop()
@@ -117,6 +163,7 @@ class ImageCache:
             if not p[r+1:].lower() in self.imagetypes:
                 continue
             fullpath=os.path.join(dirname, p)
+            mtime=os.path.getmtime(fullpath)
             st=os.stat(fullpath)
             if os.path.isdir(fullpath):
                 continue
@@ -129,6 +176,7 @@ class ImageCache:
 #                item.thumbsize=image.size
 #                item.thumb=image.tostring()
                 ## notify viewer(s)
+                item.mtime=mtime
                 self.vlock.acquire()
                 for v in self.viewers:
                     gobject.idle_add(v.AddImage,item)
@@ -148,10 +196,6 @@ class ImageBrowser(gtk.HBox):
         self.Config()
         self.tm=thumbmgr
 
-        image = Image.open('carnivore.jpg')
-        image.thumbnail((128,128))
-        self.simage = (image.tostring(),image.size)
-        self.imagelist=[self.simage]*50
         self.offsety=0
         self.offsetx=0
         self.ic=imcache
@@ -187,7 +231,8 @@ class ImageBrowser(gtk.HBox):
 
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        if item.thumb:
+            self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImage(self,item):
         self.imagelist.append(item)
@@ -252,6 +297,7 @@ class ImageBrowser(gtk.HBox):
         y=imgind*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
         drawable.clear()
         i=imgind
+        thumbsneeded=[]
         while i<len(self.imagelist):
             if self.imagelist[i].thumb:
                 (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
@@ -259,7 +305,8 @@ class ImageBrowser(gtk.HBox):
                                    gtk.gdk.RGB_DITHER_NONE,
                                    self.imagelist[i].thumb, -1, 0, 0)
             else:
-                self.tm.request_thumb(self,self.imagelist[i])
+                thumbsneeded.append(self.imagelist[i])
+#                thumbsneeded.insert(0,self.imagelist[i])
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth>=self.width:
@@ -268,6 +315,14 @@ class ImageBrowser(gtk.HBox):
                     break
                 else:
                     x=0
+        for j in range(100):
+            if imgind-1-j>=0:
+                thumbsneeded.append(self.imagelist[imgind-1-j])
+#                thumbsneeded.insert(0,self.imagelist[imgind-1-j])
+            if i+j<len(self.imagelist):
+                thumbsneeded.append(self.imagelist[i+j])
+#                thumbsneeded.insert(0,self.imagelist[i+j])
+        self.tm.request_thumbs(self,thumbsneeded)
 
 class HelloWorld:
 
