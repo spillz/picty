@@ -51,18 +51,24 @@ class ThumbManager:
 
     def request_thumbs(self,viewer,items):
         self.vlock.acquire()
-        #print items
         for item in items:
-            print item.filename,
-            if not (viewer,item) in self.thumbqueue:
-                #print 'not in queue **',
-                if not item.thumb and not item.cannot_thumb:
-                    #print 'included **'
-                    self.thumbqueue.append((viewer,item))
-#        print '*******'
-#        if items>3:
-#            import sys
-#            sys.exit()
+#            print item.filename,'*******'
+#            try: #delete item if already present (it will be promoted)
+                #print self.thumbqueue
+            i=0
+            for (v,it) in self.thumbqueue:
+    #                    print item.filename,'+',it.filename,'+'
+                if it.filename==item.filename:
+                    break
+                i+=1
+            if i<len(self.thumbqueue):
+                self.thumbqueue.pop(i)
+#                print 'successful remove'
+#                print self.thumbqueue,(viewer,item)
+#            except:
+#                a='abc'
+            if not item.thumb and not item.cannot_thumb:
+                self.thumbqueue.append((viewer,item))
         if len(self.thumbqueue)>0 and not self.thread.isAlive():
             self.thread=threading.Thread(target=self._make_thumb)
             self.thread.start()
@@ -94,16 +100,9 @@ class ThumbManager:
 
     def _make_thumb(self):
         self.vlock.acquire()
-#        print 'THUMB QUEUE IN THREAD ************'
-#        for (viewer,item) in self.thumbqueue:
-#            print item.filename
-#        print '*******'
-#        if items>3:
-#            import sys
-#            sys.exit()
-
-        viewer,item=self.thumbqueue.pop()
+        (viewer,item)=self.thumbqueue.pop()
         fullpath=item.filename
+        print fullpath
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mtime=item.mtime
         self.vlock.release()
@@ -113,6 +112,7 @@ class ThumbManager:
                 if thumburi:
                     image = Image.open(thumburi)
                     #image.thumbnail((128,128))
+                    print 'found sml thumb'
                 else:
                     thumburi=self.thumb_factory_large.lookup(uri,mtime)
                     if thumburi:
@@ -120,10 +120,12 @@ class ThumbManager:
                         image = Image.open(thumburi)
                         image.thumbnail((128,128))
                     else:
+                        print 'no thumb'
                         image=None
                         #image = Image.open(fullpath)
                         #image.thumbnail((128,128))
             except:
+                print 'no thumb 2'
                 image=None
             self.vlock.acquire()
             if image:
@@ -319,8 +321,8 @@ class ImageBrowser(gtk.HBox):
                                    gtk.gdk.RGB_DITHER_NONE,
                                    self.imagelist[i].thumb, -1, 0, 0)
             else:
-                thumbsneeded.append(self.imagelist[i])
-#                thumbsneeded.insert(0,self.imagelist[i])
+#                thumbsneeded.append(self.imagelist[i])
+                thumbsneeded.insert(0,self.imagelist[i])
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth>=self.width:
@@ -331,11 +333,11 @@ class ImageBrowser(gtk.HBox):
                     x=0
         for j in range(100):
             if imgind-1-j>=0:
-                thumbsneeded.append(self.imagelist[imgind-1-j])
-#                thumbsneeded.insert(0,self.imagelist[imgind-1-j])
+#                thumbsneeded.append(self.imagelist[imgind-1-j])
+                thumbsneeded.insert(0,self.imagelist[imgind-1-j])
             if i+j<len(self.imagelist):
-                thumbsneeded.append(self.imagelist[i+j])
-#                thumbsneeded.insert(0,self.imagelist[i+j])
+#                thumbsneeded.append(self.imagelist[i+j])
+                thumbsneeded.insert(0,self.imagelist[i+j])
         self.tm.request_thumbs(self,thumbsneeded)
 
 class HelloWorld:
