@@ -1,6 +1,6 @@
 #!/usr/bin/python2.5
 
-maemo=True
+maemo=False
 
 import gobject
 import gtk
@@ -13,6 +13,10 @@ if not maemo:
     import gnomevfs
 
 gtk.gdk.threads_init()
+
+global_image_dir=os.environ['HOME']
+#global_image_dir='/media/sharedrive/Documents/Pictures'
+print 'Starting image browser on',global_image_dir
 
 class ImageCacheItem(gobject.GObject):
     def __init__(self,filename,thumb=None,qviewjpeg=None):
@@ -27,20 +31,24 @@ class ImageCacheItem(gobject.GObject):
 #gobject.signal_new("cache-image-added", gtk.Widget, gobject.SIGNAL_ACTION, gobject.TYPE_BOOLEAN, (gtk.Widget, ImageCacheItem))
 
 class ThumbManager:
-    def __init__(self):
+    def __init__(self,viewer):
         '''
         thumb manager creates thumbnails asynchronously
         takes requests from and notifies viewers
         '''
         if not maemo:
             self.thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
-            self.thumb_factory_l = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
+            self.thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
         self.thread=threading.Thread(target=self._make_thumb)
         self.thumbqueue=[]
         self.viewers=[]
         self.memthumbs=[]
-        self.max_memthumbs=1000
+        self.max_memthumbs=10000
         self.vlock=threading.Lock()
+        self.viewer=viewer
+        self.event=threading.Event()
+        self.exit=False
+        self.thread.start()
 
         '''
         uri = gnomevfs.get_uri_from_local_path(path)
@@ -55,18 +63,10 @@ class ThumbManager:
 
     def request_thumbs(self,viewer,items):
         self.vlock.acquire()
-        #print items
         for item in items:
-            #print item.filename,
             if not (viewer,item) in self.thumbqueue:
-                #print 'not in queue **',
                 if not item.thumb and not item.cannot_thumb:
-                    #print 'included **'
                     self.thumbqueue.append((viewer,item))
-#        print '*******'
-#        if items>3:
-#            import sys
-#            sys.exit()
         if len(self.thumbqueue)>0 and not self.thread.isAlive():
             self.thread=threading.Thread(target=self._make_thumb)
             self.thread.start()
@@ -74,20 +74,13 @@ class ThumbManager:
 
     def request_thumb(self,viewer,item):
         self.vlock.acquire()
-        self.thumbqueue.append((viewer,item))
-#        if not (viewer,item) in self.thumbqueue:
-#            self.thumbqueue.append((viewer,item))
-#        else:
-#            self.vlock.release()
-#            return
-        if not self.thread.isAlive():
-            self.thread=threading.Thread(target=self._make_thumb)
-            self.thread.start()
-            self.vlock.release()
-            return True
-        else:
-            self.vlock.release()
-            return False
+        try:
+            self.thumbqueue.remove(item)
+        except:
+            None
+        self.thumbqueue.append(item)
+        self.vlock.release()
+        self.event.set()
 
     def cancel_thumb(self,viewer,item):
         try:
@@ -100,25 +93,35 @@ class ThumbManager:
             olditem=self.memthumbs.pop(0)
             olditem.thumbsize=(0,0)
             olditem.thumb=None
+    def quit(self):
+        self.vlock.acquire()
+        self.thumbqueue=[]
+        self.exit=True
+        self.vlock.release()
+        self.event.set()
+        while self.thread.isAlive():
+            time.sleep(0.1)
+
 
     def _make_thumb(self):
-        self.vlock.acquire()
-#        print 'THUMB QUEUE IN THREAD ************'
-#        for (viewer,item) in self.thumbqueue:
-#            print item.filename
-#        print '*******'
-#        if items>3:
-#            import sys
-#            sys.exit()
-
-        viewer,item=self.thumbqueue.pop()
-        fullpath=item.filename
-        if not maemo:
-            uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mtime=item.mtime
-        self.vlock.release()
+        #print 'thumb thread entry'
         while 1:
-            time.sleep(0.01)
+            self.vlock.acquire()
+            if len(self.thumbqueue)==0:
+#                print 'waiting'
+                self.event.clear()
+                self.vlock.release()
+                self.event.wait()
+                self.vlock.acquire()
+            if self.exit:
+                return
+            item=self.thumbqueue.pop()
+            fullpath=item.filename
+            #print 'loading',fullpath
+            if not maemo:
+                uri=gnomevfs.get_uri_from_local_path(item.filename)
+            mtime=item.mtime
+            self.vlock.release()
             try:
                 if maemo:
                     image = Image.open(fullpath)
@@ -127,18 +130,23 @@ class ThumbManager:
                     thumburi=self.thumb_factory.lookup(uri,mtime)
                     if thumburi:
                         image = Image.open(thumburi)
+                        s=image.size
+                        if s[0]<2 and s[1]<2:
+                            print fullpath,s
                         #image.thumbnail((128,128))
                     else:
                         thumburi=self.thumb_factory_large.lookup(uri,mtime)
                         if thumburi:
-                            print 'using large thumb'
+                            #print 'using large thumb'
                             image = Image.open(thumburi)
                             image.thumbnail((128,128))
                         else:
-                            image=None
-                            #image = Image.open(fullpath)
-                            #image.thumbnail((128,128))
+                            #print 'full loading',fullpath
+                            #image=None
+                            image = Image.open(fullpath)
+                            image.thumbnail((128,128))
             except:
+                #print 'thumb error'
                 image=None
             self.vlock.acquire()
             if image:
@@ -151,20 +159,14 @@ class ThumbManager:
                 item.thumbsize=(0,0)
                 item.thumb=None
                 item.cannot_thumb=True
-            gobject.idle_add(viewer.Thumb_cb,item)
-            if len(self.thumbqueue)>0:
-                print 'should never happen!!'
-                viewer,item=self.thumbqueue.pop()
-                fullpath=item.filename
-                self.vlock.release()
-            else:
-                self.vlock.release()
-                return
+            gobject.idle_add(self.viewer.Thumb_cb,item)
+            self.vlock.release()
+            #time.sleep(0.05)
 
 class ImageCache:
     def __init__(self):
         self.items=[]
-        self.imagedir='/media/mmc1/img'
+        self.imagedir=global_image_dir
         self.imagetypes=['jpg','jpeg','png']
         self.thread=threading.Thread(target=self.data_loader)
         self.viewers=[]
@@ -187,6 +189,14 @@ class ImageCache:
         os.path.walk(self.imagedir,self.walk_cb,0)
     def walk_cb(self,arg,dirname,names):
         #print dirname
+        i=0
+        while i<len(names):
+            if names[i].startswith('.'):
+                names.pop(i)
+            else:
+                i+=1
+
+
         for p in names: #may need some try, except blocks
             r=p.rfind('.')
             if r<=0:
@@ -221,10 +231,10 @@ class ImageBrowser(gtk.HBox):
     a widget designed to rapidly display a collection of objects
     from an image cache
     '''
-    def __init__(self,imcache,thumbmgr):
+    def __init__(self,imcache):
         gtk.HBox.__init__(self)
         self.Config()
-        self.tm=thumbmgr
+        self.tm=ThumbManager(self)
         self.neededitem=None
 
         self.offsety=0
@@ -250,6 +260,7 @@ class ImageBrowser(gtk.HBox):
         self.pack_start(self.imarea)
         self.pack_start(self.vscroll,False)
         #self.connect('cache-image-added',self.AddImage)
+        self.connect("destroy", self.destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
@@ -259,6 +270,9 @@ class ImageBrowser(gtk.HBox):
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def destroy(self,event):
+        self.tm.quit()
 
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
@@ -333,18 +347,25 @@ class ImageBrowser(gtk.HBox):
             if self.imagelist[i].thumb:
                 (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
                 if self.imagelist[i].thumbrgba:
-                    drawable.draw_rgb_32_image(gc,x,y,thumbwidth,thumbheight,
+                    try:
+                        drawable.draw_rgb_32_image(gc,x,y,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
                                    self.imagelist[i].thumb, -1, 0, 0)
+                    except:
+                        None
+                        #print 'thumberror',self.imagelist[i].filename,self.imagelist[i].thumbsize
                 else:
-                    drawable.draw_rgb_image(gc,x,y,thumbwidth,thumbheight,
+                    try:
+                        drawable.draw_rgb_image(gc,x,y,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
                                    self.imagelist[i].thumb, -1, 0, 0)
+                    except:
+                        None
+                        #print 'thumberror',self.imagelist[i].filename,self.imagelist[i].thumbsize
             else:
                 item=self.imagelist[i]
                 if not neededitem and not item.thumb and not  item.cannot_thumb:
                     neededitem=self.imagelist[i]
-                    print neededitem.filename
 #                thumbsneeded.insert(0,self.imagelist[i])
             i+=1
             x+=self.thumbwidth+self.pad
@@ -356,7 +377,7 @@ class ImageBrowser(gtk.HBox):
                     x=0
         j=0
         if not neededitem:
-            while j<100:
+            while j<1000:
                 if imgind-1-j>=0:
                     item=self.imagelist[imgind-1-j]
                     if not item.thumb and not item.cannot_thumb:
@@ -370,9 +391,6 @@ class ImageBrowser(gtk.HBox):
                 j+=1
         if neededitem:
             self.tm.request_thumb(self,neededitem)
-            self.neededitem=None
-        else:
-            self.neededitem=None
 
 class HelloWorld:
 
@@ -438,7 +456,7 @@ class HelloWorld:
         # The final step is to display this newly created widget.
 
         self.imcache=ImageCache()
-        self.drawing_area = ImageBrowser(self.imcache,ThumbManager())
+        self.drawing_area = ImageBrowser(self.imcache)
 
         # and the window
         hb=gtk.HBox()
