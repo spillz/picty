@@ -7,7 +7,6 @@
 
 License:
 
-
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -34,9 +33,11 @@ if not maemo:
     import gnome.ui
     import gnomevfs
 
-gtk.gdk.threads_init()
+gobject.threads_init()
+#gtk.gdk.threads_init()
 
 global_image_dir=os.environ['HOME']
+global_image_dir='/media/sharedrive/Documents/Pictures'
 print 'Starting image browser on',global_image_dir
 
 class ImageCacheItem(gobject.GObject):
@@ -48,7 +49,6 @@ class ImageCacheItem(gobject.GObject):
         self.thumbrgba=False
         self.qviewjpeg=qviewjpeg
         self.cannot_thumb=False
-
 
 class ThumbManager:
     def __init__(self,viewer):
@@ -81,15 +81,13 @@ class ThumbManager:
                 thumbFactory.save_thumbnail(thumbnail, uri, 0)
         '''
 
-    def request_thumbs(self,viewer,items):
+    def request_thumbs(self,items):
         self.vlock.acquire()
-        for item in items:
-            if not (viewer,item) in self.thumbqueue:
-                if not item.thumb and not item.cannot_thumb:
-                    self.thumbqueue.append((viewer,item))
-        if len(self.thumbqueue)>0 and not self.thread.isAlive():
-            self.thread=threading.Thread(target=self._make_thumb)
-            self.thread.start()
+        if len(items)>0:
+            self.thumbqueue=items
+            self.event.set()
+        else:
+            print 'request 0 thumbs'
         self.vlock.release()
 
     def request_thumb(self,viewer,item):
@@ -122,9 +120,8 @@ class ThumbManager:
         while self.thread.isAlive():
             time.sleep(0.1)
 
-
     def _make_thumb(self):
-        #print 'thumb thread entry'
+        print 'thumb thread entry'
         while 1:
             self.vlock.acquire()
             if len(self.thumbqueue)==0:
@@ -135,7 +132,7 @@ class ThumbManager:
                 self.vlock.acquire()
             if self.exit:
                 return
-            item=self.thumbqueue.pop()
+            item=self.thumbqueue.pop(0)
             fullpath=item.filename
             #print 'loading',fullpath
             if not maemo:
@@ -181,16 +178,17 @@ class ThumbManager:
                 item.cannot_thumb=True
             gobject.idle_add(self.viewer.Thumb_cb,item)
             self.vlock.release()
-            #time.sleep(0.05)
 
 class ImageCache:
     def __init__(self):
         self.items=[]
+        self.notify_items=[]
         self.imagedir=global_image_dir
         self.imagetypes=['jpg','jpeg','png']
         self.thread=threading.Thread(target=self.data_loader)
         self.viewers=[]
         self.vlock=threading.Lock()
+        self.exit=False
         self.thread.start()
     def register_viewer(self,viewer):
         self.vlock.acquire()
@@ -206,16 +204,29 @@ class ImageCache:
             print 'viewer not registered',viewer
         self.vlock.release()
     def data_loader(self):
+        self.last_update_time=time.time()
         os.path.walk(self.imagedir,self.walk_cb,0)
+        self.vlock.acquire()
+        for v in self.viewers:
+            gobject.idle_add(v.AddImages,self.notify_items)
+        self.notify_items=[]
+        self.vlock.release()
+    def quit(self):
+        self.exit=True
     def walk_cb(self,arg,dirname,names):
         #print dirname
+        if self.exit:
+            try:
+                while True:
+                    names.pop()
+            except:
+                None
         i=0
         while i<len(names):
             if names[i].startswith('.'):
                 names.pop(i)
             else:
                 i+=1
-
 
         for p in names: #may need some try, except blocks
             r=p.rfind('.')
@@ -229,22 +240,17 @@ class ImageCache:
             if os.path.isdir(fullpath):
                 continue
             item=ImageCacheItem(fullpath)
+            item.mtime=mtime
             self.items.append(item)
-            ## notify viewer(s)
-            try:
-#                image = Image.open(fullpath)
-#                image.thumbnail((128,128))
-#                item.thumbsize=image.size
-#                item.thumb=image.tostring()
+            self.notify_items.append(item)
                 ## notify viewer(s)
-                item.mtime=mtime
+            if time.time()>self.last_update_time+1.0:
+                self.last_update_time=time.time()
                 self.vlock.acquire()
                 for v in self.viewers:
-                    gobject.idle_add(v.AddImage,item)
+                    gobject.idle_add(v.AddImages,self.notify_items)
+                self.notify_items=[]
                 self.vlock.release()
-            except:
-                print 'failed reading',item.filename
-            #time.sleep(0.1)
 
 class ImageBrowser(gtk.HBox):
     '''
@@ -293,16 +299,22 @@ class ImageBrowser(gtk.HBox):
 
     def destroy(self,event):
         self.tm.quit()
+        self.ic.quit()
 
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
 #        if item.thumb:
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
+    def AddImages(self,items):
+        for item in items:
+            self.imagelist.append(item)
+        self.Configure(None,None)
+
     def AddImage(self,item):
         self.imagelist.append(item)
         self.Configure(None,None)
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        #self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def ScrollSignalPane(self,obj,event):
         if event.direction==gtk.gdk.SCROLL_UP:
@@ -312,6 +324,7 @@ class ImageBrowser(gtk.HBox):
 
     def ScrollSignal(self,obj):
         self.offsety=self.scrolladj.get_value()
+        self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def UpdateScrollbar(self):
@@ -347,23 +360,48 @@ class ImageBrowser(gtk.HBox):
         self.horizimgcount=max(self.width/(self.thumbwidth+self.pad),1)
         self.maxoffsety=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount
         self.UpdateScrollbar()
+        self.UpdateThumbReqs()
+        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def Expose(self,event,arg):
         self.Render(event)
 
+    def UpdateThumbReqs(self):
+        ## DATA NEEDED
+        self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
+        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        thumb_reqs=[]
+        for i in range(self.ind_view_first,self.ind_view_last):
+            item=self.imagelist[i]
+            if not item.thumb and not item.cannot_thumb:
+                thumb_reqs.append(item)
+        for i in range(min(self.imagelist,100)):
+            if self.ind_view_first-i-1>=0:
+                item=self.imagelist[self.ind_view_first-i-1]
+                if not item.thumb and not item.cannot_thumb:
+                    thumb_reqs.append(item)
+            if self.ind_view_last+i<len(self.imagelist):
+                item=self.imagelist[i+self.ind_view_last]
+                if not item.thumb and not item.cannot_thumb:
+                    thumb_reqs.append(item)
+        if len(thumb_reqs)>0:
+            self.tm.request_thumbs(thumb_reqs)
+
     def Render(self,event):
+        self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
+        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
         drawable = self.imarea.window
         gc = drawable.new_gc()
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         #drawable.clear()
         display_space=True
-        imgind=int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
+        imgind=self.ind_view_first
         x=0
         y=imgind*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
         drawable.clear()
         i=imgind
         neededitem=None
-        while i<len(self.imagelist):
+        while i<self.ind_view_last:
             if self.imagelist[i].thumb:
                 (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
                 if self.imagelist[i].thumbrgba:
@@ -384,8 +422,8 @@ class ImageBrowser(gtk.HBox):
                         #print 'thumberror',self.imagelist[i].filename,self.imagelist[i].thumbsize
             else:
                 item=self.imagelist[i]
-                if not neededitem and not item.thumb and not  item.cannot_thumb:
-                    neededitem=self.imagelist[i]
+                #if not neededitem and not item.thumb and not  item.cannot_thumb:
+                #    neededitem=self.imagelist[i]
 #                thumbsneeded.insert(0,self.imagelist[i])
             i+=1
             x+=self.thumbwidth+self.pad
@@ -395,22 +433,7 @@ class ImageBrowser(gtk.HBox):
                     break
                 else:
                     x=0
-        j=0
-        if not neededitem:
-            while j<1000:
-                if imgind-1-j>=0:
-                    item=self.imagelist[imgind-1-j]
-                    if not item.thumb and not item.cannot_thumb:
-                        neededitem=item
-                        break
-                if i+j<len(self.imagelist):
-                    item=self.imagelist[i+j]
-                    if not item.thumb and not item.cannot_thumb:
-                        neededitem=item
-                        break
-                j+=1
-        if neededitem:
-            self.tm.request_thumb(self,neededitem)
+
 
 class HelloWorld:
 
