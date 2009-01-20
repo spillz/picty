@@ -205,7 +205,10 @@ class ImageCache:
         self.vlock.release()
     def data_loader(self):
         self.last_update_time=time.time()
-        os.path.walk(self.imagedir,self.walk_cb,0)
+        try:
+            os.path.walk(self.imagedir,self.walk_cb,0)
+        except StopIteration:
+            return
         self.vlock.acquire()
         for v in self.viewers:
             gobject.idle_add(v.AddImages,self.notify_items)
@@ -216,11 +219,7 @@ class ImageCache:
     def walk_cb(self,arg,dirname,names):
         #print dirname
         if self.exit:
-            try:
-                while True:
-                    names.pop()
-            except:
-                None
+            raise StopIteration
         i=0
         while i<len(names):
             if names[i].startswith('.'):
