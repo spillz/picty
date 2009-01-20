@@ -37,7 +37,6 @@ if not maemo:
 gtk.gdk.threads_init()
 
 global_image_dir=os.environ['HOME']
-#global_image_dir='/media/sharedrive/Documents/Pictures'
 print 'Starting image browser on',global_image_dir
 
 class ImageCacheItem(gobject.GObject):
@@ -50,7 +49,6 @@ class ImageCacheItem(gobject.GObject):
         self.qviewjpeg=qviewjpeg
         self.cannot_thumb=False
 
-#gobject.signal_new("cache-image-added", gtk.Widget, gobject.SIGNAL_ACTION, gobject.TYPE_BOOLEAN, (gtk.Widget, ImageCacheItem))
 
 class ThumbManager:
     def __init__(self,viewer):
