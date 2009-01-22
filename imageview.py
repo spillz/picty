@@ -21,7 +21,7 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-maemo=False
+maemo=True
 
 import gobject
 import gtk
@@ -41,13 +41,15 @@ global_image_dir='/media/sharedrive/Documents/Pictures'
 print 'Starting image browser on',global_image_dir
 
 class ImageCacheItem(gobject.GObject):
-    def __init__(self,filename,thumb=None,qviewjpeg=None):
+    def __init__(self,filename,thumb=None):
         self.filename=filename
         self.mtime=None
         self.thumbsize=(0,0)
         self.thumb=thumb
         self.thumbrgba=False
-        self.qviewjpeg=qviewjpeg
+        self.qview=None
+        self.qview_size=None
+        self.image=None
         self.cannot_thumb=False
 
 class ThumbManager:
@@ -251,6 +253,152 @@ class ImageCache:
                 self.notify_items=[]
                 self.vlock.release()
 
+class ImageLoader:
+    def __init__(self,viewer):
+        self.thread=threading.Thread(target=self._background_task)
+        self.item=None
+        self.sizing=None
+        self.memimages=[]
+        self.max_memimages=2
+        self.vlock=threading.Lock()
+        self.viewer=viewer
+        self.event=threading.Event()
+        self.exit=False
+        self.thread.start()
+    def update_image_size(self,width,height):
+        self.vlock.acquire()
+        self.sizing=(width,height)
+        self.vlock.release()
+        self.event.set()
+    def quit(self):
+        self.vlock.acquire()
+        self.exit=True
+        self.vlock.release()
+        self.event.set()
+    def set_item(self,item,sizing=None):
+        self.vlock.acquire()
+        self.item=item
+        self.sizing=sizing
+        self.vlock.release()
+        self.event.set()
+    def _check_image_limit(self):
+        if len(self.memimages)>self.max_memimages:
+            olditem=self.memimages.pop(0)
+            if olditem!=self.item:
+                olditem.image=None
+                olditem.qview_size=(0,0)
+                olditem.qview=None
+    def _background_task(self):
+        while 1:
+            self.vlock.acquire()
+            if self.sizing or self.item and not self.item.image:
+                self.event.set()
+            else:
+                print 'event clear'
+                self.event.clear()
+            self.vlock.release()
+            self.event.wait()
+            self.vlock.acquire()
+            item=self.item
+            self.vlock.release()
+            print 'load viewer wait over'
+            if self.exit:
+                return
+            if not item:
+                continue
+            if not item.image:
+                print 'loading viewer image'
+                try:
+                    image=Image.open(item.filename)
+                except:
+                    image=None
+                self.vlock.acquire()
+                item.image=image
+                self.vlock.release()
+                if not image:
+                    continue
+                #notify
+            if self.sizing:
+                self.vlock.acquire()
+                (w,h)=self.sizing
+                (iw,ih)=item.image.size
+                if (w*h*iw*ih)==0:
+                    continue
+                if w/h>iw/ih:
+                    w=h*iw/ih
+                else:
+                    h=w*ih/iw
+                self.vlock.release()
+                print 'sizing viewer image',(w,h)
+                qimage=image.resize((w,h)).tostring()
+
+                self.vlock.acquire()
+                item.qview=qimage
+                item.qview_size=(w,h)
+                item.imagergba='A' in item.image.getbands()
+                self.memimages.append(item)
+                self._check_image_limit()
+                gobject.idle_add(self.viewer.ImageSized,item)
+                self.sizing=None
+                self.vlock.release()
+
+
+
+class ImageViewer(gtk.HBox):
+    def __init__(self):
+        gtk.HBox.__init__(self)
+        self.il=ImageLoader(self)
+        self.imarea=gtk.DrawingArea()
+        self.imarea.connect("realize",self.Render)
+        self.imarea.connect("configure_event",self.Configure)
+        self.imarea.connect("expose_event",self.Expose)
+        self.connect("destroy", self.destroy)
+        self.imarea.set_size_request(400, 400)
+        self.pack_start(self.imarea)
+        self.width=400
+        self.height=400
+        self.imarea.show()
+        self.item=None
+
+
+    def destroy(self,event):
+        self.il.quit()
+
+    def ImageSized(self,item):
+        print 'sized msg',item.filename
+        if item==self.item:
+            self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+    def SetItem(self,item):
+        self.item=item
+        self.il.set_item(item,(self.width,self.height))
+        #self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+    def Configure(self,event,arg):
+        rect=self.imarea.get_allocation()
+        self.width=rect.width
+        self.height=rect.height
+        self.il.update_image_size(self.width,self.height)
+        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+    def Expose(self,event,arg):
+        self.Render(event)
+
+    def Render(self,event):
+        print 'render'
+        drawable = self.imarea.window
+        gc = drawable.new_gc()
+        drawable.clear()
+        if self.item.qview:
+            (iw,ih)=self.item.qview_size
+            x=(self.width-iw)/2
+            y=(self.height-ih)/2
+            print 'qview',x,y,iw,ih
+            if x>=0 and y>=0:
+                drawable.draw_rgb_image(gc,x,y,iw,ih,
+                   gtk.gdk.RGB_DITHER_NONE,
+                   self.item.qview, -1, 0, 0)
+
 class ImageBrowser(gtk.HBox):
     '''
     a widget designed to rapidly display a collection of objects
@@ -261,6 +409,7 @@ class ImageBrowser(gtk.HBox):
         self.Config()
         self.tm=ThumbManager(self)
         self.neededitem=None
+        self.iv=ImageViewer()
 
         self.offsety=0
         self.offsetx=0
@@ -268,7 +417,7 @@ class ImageBrowser(gtk.HBox):
         self.imagelist = self.ic.register_viewer(self)
 
         self.imarea=gtk.DrawingArea()
-        self.Resize(600,400)
+        self.Resize(160,400)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
         #(w,h)=self.vscroll.get_size_request()
@@ -282,6 +431,7 @@ class ImageBrowser(gtk.HBox):
         ##self.vscroll.set_style(st)
 
         #hbox=gtk.HBox()
+        self.pack_start(self.iv)
         self.pack_start(self.imarea)
         self.pack_start(self.vscroll,False)
         #self.connect('cache-image-added',self.AddImage)
@@ -292,9 +442,20 @@ class ImageBrowser(gtk.HBox):
         self.scrolladj.connect("value-changed",self.ScrollSignal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.ScrollSignalPane)
+        self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        self.imarea.connect("button-press-event",self.ButtonPress)
+
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def ButtonPress(self,obj,event):
+        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
+        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
+        ind=max(0,min(len(self.imagelist),ind))
+        print 'clicked',ind
+        self.iv.SetItem(self.imagelist[ind])
+        self.iv.show()
 
     def destroy(self,event):
         self.tm.quit()
@@ -333,7 +494,7 @@ class ImageBrowser(gtk.HBox):
                 page_increment=self.height, page_size=self.height)
 
     def Config(self):
-        self.width=600
+        self.width=160
         self.height=400
         self.thumbwidth=128
         self.thumbheight=128
@@ -433,7 +594,6 @@ class ImageBrowser(gtk.HBox):
                 else:
                     x=0
 
-
 class HelloWorld:
 
     # This is a callback function. The data arguments are ignored
@@ -462,6 +622,8 @@ class HelloWorld:
     def __init__(self):
         # create a new window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+
+        self.window.set_size_request(800, 600)
 
         # When the window is given the "delete_event" signal (this is given
         # by the window manager, usually by the "close" option, or on the
