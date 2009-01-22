@@ -21,7 +21,7 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-maemo=True
+maemo=False
 
 import gobject
 import gtk
@@ -320,9 +320,11 @@ class ImageLoader:
                 #notify
             if self.sizing:
                 self.vlock.acquire()
+                image=item.image
                 (w,h)=self.sizing
                 (iw,ih)=item.image.size
                 if (w*h*iw*ih)==0:
+                    print 'sizing size error'
                     continue
                 if w/h>iw/ih:
                     w=h*iw/ih
@@ -353,12 +355,18 @@ class ImageViewer(gtk.HBox):
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
         self.connect("destroy", self.destroy)
+        self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        self.imarea.connect("button-press-event",self.ButtonPress)
+
         self.imarea.set_size_request(400, 400)
         self.pack_start(self.imarea)
         self.width=400
         self.height=400
         self.imarea.show()
         self.item=None
+
+    def ButtonPress(self,obj,event):
+        self.hide()
 
 
     def destroy(self,event):
@@ -368,6 +376,8 @@ class ImageViewer(gtk.HBox):
         print 'sized msg',item.filename
         if item==self.item:
             self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        else:
+            print 'sized wrong item'
 
     def SetItem(self,item):
         self.item=item
@@ -394,8 +404,8 @@ class ImageViewer(gtk.HBox):
             x=(self.width-iw)/2
             y=(self.height-ih)/2
             print 'qview',x,y,iw,ih
-            if x>=0 and y>=0:
-                drawable.draw_rgb_image(gc,x,y,iw,ih,
+            #if x>=0 and y>=0:
+            drawable.draw_rgb_image(gc,x,y,iw,ih,
                    gtk.gdk.RGB_DITHER_NONE,
                    self.item.qview, -1, 0, 0)
 
