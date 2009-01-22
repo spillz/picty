@@ -351,6 +351,8 @@ class ImageViewer(gtk.HBox):
         gtk.HBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
+        self.pack_start(self.imarea)
+
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
@@ -359,13 +361,13 @@ class ImageViewer(gtk.HBox):
         self.imarea.connect("button-press-event",self.ButtonPress)
 
         self.imarea.set_size_request(400, 400)
-        self.pack_start(self.imarea)
         self.width=400
         self.height=400
         self.imarea.show()
         self.item=None
 
     def ButtonPress(self,obj,event):
+        print 'image click'
         self.hide()
 
 
