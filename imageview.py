@@ -35,6 +35,8 @@ try:
 except:
     maemo=True
 
+import pyexiv2
+
 gobject.threads_init()
 #gtk.gdk.threads_init()
 
@@ -290,7 +292,7 @@ class ImageLoader:
     def _check_image_limit(self):
         if len(self.memimages)>self.max_memimages:
             olditem=self.memimages.pop(0)
-            if olditem!=self.item:
+            if olditem.filename!=self.item.filename: ##TODO: Better comparison of items
                 olditem.image=None
                 olditem.qview_size=(0,0)
                 olditem.qview=None
@@ -320,7 +322,9 @@ class ImageLoader:
                     image=None
                 self.vlock.acquire()
                 item.image=image
-                item.imagergba='A' in image.mode
+                item.imagergba='A' in item.image.getbands()
+                self.memimages.append(item)
+                self._check_image_limit()
                 self.vlock.release()
                 if not image:
                     continue
@@ -344,9 +348,6 @@ class ImageLoader:
                 self.vlock.acquire()
                 item.qview=qimage
                 item.qview_size=(w,h)
-                item.imagergba='A' in item.image.getbands()
-                self.memimages.append(item)
-                self._check_image_limit()
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
                 self.vlock.release()
