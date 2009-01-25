@@ -36,6 +36,26 @@ except:
     maemo=True
 
 import pyexiv2
+##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
+'''
+  1        2       3      4         5            6           7          8
+
+888888  888888      88  88      8888888888  88                  88  8888888888
+88          88      88  88      88  88      88  88          88  88      88  88
+8888      8888    8888  8888    88          8888888888  8888888888          88
+88          88      88  88
+88          88  888888  888888
+'''
+
+global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
+            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
+            (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
+            (Image.ROTATE_90,))
+#global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
+#            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
+#            (Image.ROTATE_90,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
+#            (Image.ROTATE_270,))
+
 
 gobject.threads_init()
 #gtk.gdk.threads_init()
@@ -317,7 +337,35 @@ class ImageLoader:
             if not item.image:
                 print 'loading viewer image'
                 try:
-                    image=Image.open(item.filename)
+                    import ImageFile
+                    imfile=open(item.filename,'rb')
+                    p = ImageFile.Parser()
+                    while self.item.filename==item.filename:
+                        s = imfile.read(100000)
+                        if not s:
+                            break
+                        p.feed(s)
+                    if self.item.filename!=item.filename:
+                        continue
+                    image = p.close()
+                    import pyexiv2
+                    try:
+                        image_meta = pyexiv2.Image(item.filename)
+                        image_meta.readMetadata()
+                    except:
+                        print 'Error reading metadata'
+                    try:
+                        orient=image_meta['Exif.Image.Orientation']
+                        if orient!=1:
+                            print 'ORIENTATION',orient
+                    except:
+                        orient=1
+                        print 'Error reading metadata: no orientation flag'
+
+                    if orient>1:
+                        for method in global_transposemethods[orient]:
+                            image=image.transpose(method)
+                    #image=Image.open(item.filename)
                 except:
                     image=None
                 self.vlock.acquire()
@@ -343,7 +391,10 @@ class ImageLoader:
                     h=w*ih/iw
                 self.vlock.release()
                 print 'sizing viewer image',(w,h)
-                qimage=image.resize((w,h)).tostring()
+                try:
+                    qimage=image.resize((w,h)).tostring()
+                except:
+                    qimage=None
 
                 self.vlock.acquire()
                 item.qview=qimage
@@ -401,7 +452,6 @@ class ImageViewer(gtk.HBox):
         self.Render(event)
 
     def Render(self,event):
-        print 'render'
         drawable = self.imarea.window
         gc = drawable.new_gc()
         drawable.clear()
@@ -409,7 +459,6 @@ class ImageViewer(gtk.HBox):
             (iw,ih)=self.item.qview_size
             x=(self.width-iw)/2
             y=(self.height-ih)/2
-            print 'qview',x,y,iw,ih
             #if x>=0 and y>=0:
             if self.item.imagergba:
                 try:
@@ -484,12 +533,14 @@ class ImageBrowser(gtk.HBox):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.imagelist)-1,ind))
-        self.ind_focal=ind
+        #self.ind_focal=ind
         self.iv.SetItem(self.imagelist[ind])
         self.iv.show()
         self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
         self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
         self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.UpdateScrollbar()
+        self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         #self.UpdateScrollbar()
         #self.UpdateThumbReqs()
@@ -525,6 +576,7 @@ class ImageBrowser(gtk.HBox):
             self.ScrollDown(max(1,self.thumbheight+self.pad)/5)
 
     def ScrollSignal(self,obj):
+        print 'scroll signal'
         self.offsety=self.scrolladj.get_value()
         self.UpdateFirstLastIndex()
         self.ind_focal=-1
@@ -562,19 +614,23 @@ class ImageBrowser(gtk.HBox):
         self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
 
     def UpdateDimensions(self):
+        self.offsety=self.offsety*self.horizimgcount
         self.horizimgcount=max(self.width/(self.thumbwidth+self.pad),1)
         self.maxoffsety=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount
+        self.offsety=self.offsety/self.horizimgcount
         if self.ind_focal>=0:
             self.ind_view_first=self.ind_focal
         self.UpdateFirstLastIndex()
-        self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
+        #self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
 
     def Configure(self,obj,event):
+        print 'Pre-Configure',self.ind_view_first,self.ind_view_last,self.width,self.height,self.offsety
         self.width=event.width
         self.height=event.height
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
+        print '    Configure',self.ind_view_first,self.ind_view_last,self.width,self.height,self.offsety
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def Expose(self,event,arg):
