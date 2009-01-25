@@ -525,9 +525,34 @@ class ImageBrowser(gtk.HBox):
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.imarea.connect("button-press-event",self.ButtonPress)
 
+        #self.set_flags(gtk.CAN_FOCUS)
+
+
+#        self.vscroll.add_events(gtk.gdk.KEY_PRESS_MASK)
+#        self.vscroll.set_flags(gtk.CAN_FOCUS)
+#        self.vscroll.grab_focus()
+
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def KeyPress(self,obj,event):
+        print 'key press',event.keyval
+        if event.keyval==65362: #up
+            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
+        if event.keyval==65364: #dn
+            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
+        if event.keyval==65365: #pgup
+            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
+        if event.keyval==65366: #pgdn
+            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
+        if event.keyval==65360: #home
+            self.vscroll.set_value(self.scrolladj.lower)
+        if event.keyval==65367: #end
+            self.vscroll.set_value(self.scrolladj.upper)
+
+        #if event.keyval
+
 
     def ButtonPress(self,obj,event):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
@@ -731,6 +756,8 @@ class HelloWorld:
         print "destroy signal occurred"
         gtk.main_quit()
 
+
+
     def __init__(self):
         # create a new window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -773,6 +800,10 @@ class HelloWorld:
 
         self.imcache=ImageCache()
         self.drawing_area = ImageBrowser(self.imcache)
+
+        self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
+        self.window.connect("key-press-event",self.drawing_area.KeyPress)
+
 
         # and the window
         hb=gtk.HBox()
