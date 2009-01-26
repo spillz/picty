@@ -32,10 +32,10 @@ import time
 try:
     import gnome.ui
     import gnomevfs
+    import pyexiv2
 except:
     maemo=True
 
-import pyexiv2
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
 '''
   1        2       3      4         5            6           7          8
@@ -55,7 +55,6 @@ global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180
 #            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
 #            (Image.ROTATE_90,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
 #            (Image.ROTATE_270,))
-
 
 gobject.threads_init()
 #gtk.gdk.threads_init()
@@ -90,9 +89,9 @@ class ThumbManager:
         self.viewers=[]
         self.memthumbs=[]
         if maemo:
-            self.max_memthumbs=100
-        else:
             self.max_memthumbs=1000
+        else:
+            self.max_memthumbs=8000
 
         self.vlock=threading.Lock()
         self.viewer=viewer
@@ -178,8 +177,6 @@ class ThumbManager:
                     if thumburi:
                         image = Image.open(thumburi)
                         s=image.size
-                        if s[0]<2 and s[1]<2:
-                            print fullpath,s
                         #image.thumbnail((128,128))
                     else:
                         thumburi=self.thumb_factory_large.lookup(uri,mtime)
@@ -329,13 +326,11 @@ class ImageLoader:
             self.vlock.acquire()
             item=self.item
             self.vlock.release()
-            print 'load viewer wait over'
             if self.exit:
                 return
             if not item:
                 continue
             if not item.image:
-                print 'loading viewer image'
                 try:
                     import ImageFile
                     imfile=open(item.filename,'rb')
@@ -365,9 +360,11 @@ class ImageLoader:
                     if orient>1:
                         for method in global_transposemethods[orient]:
                             image=image.transpose(method)
-                    #image=Image.open(item.filename)
                 except:
-                    image=None
+                    try:
+                        image=Image.open(item.filename)
+                    except:
+                        image=None
                 self.vlock.acquire()
                 item.image=image
                 item.imagergba='A' in item.image.getbands()
@@ -385,7 +382,7 @@ class ImageLoader:
                 if (w*h*iw*ih)==0:
                     print 'sizing size error'
                     continue
-                if w/h>iw/ih:
+                if 1.0*(w*ih)/(h*iw)>1.0:
                     w=h*iw/ih
                 else:
                     h=w*ih/iw
@@ -404,7 +401,7 @@ class ImageLoader:
                 self.vlock.release()
 
 class ImageViewer(gtk.HBox):
-    def __init__(self):
+    def __init__(self,click_callback=None):
         gtk.HBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
@@ -416,7 +413,10 @@ class ImageViewer(gtk.HBox):
         self.connect("destroy", self.destroy)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
-        self.imarea.connect("button-press-event",self.ButtonPress)
+        if not click_callback:
+            self.imarea.connect("button-press-event",self.ButtonPress)
+        else:
+            self.imarea.connect("button-press-event",click_callback)
 
         self.imarea.set_size_request(400, 400)
         self.width=400
@@ -485,13 +485,15 @@ class ImageBrowser(gtk.HBox):
         self.Config()
         self.tm=ThumbManager(self)
         self.neededitem=None
-        self.iv=ImageViewer()
+        self.iv=ImageViewer(self.ButtonPress_iv)
+        self.is_fullscreen=False
+        self.is_iv_fullscreen=False
 
         self.offsety=0
         self.offsetx=0
         self.ind_view_first=0
         self.ind_view_last=1
-        self.ind_focal=-1
+        self.ind_viewed=-1
 
         self.ic=imcache
         self.imagelist = self.ic.register_viewer(self)
@@ -527,7 +529,6 @@ class ImageBrowser(gtk.HBox):
 
         #self.set_flags(gtk.CAN_FOCUS)
 
-
 #        self.vscroll.add_events(gtk.gdk.KEY_PRESS_MASK)
 #        self.vscroll.set_flags(gtk.CAN_FOCUS)
 #        self.vscroll.grab_focus()
@@ -538,6 +539,31 @@ class ImageBrowser(gtk.HBox):
 
     def KeyPress(self,obj,event):
         print 'key press',event.keyval
+        if event.keyval==65293: #enter
+            if self.ind_viewed>=0:
+                if self.is_iv_fullscreen:
+                    self.ViewImage(self.ind_viewed)
+                    self.imarea.show()
+                    self.vscroll.show()
+                    self.is_iv_fullscreen=False
+                else:
+                    self.ViewImage(self.ind_viewed)
+                    self.imarea.hide()
+                    self.vscroll.hide()
+                    self.is_iv_fullscreen=True
+        if event.keyval==65475: #f5
+            if self.is_fullscreen:
+                self.window.unfullscreen()
+                self.is_fullscreen=False
+            else:
+                self.window.fullscreen()
+                self.is_fullscreen=True
+        if event.keyval==65361: #left
+            if self.ind_viewed>0:
+                self.ViewImage(self.ind_viewed-1)
+        if event.keyval==65363: #right
+            if self.ind_viewed<len(self.imagelist)-1:
+                self.ViewImage(self.ind_viewed+1)
         if event.keyval==65362: #up
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
         if event.keyval==65364: #dn
@@ -553,22 +579,31 @@ class ImageBrowser(gtk.HBox):
 
         #if event.keyval
 
-
-    def ButtonPress(self,obj,event):
-        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
-        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
-        ind=max(0,min(len(self.imagelist)-1,ind))
-        #self.ind_focal=ind
+    def ViewImage(self,ind):
+        self.ind_viewed=ind
         self.iv.SetItem(self.imagelist[ind])
         self.iv.show()
         self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
-        self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.UpdateDimensions()
+#        self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
+#        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         #self.UpdateScrollbar()
         #self.UpdateThumbReqs()
+
+    def ButtonPress_iv(self,obj,event):
+        self.iv.hide()
+        self.imarea.show()
+        self.hscroll.show()
+
+
+    def ButtonPress(self,obj,event):
+        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
+        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
+        ind=max(0,min(len(self.imagelist)-1,ind))
+        self.ViewImage(ind)
 
     def destroy(self,event):
         self.tm.quit()
@@ -601,10 +636,8 @@ class ImageBrowser(gtk.HBox):
             self.ScrollDown(max(1,self.thumbheight+self.pad)/5)
 
     def ScrollSignal(self,obj):
-        print 'scroll signal'
         self.offsety=self.scrolladj.get_value()
         self.UpdateFirstLastIndex()
-        self.ind_focal=-1
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
@@ -619,7 +652,10 @@ class ImageBrowser(gtk.HBox):
         self.height=400
         self.thumbwidth=128
         self.thumbheight=128
-        self.pad=30
+        if maemo:
+            self.pad=20
+        else:
+            self.pad=30
 
     def Resize(self,x,y):
         self.imarea.set_size_request(x, y)
@@ -643,10 +679,11 @@ class ImageBrowser(gtk.HBox):
         self.horizimgcount=max(self.width/(self.thumbwidth+self.pad),1)
         self.maxoffsety=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount
         self.offsety=self.offsety/self.horizimgcount
-        if self.ind_focal>=0:
-            self.ind_view_first=self.ind_focal
+        if self.ind_viewed>=0:
+            self.ind_view_first=max(self.ind_viewed-self.height/2/(self.thumbwidth+self.pad)*self.horizimgcount,0)
+            self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
         self.UpdateFirstLastIndex()
-        #self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
+        self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
 
     def Configure(self,obj,event):
         print 'Pre-Configure',self.ind_view_first,self.ind_view_last,self.width,self.height,self.offsety
@@ -687,6 +724,13 @@ class ImageBrowser(gtk.HBox):
         #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
         drawable = self.imarea.window
         gc = drawable.new_gc()
+        colormap=drawable.get_colormap()
+        red = colormap.alloc('red')
+        gc_v = drawable.new_gc(foreground=red,background=red)
+
+        #gc_viewed_item = drawable.new_gc()
+        #gc_viewed_item.set_foreground(gtk.gdk.color_parse('red'))
+        #gc_viewed_item.set_background(gtk.gdk.color_parse('red'))
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         #drawable.clear()
         display_space=True
@@ -697,6 +741,9 @@ class ImageBrowser(gtk.HBox):
         i=imgind
         neededitem=None
         while i<self.ind_view_last:
+            if self.ind_viewed==i:
+                drawable.draw_rectangle(gc_v, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
+            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
             if self.imagelist[i].thumb:
                 (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
@@ -756,8 +803,6 @@ class HelloWorld:
         print "destroy signal occurred"
         gtk.main_quit()
 
-
-
     def __init__(self):
         # create a new window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -803,7 +848,6 @@ class HelloWorld:
 
         self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.window.connect("key-press-event",self.drawing_area.KeyPress)
-
 
         # and the window
         hb=gtk.HBox()
