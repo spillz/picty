@@ -192,10 +192,15 @@ class ThumbManager:
             except:
                 #print 'thumb error'
                 image=None
+            if image:
+                try:
+                    thumb=image.tostring()
+                except:
+                    None
             self.vlock.acquire()
             if image:
                 item.thumbsize=image.size
-                item.thumb=image.tostring()
+                item.thumb=thumb
                 item.thumbrgba='A' in image.getbands()
                 self.memthumbs.append(item)
                 self._check_thumb_limit()
@@ -314,8 +319,8 @@ class ImageLoader:
                 olditem.qview_size=(0,0)
                 olditem.qview=None
     def _background_task(self):
+        self.vlock.acquire()
         while 1:
-            self.vlock.acquire()
             if self.sizing or self.item and not self.item.image:
                 self.event.set()
             else:
@@ -329,6 +334,7 @@ class ImageLoader:
             if self.exit:
                 return
             if not item:
+                self.vlock.acquire()
                 continue
             if not item.image:
                 try:
@@ -341,6 +347,7 @@ class ImageLoader:
                             break
                         p.feed(s)
                     if self.item.filename!=item.filename:
+                        self.vlock.acquire()
                         continue
                     image = p.close()
                     import pyexiv2
@@ -372,33 +379,34 @@ class ImageLoader:
                 self._check_image_limit()
                 self.vlock.release()
                 if not image:
+                    self.vlock.acquire()
                     continue
                 #notify
+            self.vlock.acquire()
             if self.sizing:
-                self.vlock.acquire()
                 image=item.image
                 (w,h)=self.sizing
                 (iw,ih)=item.image.size
                 if (w*h*iw*ih)==0:
                     print 'sizing size error'
+                    self.vlock.acquire()
                     continue
                 if 1.0*(w*ih)/(h*iw)>1.0:
                     w=h*iw/ih
                 else:
                     h=w*ih/iw
-                self.vlock.release()
+                #self.vlock.release()
                 print 'sizing viewer image',(w,h)
                 try:
                     qimage=image.resize((w,h)).tostring()
                 except:
                     qimage=None
 
-                self.vlock.acquire()
+                #self.vlock.acquire()
                 item.qview=qimage
                 item.qview_size=(w,h)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
-                self.vlock.release()
 
 class ImageViewer(gtk.HBox):
     def __init__(self,click_callback=None):
@@ -539,6 +547,10 @@ class ImageBrowser(gtk.HBox):
 
     def KeyPress(self,obj,event):
         print 'key press',event.keyval
+        if event.keyval==65307: #escape
+            self.iv.hide()
+            self.imarea.show()
+            self.vscroll.show()
         if event.keyval==65293: #enter
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
@@ -551,7 +563,7 @@ class ImageBrowser(gtk.HBox):
                     self.imarea.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
-        if event.keyval==65475: #f5
+        if (maemo and event.keyval==65475) or event.keyval==65480: #f6 on maemo or f11
             if self.is_fullscreen:
                 self.window.unfullscreen()
                 self.is_fullscreen=False
@@ -594,10 +606,21 @@ class ImageBrowser(gtk.HBox):
         #self.UpdateThumbReqs()
 
     def ButtonPress_iv(self,obj,event):
-        self.iv.hide()
-        self.imarea.show()
-        self.hscroll.show()
-
+        if maemo:
+            if self.is_iv_fullscreen:
+                self.ViewImage(self.ind_viewed)
+                self.imarea.show()
+                self.vscroll.show()
+                self.is_iv_fullscreen=False
+            else:
+                self.ViewImage(self.ind_viewed)
+                self.imarea.hide()
+                self.vscroll.hide()
+                self.is_iv_fullscreen=True
+        else:
+            self.iv.hide()
+            self.imarea.show()
+            self.vscroll.show()
 
     def ButtonPress(self,obj,event):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
@@ -643,7 +666,7 @@ class ImageBrowser(gtk.HBox):
 
     def UpdateScrollbar(self):
         self.scrolladj.set_all(value=self.offsety, lower=0,
-                upper=len(self.imagelist)/self.horizimgcount*(self.thumbheight+self.pad),
+                upper=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount,
                 step_increment=max(1,self.thumbheight+self.pad)/5,
                 page_increment=self.height, page_size=self.height)
 
@@ -686,13 +709,11 @@ class ImageBrowser(gtk.HBox):
         self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
 
     def Configure(self,obj,event):
-        print 'Pre-Configure',self.ind_view_first,self.ind_view_last,self.width,self.height,self.offsety
         self.width=event.width
         self.height=event.height
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
-        print '    Configure',self.ind_view_first,self.ind_view_last,self.width,self.height,self.offsety
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def Expose(self,event,arg):
