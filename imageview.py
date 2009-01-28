@@ -337,6 +337,7 @@ class ImageLoader:
                 self.vlock.acquire()
                 continue
             if not item.image:
+                image_meta=None
                 try:
                     import ImageFile
                     imfile=open(item.filename,'rb')
@@ -375,8 +376,10 @@ class ImageLoader:
                 self.vlock.acquire()
                 item.image=image
                 item.imagergba='A' in item.image.getbands()
+                item.image_meta=image_meta
                 self.memimages.append(item)
                 self._check_image_limit()
+                gobject.idle_add(self.viewer.ImageLoaded,item)
                 self.vlock.release()
                 if not image:
                     self.vlock.acquire()
@@ -408,9 +411,9 @@ class ImageLoader:
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
 
-class ImageViewer(gtk.HBox):
+class ImageViewer(gtk.VBox):
     def __init__(self,click_callback=None):
-        gtk.HBox.__init__(self)
+        gtk.VBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
         self.pack_start(self.imarea)
@@ -426,11 +429,59 @@ class ImageViewer(gtk.HBox):
         else:
             self.imarea.connect("button-press-event",click_callback)
 
-        self.imarea.set_size_request(400, 400)
-        self.width=400
-        self.height=400
+        self.imarea.set_size_request(64, 64)
+        self.width=64
+        self.height=64
         self.imarea.show()
         self.item=None
+        self.ImageNormal()
+        #self.set_position(self.get_allocation().height)
+
+    def AddMetaRow(self,table,label,data,row):
+        child=gtk.Label(label)
+        table.attach(child, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
+               xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+        child=gtk.Entry()
+        child.set_text(data)
+        table.attach(child, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
+               xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+
+    def CreateMetadataFrame(self):
+        rows=2
+        import datetime
+        d=datetime.datetime.fromtimestamp(self.item.mtime)
+        import exif
+        if self.item.image_meta:
+            rows+=len(exif.tags)
+        stable=gtk.ScrolledWindow()
+        stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        table = gtk.Table(rows=rows, columns=2, homogeneous=False)
+        self.AddMetaRow(table,'Full Path',self.item.filename,0)
+        self.AddMetaRow(table,'Last Modified',d.isoformat(' '),1)
+        r=2
+        for k,v in exif.tags:
+            try:
+                self.AddMetaRow(table,v,str(self.item.image_meta[k]),r)
+            except:
+                None
+            r+=1
+        table.show_all()
+        stable.add_with_viewport(table)
+        return stable
+
+    def ImageFullscreen(self):
+        try:
+            self.meta_table.hide()
+        except:
+            None
+        self.fullscreen=True
+
+    def ImageNormal(self):
+        try:
+            self.meta_table.show()
+        except:
+            None
+        self.fullscreen=False
 
     def ButtonPress(self,obj,event):
         self.hide()
@@ -439,11 +490,24 @@ class ImageViewer(gtk.HBox):
         self.il.quit()
 
     def ImageSized(self,item):
-        print 'sized msg',item.filename
-        if item==self.item:
+        if item.filename==self.item.filename:
             self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         else:
             print 'sized wrong item'
+
+    def ImageLoaded(self,item):
+        if item.filename==self.item.filename:
+            table=self.CreateMetadataFrame()
+            try:
+                self.meta_table.destroy()
+            except:
+                None
+            self.meta_table=table
+            self.pack_start(self.meta_table)
+            if self.fullscreen:
+                self.ImageFullscreen()
+            else:
+                self.ImageNormal()
 
     def SetItem(self,item):
         self.item=item
@@ -555,11 +619,13 @@ class ImageBrowser(gtk.HBox):
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
                     self.ViewImage(self.ind_viewed)
+                    self.iv.ImageNormal()
                     self.imarea.show()
                     self.vscroll.show()
                     self.is_iv_fullscreen=False
                 else:
                     self.ViewImage(self.ind_viewed)
+                    self.iv.ImageFullscreen()
                     self.imarea.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
@@ -606,21 +672,18 @@ class ImageBrowser(gtk.HBox):
         #self.UpdateThumbReqs()
 
     def ButtonPress_iv(self,obj,event):
-        if maemo:
-            if self.is_iv_fullscreen:
-                self.ViewImage(self.ind_viewed)
-                self.imarea.show()
-                self.vscroll.show()
-                self.is_iv_fullscreen=False
-            else:
-                self.ViewImage(self.ind_viewed)
-                self.imarea.hide()
-                self.vscroll.hide()
-                self.is_iv_fullscreen=True
-        else:
-            self.iv.hide()
+        if self.is_iv_fullscreen:
+            self.ViewImage(self.ind_viewed)
+            self.iv.ImageNormal()
             self.imarea.show()
             self.vscroll.show()
+            self.is_iv_fullscreen=False
+        else:
+            self.ViewImage(self.ind_viewed)
+            self.iv.ImageFullscreen()
+            self.imarea.hide()
+            self.vscroll.hide()
+            self.is_iv_fullscreen=True
 
     def ButtonPress(self,obj,event):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
