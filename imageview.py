@@ -26,9 +26,13 @@ maemo=False
 import gobject
 import gtk
 import Image
+import ImageFile
 import threading
 import os
 import time
+import exif
+import datetime
+
 try:
     import gnome.ui
     import gnomevfs
@@ -61,6 +65,10 @@ gobject.threads_init()
 
 global_image_dir=os.environ['HOME']
 global_image_dir='/media/sharedrive/Documents/Pictures'
+if maemo:
+    global_precache_count=100
+else:
+    global_precache_count=4000
 print 'Starting image browser on',global_image_dir
 
 class ImageCacheItem(gobject.GObject):
@@ -85,7 +93,9 @@ class ThumbManager:
             self.thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
             self.thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
         self.thread=threading.Thread(target=self._make_thumb)
-        self.thumbqueue=[]
+        self.queue_onscreen=[]
+        self.queue_fore=[]
+        self.queue_back=[]
         self.viewers=[]
         self.memthumbs=[]
         if maemo:
@@ -110,30 +120,38 @@ class ThumbManager:
                 thumbFactory.save_thumbnail(thumbnail, uri, 0)
         '''
 
-    def request_thumbs(self,items):
+    def request_thumbs(self,onscreen_items,fore_items,back_items):
         self.vlock.acquire()
-        if len(items)>0:
-            self.thumbqueue=items
-            self.event.set()
-        else:
-            print 'request 0 thumbs'
-        self.vlock.release()
-
-    def request_thumb(self,viewer,item):
-        self.vlock.acquire()
-        try:
-            self.thumbqueue.remove(item)
-        except:
-            None
-        self.thumbqueue.append(item)
-        self.vlock.release()
+        self.queue_onscreen=onscreen_items
+        self.queue_fore=fore_items
+        self.queue_back=back_items
         self.event.set()
+        self.vlock.release()
 
-    def cancel_thumb(self,viewer,item):
-        try:
-            del self.thumbqueue[self.thumbqueue.find((viewer,item))]
-        except:
-            print 'thumb_cancel fail',(viewer,item)
+#    def request_thumbs(self,items):
+#        self.vlock.acquire()
+#        if len(items)>0:
+#            self.thumbqueue=items
+#            self.event.set()
+#        else:
+#            print 'request 0 thumbs'
+#        self.vlock.release()
+#
+#    def request_thumb(self,viewer,item):
+#        self.vlock.acquire()
+#        try:
+#            self.thumbqueue.remove(item)
+#        except:
+#            None
+#        self.thumbqueue.append(item)
+#        self.vlock.release()
+#        self.event.set()
+#
+#    def cancel_thumb(self,viewer,item):
+#        try:
+#            del self.thumbqueue[self.thumbqueue.find((viewer,item))]
+#        except:
+#            print 'thumb_cancel fail',(viewer,item)
 
     def _check_thumb_limit(self):
         if len(self.memthumbs)>self.max_memthumbs:
@@ -142,32 +160,73 @@ class ThumbManager:
             olditem.thumb=None
     def quit(self):
         self.vlock.acquire()
-        self.thumbqueue=[]
+        self.queue_onscreen=[]
+        self.queue_fore=[]
+        self.queue_back=[]
         self.exit=True
         self.vlock.release()
         self.event.set()
         while self.thread.isAlive():
             time.sleep(0.1)
 
+    def _store_thumbnail(self,item):
+        '''this assumes jpg'''
+        print 'storing thumbnail',item.filename,item.mtime
+        width=item.thumbsize[0]
+        height=item.thumbsize[1]
+        if height<128 and width<128:
+            return
+        try:
+            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=item.thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=item.thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+item.thumbrgba)) #last arg is rowstride
+        except:
+            return
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        self.thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
+
+    def _store_failed_thumbnail(self,item):
+        self.thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
+
     def _make_thumb(self):
-        print 'thumb thread entry'
         while 1:
             self.vlock.acquire()
-            if len(self.thumbqueue)==0:
+            if len(self.queue_onscreen)==0 and len(self.queue_fore)==0 and len(self.queue_back)==0:
 #                print 'waiting'
                 self.event.clear()
                 self.vlock.release()
                 self.event.wait()
                 self.vlock.acquire()
             if self.exit:
+                self.vlock.release()
                 return
-            item=self.thumbqueue.pop(0)
+            item=None
+            while True:
+                try:
+                    #print len(self.queue_onscreen),',',
+                    item=self.queue_onscreen.pop(0)
+                except:
+                    if len(self.queue_fore)>len(self.queue_back):
+                        try:
+                            item=self.queue_fore.pop(0)
+                        except:
+                            break
+                    else:
+                        try:
+                            item=self.queue_back.pop()
+                        except:
+                            break
+                if item.thumb==None:
+                    break
+            if item!=None and item.thumb!=None:
+                self.vlock.release()
+                continue
+
             fullpath=item.filename
             #print 'loading',fullpath
             if not maemo:
                 uri=gnomevfs.get_uri_from_local_path(item.filename)
             mtime=item.mtime
             self.vlock.release()
+            storethumb=False
             try:
                 if maemo:
                     image = Image.open(fullpath)
@@ -189,6 +248,20 @@ class ThumbManager:
                             #image=None
                             image = Image.open(fullpath)
                             image.thumbnail((128,128))
+                            try:
+                                image_meta = pyexiv2.Image(item.filename)
+                                image_meta.readMetadata()
+                            except:
+                                print 'Error reading metadata for',item.filename
+                            try:
+                                orient=image_meta['Exif.Image.Orientation']
+                            except:
+                                orient=1
+
+                            if orient>1:
+                                for method in global_transposemethods[orient]:
+                                    image=image.transpose(method)
+                            storethumb=True
             except:
                 #print 'thumb error'
                 image=None
@@ -198,16 +271,22 @@ class ThumbManager:
                 except:
                     None
             self.vlock.acquire()
+            if self.exit:
+                self.vlock.release()
+                return
             if image:
                 item.thumbsize=image.size
                 item.thumb=thumb
                 item.thumbrgba='A' in image.getbands()
+                if storethumb:
+                    self._store_thumbnail(item)
                 self.memthumbs.append(item)
                 self._check_thumb_limit()
             else:
                 item.thumbsize=(0,0)
                 item.thumb=None
                 item.cannot_thumb=True
+                self._store_failed_thumbnail(item)
             gobject.idle_add(self.viewer.Thumb_cb,item)
             self.vlock.release()
 
@@ -248,6 +327,8 @@ class ImageCache:
         self.vlock.release()
     def quit(self):
         self.exit=True
+        while self.thread.isAlive():
+            time.sleep(0.1)
     def walk_cb(self,arg,dirname,names):
         #print dirname
         if self.exit:
@@ -305,6 +386,8 @@ class ImageLoader:
         self.exit=True
         self.vlock.release()
         self.event.set()
+        while self.thread.isAlive():
+            time.sleep(0.1)
     def set_item(self,item,sizing=None):
         self.vlock.acquire()
         self.item=item
@@ -324,7 +407,6 @@ class ImageLoader:
             if self.sizing or self.item and not self.item.image:
                 self.event.set()
             else:
-                print 'event clear'
                 self.event.clear()
             self.vlock.release()
             self.event.wait()
@@ -339,7 +421,7 @@ class ImageLoader:
             if not item.image:
                 image_meta=None
                 try:
-                    import ImageFile
+                    #import ImageFile
                     imfile=open(item.filename,'rb')
                     p = ImageFile.Parser()
                     while self.item.filename==item.filename:
@@ -351,19 +433,16 @@ class ImageLoader:
                         self.vlock.acquire()
                         continue
                     image = p.close()
-                    import pyexiv2
+                    #import pyexiv2
                     try:
                         image_meta = pyexiv2.Image(item.filename)
                         image_meta.readMetadata()
                     except:
-                        print 'Error reading metadata'
+                        print 'Error reading metadata for',item.filename
                     try:
                         orient=image_meta['Exif.Image.Orientation']
-                        if orient!=1:
-                            print 'ORIENTATION',orient
                     except:
                         orient=1
-                        print 'Error reading metadata: no orientation flag'
 
                     if orient>1:
                         for method in global_transposemethods[orient]:
@@ -375,7 +454,10 @@ class ImageLoader:
                         image=None
                 self.vlock.acquire()
                 item.image=image
-                item.imagergba='A' in item.image.getbands()
+                try:
+                    item.imagergba='A' in item.image.getbands()
+                except:
+                    item.imagergba=False
                 item.image_meta=image_meta
                 self.memimages.append(item)
                 self._check_image_limit()
@@ -391,7 +473,6 @@ class ImageLoader:
                 (w,h)=self.sizing
                 (iw,ih)=item.image.size
                 if (w*h*iw*ih)==0:
-                    print 'sizing size error'
                     self.vlock.acquire()
                     continue
                 if 1.0*(w*ih)/(h*iw)>1.0:
@@ -399,7 +480,6 @@ class ImageLoader:
                 else:
                     h=w*ih/iw
                 #self.vlock.release()
-                print 'sizing viewer image',(w,h)
                 try:
                     qimage=image.resize((w,h)).tostring()
                 except:
@@ -416,12 +496,14 @@ class ImageViewer(gtk.VBox):
         gtk.VBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
+        self.meta_table=self.CreateMetaTable()
         self.pack_start(self.imarea)
+        self.pack_start(self.meta_table)
 
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
-        self.connect("destroy", self.destroy)
+        self.connect("destroy", self.Destroy)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         if not click_callback:
@@ -437,20 +519,61 @@ class ImageViewer(gtk.VBox):
         self.ImageNormal()
         #self.set_position(self.get_allocation().height)
 
-    def AddMetaRow(self,table,label,data,row):
-        child=gtk.Label(label)
-        table.attach(child, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
+    def AddMetaRow(self,table,data_items,key,label,data,row):
+        child1=gtk.Label(label)
+        table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        child=gtk.Entry()
-        child.set_text(data)
-        table.attach(child, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
+        child2=gtk.Entry()
+        child2.set_text(data)
+        table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+        data_items[key]=(child1,child2)
+
+    def CreateMetaTable(self):
+        rows=2
+        rows+=len(exif.tags)
+        stable=gtk.ScrolledWindow()
+        stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        table = gtk.Table(rows=rows, columns=2, homogeneous=False)
+        stable.data_items=dict()
+        self.AddMetaRow(table, stable.data_items,'FullPath','Full Path','',0)
+        self.AddMetaRow(table, stable.data_items,'UnixLastModified','Last Modified','',1)
+        r=2
+        for k,v in exif.tags:
+            try:
+                self.AddMetaRow(table,stable.data_items,k,v,'',r)
+            except:
+                None
+            r+=1
+        table.show_all()
+        stable.add_with_viewport(table)
+        stable.set_focus_chain(tuple())
+        return stable
+
+    def UpdateMetaTable(self,item):
+        self.meta_table.data_items['FullPath'][1].set_text(item.filename)
+        #import datetime
+        d=datetime.datetime.fromtimestamp(item.mtime)
+        self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
+        for k,v in exif.tags:
+            try:
+                value=item.image_meta[k]
+                try:
+                    if len(value)==2:
+                        value='%4.3f'%(1.0*value[0]/value[1])
+                    else:
+                        value=str(value)
+                except:
+                    value=str(value)
+            except:
+                value=''
+            self.meta_table.data_items[k][1].set_text(value)
 
     def CreateMetadataFrame(self):
         rows=2
-        import datetime
+        #import datetime
         d=datetime.datetime.fromtimestamp(self.item.mtime)
-        import exif
+        #import exif
         if self.item.image_meta:
             rows+=len(exif.tags)
         stable=gtk.ScrolledWindow()
@@ -484,10 +607,12 @@ class ImageViewer(gtk.VBox):
         self.fullscreen=False
 
     def ButtonPress(self,obj,event):
+        self.ImageNormal()
         self.hide()
 
-    def destroy(self,event):
+    def Destroy(self,event):
         self.il.quit()
+        return False
 
     def ImageSized(self,item):
         if item.filename==self.item.filename:
@@ -497,17 +622,7 @@ class ImageViewer(gtk.VBox):
 
     def ImageLoaded(self,item):
         if item.filename==self.item.filename:
-            table=self.CreateMetadataFrame()
-            try:
-                self.meta_table.destroy()
-            except:
-                None
-            self.meta_table=table
-            self.pack_start(self.meta_table)
-            if self.fullscreen:
-                self.ImageFullscreen()
-            else:
-                self.ImageNormal()
+            self.UpdateMetaTable(item)
 
     def SetItem(self,item):
         self.item=item
@@ -526,6 +641,9 @@ class ImageViewer(gtk.VBox):
     def Render(self,event):
         drawable = self.imarea.window
         gc = drawable.new_gc()
+        colormap=drawable.get_colormap()
+        black = colormap.alloc('black')
+        drawable.set_background(black)
         drawable.clear()
         if self.item.qview:
             (iw,ih)=self.item.qview_size
@@ -589,7 +707,7 @@ class ImageBrowser(gtk.HBox):
         self.pack_start(self.imarea)
         self.pack_start(self.vscroll,False)
         #self.connect('cache-image-added',self.AddImage)
-        self.connect("destroy", self.destroy)
+        self.connect("destroy", self.Destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
@@ -613,6 +731,7 @@ class ImageBrowser(gtk.HBox):
         print 'key press',event.keyval
         if event.keyval==65307: #escape
             self.iv.hide()
+            self.iv.ImageNormal()
             self.imarea.show()
             self.vscroll.show()
         if event.keyval==65293: #enter
@@ -691,9 +810,10 @@ class ImageBrowser(gtk.HBox):
         ind=max(0,min(len(self.imagelist)-1,ind))
         self.ViewImage(ind)
 
-    def destroy(self,event):
-        self.tm.quit()
+    def Destroy(self,event):
         self.ic.quit()
+        self.tm.quit()
+        return False
 
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
@@ -786,22 +906,31 @@ class ImageBrowser(gtk.HBox):
         ## DATA NEEDED
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
         #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
-        thumb_reqs=[]
-        for i in range(self.ind_view_first,self.ind_view_last):
-            item=self.imagelist[i]
-            if not item.thumb and not item.cannot_thumb:
-                thumb_reqs.append(item)
-        for i in range(min(self.imagelist,50)):
-            if self.ind_view_first-i-1>=0:
-                item=self.imagelist[self.ind_view_first-i-1]
-                if not item.thumb and not item.cannot_thumb:
-                    thumb_reqs.append(item)
-            if self.ind_view_last+i<len(self.imagelist):
-                item=self.imagelist[i+self.ind_view_last]
-                if not item.thumb and not item.cannot_thumb:
-                    thumb_reqs.append(item)
-        if len(thumb_reqs)>0:
-            self.tm.request_thumbs(thumb_reqs)
+
+        onscreen_items=self.imagelist[self.ind_view_first:self.ind_view_last]
+        fore_items=self.imagelist[self.ind_view_last:self.ind_view_last+global_precache_count/2]
+        back_items=self.imagelist[self.ind_view_first-global_precache_count/2:self.ind_view_first]
+        self.tm.request_thumbs(onscreen_items,fore_items,back_items)
+##OLD VERSION
+        '''
+                thumb_reqs=[]
+                for i in range(self.ind_view_first,self.ind_view_last):
+                    item=self.imagelist[i]
+                    if not item.thumb and not item.cannot_thumb:
+                        thumb_reqs.append(item)
+                for i in range(min(self.imagelist,50)):
+                    if self.ind_view_first-i-1>=0:
+                        item=self.imagelist[self.ind_view_first-i-1]
+                        if not item.thumb and not item.cannot_thumb:
+                            thumb_reqs.append(item)
+                    if self.ind_view_last+i<len(self.imagelist):
+                        item=self.imagelist[i+self.ind_view_last]
+                        if not item.thumb and not item.cannot_thumb:
+                            thumb_reqs.append(item)
+                if len(thumb_reqs)>0:
+                    self.tm.request_thumbs(thumb_reqs)
+        '''
+
 
     def Render(self,event):
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
@@ -809,8 +938,12 @@ class ImageBrowser(gtk.HBox):
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
-        red = colormap.alloc('red')
-        gc_v = drawable.new_gc(foreground=red,background=red)
+        grey = colormap.alloc('grey')
+        gc_v = drawable.new_gc(foreground=grey,background=grey)
+        colormap=drawable.get_colormap()
+        black = colormap.alloc('black')
+        drawable.set_background(black)
+
 
         #gc_viewed_item = drawable.new_gc()
         #gc_viewed_item.set_foreground(gtk.gdk.color_parse('red'))
@@ -827,7 +960,7 @@ class ImageBrowser(gtk.HBox):
         while i<self.ind_view_last:
             if self.ind_viewed==i:
                 drawable.draw_rectangle(gc_v, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
-            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
+#            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
             if self.imagelist[i].thumb:
                 (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
