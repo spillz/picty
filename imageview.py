@@ -23,7 +23,9 @@ License:
 
 maemo=False
 
+import cPickle
 import gobject
+import gnomevfs
 import gtk
 import Image
 import ImageFile
@@ -64,12 +66,66 @@ gobject.threads_init()
 #gtk.gdk.threads_init()
 
 global_image_dir=os.environ['HOME']
-global_image_dir='/media/sharedrive/Documents/Pictures'
+
 if maemo:
     global_precache_count=100
 else:
     global_precache_count=4000
+
+class GlobalSettings:
+    def __init__(self):
+        self.version='0.1'
+        self.precache_count=1000
+        self.image_dirs=[]
+        self.store_thumbs=True
+        self.conf_file=os.path.join(os.environ['HOME'],'.phomgr-settings')
+    def save(self):
+        try:
+            f=open(self.conf_file,'wb')
+        except:
+            return False
+        try:
+            cPickle.dump(self.version,f,-1)
+            cPickle.dump(self.image_dirs,f,-1)
+            cPickle.dump(self.store_thumbs,f,-1)
+            cPickle.dump(self.precache_count,f,-1)
+        finally:
+            f.close()
+    def load(self):
+        try:
+            f=open(self.conf_file,'rb')
+        except:
+            return False
+        try:
+            self.version=cPickle.load(f)
+            self.image_dirs=cPickle.load(f)
+            self.store_thumbs=cPickle.load(f)
+            self.precache_count=cPickle.load(f)
+            print 'load'
+        finally:
+            f.close()
+    def user_add_dir(self,parent):
+        fcd=gtk.FileChooserDialog(title='Choose Photo Directory', parent=parent, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
+        fcd.set_current_folder(os.environ['HOME'])
+        response=fcd.run()
+        if response == gtk.RESPONSE_OK:
+            self.image_dirs.append(fcd.get_filename())
+        print 'im dirs',self.image_dirs
+        fcd.destroy()
+        return self.image_dirs
+
+gs=GlobalSettings()
+gs.load()
+if len(gs.image_dirs)==0:
+    gs.user_add_dir(None)
+    if len(gs.image_dirs)==0:
+        import sys
+        sys.exit()
+    gs.save()
+global_image_dir=gs.image_dirs[0]
 print 'Starting image browser on',global_image_dir
+
 
 class ImageCacheItem(gobject.GObject):
     def __init__(self,filename,thumb=None):
@@ -216,7 +272,7 @@ class ThumbManager:
                             break
                 if item.thumb==None:
                     break
-            if item!=None and item.thumb!=None:
+            if item==None or item!=None and item.thumb!=None:
                 self.vlock.release()
                 continue
 
@@ -931,7 +987,6 @@ class ImageBrowser(gtk.HBox):
                     self.tm.request_thumbs(thumb_reqs)
         '''
 
-
     def Render(self,event):
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
         #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
@@ -943,7 +998,6 @@ class ImageBrowser(gtk.HBox):
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
         drawable.set_background(black)
-
 
         #gc_viewed_item = drawable.new_gc()
         #gc_viewed_item.set_foreground(gtk.gdk.color_parse('red'))
