@@ -34,6 +34,7 @@ import os
 import time
 import exif
 import datetime
+import bisect
 
 try:
     import gnome.ui
@@ -41,6 +42,26 @@ try:
     import pyexiv2
 except:
     maemo=True
+
+'''
+import bisect
+class SortedList(List):
+    def append(self, item):
+        bisect.insort(self.data, item)
+    def __cmp__(item):
+        pass
+    def append(self, item):
+        bisect.insort(self.data, item)
+    def append(self, item):
+        bisect.insort(self.data, item)
+
+import bisect
+a=[]
+for i in get_data():
+        bisect.insort(a,(i[1],i))
+#map out the original data, now it starts with jim instead of betty
+print [ j[1] for j in a ]
+'''
 
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
 '''
@@ -127,17 +148,28 @@ global_image_dir=gs.image_dirs[0]
 print 'Starting image browser on',global_image_dir
 
 
-class ImageCacheItem(gobject.GObject):
-    def __init__(self,filename,thumb=None):
+class ImageCacheItem(list):
+    def __init__(self,filename,mtime):
+        list.__init__(self,[-mtime,filename])
         self.filename=filename
-        self.mtime=None
+        self.mtime=mtime
         self.thumbsize=(0,0)
-        self.thumb=thumb
+        self.thumb=None
         self.thumbrgba=False
         self.qview=None
         self.qview_size=None
         self.image=None
         self.cannot_thumb=False
+    def key(self):
+        return 1
+
+class ImageList(list):
+    def __init__(self,items):
+        list.__init__(self)
+        for item in items:
+            self.add(item)
+    def add(self,item):
+        bisect.insort(self,item)
 
 class ThumbManager:
     def __init__(self,viewer):
@@ -360,7 +392,7 @@ class ImageCache:
     def register_viewer(self,viewer):
         self.vlock.acquire()
         self.viewers.append(viewer)
-        items=self.items[:]
+        items=ImageList(self.items[:])
         self.vlock.release()
         return items
     def release_viewer(self,viewer):
@@ -407,8 +439,7 @@ class ImageCache:
             st=os.stat(fullpath)
             if os.path.isdir(fullpath):
                 continue
-            item=ImageCacheItem(fullpath)
-            item.mtime=mtime
+            item=ImageCacheItem(fullpath,mtime)
             self.vlock.acquire()
             self.notify_items.append(item)
                 ## notify viewer(s)
@@ -878,14 +909,14 @@ class ImageBrowser(gtk.HBox):
 
     def AddImages(self,items):
         for item in items:
-            self.imagelist.append(item)
+            self.imagelist.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImage(self,item):
-        self.imagelist.append(item)
+        self.imagelist.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
