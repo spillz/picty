@@ -1,0 +1,136 @@
+Image Photo database, indexing and filtering schema
+
+An Image is a structure describing an image identified by filename & mtime,
+with optional attributes including photo metadata, thumb and full size
+images (with size info) and image type information (color depth, native
+format).
+
+The ImageCollection is a sorted list of Images, where the sort order is
+determined by the tuple (mtime,filename). Images are initially constructed from
+walking a selection of directories
+
+An Index is a sorted list of tuples (IndexVariable, Image) where the IndexVariable can be
+mtime, filename, or any metadata. Indexes are used for the display of data in sorted order
+
+A Filter is a subset of an Index determined by FilterCriteria.
+
+GUI and Processing Elements
+
+ImageBrowser: A thumbnail view of the image collection (sorted and/or
+filtered). Images can be viewed in the internal view, loaded into external
+programs, cut/copied/dragged into other programs (e.g. nautilus),
+selected/deselected for batch operations.
+
+ImageViewer: A viewer and simple editor for single images.
+
+The ImageTracker is responsible for loading the image collection in a background thread.
+* Initially the ImageLoader will walk the directory tree and find images
+* Found images are stored persistently
+* On new sessions, the store is loaded then checked against the tree for changes
+* The ImageTracker then enters a monitoring phase:
+    * listens for changes to the file system for adds, deletes or changes to images,
+        and updates the main store and any indexes for those changes.
+    * receives indexing and filter requests. An indexing request will force a full
+        metadata load, metadata should be stored persistently for quick retrieval.
+
+The ImageThumbnailer loads thumbs for the ImageBrowser in a background thread.
+The thread waits for a list of thumbnail requests and then iteratively pops off
+items from the list to load thumbs into memory (if they haven't been already).
+The ImageThumbnailer returns to a wait state once the list is completed.
+
+The ImageLoader loads fullsize images and associated metadata for the
+ImageViewer. Operation is similar to the operation of the ImageThumbnailer.
+
+Note that thumbs, metadata and fullsize image data are associated with Image
+items rather than the ImageViewer or ImageBrowser. This allows this data to
+be loaded on demand and cached.
+
+
+
+### single worker thread version of program
+
+Problem with this version is having to wait for full set of images to be found before
+user gets to interact.
+
+ImageTracker logic
+
+if imagestore:
+    open imagestore (pickle object)
+    loop ImageCollection:
+        verify image exists
+        no: drop it from ImageCollection
+walk tree:
+    is an image:
+        already in store:
+            if not verify mtime:
+                updateitem
+        else:
+            additem
+
+    create Image
+    notify viewer every xth Image
+start directory monitor
+wait for directory changes or index requests:
+    on directory change:
+        add, remove or update ImageCollection and Indexes
+    on index requests:
+        create sorted version of image
+    on thumb request:
+        create thumbnail of image (loading from cache or from full size image as necessary)
+    on image request:
+        load fullsize image
+
+
+### single worker thread version take 2
+
+load imagestore ## may need to put this in the loop if it isn't fast enough
+start image monitor
+set verify images task to on
+while true:
+    if no pending tasks wait
+
+## Highest priority tasks
+    task == quit:
+        return
+    task == image request:
+        load image
+        notify requestor
+        continue
+    task == on screen thumb request:
+        continue
+    task == build index:
+        load metadata if needed
+        add image to Index
+        if done:
+            notify requestor
+        continue
+
+
+## Lower priority tasks
+    task == image collection task:
+        task == verify images:
+            remove deleted or changed images from the ImageCollection
+            if all images verified:
+                set walk directory task on
+        task == walk directory:
+            add new images
+            get mtime, filename, filesize
+            load metadata
+            if entire directory walked:
+                set monitor state
+        task == monitor request to add, remove or update images:
+            add or remove images from ImageCollection and Index
+
+## Lowest priority task
+    task == thumb cache request:
+        continue
+save imagestore
+
+
+tasks are listed in order of priority
+all tasks should be interruptable by a higher priority task (i.e. check
+periodically for a kill state) but continue after the higher priority
+task completes. A task should also be cancellable (e.g. to reset the thumb
+cache request)
+tasks that change the imagecollection should use a lock during the change
+ui threads that access the ImageCollection or Index should also use the lock

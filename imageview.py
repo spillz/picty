@@ -43,25 +43,6 @@ try:
 except:
     maemo=True
 
-'''
-import bisect
-class SortedList(List):
-    def append(self, item):
-        bisect.insort(self.data, item)
-    def __cmp__(item):
-        pass
-    def append(self, item):
-        bisect.insort(self.data, item)
-    def append(self, item):
-        bisect.insort(self.data, item)
-
-import bisect
-a=[]
-for i in get_data():
-        bisect.insort(a,(i[1],i))
-#map out the original data, now it starts with jim instead of betty
-print [ j[1] for j in a ]
-'''
 
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
 '''
@@ -78,13 +59,8 @@ global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180
             (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
             (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
             (Image.ROTATE_90,))
-#global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
-#            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
-#            (Image.ROTATE_90,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
-#            (Image.ROTATE_270,))
 
 gobject.threads_init()
-#gtk.gdk.threads_init()
 
 global_image_dir=os.environ['HOME']
 
@@ -100,6 +76,7 @@ class GlobalSettings:
         self.image_dirs=[]
         self.store_thumbs=True
         self.conf_file=os.path.join(os.environ['HOME'],'.phomgr-settings')
+
     def save(self):
         try:
             f=open(self.conf_file,'wb')
@@ -112,6 +89,7 @@ class GlobalSettings:
             cPickle.dump(self.precache_count,f,-1)
         finally:
             f.close()
+
     def load(self):
         try:
             f=open(self.conf_file,'rb')
@@ -125,6 +103,7 @@ class GlobalSettings:
             print 'load'
         finally:
             f.close()
+
     def user_add_dir(self,parent):
         fcd=gtk.FileChooserDialog(title='Choose Photo Directory', parent=parent, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
@@ -246,6 +225,7 @@ class ThumbManager:
             olditem=self.memthumbs.pop(0)
             olditem.thumbsize=(0,0)
             olditem.thumb=None
+
     def quit(self):
         self.vlock.acquire()
         self.queue_onscreen=[]
@@ -351,7 +331,6 @@ class ThumbManager:
                                     image=image.transpose(method)
                             storethumb=True
             except:
-                #print 'thumb error'
                 image=None
             if image:
                 try:
@@ -389,12 +368,14 @@ class ImageCache:
         self.vlock=threading.Lock()
         self.exit=False
         self.thread.start()
+
     def register_viewer(self,viewer):
         self.vlock.acquire()
         self.viewers.append(viewer)
         items=ImageList(self.items[:])
         self.vlock.release()
         return items
+
     def release_viewer(self,viewer):
         self.vlock.acquire()
         try:
@@ -402,6 +383,7 @@ class ImageCache:
         except:
             print 'viewer not registered',viewer
         self.vlock.release()
+
     def data_loader(self):
         self.last_update_time=time.time()
         try:
@@ -413,12 +395,13 @@ class ImageCache:
             gobject.idle_add(v.AddImages,self.notify_items)
         self.notify_items=[]
         self.vlock.release()
+
     def quit(self):
         self.exit=True
         while self.thread.isAlive():
             time.sleep(0.1)
+
     def walk_cb(self,arg,dirname,names):
-        #print dirname
         if self.exit:
             raise StopIteration
         i=0
@@ -450,6 +433,7 @@ class ImageCache:
                 self.items=self.items+self.notify_items
                 self.notify_items=[]
             self.vlock.release()
+            time.sleep(0.05)
 
 class ImageLoader:
     def __init__(self,viewer):
@@ -463,11 +447,13 @@ class ImageLoader:
         self.event=threading.Event()
         self.exit=False
         self.thread.start()
+
     def update_image_size(self,width,height):
         self.vlock.acquire()
         self.sizing=(width,height)
         self.vlock.release()
         self.event.set()
+
     def quit(self):
         self.vlock.acquire()
         self.exit=True
@@ -475,12 +461,14 @@ class ImageLoader:
         self.event.set()
         while self.thread.isAlive():
             time.sleep(0.1)
+
     def set_item(self,item,sizing=None):
         self.vlock.acquire()
         self.item=item
         self.sizing=sizing
         self.vlock.release()
         self.event.set()
+
     def _check_image_limit(self):
         if len(self.memimages)>self.max_memimages:
             olditem=self.memimages.pop(0)
@@ -488,6 +476,7 @@ class ImageLoader:
                 olditem.image=None
                 olditem.qview_size=(0,0)
                 olditem.qview=None
+
     def _background_task(self):
         self.vlock.acquire()
         while 1:
@@ -520,7 +509,6 @@ class ImageLoader:
                         self.vlock.acquire()
                         continue
                     image = p.close()
-                    #import pyexiv2
                     try:
                         image_meta = pyexiv2.Image(item.filename)
                         image_meta.readMetadata()
@@ -553,7 +541,6 @@ class ImageLoader:
                 if not image:
                     self.vlock.acquire()
                     continue
-                #notify
             self.vlock.acquire()
             if self.sizing:
                 image=item.image
@@ -566,13 +553,10 @@ class ImageLoader:
                     w=h*iw/ih
                 else:
                     h=w*ih/iw
-                #self.vlock.release()
                 try:
                     qimage=image.resize((w,h)).tostring()
                 except:
                     qimage=None
-
-                #self.vlock.acquire()
                 item.qview=qimage
                 item.qview_size=(w,h)
                 gobject.idle_add(self.viewer.ImageSized,item)
@@ -639,7 +623,6 @@ class ImageViewer(gtk.VBox):
 
     def UpdateMetaTable(self,item):
         self.meta_table.data_items['FullPath'][1].set_text(item.filename)
-        #import datetime
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for k,v in exif.tags:
@@ -815,7 +798,7 @@ class ImageBrowser(gtk.HBox):
         #self.Resize(600,300)
 
     def KeyPress(self,obj,event):
-        print 'key press',event.keyval
+        #print 'key press',event.keyval
         if event.keyval==65307: #escape
             self.iv.hide()
             self.iv.ImageNormal()
@@ -1080,70 +1063,12 @@ class ImageBrowser(gtk.HBox):
                 else:
                     x=0
 
-class HelloWorld:
-
-    # This is a callback function. The data arguments are ignored
-    # in this example. More on callbacks below.
-    def on_down(self, widget, data=None):
-        self.drawing_area.ScrollDown()
-
-    def on_up(self, widget, data=None):
-        self.drawing_area.ScrollUp()
-
-    def delete_event(self, widget, event, data=None):
-        # If you return FALSE in the "delete_event" signal handler,
-        # GTK will emit the "destroy" signal. Returning TRUE means
-        # you don't want the window to be destroyed.
-        # This is useful for popping up 'are you sure you want to quit?'
-        # type dialogs.
-
-        # Change FALSE to TRUE and the main window will not be destroyed
-        # with a "delete_event".
-        return False
-
-    def destroy(self, widget, data=None):
-        print "destroy signal occurred"
-        gtk.main_quit()
-
+class MainWindow:
     def __init__(self):
-        # create a new window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-
-        self.window.set_size_request(800, 600)
-
-        # When the window is given the "delete_event" signal (this is given
-        # by the window manager, usually by the "close" option, or on the
-        # titlebar), we ask it to call the delete_event () function
-        # as defined above. The data passed to the callback
-        # function is NULL and is ignored in the callback function.
+        self.window.set_size_request(800, 400)
         self.window.connect("delete_event", self.delete_event)
-
-        # Here we connect the "destroy" event to a signal handler.
-        # This event occurs when we call gtk_widget_destroy() on the window,
-        # or if we return FALSE in the "delete_event" callback.
         self.window.connect("destroy", self.destroy)
-
-        # Sets the border width of the window.
-        #self.window.set_border_width(10)
-
-        # Creates a new button with the label "Hello World".
-        self.buttonup = gtk.Button("up")
-        self.buttondown = gtk.Button("down")
-
-        # When the button receives the "clicked" signal, it will call the
-        # function hello() passing it None as its argument.  The hello()
-        # function is defined above.
-        self.buttonup.connect("clicked", self.on_up, None)
-        self.buttondown.connect("clicked", self.on_down, None)
-
-        # This will cause the window to be destroyed by calling
-        # gtk_widget_destroy(window) when "clicked".  Again, the destroy
-        # signal could come from here, or the window manager.
-        #self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
-
-        # This packs the button into the window (a GTK container).
-
-        # The final step is to display this newly created widget.
 
         self.imcache=ImageCache()
         self.drawing_area = ImageBrowser(self.imcache)
@@ -1151,28 +1076,29 @@ class HelloWorld:
         self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.window.connect("key-press-event",self.drawing_area.KeyPress)
 
-        # and the window
-        hb=gtk.HBox()
         vb=gtk.VBox()
-        hb.pack_start(self.buttonup)
-        hb.pack_start(self.buttondown)
-        #vb.pack_start(hb,False)
         vb.pack_start(self.drawing_area)
         self.window.add(vb)
         self.window.show()
         vb.show()
-        hb.show()
         self.drawing_area.show()
-        self.buttonup.show()
-        self.buttondown.show()
+
+    def on_down(self, widget, data=None):
+        self.drawing_area.ScrollDown()
+
+    def on_up(self, widget, data=None):
+        self.drawing_area.ScrollUp()
+
+    def delete_event(self, widget, event, data=None):
+        return False #allows the window to be destroyed
+
+    def destroy(self, widget, data=None):
+        print "destroy signal occurred"
+        gtk.main_quit()
 
     def main(self):
-        # All PyGTK applications must have a gtk.main(). Control ends here
-        # and waits for an event to occur (like a key press or mouse event).
         gtk.main()
 
-# If the program is run directly or passed as an argument to the python
-# interpreter then create a HelloWorld instance and show it
 if __name__ == "__main__":
-    hello = HelloWorld()
-    hello.main()
+    wnd = MainWindow()
+    wnd.main()
