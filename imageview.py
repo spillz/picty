@@ -21,12 +21,14 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-maemo=False
-
-import cPickle
 import gobject
 import gnomevfs
 import gtk
+
+gobject.threads_init()
+gtk.gdk.threads_init()
+
+
 import Image
 import ImageFile
 import threading
@@ -41,399 +43,14 @@ try:
     import gnomevfs
     import pyexiv2
 except:
-    maemo=True
+    print 'missing modules... exiting!'
+    import sys
+    sys.exit()
 
+import settings
+import backend
+settings.init() ##todo: make this call on first import inside the module
 
-##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
-'''
-  1        2       3      4         5            6           7          8
-
-888888  888888      88  88      8888888888  88                  88  8888888888
-88          88      88  88      88  88      88  88          88  88      88  88
-8888      8888    8888  8888    88          8888888888  8888888888          88
-88          88      88  88
-88          88  888888  888888
-'''
-
-global_transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
-            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
-            (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
-            (Image.ROTATE_90,))
-
-gobject.threads_init()
-
-global_image_dir=os.environ['HOME']
-
-if maemo:
-    global_precache_count=100
-else:
-    global_precache_count=4000
-
-class GlobalSettings:
-    def __init__(self):
-        self.version='0.1'
-        self.precache_count=1000
-        self.image_dirs=[]
-        self.store_thumbs=True
-        self.conf_file=os.path.join(os.environ['HOME'],'.phomgr-settings')
-
-    def save(self):
-        try:
-            f=open(self.conf_file,'wb')
-        except:
-            return False
-        try:
-            cPickle.dump(self.version,f,-1)
-            cPickle.dump(self.image_dirs,f,-1)
-            cPickle.dump(self.store_thumbs,f,-1)
-            cPickle.dump(self.precache_count,f,-1)
-        finally:
-            f.close()
-
-    def load(self):
-        try:
-            f=open(self.conf_file,'rb')
-        except:
-            return False
-        try:
-            self.version=cPickle.load(f)
-            self.image_dirs=cPickle.load(f)
-            self.store_thumbs=cPickle.load(f)
-            self.precache_count=cPickle.load(f)
-            print 'load'
-        finally:
-            f.close()
-
-    def user_add_dir(self,parent):
-        fcd=gtk.FileChooserDialog(title='Choose Photo Directory', parent=parent, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-        fcd.set_current_folder(os.environ['HOME'])
-        response=fcd.run()
-        if response == gtk.RESPONSE_OK:
-            self.image_dirs.append(fcd.get_filename())
-        print 'im dirs',self.image_dirs
-        fcd.destroy()
-        return self.image_dirs
-
-gs=GlobalSettings()
-gs.load()
-if len(gs.image_dirs)==0:
-    gs.user_add_dir(None)
-    if len(gs.image_dirs)==0:
-        import sys
-        sys.exit()
-    gs.save()
-global_image_dir=gs.image_dirs[0]
-print 'Starting image browser on',global_image_dir
-
-
-class ImageCacheItem(list):
-    def __init__(self,filename,mtime):
-        list.__init__(self,[-mtime,filename])
-        self.filename=filename
-        self.mtime=mtime
-        self.thumbsize=(0,0)
-        self.thumb=None
-        self.thumbrgba=False
-        self.qview=None
-        self.qview_size=None
-        self.image=None
-        self.cannot_thumb=False
-    def key(self):
-        return 1
-
-class ImageList(list):
-    def __init__(self,items):
-        list.__init__(self)
-        for item in items:
-            self.add(item)
-    def add(self,item):
-        bisect.insort(self,item)
-
-class ThumbManager:
-    def __init__(self,viewer):
-        '''
-        thumb manager creates thumbnails asynchronously
-        takes requests from and notifies viewers
-        '''
-        if not maemo:
-            self.thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
-            self.thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
-        self.thread=threading.Thread(target=self._make_thumb)
-        self.queue_onscreen=[]
-        self.queue_fore=[]
-        self.queue_back=[]
-        self.viewers=[]
-        self.memthumbs=[]
-        if maemo:
-            self.max_memthumbs=1000
-        else:
-            self.max_memthumbs=8000
-
-        self.vlock=threading.Lock()
-        self.viewer=viewer
-        self.event=threading.Event()
-        self.exit=False
-        self.thread.start()
-
-        '''
-        uri = gnomevfs.get_uri_from_local_path(path)
-        mime = gnomevfs.get_mime_type(uri)
-
-        thumbFactory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
-        if thumbFactory.can_thumbnail(uri ,mime, 0):
-            thumbnail = thumbFactory.generate_thumbnail(uri, mime)
-            if thumbnail != None:
-                thumbFactory.save_thumbnail(thumbnail, uri, 0)
-        '''
-
-    def request_thumbs(self,onscreen_items,fore_items,back_items):
-        self.vlock.acquire()
-        self.queue_onscreen=onscreen_items
-        self.queue_fore=fore_items
-        self.queue_back=back_items
-        self.event.set()
-        self.vlock.release()
-
-#    def request_thumbs(self,items):
-#        self.vlock.acquire()
-#        if len(items)>0:
-#            self.thumbqueue=items
-#            self.event.set()
-#        else:
-#            print 'request 0 thumbs'
-#        self.vlock.release()
-#
-#    def request_thumb(self,viewer,item):
-#        self.vlock.acquire()
-#        try:
-#            self.thumbqueue.remove(item)
-#        except:
-#            None
-#        self.thumbqueue.append(item)
-#        self.vlock.release()
-#        self.event.set()
-#
-#    def cancel_thumb(self,viewer,item):
-#        try:
-#            del self.thumbqueue[self.thumbqueue.find((viewer,item))]
-#        except:
-#            print 'thumb_cancel fail',(viewer,item)
-
-    def _check_thumb_limit(self):
-        if len(self.memthumbs)>self.max_memthumbs:
-            olditem=self.memthumbs.pop(0)
-            olditem.thumbsize=(0,0)
-            olditem.thumb=None
-
-    def quit(self):
-        self.vlock.acquire()
-        self.queue_onscreen=[]
-        self.queue_fore=[]
-        self.queue_back=[]
-        self.exit=True
-        self.vlock.release()
-        self.event.set()
-        while self.thread.isAlive():
-            time.sleep(0.1)
-
-    def _store_thumbnail(self,item):
-        '''this assumes jpg'''
-        print 'storing thumbnail',item.filename,item.mtime
-        width=item.thumbsize[0]
-        height=item.thumbsize[1]
-        if height<128 and width<128:
-            return
-        try:
-            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=item.thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=item.thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+item.thumbrgba)) #last arg is rowstride
-        except:
-            return
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        self.thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
-
-    def _store_failed_thumbnail(self,item):
-        self.thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
-
-    def _make_thumb(self):
-        while 1:
-            self.vlock.acquire()
-            if len(self.queue_onscreen)==0 and len(self.queue_fore)==0 and len(self.queue_back)==0:
-#                print 'waiting'
-                self.event.clear()
-                self.vlock.release()
-                self.event.wait()
-                self.vlock.acquire()
-            if self.exit:
-                self.vlock.release()
-                return
-            item=None
-            while True:
-                try:
-                    #print len(self.queue_onscreen),',',
-                    item=self.queue_onscreen.pop(0)
-                except:
-                    if len(self.queue_fore)>len(self.queue_back):
-                        try:
-                            item=self.queue_fore.pop(0)
-                        except:
-                            break
-                    else:
-                        try:
-                            item=self.queue_back.pop()
-                        except:
-                            break
-                if item.thumb==None:
-                    break
-            if item==None or item!=None and item.thumb!=None:
-                self.vlock.release()
-                continue
-
-            fullpath=item.filename
-            #print 'loading',fullpath
-            if not maemo:
-                uri=gnomevfs.get_uri_from_local_path(item.filename)
-            mtime=item.mtime
-            self.vlock.release()
-            storethumb=False
-            try:
-                if maemo:
-                    image = Image.open(fullpath)
-                    image.thumbnail((128,128))
-                else:
-                    thumburi=self.thumb_factory.lookup(uri,mtime)
-                    if thumburi:
-                        image = Image.open(thumburi)
-                        s=image.size
-                        #image.thumbnail((128,128))
-                    else:
-                        thumburi=self.thumb_factory_large.lookup(uri,mtime)
-                        if thumburi:
-                            #print 'using large thumb'
-                            image = Image.open(thumburi)
-                            image.thumbnail((128,128))
-                        else:
-                            #print 'full loading',fullpath
-                            #image=None
-                            image = Image.open(fullpath)
-                            image.thumbnail((128,128))
-                            try:
-                                image_meta = pyexiv2.Image(item.filename)
-                                image_meta.readMetadata()
-                            except:
-                                print 'Error reading metadata for',item.filename
-                            try:
-                                orient=image_meta['Exif.Image.Orientation']
-                            except:
-                                orient=1
-
-                            if orient>1:
-                                for method in global_transposemethods[orient]:
-                                    image=image.transpose(method)
-                            storethumb=True
-            except:
-                image=None
-            if image:
-                try:
-                    thumb=image.tostring()
-                except:
-                    None
-            self.vlock.acquire()
-            if self.exit:
-                self.vlock.release()
-                return
-            if image:
-                item.thumbsize=image.size
-                item.thumb=thumb
-                item.thumbrgba='A' in image.getbands()
-                if storethumb:
-                    self._store_thumbnail(item)
-                self.memthumbs.append(item)
-                self._check_thumb_limit()
-            else:
-                item.thumbsize=(0,0)
-                item.thumb=None
-                item.cannot_thumb=True
-                self._store_failed_thumbnail(item)
-            gobject.idle_add(self.viewer.Thumb_cb,item)
-            self.vlock.release()
-
-class ImageCache:
-    def __init__(self):
-        self.items=[]
-        self.notify_items=[]
-        self.imagedir=global_image_dir
-        self.imagetypes=['jpg','jpeg','png']
-        self.thread=threading.Thread(target=self.data_loader)
-        self.viewers=[]
-        self.vlock=threading.Lock()
-        self.exit=False
-        self.thread.start()
-
-    def register_viewer(self,viewer):
-        self.vlock.acquire()
-        self.viewers.append(viewer)
-        items=ImageList(self.items[:])
-        self.vlock.release()
-        return items
-
-    def release_viewer(self,viewer):
-        self.vlock.acquire()
-        try:
-            del self.viewers[self.viewers.index(viewer)]
-        except:
-            print 'viewer not registered',viewer
-        self.vlock.release()
-
-    def data_loader(self):
-        self.last_update_time=time.time()
-        try:
-            os.path.walk(self.imagedir,self.walk_cb,0)
-        except StopIteration:
-            return
-        self.vlock.acquire()
-        for v in self.viewers:
-            gobject.idle_add(v.AddImages,self.notify_items)
-        self.notify_items=[]
-        self.vlock.release()
-
-    def quit(self):
-        self.exit=True
-        while self.thread.isAlive():
-            time.sleep(0.1)
-
-    def walk_cb(self,arg,dirname,names):
-        if self.exit:
-            raise StopIteration
-        i=0
-        while i<len(names):
-            if names[i].startswith('.'):
-                names.pop(i)
-            else:
-                i+=1
-
-        for p in names: #may need some try, except blocks
-            r=p.rfind('.')
-            if r<=0:
-                continue
-            if not p[r+1:].lower() in self.imagetypes:
-                continue
-            fullpath=os.path.join(dirname, p)
-            mtime=os.path.getmtime(fullpath)
-            st=os.stat(fullpath)
-            if os.path.isdir(fullpath):
-                continue
-            item=ImageCacheItem(fullpath,mtime)
-            self.vlock.acquire()
-            self.notify_items.append(item)
-                ## notify viewer(s)
-            if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
-                self.last_update_time=time.time()
-                for v in self.viewers:
-                    gobject.idle_add(v.AddImages,self.notify_items)
-                self.items=self.items+self.notify_items
-                self.notify_items=[]
-            self.vlock.release()
-            time.sleep(0.05)
 
 class ImageLoader:
     def __init__(self,viewer):
@@ -495,7 +112,6 @@ class ImageLoader:
                 self.vlock.acquire()
                 continue
             if not item.image:
-                image_meta=None
                 try:
                     #import ImageFile
                     imfile=open(item.filename,'rb')
@@ -510,17 +126,12 @@ class ImageLoader:
                         continue
                     image = p.close()
                     try:
-                        image_meta = pyexiv2.Image(item.filename)
-                        image_meta.readMetadata()
-                    except:
-                        print 'Error reading metadata for',item.filename
-                    try:
-                        orient=image_meta['Exif.Image.Orientation']
+                        orient=item.meta['Exif.Image.Orientation']
                     except:
                         orient=1
 
                     if orient>1:
-                        for method in global_transposemethods[orient]:
+                        for method in settings.transposemethods[orient]:
                             image=image.transpose(method)
                 except:
                     try:
@@ -533,7 +144,6 @@ class ImageLoader:
                     item.imagergba='A' in item.image.getbands()
                 except:
                     item.imagergba=False
-                item.image_meta=image_meta
                 self.memimages.append(item)
                 self._check_image_limit()
                 gobject.idle_add(self.viewer.ImageLoaded,item)
@@ -561,6 +171,7 @@ class ImageLoader:
                 item.qview_size=(w,h)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
+
 
 class ImageViewer(gtk.VBox):
     def __init__(self,click_callback=None):
@@ -627,7 +238,7 @@ class ImageViewer(gtk.VBox):
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for k,v in exif.tags:
             try:
-                value=item.image_meta[k]
+                value=item.meta[k]
                 try:
                     if len(value)==2:
                         value='%4.3f'%(1.0*value[0]/value[1])
@@ -644,7 +255,7 @@ class ImageViewer(gtk.VBox):
         #import datetime
         d=datetime.datetime.fromtimestamp(self.item.mtime)
         #import exif
-        if self.item.image_meta:
+        if self.item.meta:
             rows+=len(exif.tags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
@@ -654,7 +265,7 @@ class ImageViewer(gtk.VBox):
         r=2
         for k,v in exif.tags:
             try:
-                self.AddMetaRow(table,v,str(self.item.image_meta[k]),r)
+                self.AddMetaRow(table,v,str(self.item.meta[k]),r)
             except:
                 None
             r+=1
@@ -740,10 +351,11 @@ class ImageBrowser(gtk.HBox):
     a widget designed to rapidly display a collection of objects
     from an image cache
     '''
-    def __init__(self,imcache):
+    def __init__(self):
         gtk.HBox.__init__(self)
         self.Config()
-        self.tm=ThumbManager(self)
+        self.tm=backend.Worker(self)
+        self.imagelist=self.tm.collection
         self.neededitem=None
         self.iv=ImageViewer(self.ButtonPress_iv)
         self.is_fullscreen=False
@@ -754,9 +366,6 @@ class ImageBrowser(gtk.HBox):
         self.ind_view_first=0
         self.ind_view_last=1
         self.ind_viewed=-1
-
-        self.ic=imcache
-        self.imagelist = self.ic.register_viewer(self)
 
         self.imarea=gtk.DrawingArea()
         self.Resize(160,400)
@@ -795,6 +404,7 @@ class ImageBrowser(gtk.HBox):
 
         self.imarea.show()
         self.vscroll.show()
+        self.tm.request_loadandmonitorcollection()
         #self.Resize(600,300)
 
     def KeyPress(self,obj,event):
@@ -818,7 +428,7 @@ class ImageBrowser(gtk.HBox):
                     self.imarea.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
-        if (maemo and event.keyval==65475) or event.keyval==65480: #f6 on maemo or f11
+        if (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
             if self.is_fullscreen:
                 self.window.unfullscreen()
                 self.is_fullscreen=False
@@ -881,7 +491,6 @@ class ImageBrowser(gtk.HBox):
         self.ViewImage(ind)
 
     def Destroy(self,event):
-        self.ic.quit()
         self.tm.quit()
         return False
 
@@ -891,15 +500,15 @@ class ImageBrowser(gtk.HBox):
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImages(self,items):
-        for item in items:
-            self.imagelist.add(item)
+#        for item in items:
+#            self.imagelist.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImage(self,item):
-        self.imagelist.add(item)
+#        self.imagelist.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
@@ -928,7 +537,7 @@ class ImageBrowser(gtk.HBox):
         self.height=400
         self.thumbwidth=128
         self.thumbheight=128
-        if maemo:
+        if settings.maemo:
             self.pad=20
         else:
             self.pad=30
@@ -978,9 +587,9 @@ class ImageBrowser(gtk.HBox):
         #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
 
         onscreen_items=self.imagelist[self.ind_view_first:self.ind_view_last]
-        fore_items=self.imagelist[self.ind_view_last:self.ind_view_last+global_precache_count/2]
-        back_items=self.imagelist[self.ind_view_first-global_precache_count/2:self.ind_view_first]
-        self.tm.request_thumbs(onscreen_items,fore_items,back_items)
+        #fore_items=self.imagelist[self.ind_view_last:self.ind_view_last+settings.precache_count/2]
+        #back_items=self.imagelist[self.ind_view_first-settings.precache_count/2:self.ind_view_first]
+        self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
 ##OLD VERSION
         '''
                 thumb_reqs=[]
@@ -1004,6 +613,7 @@ class ImageBrowser(gtk.HBox):
     def Render(self,event):
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
         #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.imagelist.lock.acquire()
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
@@ -1062,6 +672,7 @@ class ImageBrowser(gtk.HBox):
                     break
                 else:
                     x=0
+        self.imagelist.lock.release()
 
 class MainWindow:
     def __init__(self):
@@ -1070,8 +681,8 @@ class MainWindow:
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
 
-        self.imcache=ImageCache()
-        self.drawing_area = ImageBrowser(self.imcache)
+#        self.imcache=ImageCache()
+        self.drawing_area = ImageBrowser()
 
         self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.window.connect("key-press-event",self.drawing_area.KeyPress)
