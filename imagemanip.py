@@ -18,27 +18,34 @@ def load_image(item,interrupt_fn):
     try:
         imfile=open(item.filename,'rb')
         p = ImageFile.Parser()
-        while not interrupt_fn():
+        while interrupt_fn():
             s = imfile.read(100000)
             if not s:
                 break
             p.feed(s)
-        image = p.close()
-        try:
-            orient=item.meta['Exif.Image.Orientation']
-        except:
-            orient=1
-
-        if interrupt_fn():
+        if not interrupt_fn():
+            print 'interrupted'
             return False
-        if orient>1:
-            for method in settings.transposemethods[orient]:
-                image=image.transpose(method)
+        image = p.close()
     except:
+        print '***IMAGE LOAD FAILED',item
         try:
             image=Image.open(item.filename)
         except:
             image=None
+    if not interrupt_fn():
+        print 'interrupted'
+        return False
+    try:
+        orient=item.meta['Exif.Image.Orientation']
+    except:
+        orient=1
+    if orient>1:
+        for method in settings.transposemethods[orient]:
+            image=image.transpose(method)
+            if not interrupt_fn():
+                print 'interrupted'
+                return False
     item.image=image
     try:
         item.imagergba='A' in item.image.getbands()
@@ -78,8 +85,14 @@ def size_image(item,size,antialias):
 
 def load_metadata(item):
     try:
-        item.meta = pyexiv2.Image(item.filename)
-        item.meta.readMetadata()
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        item.meta=dict()
+        for x in exif.tags:
+            try:
+                item.meta[x[0]]=rawmeta[x[0]]
+            except:
+                pass
     except:
         print 'Error reading metadata for',item.filename
         item.meta=None

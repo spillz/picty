@@ -49,6 +49,7 @@ except:
 
 import settings
 import backend
+import imagemanip
 settings.init() ##todo: make this call on first import inside the module
 
 
@@ -108,47 +109,22 @@ class ImageLoader:
             self.vlock.release()
             if self.exit:
                 return
+            time.sleep(0.02)
             if not item:
                 self.vlock.acquire()
                 continue
+            if not item.meta:
+                imagemanip.load_metadata(item)
             if not item.image:
-                try:
-                    #import ImageFile
-                    imfile=open(item.filename,'rb')
-                    p = ImageFile.Parser()
-                    while self.item.filename==item.filename:
-                        s = imfile.read(100000)
-                        if not s:
-                            break
-                        p.feed(s)
-                    if self.item.filename!=item.filename:
-                        self.vlock.acquire()
-                        continue
-                    image = p.close()
-                    try:
-                        orient=item.meta['Exif.Image.Orientation']
-                    except:
-                        orient=1
-
-                    if orient>1:
-                        for method in settings.transposemethods[orient]:
-                            image=image.transpose(method)
-                except:
-                    try:
-                        image=Image.open(item.filename)
-                    except:
-                        image=None
+                def interrupt_cb():
+                    return self.item.filename==item.filename
+                imagemanip.load_image(item,interrupt_cb)
                 self.vlock.acquire()
-                item.image=image
-                try:
-                    item.imagergba='A' in item.image.getbands()
-                except:
-                    item.imagergba=False
                 self.memimages.append(item)
                 self._check_image_limit()
                 gobject.idle_add(self.viewer.ImageLoaded,item)
                 self.vlock.release()
-                if not image:
+                if not item.image:
                     self.vlock.acquire()
                     continue
             self.vlock.acquire()
@@ -179,8 +155,12 @@ class ImageViewer(gtk.VBox):
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
         self.meta_table=self.CreateMetaTable()
-        self.pack_start(self.imarea)
-        self.pack_start(self.meta_table)
+        f=gtk.VPaned()
+        f.add1(self.imarea)
+        f.add2(self.meta_table)
+        self.pack_start(f)
+        #self.pack_start(self.imarea)
+        #self.pack_start(self.meta_table)
 
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
@@ -193,10 +173,15 @@ class ImageViewer(gtk.VBox):
         else:
             self.imarea.connect("button-press-event",click_callback)
 
-        self.imarea.set_size_request(64, 64)
-        self.width=64
-        self.height=64
+#        self.imarea.set_size_request(64, 64)
+#        self.width=64
+#        self.height=64
+        #f.set_size_request(450, 300)
+        self.imarea.set_size_request(450, 300)
+        self.width=450
+        self.height=300
         self.imarea.show()
+        f.show()
         self.item=None
         self.ImageNormal()
         #self.set_position(self.get_allocation().height)
@@ -205,8 +190,9 @@ class ImageViewer(gtk.VBox):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        child2=gtk.Entry()
-        child2.set_text(data)
+        child2=gtk.Label(data)
+#        child2=gtk.Entry()
+#        child2.set_text(data)
         table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
         data_items[key]=(child1,child2)
@@ -237,6 +223,7 @@ class ImageViewer(gtk.VBox):
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for k,v in exif.tags:
+            value=''
             try:
                 value=item.meta[k]
                 try:
@@ -248,7 +235,12 @@ class ImageViewer(gtk.VBox):
                     value=str(value)
             except:
                 value=''
-            self.meta_table.data_items[k][1].set_text(value)
+            try:
+                self.meta_table.data_items[k][1].set_text(value)
+            except:
+                print 'error updating meta table'
+                print 'values',value,type(value)
+                print 'end'
 
     def CreateMetadataFrame(self):
         rows=2
@@ -296,18 +288,23 @@ class ImageViewer(gtk.VBox):
         return False
 
     def ImageSized(self,item):
+        if not self.imarea.window:
+            return
         if item.filename==self.item.filename:
             self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         else:
             print 'sized wrong item'
 
     def ImageLoaded(self,item):
-        if item.filename==self.item.filename:
-            self.UpdateMetaTable(item)
+        pass
 
     def SetItem(self,item):
         self.item=item
         self.il.set_item(item,(self.width,self.height))
+        self.UpdateMetaTable(item)
+        if not self.imarea.window:
+            return
+        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         #self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def Configure(self,obj,event):
@@ -326,7 +323,7 @@ class ImageViewer(gtk.VBox):
         black = colormap.alloc('black')
         drawable.set_background(black)
         drawable.clear()
-        if self.item.qview:
+        if self.item and self.item.qview:
             (iw,ih)=self.item.qview_size
             x=(self.width-iw)/2
             y=(self.height-ih)/2
@@ -343,6 +340,24 @@ class ImageViewer(gtk.VBox):
                     drawable.draw_rgb_image(gc,x,y,iw,ih,
                            gtk.gdk.RGB_DITHER_NONE,
                            self.item.qview, -1, 0, 0)
+                except:
+                    None
+        elif self.item and self.item.thumb:
+            (iw,ih)=self.item.thumbsize
+            x=(self.width-iw)/2
+            y=(self.height-ih)/2
+            if self.item.thumbrgba:
+                try:
+                    drawable.draw_rgb_32_image(gc,x,y,iw,ih,
+                           gtk.gdk.RGB_DITHER_NONE,
+                           self.item.thumb, -1, 0, 0)
+                except:
+                    None
+            else:
+                try:
+                    drawable.draw_rgb_image(gc,x,y,iw,ih,
+                           gtk.gdk.RGB_DITHER_NONE,
+                           self.item.thumb, -1, 0, 0)
                 except:
                     None
 
@@ -381,9 +396,11 @@ class ImageBrowser(gtk.HBox):
         ##st.set_property('slider-width',stw)
         ##self.vscroll.set_style(st)
 
-        #hbox=gtk.HBox()
-        self.pack_start(self.iv)
-        self.pack_start(self.imarea)
+        hpane=gtk.HPaned()
+        hpane.add1(self.iv)
+        hpane.add2(self.imarea)
+        hpane.show()
+        self.pack_start(hpane)
         self.pack_start(self.vscroll,False)
         #self.connect('cache-image-added',self.AddImage)
         self.connect("destroy", self.Destroy)
@@ -458,8 +475,8 @@ class ImageBrowser(gtk.HBox):
 
     def ViewImage(self,ind):
         self.ind_viewed=ind
-        self.iv.SetItem(self.imagelist[ind])
         self.iv.show()
+        self.iv.SetItem(self.imagelist[ind])
         self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
         self.UpdateDimensions()
 #        self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
