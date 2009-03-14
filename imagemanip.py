@@ -98,13 +98,9 @@ def load_metadata(item):
         item.meta=None
 
 def has_thumb(item):
-    print 'checking for thumb'
     if not settings.maemo:
-        print 'not maemo'
         uri = gnomevfs.get_uri_from_local_path(item.filename)
-        print thumb_factory.lookup(uri,item.mtime)
         if thumb_factory.lookup(uri,item.mtime):
-            print 'thumb found'
             return True
         if thumb_factory_large.lookup(uri,item.mtime):
             return True

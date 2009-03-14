@@ -4,7 +4,7 @@ import threading
 
 class Item(list):
     def __init__(self,filename,mtime):
-        list.__init__(self,[filename,-mtime])
+        list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime
         self.thumbsize=(0,0)
@@ -37,7 +37,6 @@ class Item(list):
 
 class Collection(list):
     def __init__(self,items):
-        self.lock=threading.Lock()
         list.__init__(self)
         for item in items:
             self.add(item)
@@ -45,6 +44,8 @@ class Collection(list):
         bisect.insort(self,item)
     def find(self,item):
         i=bisect.bisect_left(self,item)
+        if i>=len(self) or i<0:
+            return -1
         if self[i]==item:
             return i
         return -1
@@ -53,6 +54,11 @@ class Collection(list):
         if i>=0:
             return self.pop(i)
         return None
+    def __getstate__(self):
+        odict = self.__dict__.copy() # copy the dict since we change it
+        return odict
+    def __setstate__(self,dict):
+        self.__dict__.update(dict)   # update attributes
 
 def sort_mtime(item):
     return item

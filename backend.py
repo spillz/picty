@@ -56,10 +56,6 @@ class ThumbnailJob(WorkerJob):
         self.queue_fore=[]
         self.queue_back=[]
         self.memthumbs=[]
-        if maemo:
-            self.max_memthumbs=1000
-        else:
-            self.max_memthumbs=8000
 
         '''
         uri = gnomevfs.get_uri_from_local_path(path)
@@ -72,7 +68,7 @@ class ThumbnailJob(WorkerJob):
         '''
 
     def _check_thumb_limit(self):
-        if len(self.memthumbs)>self.max_memthumbs:
+        if len(self.memthumbs)>settings.max_memthumbs:
             olditem=self.memthumbs.pop(0)
             olditem.thumbsize=(0,0)
             olditem.thumb=None
@@ -97,18 +93,27 @@ class LoadCollectionJob(WorkerJob):
 
     def __call__(self,jobs,collection,browser):
         try:
-            f=open(self.conf_file,'rb')
+            f=open(settings.collection_file,'rb')
         except:
             self.unsetevent()
             jobs['WALKDIRECTORY'].setevent()
-            return False
+            self.collection=imageinfo.Collection([])
+            return self.collection
         try:
-            self.version=cPickle.load(f)
+            settings.version=cPickle.load(f)
             self.collection=cPickle.load(f)
+            if len(self.collection)<10:
+                print self.collection
+            else:
+                print self.collection[0:10]
+        except:
+            print 'error loading collection data'
+            self.collection=imageinfo.Collection([])
         finally:
             f.close()
         self.unsetevent()
         jobs['WALKDIRECTORY'].setevent()
+        return self.collection
 
 
 class SaveCollectionJob(WorkerJob):
@@ -116,15 +121,23 @@ class SaveCollectionJob(WorkerJob):
         WorkerJob.__init__(self,'SAVECOLLECTION')
 
     def __call__(self,jobs,collection,browser):
+        print 'saving'
         try:
-            f=open(self.collection_file,'wb')
+            f=open(settings.collection_file,'wb')
         except:
+            print 'failed to open collection for write'
+            self.unsetevent()
             return False
-        try:
-            cPickle.dump(settings.version,f,-1)
-            cPickle.dump(self.collection,f,-1)
-        finally:
-            f.close()
+        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(collection,f,-1)
+        f.close()
+#        try:
+#            cPickle.dump(settings.version,f,-1)
+#            cPickle.dump(self.collection,f,-1)
+#        except:
+#            print 'error saving collection data'
+#        finally:
+#            f.close()
         self.unsetevent()
 
 
@@ -141,15 +154,15 @@ class WalkDirectoryJob(WorkerJob):
             if not self.collection_walker:
                 self.collection_walker=os.walk(settings.image_dirs[0])
         except StopIteration:
+            print 'aborted directory walk'
             return
         print 'starting directory walk'
-        print 'job priority',jobs.ishighestpriority(self)
         while jobs.ishighestpriority(self):
             try:
                 root,dirs,files=self.collection_walker.next()
             except StopIteration:
                 self.done=True
-                continue
+                break
             i=0
             while i<len(dirs):
                 if dirs[i].startswith('.'):
@@ -158,7 +171,7 @@ class WalkDirectoryJob(WorkerJob):
                     i+=1
 
             for p in files: #may need some try, except blocks
-                ##todo: check if the item exists already in the collection
+                ##todo: check if the item already exists in the collection
                 r=p.rfind('.')
                 if r<=0:
                     continue
@@ -166,21 +179,30 @@ class WalkDirectoryJob(WorkerJob):
                     continue
                 fullpath=os.path.join(root, p)
                 mtime=os.path.getmtime(fullpath)
-                print 'found',fullpath
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
                     continue
                 item=imageinfo.Item(fullpath,mtime)
-                collection.lock.acquire()
-                collection.append(item)
-                collection.lock.release()
-                self.notify_items.append(item)
+                if collection.find(item)<0:
+#                    print 'found new item',fullpath
+                    self.notify_items.append(item)
+#                    time.sleep(0.05)
+#                else:
+#                    print 'item in collection',fullpath
             ## notify viewer(s)
             if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
+                print '************** NOTIFYING ********************'
                 self.last_update_time=time.time()
+                browser.lock.acquire()
+                for item in self.notify_items:
+                    collection.add(item)
+                browser.lock.release()
                 gobject.idle_add(browser.AddImages,self.notify_items)
                 self.notify_items=[]
-            #time.sleep(0.05)
+#            if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
+#                self.last_update_time=time.time()
+#                gobject.idle_add(browser.AddImages,self.notify_items)
+#                self.notify_items=[]
         if self.done:
             print 'walk directory done'
             gobject.idle_add(browser.AddImages,self.notify_items)
@@ -188,8 +210,8 @@ class WalkDirectoryJob(WorkerJob):
             self.collection_walker=None
             self.unsetevent()
             jobs['VERIFYIMAGES'].setevent()
-        if jobs.gethighest()!=self:
-            return
+        else:
+            print 'pausing directory walk'
 
 
 class VerifyImagesJob(WorkerJob):
@@ -199,22 +221,23 @@ class VerifyImagesJob(WorkerJob):
 
     def __call__(self,jobs,collection,browser):
         i=self.countpos  ##todo: make sure this gets initialized
-        print 'verifying',len(collection),'images'
+        print 'verifying',len(collection),'images -',i,'done'
         print jobs.gethighest()
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if not item.meta:
+#                print 'loading metadata'
                 imagemanip.load_metadata(item) ##todo: check if exists already
             if not imagemanip.has_thumb(item):
-                print 'making thumb...',
+#                print 'making thumb...',
                 imagemanip.make_thumb(item)
-                print 'done!'
+#                print 'done!'
                 gobject.idle_add(browser.AddImages,None)
-            print 'verifying',item.filename
+            ##print 'verifying',item.filename
             if not os.path.exists(item.filename):
-                collection.lock.acquire()
+                browser.lock.acquire()
                 del collection[i]
-                collection.lock.release()
+                browser.lock.release()
                 ##TODO: Notify viewer/browser of update
                 continue
             mtime=os.path.getmtime(item.filename)
@@ -223,12 +246,12 @@ class VerifyImagesJob(WorkerJob):
                 item.image=None
                 item.qview=None
                 item.qview_size=None
-                collection.lock.acquire()
+                browser.lock.acquire()
                 imagemanip.load_metadata(item)
                 if not imagemanip.has_thumb(item):
                     imagemanip.make_thumb(item)
                 ##update mtime, metadata, thumb and image data of the Image
-                collection.lock.release()
+                browser.lock.release()
                 i+=1
                 ##TODO: Notify viewer/browser of update
                 continue
@@ -237,6 +260,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=i
         if i>=len(collection):
             self.unsetevent()
+            print 'image verification complete'
 
 
 class DirectoryUpdateJob(WorkerJob):
@@ -251,9 +275,9 @@ class DirectoryUpdateJob(WorkerJob):
             fullpath,action=queue.pop(0)
             if action=='DELETE' or action=='MOVED_FROM':
                 if not os.path.exists(fullpath):
-                    collection.lock.acquire()
+                    browser.lock.acquire()
                     collection.delete([fullpath,0])
-                    collection.lock.release()
+                    browser.lock.release()
                 #todo: update browser/viewer
             if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
                 if os.path.exists(fullpath):
@@ -267,9 +291,9 @@ class DirectoryUpdateJob(WorkerJob):
                             imagemanip.make_thumb(item)
                     else:
                         item=imagemanip.Item(fullpath,os.path.getmtime(fullpath))
-                        collection.lock.acquire()
+                        browser.lock.acquire()
                         collection.add(item)
-                        collection.lock.release()
+                        browser.lock.release()
                         imagemanip.load_metadata(item)
                         if not has_thumb(item):
                             imagemanip.make_thumb(item)
@@ -317,17 +341,28 @@ class Worker:
 
     def _loop(self):
         print 'start worker loop'
-        gc.disable()
+        loadjob=LoadCollectionJob()
+        print 'loading collection'
+        self.collection=loadjob(self.jobs,self.collection,self.browser)
+        print 'loading collection done'
+        try:
+            print self.collection[0]
+            print self.collection[0].mtime
+            print self.collection[0].meta
+        except:
+            print self.collection
+        gobject.idle_add(self.browser.AddImages,[])
         while 1:
             print self.jobs.gethighest()
             if not self.jobs.gethighest():
                 gc.enable()
                 self.event.clear()
                 self.event.wait()
-                gc.disable()
             print 'JOB REQUEST:',self.jobs.gethighest()
             if self.jobs['QUIT']:
-                gc.enable()
+                savejob=SaveCollectionJob()
+                print 'saving'
+                savejob(self.jobs,self.collection,self.browser)
                 return
             job=self.jobs.gethighest()
             if job:
@@ -348,6 +383,7 @@ class Worker:
         self.event.set()
 
     def request_loadandmonitorcollection(self):
-        print 'request load and monitor'
-        job=self.jobs['LOADCOLLECTION'].setevent()
-        self.event.set()
+        return
+#        print 'request load and monitor'
+#        job=self.jobs['LOADCOLLECTION'].setevent()
+#        self.event.set()

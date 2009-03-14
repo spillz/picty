@@ -26,15 +26,20 @@ transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
             (Image.ROTATE_90,))
 
 if maemo:
-    precache_count=100
+    max_memthumbs=100
+    precache_count=50
 else:
-    precache_count=4000
+    max_memthumbs=1000
+    precache_count=500 ##not currently used
+
+
 
 imagetypes=['jpg','jpeg','png']
 
 image_dirs=[]
 store_thumbs=True
 conf_file=os.path.join(os.environ['HOME'],'.phomgr-settings')
+collection_file=os.path.join(os.environ['HOME'],'.phomgr-collection')
 
 def save():
     global version, image_dirs, store_thumbs, precache_count, conf_file

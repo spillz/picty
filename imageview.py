@@ -369,8 +369,8 @@ class ImageBrowser(gtk.HBox):
     def __init__(self):
         gtk.HBox.__init__(self)
         self.Config()
+        self.lock=threading.Lock()
         self.tm=backend.Worker(self)
-        self.imagelist=self.tm.collection
         self.neededitem=None
         self.iv=ImageViewer(self.ButtonPress_iv)
         self.is_fullscreen=False
@@ -456,7 +456,7 @@ class ImageBrowser(gtk.HBox):
             if self.ind_viewed>0:
                 self.ViewImage(self.ind_viewed-1)
         if event.keyval==65363: #right
-            if self.ind_viewed<len(self.imagelist)-1:
+            if self.ind_viewed<len(self.tm.collection)-1:
                 self.ViewImage(self.ind_viewed+1)
         if event.keyval==65362: #up
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
@@ -476,11 +476,11 @@ class ImageBrowser(gtk.HBox):
     def ViewImage(self,ind):
         self.ind_viewed=ind
         self.iv.show()
-        self.iv.SetItem(self.imagelist[ind])
+        self.iv.SetItem(self.tm.collection[ind])
         self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
         self.UpdateDimensions()
 #        self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-#        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+#        self.ind_view_last = min(len(self.tm.collection),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
@@ -504,7 +504,7 @@ class ImageBrowser(gtk.HBox):
     def ButtonPress(self,obj,event):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
-        ind=max(0,min(len(self.imagelist)-1,ind))
+        ind=max(0,min(len(self.tm.collection)-1,ind))
         self.ViewImage(ind)
 
     def Destroy(self,event):
@@ -518,14 +518,14 @@ class ImageBrowser(gtk.HBox):
 
     def AddImages(self,items):
 #        for item in items:
-#            self.imagelist.add(item)
+#            self.tm.collection.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImage(self,item):
-#        self.imagelist.add(item)
+#        self.tm.collection.add(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
@@ -545,7 +545,7 @@ class ImageBrowser(gtk.HBox):
 
     def UpdateScrollbar(self):
         self.scrolladj.set_all(value=self.offsety, lower=0,
-                upper=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount,
+                upper=len(self.tm.collection)*(self.thumbheight+self.pad)/self.horizimgcount,
                 step_increment=max(1,self.thumbheight+self.pad)/5,
                 page_increment=self.height, page_size=self.height)
 
@@ -564,7 +564,7 @@ class ImageBrowser(gtk.HBox):
         self.width=x
         self.height=y
         self.horizimgcount=(self.width/(self.thumbwidth+self.pad))
-        self.maxoffsety=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount
+        self.maxoffsety=len(self.tm.collection)*(self.thumbheight+self.pad)/self.horizimgcount
 
     def ScrollUp(self,step=10):
         self.vscroll.set_value(self.vscroll.get_value()-step)
@@ -574,12 +574,12 @@ class ImageBrowser(gtk.HBox):
 
     def UpdateFirstLastIndex(self):
         self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.ind_view_last = min(len(self.tm.collection),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
 
     def UpdateDimensions(self):
         self.offsety=self.offsety*self.horizimgcount
         self.horizimgcount=max(self.width/(self.thumbwidth+self.pad),1)
-        self.maxoffsety=len(self.imagelist)*(self.thumbheight+self.pad)/self.horizimgcount
+        self.maxoffsety=len(self.tm.collection)*(self.thumbheight+self.pad)/self.horizimgcount
         self.offsety=self.offsety/self.horizimgcount
         if self.ind_viewed>=0:
             self.ind_view_first=max(self.ind_viewed-self.height/2/(self.thumbwidth+self.pad)*self.horizimgcount,0)
@@ -601,26 +601,26 @@ class ImageBrowser(gtk.HBox):
     def UpdateThumbReqs(self):
         ## DATA NEEDED
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        #self.ind_view_last = min(len(self.tm.collection),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
 
-        onscreen_items=self.imagelist[self.ind_view_first:self.ind_view_last]
-        #fore_items=self.imagelist[self.ind_view_last:self.ind_view_last+settings.precache_count/2]
-        #back_items=self.imagelist[self.ind_view_first-settings.precache_count/2:self.ind_view_first]
+        onscreen_items=self.tm.collection[self.ind_view_first:self.ind_view_last]
+        #fore_items=self.tm.collection[self.ind_view_last:self.ind_view_last+settings.precache_count/2]
+        #back_items=self.tm.collection[self.ind_view_first-settings.precache_count/2:self.ind_view_first]
         self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
 ##OLD VERSION
         '''
                 thumb_reqs=[]
                 for i in range(self.ind_view_first,self.ind_view_last):
-                    item=self.imagelist[i]
+                    item=self.tm.collection[i]
                     if not item.thumb and not item.cannot_thumb:
                         thumb_reqs.append(item)
-                for i in range(min(self.imagelist,50)):
+                for i in range(min(self.tm.collection,50)):
                     if self.ind_view_first-i-1>=0:
-                        item=self.imagelist[self.ind_view_first-i-1]
+                        item=self.tm.collection[self.ind_view_first-i-1]
                         if not item.thumb and not item.cannot_thumb:
                             thumb_reqs.append(item)
-                    if self.ind_view_last+i<len(self.imagelist):
-                        item=self.imagelist[i+self.ind_view_last]
+                    if self.ind_view_last+i<len(self.tm.collection):
+                        item=self.tm.collection[i+self.ind_view_last]
                         if not item.thumb and not item.cannot_thumb:
                             thumb_reqs.append(item)
                 if len(thumb_reqs)>0:
@@ -629,8 +629,8 @@ class ImageBrowser(gtk.HBox):
 
     def Render(self,event):
         #self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        #self.ind_view_last = min(len(self.imagelist),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
-        self.imagelist.lock.acquire()
+        #self.ind_view_last = min(len(self.tm.collection),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.lock.acquire()
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
@@ -656,31 +656,31 @@ class ImageBrowser(gtk.HBox):
             if self.ind_viewed==i:
                 drawable.draw_rectangle(gc_v, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
 #            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
-            if self.imagelist[i].thumb:
-                (thumbwidth,thumbheight)=self.imagelist[i].thumbsize
+            if self.tm.collection[i].thumb:
+                (thumbwidth,thumbheight)=self.tm.collection[i].thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
                 adjx=self.pad/2+(128-thumbwidth)/2
-                if self.imagelist[i].thumbrgba:
+                if self.tm.collection[i].thumbrgba:
                     try:
                         drawable.draw_rgb_32_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
-                                   self.imagelist[i].thumb, -1, 0, 0)
+                                   self.tm.collection[i].thumb, -1, 0, 0)
                     except:
                         None
-                        #print 'thumberror',self.imagelist[i].filename,self.imagelist[i].thumbsize
+                        #print 'thumberror',self.tm.collection[i].filename,self.tm.collection[i].thumbsize
                 else:
                     try:
                         drawable.draw_rgb_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
-                                   self.imagelist[i].thumb, -1, 0, 0)
+                                   self.tm.collection[i].thumb, -1, 0, 0)
                     except:
                         None
-                        #print 'thumberror',self.imagelist[i].filename,self.imagelist[i].thumbsize
+                        #print 'thumberror',self.tm.collection[i].filename,self.tm.collection[i].thumbsize
             else:
-                item=self.imagelist[i]
+                item=self.tm.collection[i]
                 #if not neededitem and not item.thumb and not  item.cannot_thumb:
-                #    neededitem=self.imagelist[i]
-#                thumbsneeded.insert(0,self.imagelist[i])
+                #    neededitem=self.tm.collection[i]
+#                thumbsneeded.insert(0,self.tm.collection[i])
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth+self.pad>=self.width:
@@ -689,7 +689,8 @@ class ImageBrowser(gtk.HBox):
                     break
                 else:
                     x=0
-        self.imagelist.lock.release()
+        self.lock.release()
+
 
 class MainWindow:
     def __init__(self):
