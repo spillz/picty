@@ -15,6 +15,7 @@ import bisect
 import settings
 import imageinfo
 import imagemanip
+import monitor
 
 try:
     import gnome.ui
@@ -238,6 +239,7 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.acquire()
                 del collection[i]
                 browser.lock.release()
+                gobject.idle_add(browser.AddImages,[])
                 ##TODO: Notify viewer/browser of update
                 continue
             mtime=os.path.getmtime(item.filename)
@@ -254,6 +256,7 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.release()
                 i+=1
                 ##TODO: Notify viewer/browser of update
+                gobject.idle_add(browser.AddImages,[])
                 continue
             i+=1
             #time.sleep(0.001)
@@ -271,32 +274,36 @@ class DirectoryUpdateJob(WorkerJob):
     def __call__(self,jobs,collection,browser):
         #todo: make sure job.queue has been initialized
         #todo: acquire and release collection lock
-        while self.jobs.ishighestpriority(self) and len(self.queue)>0:
-            fullpath,action=queue.pop(0)
+        while jobs.ishighestpriority(self) and len(self.queue)>0:
+            fullpath,action=self.queue.pop(0)
             if action=='DELETE' or action=='MOVED_FROM':
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
-                    collection.delete([fullpath,0])
+                    collection.delete([fullpath])
                     browser.lock.release()
+                    gobject.idle_add(browser.AddImages,[])
                 #todo: update browser/viewer
             if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
                 if os.path.exists(fullpath):
-                    i=self.collection.find([fullpath,0])
-                    if i>=0:
-                        collection[i].mtime=os.path.getmtime(fullpath)
-                        collection[i][1]=os.path.getmtime(fullpath)
-                        item=self.collection[i]
-                        imagemanip.load_metadata(item)
-                        if not has_thumb(item):
-                            imagemanip.make_thumb(item)
+                    i=collection.find([fullpath])
+                    if i>=0 and i<len(collection):
+                        if os.path.getmtime(fullpath)!=collection[i].mtime:
+                            collection[i].mtime=os.path.getmtime(fullpath)
+                            item=collection[i]
+                            if not item.meta:
+                                imagemanip.load_metadata(item)
+                            if not imagemanip.has_thumb(item):
+                                imagemanip.make_thumb(item)
+                            gobject.idle_add(browser.AddImages,[])
                     else:
-                        item=imagemanip.Item(fullpath,os.path.getmtime(fullpath))
+                        item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
                         browser.lock.acquire()
                         collection.add(item)
                         browser.lock.release()
                         imagemanip.load_metadata(item)
-                        if not has_thumb(item):
+                        if not imagemanip.has_thumb(item):
                             imagemanip.make_thumb(item)
+                        gobject.idle_add(browser.AddImages,[])
         if len(self.queue)==0:
             self.unsetevent()
                 #todo: update browser/viewer
@@ -340,6 +347,10 @@ class Worker:
         self.thread.start()
 
     def _loop(self):
+        print 'starting monitor'
+        self.monitor=monitor.Monitor(self.directory_change_notify)
+        self.monitor.start(settings.image_dirs[0])
+        print 'monitor started'
         print 'start worker loop'
         loadjob=LoadCollectionJob()
         print 'loading collection'
@@ -362,12 +373,19 @@ class Worker:
             if self.jobs['QUIT']:
                 savejob=SaveCollectionJob()
                 print 'saving'
+                self.monitor.stop(settings.image_dirs[0])
                 savejob(self.jobs,self.collection,self.browser)
                 return
             job=self.jobs.gethighest()
             if job:
                 job(self.jobs,self.collection,self.browser)
             #time.sleep(0.05)
+
+    def directory_change_notify(self,path,action):
+        job=self.jobs['DIRECTORYUPDATE']
+        job.queue.append((path,action))
+        job.setevent()
+        self.event.set()
 
     def quit(self):
         self.jobs['QUIT'].setevent()
