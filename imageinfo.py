@@ -35,6 +35,7 @@ class Item(list):
         self.qview_size=None
         self.image=None
 
+
 class Collection(list):
     def __init__(self,items):
         list.__init__(self)
@@ -60,14 +61,25 @@ class Collection(list):
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
 
+
 def sort_mtime(item):
-    return item
+    return item.mtime
+
+
+def sort_ctime(item):
+    try:
+        return item.meta["Exif.Photo.DateTimeOriginal"]
+    except:
+        return None
+
 
 class Index(list):
-    def __init__(self,items=[],key_cb=sort_mtime):
+    def __init__(self,key_cb=sort_mtime,items=[]):
         list.__init__(self)
         for item in items:
             self.add(key_cb(item),item)
+        self.key_cb=key_cb
+        self.reverse=False
     def add(self,key,item):
         bisect.insort(self,(key,item))
     def remove(self,key,item):
@@ -79,6 +91,25 @@ class Index(list):
                 list.pop(self,ind)
                 return
             raise KeyError
+    def add_item(self,item):
+        self.add(self.key_cb(item),item)
+    def find_item(self,item):
+        i=bisect.bisect_left(self,(self.key_cb(item),item))
+        if i>=len(self) or i<0:
+            return -1
+        if self[i]==item:
+            return i
+        return -1
+    def __call__(self,index):
+        if self.reverse:
+            return self[len(self)-1-index][1]
+        else:
+            return self[index][1]
+    def get_items(self,first,last):
+        if self.reverse:
+            return [i[1] for i in self[len(self)-last:len(self)-first]]
+        else:
+            return [i[1] for i in self[first:last]]
 
 if __name__=='__main__':
     a=Index([5,4,1,2])

@@ -13,8 +13,17 @@ import imageinfo
 thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
 thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 
+import time
 
 def load_image(item,interrupt_fn):
+#    t=time.time()
+#    try:
+#        test=gtk.gdk.pixbuf_new_from_file(item.filename)
+#    except:
+#        pass
+#    print 'gdk load took',time.time()-t
+
+    t=time.time()
     try:
         imfile=open(item.filename,'rb')
         p = ImageFile.Parser()
@@ -27,6 +36,7 @@ def load_image(item,interrupt_fn):
             print 'interrupted'
             return False
         image = p.close()
+        print 'pil load took',time.time()-t
     except:
         print '***IMAGE LOAD FAILED',item
         try:
@@ -56,8 +66,7 @@ def load_image(item,interrupt_fn):
     return False
 
 
-def size_image(item,size,antialias):
-    ##todo: put this on a background thread (at least if antialias is true)
+def size_image(item,size,antialias=True):
     image=item.image
     if not image:
         return False
@@ -71,7 +80,7 @@ def size_image(item,size,antialias):
         h=w*ih/iw
     try:
         if antialias:
-            qimage=image.resize((w,h),Image.ANTIALIAS).tostring()
+            qimage=image.resize((w,h),Image.BILINEAR).tostring()
         else:
             qimage=image.resize((w,h)).tostring()
     except:
