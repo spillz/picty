@@ -1,6 +1,6 @@
 import bisect
 import threading
-
+import datetime
 
 class Item(list):
     def __init__(self,filename,mtime):
@@ -68,9 +68,12 @@ def sort_mtime(item):
 
 def sort_ctime(item):
     try:
-        return item.meta["Exif.Photo.DateTimeOriginal"]
+        date=item.meta["Exif.Photo.DateTimeOriginal"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+        return date
     except:
-        return None
+        return datetime.datetime(1900,1,1)
 
 
 class Index(list):

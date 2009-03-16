@@ -26,7 +26,7 @@ except:
 
 import gc
 
-def del_view_item(browser,item):
+def del_view_item(view,browser,item):
     browser.lock.acquire()
     j=view.find_item(item)
     if j>0:
@@ -230,13 +230,13 @@ class VerifyImagesJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         i=self.countpos  ##todo: make sure this gets initialized
-        print 'verifying',len(collection),'images -',i,'done'
+        print 'verifying',len(collection),'images -',i,'done - view size',len(view)
         print jobs.gethighest()
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if not item.meta:
 #                print 'loading metadata'
-                del_view_item(browser,item)
+                del_view_item(view,browser,item)
                 imagemanip.load_metadata(item) ##todo: check if exists already
                 browser.lock.acquire()
                 view.add_item(item)
@@ -252,13 +252,13 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.acquire()
                 del collection[i]
                 browser.lock.release()
-                del_view_item(browser,item)
+                del_view_item(view,browser,item)
                 gobject.idle_add(browser.AddImages,[])
                 ##TODO: Notify viewer/browser of update
                 continue
             mtime=os.path.getmtime(item.filename)
             if mtime!=item.mtime:
-                del_view_item(browser,item)
+                del_view_item(view,browser,item)
                 item.mtime=mtime
                 item.image=None
                 item.qview=None
@@ -392,7 +392,7 @@ class Worker:
         for item in self.collection:
             self.view.add_item(item)
         print 'view init took',time.time()-t,'seconds'
-        print 'loading collection done'
+        print 'loading collection done with',len(self.collection),'images'
         gobject.idle_add(self.browser.AddImages,[])
         while 1:
             print self.jobs.gethighest()

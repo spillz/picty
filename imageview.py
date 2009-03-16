@@ -417,6 +417,7 @@ class ImageBrowser(gtk.HBox):
             self.tm.view.reverse=not self.tm.view.reverse
             self.AddImage([])
         if event.keyval==65307: #escape
+            self.ind_viewed=-1
             self.iv.hide()
             self.iv.ImageNormal()
             self.imarea.show()
