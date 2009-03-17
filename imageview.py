@@ -385,15 +385,15 @@ class ImageBrowser(gtk.HBox):
         ##st.set_property('slider-width',stw)
         ##self.vscroll.set_style(st)
 
-        vbox=gtk.VBox()
+        self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
-        vbox.pack_start(self.imarea)
-        vbox.pack_start(self.status_bar)
-        vbox.show()
+        self.vbox.pack_start(self.imarea)
+        self.vbox.pack_start(self.status_bar)
+        self.vbox.show()
 
         hpane=gtk.HPaned()
         hpane.add1(self.iv)
-        hpane.add2(vbox)
+        hpane.add2(self.vbox)
         hpane.show()
         self.pack_start(hpane)
         self.pack_start(self.vscroll,False)
@@ -446,13 +446,13 @@ class ImageBrowser(gtk.HBox):
                 if self.is_iv_fullscreen:
                     self.ViewImage(self.ind_viewed)
                     self.iv.ImageNormal()
-                    self.imarea.show()
+                    self.vbox.show()
                     self.vscroll.show()
                     self.is_iv_fullscreen=False
                 else:
                     self.ViewImage(self.ind_viewed)
                     self.iv.ImageFullscreen()
-                    self.imarea.hide()
+                    self.vbox.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
         if (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
@@ -501,13 +501,13 @@ class ImageBrowser(gtk.HBox):
         if self.is_iv_fullscreen:
             self.ViewImage(self.ind_viewed)
             self.iv.ImageNormal()
-            self.imarea.show()
+            self.vbox.show()
             self.vscroll.show()
             self.is_iv_fullscreen=False
         else:
             self.ViewImage(self.ind_viewed)
             self.iv.ImageFullscreen()
-            self.imarea.hide()
+            self.vbox.hide()
             self.vscroll.hide()
             self.is_iv_fullscreen=True
 
@@ -524,6 +524,15 @@ class ImageBrowser(gtk.HBox):
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
 #        if item.thumb:
+        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+    def RefreshView(self):
+        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+    def UpdateView(self):
+        self.UpdateDimensions()
+        self.UpdateScrollbar()
+        self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def AddImages(self,items):

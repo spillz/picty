@@ -17,23 +17,11 @@ import time
 
 def load_image(item,interrupt_fn):
     try:
-        imfile=open(item.filename,'rb')
-        p = ImageFile.Parser()
-        while interrupt_fn():
-            s = imfile.read(10000)
-            if not s:
-                break
-            p.feed(s)
-        if not interrupt_fn():
-            print 'interrupted'
-            return False
-        image = p.close()
+        image=Image.open(item.filename)
     except:
-        print '***IMAGE LOAD FAILED',item
-        try:
-            image=Image.open(item.filename)
-        except:
-            image=None
+        image=None
+    image.draft(image.mode,(1024,600))
+    print image.size
     if not interrupt_fn():
         print 'interrupted'
         return False
@@ -57,27 +45,56 @@ def load_image(item,interrupt_fn):
     return False
 
 
-def size_image(item,size,antialias=True):
+def size_image(item,size,antialias=False):
+#    import time
+#    t=time.time()
+#    image=Image.open(item.filename)
+#    print 'open time',time.time()-t
+#    image=item.image
     image=item.image
     if not image:
         return False
+#    try:
+#        orient=item.meta['Exif.Image.Orientation']
+#    except:
+#        orient=1
+#    if orient<=4:
+#        (w,h)=size
+#    else:
+#        (h,w)=size
     (w,h)=size
-    (iw,ih)=item.image.size
+    (iw,ih)=image.size
     if (w*h*iw*ih)==0:
         return False
     if 1.0*(w*ih)/(h*iw)>1.0:
         w=h*iw/ih
     else:
         h=w*ih/iw
+    if (w*h*iw*ih)==0:
+        return False
+    print w,h,iw,ih
+#    t=time.time()
+#    image.draft(image.mode,(w,h))
+#    print 'draft time',time.time()-t
+    t=time.time()
     try:
         if antialias:
-            qimage=image.resize((w,h),Image.BILINEAR).tostring()
+            qimage=image.resize((w,h),Image.BILINEAR)
         else:
-            qimage=image.resize((w,h)).tostring()
+            qimage=image.resize((w,h))
     except:
         qimage=None
-    item.qview=qimage
-    item.qview_size=(w,h)
+    print 'resize time',time.time()-t
+#    t=time.time()
+#    if orient>1:
+#        for method in settings.transposemethods[orient]:
+#            qimage=qimage.transpose(method)
+##            if not interrupt_fn():
+##                print 'interrupted'
+##                return False
+#    print 'rotate time',time.time()-t
+    item.qview=qimage.tostring()
+    item.qview_size=qimage.size
     if qimage:
         return True
     return False
@@ -109,30 +126,15 @@ def has_thumb(item):
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
     try:
-        imfile=open(item.filename,'rb')
-        p = ImageFile.Parser()
-        while not interrupt_fn or interrupt_fn():
-            s = imfile.read(10000)
-            if not s:
-                break
-            p.feed(s)
-        if interrupt_fn and not interrupt_fn():
-            print 'interrupted'
-            return False
-        image = p.close()
+        image=Image.open(item.filename)
         image.thumbnail((128,128),Image.ANTIALIAS)
     except:
-        print '***IMAGE LOAD FAILED',item
-        try:
-            image=Image.open(item.filename)
-            image.thumbnail((128,128),Image.ANTIALIAS)
-        except:
-            print 'creating FAILED thumbnail'
-            item.thumbsize=(0,0)
-            item.thumb=None
-            item.cannot_thumb=True
-            thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
-            return False
+        print 'creating FAILED thumbnail'
+        item.thumbsize=(0,0)
+        item.thumb=None
+        item.cannot_thumb=True
+        thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
+        return False
     try:
         orient=item.meta['Exif.Image.Orientation']
     except:
