@@ -79,7 +79,7 @@ def size_image(item,size,antialias=False):
     t=time.time()
     try:
         if antialias:
-            qimage=image.resize((w,h),Image.BILINEAR)
+            qimage=image.resize((w,h),Image.ANTIALIAS) ##Image.BILINEAR
         else:
             qimage=image.resize((w,h))
     except:

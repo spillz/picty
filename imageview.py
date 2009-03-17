@@ -161,10 +161,11 @@ class ImageViewer(gtk.VBox):
 #        self.imarea.set_size_request(64, 64)
 #        self.width=64
 #        self.height=64
-        #f.set_size_request(450, 300)
-        self.imarea.set_size_request(450, 300)
-        self.width=450
-        self.height=300
+        self.imarea.set_size_request(300,200)
+        self.set_size_request(300, 300)
+#        self.imarea.set_size_request(450, 300)
+#        self.width=450
+#        self.height=300
         self.imarea.show()
         f.show()
         self.item=None
@@ -372,7 +373,7 @@ class ImageBrowser(gtk.HBox):
         self.ind_viewed=-1
 
         self.imarea=gtk.DrawingArea()
-        self.Resize(160,400)
+        self.Resize(160,200)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
         #(w,h)=self.vscroll.get_size_request()
@@ -388,7 +389,7 @@ class ImageBrowser(gtk.HBox):
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
         self.vbox.pack_start(self.imarea)
-        self.vbox.pack_start(self.status_bar)
+        self.vbox.pack_start(self.status_bar,False)
         self.vbox.show()
 
         hpane=gtk.HPaned()
@@ -684,7 +685,7 @@ class ImageBrowser(gtk.HBox):
 class MainWindow:
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.window.set_size_request(800, 400)
+        self.window.set_default_size(680, 400)
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
 
