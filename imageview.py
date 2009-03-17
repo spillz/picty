@@ -225,7 +225,6 @@ class ImageViewer(gtk.VBox):
             except:
                 print 'error updating meta table'
                 print 'values',value,type(value)
-                print 'end'
 
     def CreateMetadataFrame(self):
         rows=2
@@ -406,12 +405,11 @@ class ImageBrowser(gtk.HBox):
 
         self.imarea.show()
         self.vscroll.show()
-        self.tm.request_loadandmonitorcollection()
         #self.Resize(600,300)
 
     def KeyPress(self,obj,event):
-        print 'key press',event.keyval
-        if event.keyval==92:
+#        print 'key press',event.keyval
+        if event.keyval==92: #backslash
             if self.ind_viewed>=0:
                 self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
             self.tm.view.reverse=not self.tm.view.reverse

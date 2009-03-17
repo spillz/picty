@@ -87,7 +87,6 @@ class Index(list):
         bisect.insort(self,(key,item))
     def remove(self,key,item):
         ind=bisect.bisect_left(self,(key,item))
-        print ind
         i=list.__getitem__(self,ind)
         if key==i[0]:
             if item==i[1]:
@@ -103,6 +102,12 @@ class Index(list):
         if self[i]==item:
             return i
         return -1
+    def del_item(self,item):
+        ind=self.find_item(item)
+        if ind>=0:
+            del self[ind]
+            return True
+        return False
     def __call__(self,index):
         if self.reverse:
             return self[len(self)-1-index][1]

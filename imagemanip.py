@@ -16,19 +16,11 @@ thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 import time
 
 def load_image(item,interrupt_fn):
-#    t=time.time()
-#    try:
-#        test=gtk.gdk.pixbuf_new_from_file(item.filename)
-#    except:
-#        pass
-#    print 'gdk load took',time.time()-t
-
-    t=time.time()
     try:
         imfile=open(item.filename,'rb')
         p = ImageFile.Parser()
         while interrupt_fn():
-            s = imfile.read(100000)
+            s = imfile.read(10000)
             if not s:
                 break
             p.feed(s)
@@ -36,7 +28,6 @@ def load_image(item,interrupt_fn):
             print 'interrupted'
             return False
         image = p.close()
-        print 'pil load took',time.time()-t
     except:
         print '***IMAGE LOAD FAILED',item
         try:
@@ -115,39 +106,49 @@ def has_thumb(item):
             return True
     return False
 
-def make_thumb(item):
+def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
     try:
-        image = Image.open(item.filename)
-        image.thumbnail((128,128),Image.ANTIALIAS)
-        try:
-            orient=item.meta['Exif.Image.Orientation']
-        except:
-            orient=1
-
-        if orient>1:
-            for method in settings.transposemethods[orient]:
-                image=image.transpose(method)
-        thumbsize=image.size
-        thumb=image.tostring()
-        thumbrgba='A' in image.getbands()
+        imfile=open(item.filename,'rb')
+        p = ImageFile.Parser()
+        while not interrupt_fn or interrupt_fn():
+            s = imfile.read(10000)
+            if not s:
+                break
+            p.feed(s)
+        if interrupt_fn and not interrupt_fn():
+            print 'interrupted'
+            return False
+        image = p.close()
     except:
-        print 'creating FAILED thumbnail'
-        item.thumbsize=(0,0)
-        item.thumb=None
-        item.cannot_thumb=True
-        thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
-        return False
-
+        print '***IMAGE LOAD FAILED',item
+        try:
+            image=Image.open(item.filename)
+        except:
+            print 'creating FAILED thumbnail'
+            item.thumbsize=(0,0)
+            item.thumb=None
+            item.cannot_thumb=True
+            thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
+            return False
+    image.thumbnail((128,128),Image.ANTIALIAS)
     try:
         orient=item.meta['Exif.Image.Orientation']
     except:
         orient=1
-
     if orient>1:
         for method in settings.transposemethods[orient]:
             image=image.transpose(method)
-
+    thumbsize=image.size
+    thumb=image.tostring()
+    thumbrgba='A' in image.getbands()
+    try:
+        orient=item.meta['Exif.Image.Orientation']
+    except:
+        orient=1
+    if orient>1:
+        for method in settings.transposemethods[orient]:
+            image=image.transpose(method)
     width=thumbsize[0]
     height=thumbsize[1]
 #    if height<128 and width<128:
