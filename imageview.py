@@ -315,8 +315,8 @@ class ImageViewer(gtk.VBox):
             if self.item.imagergba:
                 try:
                     drawable.draw_rgb_32_image(gc,x,y,iw,ih,
-                           gtk.gdk.RGB_DITHER_NONE,
-                           self.item.qview, -1, 0, 0)
+                       gtk.gdk.RGB_DITHER_NONE,
+                       self.item.qview, -1, 0, 0)
                 except:
                     None
             else:
@@ -344,6 +344,11 @@ class ImageViewer(gtk.VBox):
                            self.item.thumb, -1, 0, 0)
                 except:
                     None
+
+#class StatusBar(gtk.VBox):
+#    def __init__():
+#        gtk.HBox.__init__(self)
+#        gtk.ProgressBar()
 
 class ImageBrowser(gtk.HBox):
     '''
@@ -380,9 +385,15 @@ class ImageBrowser(gtk.HBox):
         ##st.set_property('slider-width',stw)
         ##self.vscroll.set_style(st)
 
+        vbox=gtk.VBox()
+        self.status_bar=gtk.ProgressBar()
+        vbox.pack_start(self.imarea)
+        vbox.pack_start(self.status_bar)
+        vbox.show()
+
         hpane=gtk.HPaned()
         hpane.add1(self.iv)
-        hpane.add2(self.imarea)
+        hpane.add2(vbox)
         hpane.show()
         self.pack_start(hpane)
         self.pack_start(self.vscroll,False)
@@ -406,6 +417,16 @@ class ImageBrowser(gtk.HBox):
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def UpdateStatus(self,progress,message):
+        self.status_bar.show()
+        if 1.0>progress>=0.0:
+            self.status_bar.set_fraction(progress)
+        if progress<0.0:
+            self.status_bar.pulse()
+        if progress>=1.0:
+            self.status_bar.hide()
+        self.status_bar.set_text(message)
 
     def KeyPress(self,obj,event):
 #        print 'key press',event.keyval

@@ -120,10 +120,12 @@ def make_thumb(item,interrupt_fn=None):
             print 'interrupted'
             return False
         image = p.close()
+        image.thumbnail((128,128),Image.ANTIALIAS)
     except:
         print '***IMAGE LOAD FAILED',item
         try:
             image=Image.open(item.filename)
+            image.thumbnail((128,128),Image.ANTIALIAS)
         except:
             print 'creating FAILED thumbnail'
             item.thumbsize=(0,0)
@@ -131,7 +133,6 @@ def make_thumb(item,interrupt_fn=None):
             item.cannot_thumb=True
             thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
             return False
-    image.thumbnail((128,128),Image.ANTIALIAS)
     try:
         orient=item.meta['Exif.Image.Orientation']
     except:

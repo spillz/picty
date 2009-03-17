@@ -95,7 +95,7 @@ class CollectionUpdateJob(WorkerJob):
     def __call__(self,jobs,collection,view,browser):
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             item=self.queue.pop(0)
-            if not item.meta:
+            if item.meta==None:
                 if view.del_item(item):
                     imagemanip.load_metadata(item)
                     view.add_item(item)
@@ -213,6 +213,7 @@ class WalkDirectoryJob(WorkerJob):
                 else:
                     i+=1
 
+            gobject.idle_add(browser.UpdateStatus,-1,'Searching for new images in '+root)
             for p in files: #may need some try, except blocks
                 ##todo: check if the item already exists in the collection
                 r=p.rfind('.')
@@ -248,6 +249,7 @@ class WalkDirectoryJob(WorkerJob):
         if self.done:
             print 'walk directory done'
             gobject.idle_add(browser.AddImages,self.notify_items)
+            gobject.idle_add(browser.UpdateStatus,2,'Search complete')
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()
@@ -274,9 +276,9 @@ class BuildViewJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             browser.lock.acquire()
             item=collection[i]
-            if not item.meta:
+            if item.meta==None:
                 imagemanip.load_metadata(item)
-            if item.meta:
+            if item.meta!=None:
                 view.add_item(item)
             browser.lock.release()
             gobject.idle_add(browser.AddImages,[])
@@ -298,7 +300,9 @@ class VerifyImagesJob(WorkerJob):
         print 'verifying',len(collection),'images -',i,'done - view size',len(view)
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
-            if not item.meta:
+            if i%20==0:
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images - %i of %i'%(i,len(collection)))
+            if item.meta==None:
                 print 'loading metadata'
 #                print item.meta
 #                import sys
@@ -325,7 +329,6 @@ class VerifyImagesJob(WorkerJob):
                 continue
             mtime=os.path.getmtime(item.filename)
             if mtime!=item.mtime:
-                print 'updating for new time'
                 del_view_item(view,browser,item)
                 item.mtime=mtime
                 item.image=None
@@ -343,6 +346,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=i
         if i>=len(collection):
             self.unsetevent()
+            gobject.idle_add(browser.UpdateStatus,2,'Verification complete')
             print 'image verification complete'
 
 
@@ -381,7 +385,7 @@ class DirectoryUpdateJob(WorkerJob):
                             if j>=0:
                                 del view[j]
                             browser.lock.release()
-                            if not item.meta:
+                            if item.meta==None:
                                 imagemanip.load_metadata(item)
                             if not imagemanip.has_thumb(item):
                                 imagemanip.make_thumb(item)
