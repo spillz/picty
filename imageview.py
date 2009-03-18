@@ -87,14 +87,6 @@ class ImageLoader:
         self.vlock.release()
         self.event.set()
 
-    def _check_image_limit(self):
-        if len(self.memimages)>self.max_memimages:
-            olditem=self.memimages.pop(0)
-            if olditem.filename!=self.item.filename: ##TODO: Better comparison of items
-                olditem.image=None
-                olditem.qview_size=(0,0)
-                olditem.qview=None
-
     def _background_task(self):
         self.vlock.acquire()
         while 1:
@@ -119,11 +111,7 @@ class ImageLoader:
                 def interrupt_cb():
                     return self.item.filename==item.filename
                 imagemanip.load_image(item,interrupt_cb)
-                self.vlock.acquire()
-                self.memimages.append(item)
-                self._check_image_limit()
                 gobject.idle_add(self.viewer.ImageLoaded,item)
-                self.vlock.release()
                 if not item.image:
                     self.vlock.acquire()
                     continue
@@ -162,7 +150,7 @@ class ImageViewer(gtk.VBox):
 #        self.width=64
 #        self.height=64
         self.imarea.set_size_request(300,200)
-        self.set_size_request(300, 300)
+        #self.set_size_request(300, 300)
 #        self.imarea.set_size_request(450, 300)
 #        self.width=450
 #        self.height=300
@@ -371,6 +359,8 @@ class ImageBrowser(gtk.HBox):
         self.ind_view_first=0
         self.ind_view_last=1
         self.ind_viewed=-1
+        self.hover_ind=-1
+        self.hover_icon=self.render_icon(gtk.STOCK_ADD, gtk.ICON_SIZE_MENU)
 
         self.imarea=gtk.DrawingArea()
         self.Resize(160,200)
@@ -403,6 +393,8 @@ class ImageBrowser(gtk.HBox):
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
+        self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
+        self.imarea.connect("motion-notify-event",self.MouseMotion)
         self.scrolladj.connect("value-changed",self.ScrollSignal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.ScrollSignalPane)
@@ -440,7 +432,7 @@ class ImageBrowser(gtk.HBox):
             self.ind_viewed=-1
             self.iv.hide()
             self.iv.ImageNormal()
-            self.imarea.show()
+            self.vbox.show()
             self.vscroll.show()
         if event.keyval==65293: #enter
             if self.ind_viewed>=0:
@@ -513,10 +505,33 @@ class ImageBrowser(gtk.HBox):
             self.is_iv_fullscreen=True
 
     def ButtonPress(self,obj,event):
+        self.lock.acquire()
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
-        self.ViewImage(ind)
+        offset=ind-self.ind_view_first
+        x=(offset%self.horizimgcount)*(self.thumbwidth+self.pad)
+        x+=self.pad/4
+        y=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
+        y+=offset/self.horizimgcount*(self.thumbheight+self.pad)
+        y+=self.pad/4
+        adjx=x+self.hover_icon.get_width()
+        adjy=y+self.hover_icon.get_height()
+        print 'top left',x,y,'but press',event.x,event.y
+        if x<=event.x<adjx and y<=event.y<adjy:
+            self.tm.view(ind).selected=not self.tm.view(ind).selected
+            self.RefreshView()
+        else:
+            self.ViewImage(ind)
+        self.lock.release()
+
+    def MouseMotion(self,obj,event):
+        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
+        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
+        ind=max(0,min(len(self.tm.view)-1,ind))
+        if self.hover_ind!=ind:
+            self.hover_ind=ind
+            self.RefreshView()
 
     def Destroy(self,event):
         self.tm.quit()
@@ -629,7 +644,9 @@ class ImageBrowser(gtk.HBox):
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
         grey = colormap.alloc('grey')
-        gc_v = drawable.new_gc(foreground=grey,background=grey)
+        gc_s = drawable.new_gc(foreground=grey,background=grey)
+        white = colormap.alloc('white')
+        gc_v = drawable.new_gc(foreground=white,background=white)
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
         drawable.set_background(black)
@@ -643,18 +660,23 @@ class ImageBrowser(gtk.HBox):
         i=imgind
         neededitem=None
         while i<self.ind_view_last:
+            item=self.tm.view(i)
+            if item.selected:
+                drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
             if self.ind_viewed==i:
-                drawable.draw_rectangle(gc_v, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
+                drawable.draw_rectangle(gc_v, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
+            if self.hover_ind==i or item.selected:
+                drawable.draw_pixbuf(gc,self.hover_icon,0,0,x+self.pad/4,y+self.pad/4)
 #            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
-            if self.tm.view(i).thumb:
+            if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
                 adjx=self.pad/2+(128-thumbwidth)/2
-                if self.tm.view(i).thumbrgba:
+                if item.thumbrgba:
                     try:
                         drawable.draw_rgb_32_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
-                                   self.tm.view(i).thumb, -1, 0, 0)
+                                   item.thumb, -1, 0, 0)
                     except:
                         None
                         #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
@@ -662,12 +684,12 @@ class ImageBrowser(gtk.HBox):
                     try:
                         drawable.draw_rgb_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
                                    gtk.gdk.RGB_DITHER_NONE,
-                                   self.tm.view(i).thumb, -1, 0, 0)
+                                   item.thumb, -1, 0, 0)
                     except:
                         None
                         #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
-            else:
-                item=self.tm.view(i)
+#            else:
+#                item=self.tm.view(i)
                 #if not neededitem and not item.thumb and not  item.cannot_thumb:
                 #    neededitem=self.tm.view[i]
 #                thumbsneeded.insert(0,self.tm.view[i])

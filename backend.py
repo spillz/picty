@@ -61,11 +61,6 @@ class ThumbnailJob(WorkerJob):
         self.queue_back=[]
         self.memthumbs=[]
 
-    def _check_thumb_limit(self):
-        if len(self.memthumbs)>settings.max_memthumbs:
-            olditem=self.memthumbs.pop(0)
-            olditem.thumbsize=(0,0)
-            olditem.thumb=None
 
     def __call__(self,jobs,collection,view,browser):
         cu_job=jobs['COLLECTIONUPDATE']
@@ -75,10 +70,7 @@ class ThumbnailJob(WorkerJob):
             item=self.queue_onscreen.pop(0)
             if item.thumb:
                 continue
-            if imagemanip.load_thumb(item):
-                self.memthumbs.append(item)
-                self._check_thumb_limit()
-            else:
+            if not imagemanip.load_thumb(item):
                 if not item.cannot_thumb:
                     cu_job.setevent()
                     cu_job.queue.append(item)

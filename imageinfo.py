@@ -15,6 +15,7 @@ class Item(list):
         self.qview_size=None
         self.image=None
         self.cannot_thumb=False
+        self.selected=False
     def key(self):
         return 1
     def __getstate__(self):
@@ -25,6 +26,7 @@ class Item(list):
         del odict['qview']
         del odict['qview_size']
         del odict['image']
+        del odict['selected']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
@@ -34,6 +36,7 @@ class Item(list):
         self.qview=None
         self.qview_size=None
         self.image=None
+        self.selected=False
 
 
 class Collection(list):

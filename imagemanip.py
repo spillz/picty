@@ -15,11 +15,34 @@ thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 
 import time
 
+memimages=[]
+memthumbs=[]
+
+def cache_image(item):
+    memimages.append(item)
+    if len(memimages)>settings.max_memimages:
+        olditem=memimages.pop(0)
+        if olditem!=item:
+            olditem.image=None
+            olditem.qview_size=(0,0)
+            olditem.qview=None
+
+def cache_thumb(item):
+    memthumbs.append(item)
+    if len(memthumbs)>settings.max_memthumbs:
+        olditem=memthumbs.pop(0)
+        olditem.thumbsize=(0,0)
+        olditem.thumb=None
+
+
 def load_image(item,interrupt_fn):
     try:
         image=Image.open(item.filename)
     except:
         image=None
+        return False
+
+        return False
     image.draft(image.mode,(1024,600))
     print image.size
     if not interrupt_fn():
@@ -40,7 +63,9 @@ def load_image(item,interrupt_fn):
         item.imagergba='A' in item.image.getbands()
     except:
         item.imagergba=False
+    print 'xxxxxss'
     if item.image:
+        cache_image(item)
         return True
     return False
 
@@ -167,6 +192,7 @@ def make_thumb(item,interrupt_fn=None):
         item.thumbsize=thumbsize
         item.thumb=thumb
         item.thumbrgba=thumbrgba
+        cache_thumb(item)
     return True
 
 

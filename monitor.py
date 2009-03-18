@@ -39,6 +39,8 @@ class Monitor(ProcessEvent):
 #        print "Remove: %s" %  path
 #        if os.path.isdir(path):
 #            wm.rm_watch(path,mask,rec=True)
+    def process_default(self, event=None):
+        pass
     def start(self,dir):
         self.wdd = wm.add_watch(dir, mask, rec=True)
     def stop(self,dir):

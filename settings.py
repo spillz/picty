@@ -27,9 +27,11 @@ transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
 
 if maemo:
     max_memthumbs=100
+    max_memimages=1
     precache_count=50
 else:
     max_memthumbs=1000
+    max_memimages=3
     precache_count=500 ##not currently used
 
 
