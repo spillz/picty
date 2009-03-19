@@ -2,7 +2,7 @@
 tags=(
 #("Exif.Image.DateTime","DateTime"),
 ("Exif.Photo.DateTimeOriginal","DateTimeOriginal"),
-("Exif.Image.DocumentName","Document Name"),
+#("Exif.Image.DocumentName","Document Name"),
 ("Exif.Image.ImageDescription","Image Description"),
 ("Exif.Photo.UserComment","UserComment"),
 ("Exif.Image.Artist","Artist"),

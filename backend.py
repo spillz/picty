@@ -313,8 +313,8 @@ class VerifyImagesJob(WorkerJob):
                 imagemanip.make_thumb(item)
 #                print 'done!'
                 gobject.idle_add(browser.UpdateView)
-            ##print 'verifying',item.filename
-            if not os.path.exists(item.filename):
+            ##print 'verifying',item.filename,os.path.isdir(item.filename)
+            if not os.path.exists(item.filename) or os.path.isdir(item.filename):
                 browser.lock.acquire()
                 del collection[i]
                 browser.lock.release()
@@ -324,7 +324,6 @@ class VerifyImagesJob(WorkerJob):
                 continue
             mtime=os.path.getmtime(item.filename)
             if mtime!=item.mtime:
-                print '*** ZZZ ***'
                 del_view_item(view,browser,item)
                 item.mtime=mtime
                 item.image=None
@@ -370,7 +369,8 @@ class DirectoryUpdateJob(WorkerJob):
                     gobject.idle_add(browser.UpdateView)
                 #todo: update browser/viewer
             if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
-                if os.path.exists(fullpath):
+                ##todo: defer action on this (wait until no monitor events for say 2s)
+                if os.path.exists(fullpath) and os.path.isfile(fullpath): ##todo: check that file is actually an image type
                     i=collection.find([fullpath])
                     if i>=0:
                         if os.path.getmtime(fullpath)!=collection[i].mtime:
