@@ -29,8 +29,6 @@ gobject.threads_init()
 gtk.gdk.threads_init()
 
 
-import Image
-import ImageFile
 import threading
 import os
 import time
@@ -50,6 +48,8 @@ except:
 import settings
 import backend
 import imagemanip
+import fileops
+
 settings.init() ##todo: make this call on first import inside the module
 
 
@@ -422,7 +422,9 @@ class ImageBrowser(gtk.HBox):
         self.status_bar.set_text(message)
 
     def KeyPress(self,obj,event):
-#        print 'key press',event.keyval
+        print 'key press',event.keyval
+        if event.keyval==65535:
+            fileops.worker.delete(self.tm.view,self.UpdateStatus)
         if event.keyval==92: #backslash
             if self.ind_viewed>=0:
                 self.ind_viewed=len(self.tm.view)-1-self.ind_viewed

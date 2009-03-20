@@ -58,6 +58,8 @@ class Collection(list):
         if i>=0:
             return self.pop(i)
         return None
+    def __call__(self,ind):
+        return self[ind]
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         return odict
@@ -87,9 +89,9 @@ class Index(list):
         self.key_cb=key_cb
         self.reverse=False
     def add(self,key,item):
-        bisect.insort(self,(key,item))
+        bisect.insort(self,[key,item])
     def remove(self,key,item):
-        ind=bisect.bisect_left(self,(key,item))
+        ind=bisect.bisect_left(self,[key,item])
         i=list.__getitem__(self,ind)
         if key==i[0]:
             if item==i[1]:
@@ -99,10 +101,12 @@ class Index(list):
     def add_item(self,item):
         self.add(self.key_cb(item),item)
     def find_item(self,item):
-        i=bisect.bisect_left(self,(self.key_cb(item),item))
+        i=bisect.bisect_left(self,[self.key_cb(item),item])
+        print 'finding',i,self.key_cb(item),item
         if i>=len(self) or i<0:
             return -1
-        if self[i]==item:
+        print 'found',i,self[i],item,item<self[i][1],item>self[i][1]
+        if self[i][1]==item:
             return i
         return -1
     def del_item(self,item):

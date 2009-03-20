@@ -356,13 +356,16 @@ class DirectoryUpdateJob(WorkerJob):
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
             if action=='DELETE' or action=='MOVED_FROM':
+                print 'deleting',fullpath
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
                     j=collection.find([fullpath])
+                    print 'delete item coll index',j
                     if j>=0:
                         it=collection[j]
                         del collection[j]
                         j=view.find_item(it)
+                        print 'delete item view index',j,it
                         if j>=0:
                             del view[j]
                     browser.lock.release()
@@ -391,12 +394,13 @@ class DirectoryUpdateJob(WorkerJob):
                             gobject.idle_add(browser.UpdateView)
                     else:
                         item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
+                        imagemanip.load_metadata(item)
                         browser.lock.acquire()
                         collection.add(item)
                         view.add_item(item)
                         browser.lock.release()
-                        imagemanip.load_metadata(item)
-                        imagemanip.make_thumb(item)
+                        if not imagemanip.has_thumb(item):
+                            imagemanip.make_thumb(item)
                         gobject.idle_add(browser.UpdateView)
         if len(self.queue)==0:
             self.unsetevent()
@@ -442,6 +446,7 @@ class Worker:
         self.lock=threading.Lock()
         self.exit=False
         self.thread=threading.Thread(target=self._loop)
+        self.dirtimer=None ##threading.Timer(2,self.request_dir_update)
         self.thread.start()
 
     def _loop(self):
@@ -457,9 +462,11 @@ class Worker:
                 self.event.wait()
 #            print 'JOB REQUEST:',self.jobs.gethighest()
             if self.jobs['QUIT']:
+                self.monitor.stop(settings.image_dirs[0])
+                if self.dirtimer!=None:
+                    self.dirtimer.cancel()
                 savejob=SaveCollectionJob()
                 print 'saving'
-                self.monitor.stop(settings.image_dirs[0])
                 savejob(self.jobs,self.collection,self.view,self.browser)
                 print 'end worker loop'
                 return
@@ -468,11 +475,21 @@ class Worker:
                 job(self.jobs,self.collection,self.view,self.browser)
             #time.sleep(0.05)
 
+    def go_dir_update(self):
+        print 'change_notify timer'
+        job=self.jobs['DIRECTORYUPDATE']
+        job.setevent()
+        self.dirtimer=None
+        self.event.set()
+
     def directory_change_notify(self,path,action):
+        print 'change_notify',path,action
         job=self.jobs['DIRECTORYUPDATE']
         job.queue.append((path,action))
-        job.setevent()
-        self.event.set()
+        if self.dirtimer!=None:
+            self.dirtimer.cancel()
+        self.dirtimer=threading.Timer(2,self.go_dir_update)
+        self.dirtimer.start()
 
     def quit(self):
         self.jobs['QUIT'].setevent()
