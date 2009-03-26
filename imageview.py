@@ -31,6 +31,7 @@ gtk.gdk.threads_init()
 
 import threading
 import os
+import subprocess
 import time
 import exif
 import datetime
@@ -360,7 +361,13 @@ class ImageBrowser(gtk.HBox):
         self.ind_view_last=1
         self.ind_viewed=-1
         self.hover_ind=-1
-        self.hover_icon=self.render_icon(gtk.STOCK_ADD, gtk.ICON_SIZE_MENU)
+        self.hover_cmds=[(self.select_item,self.render_icon(gtk.STOCK_ADD, gtk.ICON_SIZE_MENU)),
+                        (self.view_item,self.render_icon(gtk.STOCK_ZOOM_FIT, gtk.ICON_SIZE_MENU)),
+                        (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
+                        (self.rotate_item_left,self.render_icon(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)),
+                        (self.rotate_item_right,self.render_icon(gtk.STOCK_GO_DOWN, gtk.ICON_SIZE_MENU)),
+                        (self.hide_item,self.render_icon(gtk.STOCK_CONVERT, gtk.ICON_SIZE_MENU)),
+                        (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))]
 
         self.imarea=gtk.DrawingArea()
         self.Resize(160,200)
@@ -506,31 +513,72 @@ class ImageBrowser(gtk.HBox):
             self.vscroll.hide()
             self.is_iv_fullscreen=True
 
+    def get_hover_command(self, ind, x, y):
+        offset=ind-self.ind_view_first
+        left=(offset%self.horizimgcount)*(self.thumbwidth+self.pad)
+        left+=self.pad/4
+        top=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
+        top+=offset/self.horizimgcount*(self.thumbheight+self.pad)
+        top+=self.pad/4
+        for i in range(len(self.hover_cmds)):
+            right=left+self.hover_cmds[i][1].get_width()
+            bottom=top+self.hover_cmds[i][1].get_height()
+            if left<x<=right and top<y<=bottom:
+                return i
+            left+=self.hover_cmds[i][1].get_width()+self.pad/4
+        return -1
+
+
+    def select_item(self,ind):
+        item=self.tm.view(ind)
+        item.selected=not item.selected
+        self.RefreshView()
+
+    def view_item(self,ind):
+        self.ViewImage(ind)
+
+    def edit_item(self,ind):
+        item=self.tm.view(ind)
+        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
+
+    def rotate_item_left(self,ind):
+        item=self.tm.view(ind)
+        imagemanip.rotate_left(item)
+        self.UpdateThumbReqs()
+
+    def rotate_item_right(self,ind):
+        item=self.tm.view(ind)
+        imagemanip.rotate_right(item)
+        self.UpdateThumbReqs()
+
+    def hide_item(self,ind):
+        item=self.tm.view(ind)
+        pass
+
+    def delete_item(self,ind):
+        item=self.tm.view(ind)
+        fileops.worker.delete([item],None,False)
+
     def ButtonPress(self,obj,event):
         self.lock.acquire()
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
-        offset=ind-self.ind_view_first
-        x=(offset%self.horizimgcount)*(self.thumbwidth+self.pad)
-        x+=self.pad/4
-        y=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
-        y+=offset/self.horizimgcount*(self.thumbheight+self.pad)
-        y+=self.pad/4
-        adjx=x+self.hover_icon.get_width()
-        adjy=y+self.hover_icon.get_height()
-        print 'top left',x,y,'but press',event.x,event.y
-        if x<=event.x<adjx and y<=event.y<adjy:
-            self.tm.view(ind).selected=not self.tm.view(ind).selected
-            self.RefreshView()
+        cmd=self.get_hover_command(ind,event.x,event.y)
+        if cmd>=0:
+            self.hover_cmds[cmd][0](ind)
         else:
             self.ViewImage(ind)
         self.lock.release()
 
-    def MouseMotion(self,obj,event):
-        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
-        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
+    def recalc_hover_ind(self,x,y):
+        ind=(int(self.offsety)+int(y))/(self.thumbheight+self.pad)*self.horizimgcount
+        ind+=min(self.horizimgcount,int(x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
+        return ind
+
+    def MouseMotion(self,obj,event):
+        ind=self.recalc_hover_ind(event.x,event.y)
         if self.hover_ind!=ind:
             self.hover_ind=ind
             self.RefreshView()
@@ -637,7 +685,12 @@ class ImageBrowser(gtk.HBox):
 
     def UpdateThumbReqs(self):
         ## DATA NEEDED
+        count=self.ind_view_last-self.ind_view_first
+#        first=max(0,self.ind_view_first-count)
+#        last=min(len(self.tm.view),self.ind_view_last+count)
         onscreen_items=self.tm.view.get_items(self.ind_view_first,self.ind_view_last)
+#        onscreen_items+=self.tm.view.get_items(first,self.ind_view_first)
+#        onscreen_items+=self.tm.view.get_items(self.ind_view_last,last)
         self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
 
     def Render(self,event):
@@ -653,6 +706,12 @@ class ImageBrowser(gtk.HBox):
         black = colormap.alloc('black')
         drawable.set_background(black)
 
+        (mx,my)=self.imarea.get_pointer()
+        if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
+            self.hover_ind=self.recalc_hover_ind(mx,my)
+        else:
+            self.hover_ind=-1
+
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         display_space=True
         imgind=self.ind_view_first
@@ -666,9 +725,11 @@ class ImageBrowser(gtk.HBox):
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
             if self.ind_viewed==i:
-                drawable.draw_rectangle(gc_v, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
-            if self.hover_ind==i or item.selected:
-                drawable.draw_pixbuf(gc,self.hover_icon,0,0,x+self.pad/4,y+self.pad/4)
+                (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+                adjy=self.pad/2+(128-thumbheight)/2-3
+                adjx=self.pad/2+(128-thumbwidth)/2-3
+                drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
+
 #            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
@@ -695,6 +756,15 @@ class ImageBrowser(gtk.HBox):
                 #if not neededitem and not item.thumb and not  item.cannot_thumb:
                 #    neededitem=self.tm.view[i]
 #                thumbsneeded.insert(0,self.tm.view[i])
+            if self.hover_ind==i or item.selected:
+                l=len(self.hover_cmds)
+                if item.selected and self.hover_ind!=i:
+                    l=1
+                offx=self.pad/4
+                offy=self.pad/4
+                for j in range(l):
+                    drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
+                    offx+=self.hover_cmds[j][1].get_width()+self.pad/4
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth+self.pad>=self.width:

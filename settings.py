@@ -25,6 +25,10 @@ transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
             (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
             (Image.ROTATE_90,))
 
+rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
+
+rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
+
 if maemo:
     max_memthumbs=100
     max_memimages=1
@@ -34,7 +38,7 @@ else:
     max_memimages=3
     precache_count=500 ##not currently used
 
-
+edit_command_line='gimp'
 
 imagetypes=['jpg','jpeg','png']
 

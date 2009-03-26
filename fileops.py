@@ -21,11 +21,14 @@ class Worker:
             if self.kill:
                 self.active=False
                 return
-            gobject.idle_add(self.cb,1.0*i/len(self.items),'Deleting '+item.filename)
+            if self.cb:
+                gobject.idle_add(self.cb,1.0*i/len(self.items),'Deleting '+item.filename)
             try:
                 os.remove(item.filename)
             except:
                 fileoperrors.append('del',item)
+        if self.cb:
+            gobject.idle_add(self.cb,2.0,'Finished Deleting')
         self.active=False
 
     def delete(self,items,cb,selected_only=True):
@@ -52,13 +55,16 @@ class Worker:
             if self.kill:
                 self.active=False
                 return
-            gobject.idle_add(cb,1.0*i/len(items),'Copying '+item.filename)
+            if self.cb:
+                gobject.idle_add(cb,1.0*i/len(items),'Copying '+item.filename)
             try:
                 fin=open(item.filename,'rb')
                 fout=open(item.filename,'wb') ##todo: check exists (and what about perms/attribs?)
                 fin.write(fout.read())
             except:
                 fileoperrors.append('copy',item,destdir)
+        if self.cb:
+            gobject.idle_add(self.cb,2.0,'Finished Copying')
 
     def copy(self,items,destdir,cb,selected_only=True):
         if self.active:
@@ -84,11 +90,14 @@ class Worker:
             if self.kill:
                 self.active=False
                 return
-            gobject.idle_add(cb,1.0*i/len(items),'Moving '+item.filename)
+            if self.cb:
+                gobject.idle_add(cb,1.0*i/len(items),'Moving '+item.filename)
             try:
                 os.renames(item.filename,os.path.join(destdir,os.path.getfilname(item.filename)))
             except:
                 fileoperrors.append('move',item,destdir)
+        if self.cb:
+            gobject.idle_add(self.cb,2.0,'Finished Moving')
 
     def move(self,items,destdir,cb,selected_only=True):
         if self.active:

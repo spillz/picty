@@ -349,6 +349,8 @@ class DirectoryUpdateJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'DIRECTORYUPDATE')
         self.queue=[]
+        self.deferred=[]
+        self.lock=threading.Lock()
 
     def __call__(self,jobs,collection,view,browser):
         #todo: make sure job.queue has been initialized
@@ -475,21 +477,33 @@ class Worker:
                 job(self.jobs,self.collection,self.view,self.browser)
             #time.sleep(0.05)
 
-    def go_dir_update(self):
+    def deferred_dir_update(self):
         print 'change_notify timer'
         job=self.jobs['DIRECTORYUPDATE']
-        job.setevent()
+        job.deflock.acquire()
+        for j in job.deferred:
+            job.queue.append(j)
+        del job.deferred[:]
         self.dirtimer=None
+        job.deflock.release()
+        job.setevent()
         self.event.set()
 
     def directory_change_notify(self,path,action):
         print 'change_notify',path,action
         job=self.jobs['DIRECTORYUPDATE']
-        job.queue.append((path,action))
-        if self.dirtimer!=None:
-            self.dirtimer.cancel()
-        self.dirtimer=threading.Timer(2,self.go_dir_update)
-        self.dirtimer.start()
+        if action in ('MODIFY','CREATE'):
+            job.deflock.acquire()
+            if self.dirtimer!=None:
+                self.dirtimer.cancel()
+            self.dirtimer=threading.Timer(2,self.go_dir_update)
+            self.dirtimer.start()
+            job.deferred.append((path,action))
+            job.deflock.release()
+        else:
+            job.queue.append((path,action))
+            job.setevent()
+            self.event.set()
 
     def quit(self):
         self.jobs['QUIT'].setevent()

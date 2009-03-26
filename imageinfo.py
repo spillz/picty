@@ -9,6 +9,7 @@ class Item(list):
         self.mtime=mtime
         self.thumbsize=(0,0)
         self.thumb=None
+        self.thumburi=None
         self.meta=None
         self.thumbrgba=False
         self.qview=None
@@ -33,6 +34,8 @@ class Item(list):
         self.thumbsize=None
         self.thumb=None
         self.thumbrgba=False
+        if 'thumburi' not in self.__dict__:
+            self.thumburi=None
         self.qview=None
         self.qview_size=None
         self.image=None

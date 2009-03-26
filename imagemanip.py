@@ -18,6 +18,31 @@ import time
 memimages=[]
 memthumbs=[]
 
+def rotate_left(item):
+    'rotates image anti-clockwise'
+    try:
+        orient=item.meta['Exif.Image.Orientation']
+    except:
+        orient=1
+    item.meta['Exif.Image.Orientation']=settings.rotate_left_tx[orient]
+    item.image=None
+    item.qview=None
+    item.thumb=None
+    make_thumb(item)
+
+
+def rotate_right(item):
+    'rotates image clockwise'
+    try:
+        orient=item.meta['Exif.Image.Orientation']
+    except:
+        orient=1
+    item.meta['Exif.Image.Orientation']=settings.rotate_right_tx[orient]
+    item.image=None
+    item.qview=None
+    item.thumb=None
+    make_thumb(item)
+
 def cache_image(item):
     memimages.append(item)
     if len(memimages)>settings.max_memimages:
@@ -40,8 +65,6 @@ def load_image(item,interrupt_fn):
         image=Image.open(item.filename)
     except:
         image=None
-        return False
-
         return False
     image.draft(image.mode,(1024,600))
     print image.size
@@ -139,6 +162,22 @@ def load_metadata(item):
         print 'Error reading metadata for',item.filename
         item.meta=None
 
+
+def save_metadata(item):
+    try:
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        item.meta=dict()
+        for x in exif.writetags:
+            try:
+                rawmeta[x[0]]=item.meta[x[0]]
+            except:
+                pass
+        rawmeta.writeMetadata()
+    except:
+        print 'Error writing metadata for',item.filename
+
+
 def has_thumb(item):
     if not settings.maemo:
         uri = gnomevfs.get_uri_from_local_path(item.filename)
@@ -148,10 +187,14 @@ def has_thumb(item):
             return True
     return False
 
+
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
+    ##todo: could also try extracting the thumb from the image
+    ## would not need to make the thumb in that case
     try:
         image=Image.open(item.filename)
+        #image.thumbnail((512,512))
         image.thumbnail((128,128),Image.ANTIALIAS)
     except:
         print 'creating FAILED thumbnail'
@@ -197,6 +240,8 @@ def make_thumb(item,interrupt_fn=None):
 
 
 def load_thumb(item):
+    ##todo: could also try extracting the thumb from the image
+    ## would not need to make the thumb in that case
     try:
         if settings.maemo:
             image = Image.open(item.filename)
