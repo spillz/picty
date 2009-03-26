@@ -429,7 +429,7 @@ class ImageBrowser(gtk.HBox):
         self.status_bar.set_text(message)
 
     def KeyPress(self,obj,event):
-        print 'key press',event.keyval
+#        print 'key press',event.keyval
         if event.keyval==65535:
             fileops.worker.delete(self.tm.view,self.UpdateStatus)
         if event.keyval==92: #backslash

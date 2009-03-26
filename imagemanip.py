@@ -179,9 +179,12 @@ def save_metadata(item):
 
 
 def has_thumb(item):
+    if item.thumburi:
+        return True
     if not settings.maemo:
         uri = gnomevfs.get_uri_from_local_path(item.filename)
-        if thumb_factory.lookup(uri,item.mtime):
+        item.thumburi=thumb_factory.lookup(uri,item.mtime)
+        if item.thumburi:
             return True
         if thumb_factory_large.lookup(uri,item.mtime):
             return True
@@ -232,6 +235,7 @@ def make_thumb(item,interrupt_fn=None):
     uri=gnomevfs.get_uri_from_local_path(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     if item.thumb:
+        item.thumburi=thumb_factory.lookup(uri,item.mtime)
         item.thumbsize=thumbsize
         item.thumb=thumb
         item.thumbrgba=thumbrgba
@@ -248,9 +252,10 @@ def load_thumb(item):
             image.thumbnail((128,128))
         else:
             uri = gnomevfs.get_uri_from_local_path(item.filename)
-            thumburi=thumb_factory.lookup(uri,item.mtime)
-            if thumburi:
-                image = Image.open(thumburi)
+            if not item.thumburi:
+                item.thumburi=thumb_factory.lookup(uri,item.mtime)
+            if item.thumburi:
+                image = Image.open(item.thumburi)
                 s=image.size
                 #image.thumbnail((128,128))
             else:

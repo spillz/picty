@@ -298,7 +298,7 @@ class VerifyImagesJob(WorkerJob):
             if i%20==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images - %i of %i'%(i,len(collection)))
             if item.meta==None:
-                print 'loading metadata'
+#                print 'loading metadata'
 #                print item.meta
 #                import sys
 #                sys.exit()
