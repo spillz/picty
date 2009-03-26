@@ -212,12 +212,16 @@ class WalkDirectoryJob(WorkerJob):
                 r=p.rfind('.')
                 if r<=0:
                     continue
-                if not p[r+1:].lower() in settings.imagetypes:
-                    continue
                 fullpath=os.path.join(root, p)
+                mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                if not mimetype.startswith('image'):
+                    print 'invalid mimetype',fullpath,mimetype
+                    continue
+#                print 'found mimetype',fullpath,mimetype
                 mtime=os.path.getmtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
+                    print '*** WALK DIR: ITEM IS A DIRECTORY!!!***'
                     continue
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:

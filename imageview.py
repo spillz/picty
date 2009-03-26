@@ -725,11 +725,13 @@ class ImageBrowser(gtk.HBox):
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
             if self.ind_viewed==i:
-                (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
-                adjy=self.pad/2+(128-thumbheight)/2-3
-                adjx=self.pad/2+(128-thumbwidth)/2-3
-                drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
-
+                try:
+                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+                    adjy=self.pad/2+(128-thumbheight)/2-3
+                    adjx=self.pad/2+(128-thumbwidth)/2-3
+                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
+                except:
+                    pass
 #            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize

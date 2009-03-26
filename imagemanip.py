@@ -141,9 +141,9 @@ def size_image(item,size,antialias=False):
 ##                print 'interrupted'
 ##                return False
 #    print 'rotate time',time.time()-t
-    item.qview=qimage.tostring()
-    item.qview_size=qimage.size
     if qimage:
+        item.qview=qimage.tostring()
+        item.qview_size=qimage.size
         return True
     return False
 
