@@ -66,8 +66,8 @@ def load_image(item,interrupt_fn):
     except:
         image=None
         return False
-    image.draft(image.mode,(1024,600))
-    print image.size
+    image.draft(image.mode,(1600,1600))
+    #print image.size
     if not interrupt_fn():
         print 'interrupted'
         return False
@@ -86,7 +86,6 @@ def load_image(item,interrupt_fn):
         item.imagergba='A' in item.image.getbands()
     except:
         item.imagergba=False
-    print 'xxxxxss'
     if item.image:
         cache_image(item)
         return True
@@ -129,7 +128,8 @@ def size_image(item,size,antialias=False):
         if antialias:
             qimage=image.resize((w,h),Image.ANTIALIAS) ##Image.BILINEAR
         else:
-            qimage=image.resize((w,h))
+            qimage=image.resize((w,h),Image.BILINEAR) ##Image.BILINEAR
+#            qimage=image.resize((w,h))
     except:
         qimage=None
     print 'resize time',time.time()-t
