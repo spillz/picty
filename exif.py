@@ -1,9 +1,14 @@
 
+
+##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
+##todo: merge Iptc.Application2.Keywords with Xmp.dc.subject
+
 writetags=(
 ("Exif.Image.ImageDescription","Image Description"),
 ("Exif.Photo.UserComment","UserComment"),
 ("Exif.Image.Artist","Artist"),
 ("Exif.Image.Copyright","Copyright"),
+("Xmp.dc.subject"),
 ("Exif.Image.ImageWidth","Width"),
 ("Exif.Image.ImageLength","Height"),
 ("Exif.Image.Orientation","Orientation")
@@ -18,6 +23,7 @@ tags=(
 #("Exif.Image.DocumentName","Document Name"),
 ("Exif.Image.ImageDescription","Image Description",True),
 ("Exif.Photo.UserComment","UserComment",True),
+("Xmp.dc.subject","Keywords",True),
 ("Exif.Image.Artist","Artist",True),
 ("Exif.Image.Copyright","Copyright",True),
 ("Exif.Image.Make","Make",False),

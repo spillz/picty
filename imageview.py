@@ -260,6 +260,7 @@ class ImageViewer(gtk.VBox):
             if item.meta_backup!=item.meta:
                 item.meta=item.meta_backup
             del item.meta_backup
+        ##todo: need to recreate thumb if orientation.
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.UpdateMetaTable(item)
