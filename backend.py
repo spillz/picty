@@ -354,7 +354,7 @@ class DirectoryUpdateJob(WorkerJob):
         WorkerJob.__init__(self,'DIRECTORYUPDATE')
         self.queue=[]
         self.deferred=[]
-        self.lock=threading.Lock()
+        self.deflock=threading.Lock()
 
     def __call__(self,jobs,collection,view,browser):
         #todo: make sure job.queue has been initialized
@@ -500,7 +500,7 @@ class Worker:
             job.deflock.acquire()
             if self.dirtimer!=None:
                 self.dirtimer.cancel()
-            self.dirtimer=threading.Timer(2,self.go_dir_update)
+            self.dirtimer=threading.Timer(1,self.deferred_dir_update)
             self.dirtimer.start()
             job.deferred.append((path,action))
             job.deflock.release()

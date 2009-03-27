@@ -129,16 +129,29 @@ class ImageViewer(gtk.VBox):
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
         self.meta_table=self.CreateMetaTable()
+
+        self.meta_box=gtk.VBox()
+        self.button_save=gtk.Button("Save",gtk.STOCK_SAVE)
+        self.button_revert=gtk.Button("Revert",gtk.STOCK_REVERT_TO_SAVED)
+        self.button_save.set_sensitive(False)
+        self.button_revert.set_sensitive(False)
+        buttons=gtk.HBox()
+        buttons.pack_start(self.button_revert,True,False)
+        buttons.pack_start(self.button_save,True,False)
+        self.meta_box.pack_start(self.meta_table)
+        self.meta_box.pack_start(buttons,False)
+        self.meta_box.show_all()
+
         f=gtk.VPaned()
         f.add1(self.imarea)
-        f.add2(self.meta_table)
+        f.add2(self.meta_box)
         self.pack_start(f)
-        #self.pack_start(self.imarea)
-        #self.pack_start(self.meta_table)
 
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
         self.imarea.connect("expose_event",self.Expose)
+        self.button_save.connect("clicked",self.MetadataSave)
+        self.button_revert.connect("clicked",self.MetadataRevert)
         self.connect("destroy", self.Destroy)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
@@ -147,27 +160,22 @@ class ImageViewer(gtk.VBox):
         else:
             self.imarea.connect("button-press-event",click_callback)
 
-#        self.imarea.set_size_request(64, 64)
-#        self.width=64
-#        self.height=64
         self.imarea.set_size_request(300,200)
-        #self.set_size_request(300, 300)
-#        self.imarea.set_size_request(450, 300)
-#        self.width=450
-#        self.height=300
         self.imarea.show()
         f.show()
         self.item=None
         self.ImageNormal()
-        #self.set_position(self.get_allocation().height)
 
-    def AddMetaRow(self,table,data_items,key,label,data,row):
+    def AddMetaRow(self,table,data_items,key,label,data,row,writable=False):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        child2=gtk.Label(data)
-#        child2=gtk.Entry()
-#        child2.set_text(data)
+        if writable:
+            child2=gtk.Entry()
+            child2.set_text(data)
+            child2.connect("changed",self.MetadataChanged,key)
+        else:
+            child2=gtk.Label(data)
         table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
         data_items[key]=(child1,child2)
@@ -182,9 +190,9 @@ class ImageViewer(gtk.VBox):
         self.AddMetaRow(table, stable.data_items,'FullPath','Full Path','',0)
         self.AddMetaRow(table, stable.data_items,'UnixLastModified','Last Modified','',1)
         r=2
-        for k,v in exif.tags:
+        for k,v,w in exif.tags:
             try:
-                self.AddMetaRow(table,stable.data_items,k,v,'',r)
+                self.AddMetaRow(table,stable.data_items,k,v,'',r,w)
             except:
                 None
             r+=1
@@ -194,10 +202,17 @@ class ImageViewer(gtk.VBox):
         return stable
 
     def UpdateMetaTable(self,item):
+        try:
+            enable=self.item.meta_backup!=self.item.meta
+            self.button_save.set_sensitive(enable)
+            self.button_revert.set_sensitive(enable)
+        except:
+            self.button_save.set_sensitive(False)
+            self.button_revert.set_sensitive(False)
         self.meta_table.data_items['FullPath'][1].set_text(item.filename)
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
-        for k,v in exif.tags:
+        for k,v,w in exif.tags:
             value=''
             try:
                 value=item.meta[k]
@@ -215,6 +230,39 @@ class ImageViewer(gtk.VBox):
             except:
                 print 'error updating meta table'
                 print 'values',value,type(value)
+
+    def MetadataChanged(self,widget,key):
+        if 'meta_backup' not in self.item.__dict__:
+            self.item.meta_backup=self.item.meta.copy()
+        self.item.meta[key]=widget.get_text()
+        if key in self.item.meta and key not in self.item.meta_backup and widget.get_text()=='':
+            del self.item.meta[key]
+        enable=self.item.meta!=self.item.meta_backup ##TODO: only do the comp on writable keys AND '' == missing
+        self.button_save.set_sensitive(enable)
+        self.button_revert.set_sensitive(enable)
+        print key,widget.get_text()
+
+    def MetadataSave(self,widget):
+        item=self.item
+        if 'meta_backup' in item.__dict__:
+            if item.meta_backup!=item.meta:
+                print 'saving metadata',item,item.meta
+                imagemanip.save_metadata(item)
+            del item.meta_backup
+        print item.meta
+        self.button_save.set_sensitive(False)
+        self.button_revert.set_sensitive(False)
+        self.UpdateMetaTable(item)
+
+    def MetadataRevert(self,widget):
+        item=self.item
+        if 'meta_backup' in item.__dict__:
+            if item.meta_backup!=item.meta:
+                item.meta=item.meta_backup
+            del item.meta_backup
+        self.button_save.set_sensitive(False)
+        self.button_revert.set_sensitive(False)
+        self.UpdateMetaTable(item)
 
     def CreateMetadataFrame(self):
         rows=2
@@ -241,14 +289,14 @@ class ImageViewer(gtk.VBox):
 
     def ImageFullscreen(self):
         try:
-            self.meta_table.hide()
+            self.meta_box.hide()
         except:
             None
         self.fullscreen=True
 
     def ImageNormal(self):
         try:
-            self.meta_table.show()
+            self.meta_box.show()
         except:
             None
         self.fullscreen=False
@@ -483,21 +531,15 @@ class ImageBrowser(gtk.HBox):
         if event.keyval==65367: #end
             self.vscroll.set_value(self.scrolladj.upper)
 
-        #if event.keyval
-
     def ViewImage(self,ind):
         self.ind_viewed=ind
         self.iv.show()
         self.iv.SetItem(self.tm.view(ind))
         self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
         self.UpdateDimensions()
-#        self.ind_view_first = ind#int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-#        self.ind_view_last = min(len(self.tm.view),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-        #self.UpdateScrollbar()
-        #self.UpdateThumbReqs()
 
     def ButtonPress_iv(self,obj,event):
         if self.is_iv_fullscreen:
@@ -543,13 +585,21 @@ class ImageBrowser(gtk.HBox):
 
     def rotate_item_left(self,ind):
         item=self.tm.view(ind)
+        if 'meta_backup' not in item.__dict__:
+            item.meta_backup=item.meta.copy()
         imagemanip.rotate_left(item)
         self.UpdateThumbReqs()
+        if ind==self.ind_viewed:
+            self.ViewImage(self.ind_viewed)
 
     def rotate_item_right(self,ind):
         item=self.tm.view(ind)
+        if 'meta_backup' not in item.__dict__:
+            item.meta_backup=item.meta.copy()
         imagemanip.rotate_right(item)
         self.UpdateThumbReqs()
+        if ind==self.ind_viewed:
+            self.ViewImage(self.ind_viewed)
 
     def hide_item(self,ind):
         item=self.tm.view(ind)

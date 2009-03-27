@@ -67,7 +67,6 @@ def load_image(item,interrupt_fn):
         image=None
         return False
     image.draft(image.mode,(1600,1600))
-    #print image.size
     if not interrupt_fn():
         print 'interrupted'
         return False
@@ -167,12 +166,21 @@ def save_metadata(item):
     try:
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
-        item.meta=dict()
         for x in exif.writetags:
             try:
                 rawmeta[x[0]]=item.meta[x[0]]
             except:
                 pass
+        rawmeta.writeMetadata()
+    except:
+        print 'Error writing metadata for',item.filename
+
+
+def save_metadata_key(item,key,value):
+    try:
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        rawmeta[key]=value
         rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename
