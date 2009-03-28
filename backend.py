@@ -98,6 +98,24 @@ class CollectionUpdateJob(WorkerJob):
         if len(self.queue)==0:
             self.unsetevent()
 
+class RecreateThumbJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'RECREATETHUMB')
+        self.queue=[]
+
+    def __call__(self,jobs,collection,view,browser):
+        while len(self.queue)>0 and jobs.ishighestpriority(self):
+            item=self.queue.pop(0)
+            if item.meta==None:
+                if view.del_item(item):
+                    imagemanip.load_metadata(item)
+                    view.add_item(item)
+            imagemanip.make_thumb(item)
+            imagemanip.load_thumb(item)
+            gobject.idle_add(browser.RefreshView)
+        if len(self.queue)==0:
+            self.unsetevent()
+
 
 class LoadCollectionJob(WorkerJob):
     def __init__(self):
@@ -418,6 +436,7 @@ class WorkerJobCollection(dict):
         self.collection=[
             WorkerJob('QUIT'),
             ThumbnailJob(),
+            RecreateThumbJob(),
             CollectionUpdateJob(),
             BuildViewJob(),
             LoadCollectionJob(),
@@ -522,3 +541,8 @@ class Worker:
         job.setevent()
         self.event.set()
 
+    def recreate_thumb(self,item):
+        job=self.jobs['RECREATETHUMB']
+        job.queue.append(item)
+        job.setevent()
+        self.event.set()

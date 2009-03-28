@@ -124,11 +124,12 @@ class ImageLoader:
 
 
 class ImageViewer(gtk.VBox):
-    def __init__(self,click_callback=None):
+    def __init__(self,worker,click_callback=None):
         gtk.VBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
         self.meta_table=self.CreateMetaTable()
+        self.worker=worker
 
         self.meta_box=gtk.VBox()
         self.button_save=gtk.Button("Save",gtk.STOCK_SAVE)
@@ -246,10 +247,8 @@ class ImageViewer(gtk.VBox):
         item=self.item
         if 'meta_backup' in item.__dict__:
             if item.meta_backup!=item.meta:
-                print 'saving metadata',item,item.meta
                 imagemanip.save_metadata(item)
             del item.meta_backup
-        print item.meta
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.UpdateMetaTable(item)
@@ -260,27 +259,40 @@ class ImageViewer(gtk.VBox):
             if item.meta_backup!=item.meta:
                 item.meta=item.meta_backup
             del item.meta_backup
-        ##todo: need to recreate thumb if orientation.
+        ##todo: need to recreate thumb if orientation changed
+        try:
+            orient=item.meta['Exif.Image.Orientation']
+        except:
+            orient=None
+        try:
+            orient_backup=item.meta_backup['Exif.Image.Orientation']
+        except:
+            orient_backup=None
+        if orient!=orient_backup:
+            item.thumb=None
+            self.worker.recreate_thumb(item)
+            self.SetItem(item)
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.UpdateMetaTable(item)
 
     def CreateMetadataFrame(self):
+        item=self.item
         rows=2
         #import datetime
-        d=datetime.datetime.fromtimestamp(self.item.mtime)
+        d=datetime.datetime.fromtimestamp(item.mtime)
         #import exif
-        if self.item.meta:
+        if item.meta:
             rows+=len(exif.tags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
-        self.AddMetaRow(table,'Full Path',self.item.filename,0)
+        self.AddMetaRow(table,'Full Path',item.filename,0)
         self.AddMetaRow(table,'Last Modified',d.isoformat(' '),1)
         r=2
         for k,v in exif.tags:
             try:
-                self.AddMetaRow(table,v,str(self.item.meta[k]),r)
+                self.AddMetaRow(table,v,str(item.meta[k]),r)
             except:
                 None
             r+=1
@@ -400,7 +412,7 @@ class ImageBrowser(gtk.HBox):
         self.lock=threading.Lock()
         self.tm=backend.Worker(self)
         self.neededitem=None
-        self.iv=ImageViewer(self.ButtonPress_iv)
+        self.iv=ImageViewer(self.tm,self.ButtonPress_iv)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
 

@@ -198,11 +198,22 @@ def has_thumb(item):
             return True
     return False
 
+def delete_thumb(item):
+    if item.thumb:
+        item.thumb=None
+        item.thumbsize=None
+    if item.thumburi:
+        os.remove(item.thumburi)
+        thumburi=thumb_factory.lookup(uri,item.mtime)
+        os.remove(thumburi)
+        item.thumburi=None
+
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
+    print 'making thumb',item
     try:
         image=Image.open(item.filename)
         #image.thumbnail((512,512))
