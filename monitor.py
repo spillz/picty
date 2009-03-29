@@ -13,29 +13,29 @@ class Monitor(ProcessEvent):
         self.notifier.start()
     def process_IN_MODIFY(self, event):
         path=os.path.join(event.path, event.name)
-        self.cb(path,'MODIFY')
+        self.cb(path,'MODIFY',event.is_dir)
 #        print "Modify: %s" %  path
     def process_IN_MOVED_FROM(self, event):
         path=os.path.join(event.path, event.name)
-        self.cb(path,'MOVED_FROM')
+        self.cb(path,'MOVED_FROM',event.is_dir)
 #        print "Moved out: %s" %  path
 #        if os.path.isdir(path):
 #            wm.rm_watch(path,mask,rec=True)
     def process_IN_MOVED_TO(self, event):
         path=os.path.join(event.path, event.name)
-        self.cb(path,'MOVED_TO')
+        self.cb(path,'MOVED_TO',event.is_dir)
 #        print "Moved in: %s" %  path
 #        if os.path.isdir(path):
 #            wm.add_watch(path,mask,rec=True)
     def process_IN_CREATE(self, event):
         path=os.path.join(event.path, event.name)
-        self.cb(path,'CREATE')
+        self.cb(path,'CREATE',event.is_dir)
 #        print "Create: %s" %  path
 #        if os.path.isdir(path):
 #            wm.add_watch(path,mask,rec=True)
     def process_IN_DELETE(self, event):
         path=os.path.join(event.path, event.name)
-        self.cb(path,'DELETE')
+        self.cb(path,'DELETE',event.is_dir)
 #        print "Remove: %s" %  path
 #        if os.path.isdir(path):
 #            wm.rm_watch(path,mask,rec=True)

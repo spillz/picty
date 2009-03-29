@@ -363,6 +363,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=i
         if i>=len(collection):
             self.unsetevent()
+            self.countpos=0
             gobject.idle_add(browser.UpdateStatus,2,'Verification complete')
             print 'image verification complete'
 
@@ -516,8 +517,8 @@ class Worker:
         job.setevent()
         self.event.set()
 
-    def directory_change_notify(self,path,action):
-        print 'change_notify',path,action
+    def directory_change_notify(self,path,action,isdir):
+        print 'change_notify',path,action,isdir
         homedir=os.path.normpath(settings.image_dirs[0])
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
@@ -530,6 +531,13 @@ class Worker:
             if name.startswith('.') or name=='':
                 print 'change_notify invalid',path,action
                 return
+        if isdir:
+            if action in ('MOVED_FROM','DELETE'):
+                ##todo: queue a verify job since we get individual image removal notifications
+                self.jobs['VERIFYIMAGES'].countpos=0
+                self.jobs['VERIFYIMAGES'].setevent()
+                pass
+            return
         #valid file, so queue the update (modify and create notifications are
         #only processed after some delay because many events may be generated
         #before the file is closed)
