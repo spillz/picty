@@ -42,7 +42,7 @@ class Monitor(ProcessEvent):
     def process_default(self, event=None):
         pass
     def start(self,dir):
-        self.wdd = wm.add_watch(dir, mask, rec=True)
+        self.wdd = wm.add_watch(dir, mask, rec=True, auto_add=True)
     def stop(self,dir):
         wm.rm_watch(self.wdd[dir], rec=True)
         self.notifier.stop()

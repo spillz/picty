@@ -380,6 +380,7 @@ class DirectoryUpdateJob(WorkerJob):
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
             if action=='DELETE' or action=='MOVED_FROM':
+                ##todo: if the deleted item was a dir, we almost always won't get notification of deleted images in that dir
                 print 'deleting',fullpath
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
@@ -394,10 +395,11 @@ class DirectoryUpdateJob(WorkerJob):
                             del view[j]
                     browser.lock.release()
                     gobject.idle_add(browser.UpdateView)
-                #todo: update browser/viewer
             if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
-                ##todo: defer action on this (wait until no monitor events for say 2s)
-                if os.path.exists(fullpath) and os.path.isfile(fullpath): ##todo: check that file is actually an image type
+                if os.path.exists(fullpath) and os.path.isfile(fullpath):
+                    mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                    if not mimetype.startswith('image'):
+                        continue
                     i=collection.find([fullpath])
                     if i>=0:
                         if os.path.getmtime(fullpath)!=collection[i].mtime:
@@ -514,6 +516,21 @@ class Worker:
 
     def directory_change_notify(self,path,action):
         print 'change_notify',path,action
+        homedir=os.path.normpath(settings.image_dirs[0])
+        #ignore notifications on files in a hidden dir or not in the image dir
+        if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
+            print 'change_notify invalid',path,action
+            return
+        ppath=path
+        while ppath!=homedir:
+            ppath,name=os.path.split(ppath)
+            ppath=os.path.normpath(ppath)
+            if name.startswith('.') or name=='':
+                print 'change_notify invalid',path,action
+                return
+        #valid file, so queue the update (modify and create notifications are
+        #only processed after some delay because many events may be generated
+        #before the file is closed)
         job=self.jobs['DIRECTORYUPDATE']
         if action in ('MODIFY','CREATE'):
             job.deflock.acquire()
