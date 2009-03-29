@@ -381,6 +381,8 @@ class DirectoryUpdateJob(WorkerJob):
             fullpath,action=self.queue.pop(0)
             if action=='DELETE' or action=='MOVED_FROM':
                 ##todo: if the deleted item was a dir, we almost always won't get notification of deleted images in that dir
+                ##not obvious how to handle this because we don't know for sure that the removed item was a directory
+                ##if we did know, could just start a new verify job
                 print 'deleting',fullpath
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
