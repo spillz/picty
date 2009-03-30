@@ -430,22 +430,50 @@ class ImageBrowser(gtk.HBox):
                         (self.hide_item,self.render_icon(gtk.STOCK_CONVERT, gtk.ICON_SIZE_MENU)),
                         (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))]
 
+        self.sort_order=gtk.combo_box_new_text()
+        sort_items=['Date Taken','Date Last Modified','File Name','Shutter Speed','Aperture','ISO Speed','Folder']
+        for s in sort_items:
+            self.sort_order.append_text(s)
+        self.sort_order.show()
+
+        self.toolbar=gtk.Toolbar()
+        self.toolbar.append_item("Save Changes", "Saves all changes to image metadata in the collection (description, tags, image orientation etc)", None,
+            gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
+        self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to image metadata in the collection (description, tags, image orientation etc)", None,
+            gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED), self.revert_all_changes, user_data=None)
+        self.toolbar.append_space()
+        self.toolbar.append_item("Select All", "Selects all images in the current view", None,
+            gtk.ToolButton(gtk.STOCK_ADD), self.select_all, user_data=None)
+        self.toolbar.append_item("Select None", "Deselects all images in the current view", None,
+            gtk.ToolButton(gtk.STOCK_CANCEL), self.select_none, user_data=None)
+        self.toolbar.append_item("Upload Selected", "Uploads the selected images", None,
+            gtk.ToolButton(gtk.STOCK_CONNECT), self.select_upload, user_data=None)
+        self.toolbar.append_item("Copy Selected", "Copies the selected images in the current view to a new folder location", None,
+            gtk.ToolButton(gtk.STOCK_COPY), self.select_copy, user_data=None)
+        self.toolbar.append_item("Move Selected", "Moves the selected images in the current view to a new folder location", None,
+            gtk.ToolButton(gtk.STOCK_CUT), self.select_move, user_data=None)
+        self.toolbar.append_item("Delete Selected", "Deletes the selected images in the current view", None,
+            gtk.ToolButton(gtk.STOCK_DELETE), self.select_delete, user_data=None)
+        self.toolbar.append_space()
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the order that images appear in", None, None,
+            self.set_sort_order, None)
+        self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
+            gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
+        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
+            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
+        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
+            gtk.ToolButton(gtk.STOCK_FIND_AND_REPLACE), self.show_filters, user_data=None)
+        self.toolbar.append_space()
+        self.toolbar.show()
+
         self.imarea=gtk.DrawingArea()
         self.Resize(160,200)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
-        #(w,h)=self.vscroll.get_size_request()
-        #print 'Vscroll size',w,h
-        #self.vscroll.set_size_request(50,h)
-
-        ##st=self.vscroll.get_style()
-        ##stw=2*self.vscroll.style_get_property('slider-width')
-        ##print st,stw
-        ##st.set_property('slider-width',stw)
-        ##self.vscroll.set_style(st)
 
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
+        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
         self.vbox.pack_start(self.status_bar,False)
         self.vbox.show()
@@ -456,7 +484,6 @@ class ImageBrowser(gtk.HBox):
         hpane.show()
         self.pack_start(hpane)
         self.pack_start(self.vscroll,False)
-        #self.connect('cache-image-added',self.AddImage)
         self.connect("destroy", self.Destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
@@ -478,6 +505,42 @@ class ImageBrowser(gtk.HBox):
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def save_all_changes(self,widget):
+        print 'save_all_changes',widget
+
+    def revert_all_changes(self,widget):
+        print 'revert_all_changes',widget
+
+    def select_all(self,widget):
+        print 'select_all',widget
+
+    def select_none(self,widget):
+        print 'select_none',widget
+
+    def select_upload(self,widget):
+        print 'select_all',widget
+
+    def select_copy(self,widget):
+        print 'select_all',widget
+
+    def select_move(self,widget):
+        print 'select_all',widget
+
+    def select_delete(self,widget):
+        print 'select_all',widget
+
+    def set_sort_order(self,widget):
+        print 'set_sort_order',widget
+
+    def add_filter(self,widget):
+        print 'add_filter',widget
+
+    def show_filters(self,widget):
+        print 'show_filters',widget
+
+    def reverse_sort_order(self,widget):
+        print 'reverse_sort_order',widget
 
     def UpdateStatus(self,progress,message):
         self.status_bar.show()
