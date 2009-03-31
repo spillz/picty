@@ -49,6 +49,7 @@ except:
 import settings
 import backend
 import imagemanip
+import imageinfo
 import fileops
 
 settings.init() ##todo: make this call on first import inside the module
@@ -431,9 +432,11 @@ class ImageBrowser(gtk.HBox):
                         (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))]
 
         self.sort_order=gtk.combo_box_new_text()
-        sort_items=['Date Taken','Date Last Modified','File Name','Shutter Speed','Aperture','ISO Speed','Folder']
-        for s in sort_items:
+        for s in imageinfo.sort_keys:
             self.sort_order.append_text(s)
+        self.sort_order.set_active(0)
+        self.sort_order.set_property("can-focus",False)
+        self.sort_order.connect("changed",self.set_sort_key)
         self.sort_order.show()
 
         self.toolbar=gtk.Toolbar()
@@ -455,8 +458,8 @@ class ImageBrowser(gtk.HBox):
         self.toolbar.append_item("Delete Selected", "Deletes the selected images in the current view", None,
             gtk.ToolButton(gtk.STOCK_DELETE), self.select_delete, user_data=None)
         self.toolbar.append_space()
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the order that images appear in", None, None,
-            self.set_sort_order, None)
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the image attribute that determines the order images appear in", None, None,
+            None, None)
         self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
             gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
         self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
@@ -513,25 +516,41 @@ class ImageBrowser(gtk.HBox):
         print 'revert_all_changes',widget
 
     def select_all(self,widget):
-        print 'select_all',widget
+        self.tm.select_all_items()
 
     def select_none(self,widget):
-        print 'select_none',widget
+        self.tm.select_all_items(False)
 
     def select_upload(self,widget):
         print 'select_all',widget
 
+    def dir_pick(self,prompt):
+        sel_dir=''
+        fcd=gtk.FileChooserDialog(title=prompt, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
+        fcd.set_current_folder(os.environ['HOME'])
+        response=fcd.run()
+        if response == gtk.RESPONSE_OK:
+            sel_dir=fcd.get_filename()
+        fcd.destroy()
+        return sel_dir
+
     def select_copy(self,widget):
-        print 'select_all',widget
+        sel_dir=self.dir_pick('Copy Selection: Select destination folder')
+        fileops.worker.copy(self.tm.view,sel_dir,self.UpdateStatus)
 
     def select_move(self,widget):
-        print 'select_all',widget
+        sel_dir=self.dir_pick('Move Selection: Select destination folder')
+        fileops.worker.move(self.tm.view,sel_dir,self.UpdateStatus)
 
     def select_delete(self,widget):
-        print 'select_all',widget
+        fileops.worker.delete(self.tm.view,self.UpdateStatus)
 
-    def set_sort_order(self,widget):
+    def set_sort_key(self,widget):
         print 'set_sort_order',widget
+        key=widget.get_active_text()
+        if key:
+            self.tm.rebuild_view(key)
 
     def add_filter(self,widget):
         print 'add_filter',widget
@@ -540,7 +559,10 @@ class ImageBrowser(gtk.HBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        print 'reverse_sort_order',widget
+        if self.ind_viewed>=0:
+            self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+        self.tm.view.reverse=not self.tm.view.reverse
+        self.RefreshView()
 
     def UpdateStatus(self,progress,message):
         self.status_bar.show()
@@ -694,7 +716,10 @@ class ImageBrowser(gtk.HBox):
         if cmd>=0:
             self.hover_cmds[cmd][0](ind)
         else:
-            self.ViewImage(ind)
+            self.select_item(ind)
+##todo: if double left click then view image
+##todo: if right click spawn a context menu
+#            self.ViewImage(ind)
         self.lock.release()
 
     def recalc_hover_ind(self,x,y):
@@ -847,7 +872,10 @@ class ImageBrowser(gtk.HBox):
         i=imgind
         neededitem=None
         while i<self.ind_view_last:
-            item=self.tm.view(i)
+            if 0<=i<len(self.tm.view):
+                item=self.tm.view(i)
+            else:
+                break
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
             if self.ind_viewed==i:

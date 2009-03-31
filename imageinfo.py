@@ -1,6 +1,7 @@
 import bisect
 import threading
 import datetime
+import os.path
 
 class Item(list):
     def __init__(self,filename,mtime):
@@ -82,6 +83,53 @@ def sort_ctime(item):
         return date
     except:
         return datetime.datetime(1900,1,1)
+
+def sort_fname(item):
+    return os.path.split(item.filename)[1].lower()
+
+def sort_folder(item):
+    return item.filename
+
+def try_rational(value):
+    print 'key value',value,type(value)
+    if value:
+        try:
+            value=str(value).split('/')
+            return 1.0*int(value[0])/int(value[1])
+        except:
+            try:
+                return float(value[0])
+            except:
+                return -1
+    else:
+        return -1
+
+def sort_speed(item):
+    return try_rational(item.meta['Exif.Photo.ExposureTime'])
+
+def sort_aperture(item):
+    return try_rational(item.meta['Exif.Photo.FNumber'])
+
+def sort_focal(item):
+    return try_rational(item.meta['Exif.Photo.FocalLength'])
+
+def sort_orient(item):
+    try:
+        orient=int(item.meta['Exif.Image.Orientation'])
+    except:
+        orient=1
+    return orient
+
+sort_keys={
+        'Date Taken':sort_ctime,
+        'Date Last Modified':sort_mtime,
+        'File Name':sort_fname,
+        'Folder':sort_folder,
+        'Shutter Speed':sort_speed,
+        'Aperture':sort_aperture,
+#        'ISO Speed':sort_iso,
+        'Focal Length':sort_focal
+        }
 
 
 class Index(list):

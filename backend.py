@@ -277,10 +277,10 @@ class BuildViewJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'BUILDVIEW')
         self.pos=0
-        self.done=False
+        self.cancel=False
 
-    def reset(self):
-        self.pos=0
+    def cancel_job(self):
+        self.cancel=True
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
@@ -288,7 +288,7 @@ class BuildViewJob(WorkerJob):
         if i==0:
             del view[:]
         browser.lock.release()
-        while i<len(collection) and jobs.ishighestpriority(self):
+        while i<len(collection) and jobs.ishighestpriority(self) and not self.cancel:
             item=collection[i]
             if item.meta==None:
                 imagemanip.load_metadata(item)
@@ -300,10 +300,41 @@ class BuildViewJob(WorkerJob):
             if i%20==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Building Image View - %i of %i'%(i,len(collection)))
             i+=1
-        if i<len(collection):
+        if i<len(collection) and not self.cancel:
             self.pos=i
         else:
             self.pos=0
+            self.cancel=False
+            self.unsetevent()
+            gobject.idle_add(browser.UpdateStatus,2,'View Build complete')
+
+class SelectionJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'SELECTION')
+        self.pos=0
+        self.cancel=False
+        self.limit_to_view=True
+        self.select=False
+
+    def __call__(self,jobs,collection,view,browser):
+        i=self.pos
+        select=self.select
+        if self.limit_to_view:
+            listitems=view
+        else:
+            listitems=collection
+        while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            listitems(i).selected=select
+            if i%100==0:
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting Images - %i of %i'%(i,len(listitems)))
+            i+=1
+        if i<len(listitems) and not self.cancel:
+            self.pos=i
+        else:
+            gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting Images - %i of %i'%(i,len(listitems)))
+            gobject.idle_add(browser.RefreshView)
+            self.pos=0
+            self.cancel=False
             self.unsetevent()
 
 
@@ -447,6 +478,7 @@ class WorkerJobCollection(dict):
             LoadCollectionJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
+            SelectionJob(),
             DirectoryUpdateJob()
             ]
         for i in range(len(self.collection)):
@@ -571,5 +603,24 @@ class Worker:
     def recreate_thumb(self,item):
         job=self.jobs['RECREATETHUMB']
         job.queue.append(item)
+        job.setevent()
+        self.event.set()
+
+    def select_all_items(self,select=True,view=True):
+        job=self.jobs['SELECTION']
+        if job.state:
+            return False
+        job.pos=0
+        job.select=select
+        job.limit_to_view=view
+        job.setevent()
+        self.event.set()
+        return True
+
+    def rebuild_view(self,sort_key):
+        job=self.jobs['BUILDVIEW']
+        if job.state:
+            job.cancel()
+        self.view.key_cb=imageinfo.sort_keys[sort_key]
         job.setevent()
         self.event.set()

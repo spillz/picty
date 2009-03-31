@@ -2,6 +2,7 @@ import os
 import os.path
 import threading
 import gobject
+import settings
 
 ## contains a list of errors
 ## each error is a tuple (optype,imagepath,[destpath])
@@ -16,6 +17,7 @@ class Worker:
         self.kill=False
 
     def _delete(self):
+        trashdir=os.path.join(settings.image_dirs[0],'.trash')
         for i in range(len(self.items)):
             item=self.items[i]
             if self.kill:
@@ -24,9 +26,15 @@ class Worker:
             if self.cb:
                 gobject.idle_add(self.cb,1.0*i/len(self.items),'Deleting '+item.filename)
             try:
-                os.remove(item.filename)
+                empty,imdir,relpath=item.filename.partition(settings.image_dirs[0])
+                relpath=relpath.strip('/')
+                if relpath:
+                    dest=os.path.join(trashdir,relpath)
+                    if os.path.exists(dest):
+                        os.remove(dest)
+                    os.renames(item.filename,dest)
             except:
-                fileoperrors.append('del',item)
+                fileoperrors.append(('del',item))
         if self.cb:
             gobject.idle_add(self.cb,2.0,'Finished Deleting')
         self.active=False
@@ -41,7 +49,7 @@ class Worker:
             for i in range(len(items)):
                 item=items(i)
                 if item.selected:
-                    self.items.append(items(i))
+                    self.items.append(item)
         else:
             self.items=items
         self.cb=cb
@@ -50,21 +58,22 @@ class Worker:
         return True
 
     def _copy(self):
-        for i in range(len(items)):
+        for i in range(len(self.items)):
             item=self.items[i]
             if self.kill:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(cb,1.0*i/len(items),'Copying '+item.filename)
+                gobject.idle_add(self.cb,1.0*i/len(self.items),'Copying '+item.filename)
             try:
                 fin=open(item.filename,'rb')
-                fout=open(item.filename,'wb') ##todo: check exists (and what about perms/attribs?)
-                fin.write(fout.read())
+                fout=open(os.path.join(self.destdir,os.path.split(item.filename)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
+                fout.write(fin.read())
             except:
-                fileoperrors.append('copy',item,destdir)
+                fileoperrors.append(('copy',item,self.destdir))
         if self.cb:
             gobject.idle_add(self.cb,2.0,'Finished Copying')
+        print 'finished copying'
 
     def copy(self,items,destdir,cb,selected_only=True):
         if self.active:
@@ -76,26 +85,27 @@ class Worker:
             for i in range(len(items)):
                 item=items(i)
                 if item.selected:
-                    self.items.append(items(i))
+                    self.items.append(item)
         else:
             self.items=items
         self.cb=cb
+        self.destdir=destdir
         self.thread=threading.Thread(target=self._copy)
         self.thread.start()
         return True
 
     def _move(self):
-        for i in range(len(items)):
+        for i in range(len(self.items)):
             item=self.items[i]
             if self.kill:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(cb,1.0*i/len(items),'Moving '+item.filename)
+                gobject.idle_add(self.cb,1.0*i/len(self.items),'Moving '+item.filename)
             try:
-                os.renames(item.filename,os.path.join(destdir,os.path.getfilname(item.filename)))
+                os.renames(item.filename,os.path.join(self.destdir,os.path.split(item.filename)[1]))
             except:
-                fileoperrors.append('move',item,destdir)
+                fileoperrors.append(('move',item,self.destdir))
         if self.cb:
             gobject.idle_add(self.cb,2.0,'Finished Moving')
 
@@ -113,6 +123,7 @@ class Worker:
         else:
             self.items=items
         self.cb=cb
+        self.destdir=destdir
         self.thread=threading.Thread(target=self._move)
         self.thread.start()
         return True
