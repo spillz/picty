@@ -620,7 +620,7 @@ class Worker:
     def rebuild_view(self,sort_key):
         job=self.jobs['BUILDVIEW']
         if job.state:
-            job.cancel()
+            job.cancel_job()
         self.view.key_cb=imageinfo.sort_keys[sort_key]
         job.setevent()
         self.event.set()

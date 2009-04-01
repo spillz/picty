@@ -2,7 +2,7 @@
 
 '''
 
-    Light Weight Image Browser (temporary name)
+    phraymd
     Copyright (C) 2009  Damien Moore
 
 License:
@@ -470,6 +470,7 @@ class ImageBrowser(gtk.HBox):
         self.toolbar.show()
 
         self.imarea=gtk.DrawingArea()
+        self.imarea.set_property("can-focus",True)
         self.Resize(160,200)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
@@ -498,6 +499,10 @@ class ImageBrowser(gtk.HBox):
         self.imarea.connect("scroll-event",self.ScrollSignalPane)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.imarea.connect("button-press-event",self.ButtonPress)
+        self.imarea.grab_focus()
+
+        self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
+        self.imarea.connect("key-press-event",self.KeyPress)
 
         #self.set_flags(gtk.CAN_FOCUS)
 
@@ -547,9 +552,9 @@ class ImageBrowser(gtk.HBox):
         fileops.worker.delete(self.tm.view,self.UpdateStatus)
 
     def set_sort_key(self,widget):
-        print 'set_sort_order',widget
-        key=widget.get_active_text()
-        if key:
+       self.imarea.grab_focus()
+       key=widget.get_active_text()
+       if key:
             self.tm.rebuild_view(key)
 
     def add_filter(self,widget):
@@ -628,6 +633,7 @@ class ImageBrowser(gtk.HBox):
             self.vscroll.set_value(self.scrolladj.lower)
         if event.keyval==65367: #end
             self.vscroll.set_value(self.scrolladj.upper)
+        return True
 
     def ViewImage(self,ind):
         self.ind_viewed=ind
@@ -708,6 +714,7 @@ class ImageBrowser(gtk.HBox):
         fileops.worker.delete([item],None,False)
 
     def ButtonPress(self,obj,event):
+        self.imarea.grab_focus()
         self.lock.acquire()
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
@@ -945,8 +952,6 @@ class MainWindow:
 #        self.imcache=ImageCache()
         self.drawing_area = ImageBrowser()
 
-        self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
-        self.window.connect("key-press-event",self.drawing_area.KeyPress)
 
         vb=gtk.VBox()
         vb.pack_start(self.drawing_area)
