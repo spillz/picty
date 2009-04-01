@@ -91,27 +91,41 @@ def sort_folder(item):
     return item.filename
 
 def try_rational(value):
-    print 'key value',value,type(value)
+#    print 'key value',value,type(value)
     if value:
         try:
-            value=str(value).split('/')
             return 1.0*int(value[0])/int(value[1])
         except:
             try:
-                return float(value[0])
+                val=str(value).split('/')
+                if val[0] and val[1]:
+                    return 1.0*int(val[0])/int(val[1])
+                return float(val[0])
             except:
-                return -1
+                try:
+                    return float(value)
+                except:
+                    return -1
     else:
         return -1
 
 def sort_speed(item):
-    return try_rational(item.meta['Exif.Photo.ExposureTime'])
+    try:
+        return try_rational(item.meta['Exif.Photo.ExposureTime'])
+    except:
+        return None
 
 def sort_aperture(item):
-    return try_rational(item.meta['Exif.Photo.FNumber'])
+    try:
+        return try_rational(item.meta['Exif.Photo.FNumber'])
+    except:
+        return None
 
 def sort_focal(item):
-    return try_rational(item.meta['Exif.Photo.FocalLength'])
+    try:
+        return try_rational(item.meta['Exif.Photo.FocalLength'])
+    except:
+        return None
 
 def sort_orient(item):
     try:
@@ -120,10 +134,18 @@ def sort_orient(item):
         orient=1
     return orient
 
+def sort_keyword(item):
+    try:
+        return item.meta['Xmp.dc.subject']
+    except:
+        return None
+
+
 sort_keys={
         'Date Taken':sort_ctime,
         'Date Last Modified':sort_mtime,
         'File Name':sort_fname,
+        'Orientation':sort_orient,
         'Folder':sort_folder,
         'Shutter Speed':sort_speed,
         'Aperture':sort_aperture,
@@ -132,14 +154,38 @@ sort_keys={
         }
 
 
+def mtime_filter(item,criteria):
+    val=sort_mtime(item)
+    if criteria[0]<=val<=criteria[1]:
+        return True
+    return False
+
+def ctime_filter(item,criteria):
+    val=sort_ctime(item)
+    if criteria[0]<=val<=criteria[1]:
+        return True
+    return False
+
+def keyword_filter(item,criteria):
+    val=sort_keyword(item)
+    if criteria[0]=='in':
+        if val and criteria[1] in val.lower():
+            return True
+
 class Index(list):
     def __init__(self,key_cb=sort_mtime,items=[]):
         list.__init__(self)
         for item in items:
             self.add(key_cb(item),item)
         self.key_cb=key_cb
+        self.filters=None
+##        self.filters=[(keyword_filter,('in','tom'))] #tests out the filtering mechanism
         self.reverse=False
     def add(self,key,item):
+        if self.filters:
+            for f in self.filters:
+                if not f[0](item,f[1]):
+                    return
         bisect.insort(self,[key,item])
     def remove(self,key,item):
         ind=bisect.bisect_left(self,[key,item])

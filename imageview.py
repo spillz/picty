@@ -938,6 +938,9 @@ class MainWindow:
         self.window.set_default_size(680, 400)
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
+        sett=gtk.settings_get_default()
+        sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"medusa:main") #gtk.ICON_SIZE_MENU
+        sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"medusa:main")
 
 #        self.imcache=ImageCache()
         self.drawing_area = ImageBrowser()
