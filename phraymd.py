@@ -859,7 +859,7 @@ class ImageBrowser(gtk.HBox):
         grey = colormap.alloc('grey')
         gc_s = drawable.new_gc(foreground=grey,background=grey)
         white = colormap.alloc('white')
-        gc_v = drawable.new_gc(foreground=white,background=white)
+        gc_v = drawable.new_gc(foreground=white)
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
         drawable.set_background(black)
@@ -920,6 +920,10 @@ class ImageBrowser(gtk.HBox):
                 #    neededitem=self.tm.view[i]
 #                thumbsneeded.insert(0,self.tm.view[i])
             if self.hover_ind==i or item.selected:
+                a,b=imageinfo.text_descr(item)
+                l=self.imarea.create_pango_layout(a+'\n'+b)
+                drawable.draw_layout(gc,x+self.pad/4,y+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
+                print imageinfo.text_descr(item)
                 l=len(self.hover_cmds)
                 if item.selected and self.hover_ind!=i:
                     l=1

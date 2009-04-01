@@ -92,11 +92,11 @@ class Collection(list):
         self.__dict__.update(dict)   # update attributes
 
 
-def sort_mtime(item):
+def get_mtime(item):
     return item.mtime
 
 
-def sort_ctime(item):
+def get_ctime(item):
     try:
         date=item.meta["Exif.Photo.DateTimeOriginal"]
         if type(date)==str:
@@ -105,13 +105,17 @@ def sort_ctime(item):
     except:
         return datetime.datetime(1900,1,1)
 
-def sort_fname(item):
+def get_fname(item):
     return os.path.split(item.filename)[1].lower()
 
-def sort_folder(item):
+def get_folder(item):
     return item.filename
 
-def try_rational(value):
+def try_rational(item,key):
+    try:
+        value=item.meta[key]
+    except:
+        return None
 #    print 'key value',value,type(value)
     if value:
         try:
@@ -128,73 +132,101 @@ def try_rational(value):
                 except:
                     return -1
     else:
-        return -1
-
-def sort_speed(item):
-    try:
-        return try_rational(item.meta['Exif.Photo.ExposureTime'])
-    except:
         return None
 
-def sort_aperture(item):
-    try:
-        return try_rational(item.meta['Exif.Photo.FNumber'])
-    except:
-        return None
+def get_speed(item):
+    return try_rational(item,'Exif.Photo.ExposureTime')
 
-def sort_focal(item):
-    try:
-        return try_rational(item.meta['Exif.Photo.FocalLength'])
-    except:
-        return None
+def get_aperture(item):
+    return try_rational(item,'Exif.Photo.FNumber')
 
-def sort_orient(item):
+def get_focal(item):
+    return try_rational(item,'Exif.Photo.FocalLength')
+
+def get_orient(item):
     try:
         orient=int(item.meta['Exif.Image.Orientation'])
     except:
         orient=1
     return orient
 
-def sort_keyword(item):
+def get_orient2(item):
+    try:
+        return int(item.meta['Exif.Image.Orientation'])
+    except:
+        return None
+
+def get_keyword(item):
     try:
         return item.meta['Xmp.dc.subject']
     except:
         return None
 
 
+def text_descr(item):
+    try:
+        header=item.meta["Exif.Image.ImageDescription"]
+    except:
+        header=get_fname(item)
+    details=''
+    val=get_ctime(item)
+    if val>datetime.datetime(1900,1,1):
+        details+='Created: '+str(val)
+    else:
+        details+='Modified: '+str(get_mtime(item))
+    val=get_focal(item)
+    exposure=''
+    if val:
+        exposure+='%imm '%(int(val),)
+    val=get_aperture(item)
+    if val:
+        exposure+='f/%3.1f'%(val,)
+    val=get_speed(item)
+    if val:
+        exposure+=' %3.1fs'%(val,)
+    if exposure:
+        details+='\n'+exposure
+    val=str(get_keyword(item))
+    if val:
+        if len(val)<30:
+            details=details+'\n'+val
+        else:
+            details=details+'\n'+val[:28]+'...'
+    return (header,details)
+
 sort_keys={
-        'Date Taken':sort_ctime,
-        'Date Last Modified':sort_mtime,
-        'File Name':sort_fname,
-        'Orientation':sort_orient,
-        'Folder':sort_folder,
-        'Shutter Speed':sort_speed,
-        'Aperture':sort_aperture,
-#        'ISO Speed':sort_iso,
-        'Focal Length':sort_focal
+        'Date Taken':get_ctime,
+        'Date Last Modified':get_mtime,
+        'File Name':get_fname,
+        'Orientation':get_orient,
+        'Folder':get_folder,
+        'Shutter Speed':get_speed,
+        'Aperture':get_aperture,
+#        'ISO Speed':get_iso,
+        'Focal Length':get_focal
         }
 
 
 def mtime_filter(item,criteria):
-    val=sort_mtime(item)
+    val=get_mtime(item)
     if criteria[0]<=val<=criteria[1]:
         return True
     return False
 
 def ctime_filter(item,criteria):
-    val=sort_ctime(item)
+    val=get_ctime(item)
     if criteria[0]<=val<=criteria[1]:
         return True
     return False
 
 def keyword_filter(item,criteria):
-    val=sort_keyword(item)
+    val=get_keyword(item)
     if criteria[0]=='in':
         if val and criteria[1] in val.lower():
             return True
 
 class Index(list):
-    def __init__(self,key_cb=sort_mtime,items=[]):
+    def __init__(self,key_cb=get_mtime,items=[]):
         list.__init__(self)
         for item in items:
             self.add(key_cb(item),item)
