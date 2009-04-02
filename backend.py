@@ -383,20 +383,20 @@ class SaveViewJob(WorkerJob):
                         if item.meta_backup!=item.meta:
                             item.meta=item.meta_backup
                         del item.meta_backup
-                    ##todo: need to recreate thumb if orientation changed
-                    try:
-                        orient=item.meta['Exif.Image.Orientation']
-                    except:
-                        orient=None
-                    try:
-                        orient_backup=item.meta_backup['Exif.Image.Orientation']
-                    except:
-                        orient_backup=None
-                    if orient!=orient_backup:
-                        item.thumb=None
-                        job=jobs['RECREATETHUMB']
-                        job.queue.append(item)
-                        job.setevent()
+                        ##todo: need to recreate thumb if orientation changed
+                        try:
+                            orient=item.meta['Exif.Image.Orientation']
+                        except:
+                            orient=None
+                        try:
+                            orient_backup=item.meta_backup['Exif.Image.Orientation']
+                        except:
+                            orient_backup=None
+                        if orient!=orient_backup:
+                            item.thumb=None
+                            job=jobs['RECREATETHUMB']
+                            job.queue.append(item)
+                            job.setevent()
             if i%100==0:
                 if self.save:
                     gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving Changed Images in View - %i of %i'%(i,len(listitems)))
