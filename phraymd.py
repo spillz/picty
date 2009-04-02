@@ -921,8 +921,9 @@ class ImageBrowser(gtk.HBox):
 #                thumbsneeded.insert(0,self.tm.view[i])
             if self.hover_ind==i or item.selected:
                 a,b=imageinfo.text_descr(item)
-                l=self.imarea.create_pango_layout(a+'\n'+b)
-                drawable.draw_layout(gc,x+self.pad/4,y+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
+                l=self.imarea.create_pango_layout('')
+                l.set_markup('<b><big>'+a+'</big></b>\n'+b)
+                drawable.draw_layout(gc,x+self.pad/4,y+self.pad+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
                 print imageinfo.text_descr(item)
                 l=len(self.hover_cmds)
                 if item.selected and self.hover_ind!=i:

@@ -171,9 +171,9 @@ def text_descr(item):
     details=''
     val=get_ctime(item)
     if val>datetime.datetime(1900,1,1):
-        details+='Created: '+str(val)
+        details+='Date: '+str(val)
     else:
-        details+='Modified: '+str(get_mtime(item))
+        details+='Mod: '+str(get_mtime(item))
     val=get_focal(item)
     exposure=''
     if val:
@@ -189,7 +189,7 @@ def text_descr(item):
     val=str(get_keyword(item))
     if val:
         if len(val)<30:
-            details=details+'\n'+val
+            details=details+'\nTags: '+val
         else:
             details=details+'\n'+val[:28]+'...'
     return (header,details)
