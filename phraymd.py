@@ -931,17 +931,17 @@ class ImageBrowser(gtk.HBox):
                 l=len(self.hover_cmds)
                 offx=self.pad/4
                 offy=self.pad/4
-                if 'meta_backup' in item.__dict__ and self.hover_ind!=i:
-                    for j in range(l):
-                        if j==0 or j==5:
-                            drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
-                        offx+=self.hover_cmds[j][1].get_width()+self.pad/4
-                else:
-                    if item.selected and self.hover_ind!=i:
-                        l=0
-                    for j in range(l):
+                show=[True for r in range(l)]
+                if self.hover_ind!=i:
+                    for q in (1,2,3,4,5,6):
+                        show[q]=False
+                if 'meta_backup' not in item.__dict__:
+                    show[0]=False
+                    show[5]=False
+                for j in range(l):
+                    if show[j]:
                         drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
-                        offx+=self.hover_cmds[j][1].get_width()+self.pad/4
+                    offx+=self.hover_cmds[j][1].get_width()+self.pad/4
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth+self.pad>=self.width:
