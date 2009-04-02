@@ -33,6 +33,7 @@ tags=(
 ("Exif.Image.Orientation","Orientation",False),
 ("Exif.Photo.ExposureTime","Exposure Time",False),
 ("Exif.Photo.FNumber","FNumber",False),
+("Exif.Pentax.ISO","ISO Speed",False),
 ("Exif.Photo.ExposureProgram","ExposureProgram",False),
 #("Exif.Photo.ShutterSpeedValue","ShutterSpeedValue"),
 #("Exif.Photo.ApertureValue","ApertureValue"),

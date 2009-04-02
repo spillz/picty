@@ -359,6 +359,61 @@ class SelectionJob(WorkerJob):
             self.unsetevent()
 
 
+class SaveViewJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'SAVEVIEW')
+        self.pos=0
+        self.cancel=False
+        self.selected_only=False
+        self.save=True
+
+    def __call__(self,jobs,collection,view,browser):
+        i=self.pos
+        select=self.select
+        listitems=view
+        while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            if not self.selected_only or listitems(i).selected:
+                if self.save:
+                    if 'meta_backup' in item.__dict__:
+                        if item.meta_backup!=item.meta:
+                            imagemanip.save_metadata(item)
+                        del item.meta_backup
+                else:
+                    if 'meta_backup' in item.__dict__:
+                        if item.meta_backup!=item.meta:
+                            item.meta=item.meta_backup
+                        del item.meta_backup
+                    ##todo: need to recreate thumb if orientation changed
+                    try:
+                        orient=item.meta['Exif.Image.Orientation']
+                    except:
+                        orient=None
+                    try:
+                        orient_backup=item.meta_backup['Exif.Image.Orientation']
+                    except:
+                        orient_backup=None
+                    if orient!=orient_backup:
+                        item.thumb=None
+                        job=jobs['RECREATETHUMB']
+                        job.queue.append(item)
+                        job.setevent()
+                        self.event.set()
+            if i%100==0:
+                if self.save:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving Changed Images in View - %i of %i'%(i,len(listitems)))
+                else:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Reverting Images in View - %i of %i'%(i,len(listitems)))
+            i+=1
+        if i<len(listitems) and not self.cancel:
+            self.pos=i
+        else:
+            gobject.idle_add(browser.UpdateStatus,2.0,'Saving images done'%(i,len(listitems)))
+            gobject.idle_add(browser.RefreshView)
+            self.pos=0
+            self.cancel=False
+            self.unsetevent()
+
+
 class VerifyImagesJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'VERIFYIMAGES')
@@ -499,6 +554,7 @@ class WorkerJobCollection(dict):
             LoadCollectionJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
+            SaveViewJob(),
             SelectionJob(),
             DirectoryUpdateJob()
             ]
@@ -643,5 +699,15 @@ class Worker:
         if job.state:
             job.cancel_job()
         self.view.key_cb=imageinfo.sort_keys[sort_key]
+        job.setevent()
+        self.event.set()
+
+    def save_or_revert_view(self,save=True,selected_only=False):
+        job=self.jobs['SAVEVIEW']
+        if job.state:
+            return False
+        job.pos=0
+        job.selected_only=selected_only
+        job.save=save
         job.setevent()
         self.event.set()

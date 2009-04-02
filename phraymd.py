@@ -423,12 +423,12 @@ class ImageBrowser(gtk.HBox):
         self.ind_view_last=1
         self.ind_viewed=-1
         self.hover_ind=-1
-        self.hover_cmds=[(self.select_item,self.render_icon(gtk.STOCK_ADD, gtk.ICON_SIZE_MENU)),
+        self.hover_cmds=[(self.select_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
                         (self.view_item,self.render_icon(gtk.STOCK_ZOOM_FIT, gtk.ICON_SIZE_MENU)),
                         (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_left,self.render_icon(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_right,self.render_icon(gtk.STOCK_GO_DOWN, gtk.ICON_SIZE_MENU)),
-                        (self.hide_item,self.render_icon(gtk.STOCK_CONVERT, gtk.ICON_SIZE_MENU)),
+                        (self.hide_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
                         (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))]
 
         self.sort_order=gtk.combo_box_new_text()
@@ -515,10 +515,10 @@ class ImageBrowser(gtk.HBox):
         #self.Resize(600,300)
 
     def save_all_changes(self,widget):
-        print 'save_all_changes',widget
+        self.tm.save_or_revert_view()
 
     def revert_all_changes(self,widget):
-        print 'revert_all_changes',widget
+        self.tm.save_or_revert_view(False)
 
     def select_all(self,widget):
         self.tm.select_all_items()
@@ -527,7 +527,7 @@ class ImageBrowser(gtk.HBox):
         self.tm.select_all_items(False)
 
     def select_upload(self,widget):
-        print 'select_all',widget
+        print 'upload',widget
 
     def dir_pick(self,prompt):
         sel_dir=''
@@ -752,6 +752,8 @@ class ImageBrowser(gtk.HBox):
 
     def RefreshView(self):
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        if self.ind_viewed>=0:
+            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
     def UpdateView(self):
         self.UpdateDimensions()
@@ -919,20 +921,27 @@ class ImageBrowser(gtk.HBox):
                 #if not neededitem and not item.thumb and not  item.cannot_thumb:
                 #    neededitem=self.tm.view[i]
 #                thumbsneeded.insert(0,self.tm.view[i])
-            if self.hover_ind==i or item.selected:
-                a,b=imageinfo.text_descr(item)
-                l=self.imarea.create_pango_layout('')
-                l.set_markup('<b><big>'+a+'</big></b>\n'+b)
-                drawable.draw_layout(gc,x+self.pad/4,y+self.pad+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
-                print imageinfo.text_descr(item)
+            if self.hover_ind==i or ('meta_backup' in item.__dict__) or item.selected:
+                if self.hover_ind==i or item.selected:
+                    a,b=imageinfo.text_descr(item)
+                    l=self.imarea.create_pango_layout('')
+                    l.set_markup('<b><big>'+a+'</big></b>\n'+b)
+                    drawable.draw_layout(gc,x+self.pad/4,y+self.pad+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
+#                    print imageinfo.text_descr(item)
                 l=len(self.hover_cmds)
-                if item.selected and self.hover_ind!=i:
-                    l=1
                 offx=self.pad/4
                 offy=self.pad/4
-                for j in range(l):
-                    drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
-                    offx+=self.hover_cmds[j][1].get_width()+self.pad/4
+                if 'meta_backup' in item.__dict__ and self.hover_ind!=i:
+                    for j in range(l):
+                        if j==0 or j==5:
+                            drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
+                        offx+=self.hover_cmds[j][1].get_width()+self.pad/4
+                else:
+                    if item.selected and self.hover_ind!=i:
+                        l=0
+                    for j in range(l):
+                        drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
+                        offx+=self.hover_cmds[j][1].get_width()+self.pad/4
             i+=1
             x+=self.thumbwidth+self.pad
             if x+self.thumbwidth+self.pad>=self.width:
