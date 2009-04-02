@@ -369,9 +369,9 @@ class SaveViewJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
-        select=self.select
         listitems=view
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            item=listitems(i)
             if not self.selected_only or listitems(i).selected:
                 if self.save:
                     if 'meta_backup' in item.__dict__:
@@ -397,7 +397,6 @@ class SaveViewJob(WorkerJob):
                         job=jobs['RECREATETHUMB']
                         job.queue.append(item)
                         job.setevent()
-                        self.event.set()
             if i%100==0:
                 if self.save:
                     gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving Changed Images in View - %i of %i'%(i,len(listitems)))
@@ -407,7 +406,7 @@ class SaveViewJob(WorkerJob):
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(browser.UpdateStatus,2.0,'Saving images done'%(i,len(listitems)))
+            gobject.idle_add(browser.UpdateStatus,2.0,'Saving images done')
             gobject.idle_add(browser.RefreshView)
             self.pos=0
             self.cancel=False
