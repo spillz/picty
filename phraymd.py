@@ -460,7 +460,7 @@ class ImageBrowser(gtk.VBox):
         self.ind_viewed=-1
         self.hover_ind=-1
         self.hover_cmds=[(self.select_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
-                        (self.view_item,self.render_icon(gtk.STOCK_ZOOM_FIT, gtk.ICON_SIZE_MENU)),
+                        (self.launch_item,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
                         (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_left,self.render_icon(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_right,self.render_icon(gtk.STOCK_GO_DOWN, gtk.ICON_SIZE_MENU)),
@@ -720,8 +720,10 @@ class ImageBrowser(gtk.VBox):
         item.selected=not item.selected
         self.RefreshView()
 
-    def view_item(self,ind):
-        self.ViewImage(ind)
+    def launch_item(self,ind):
+        item=self.tm.view(ind)
+        print 'launching',settings.edit_command_line+" "+item.filename
+        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
 
     def edit_item(self,ind):
         item=self.tm.view(ind)
@@ -749,7 +751,6 @@ class ImageBrowser(gtk.VBox):
     def hide_item(self,ind):
         item=self.tm.view(ind)
         subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
-        pass
 
     def delete_item(self,ind):
         item=self.tm.view(ind)
