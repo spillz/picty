@@ -475,6 +475,10 @@ class ImageBrowser(gtk.VBox):
         self.sort_order.connect("changed",self.set_sort_key)
         self.sort_order.show()
 
+        self.filter_entry=gtk.Entry()
+        self.filter_entry.connect("activate",self.set_filter_text)
+        self.filter_entry.show()
+
         self.toolbar=gtk.Toolbar()
         self.toolbar.append_item("Save Changes", "Saves all changes to image metadata in the collection (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
@@ -498,11 +502,13 @@ class ImageBrowser(gtk.VBox):
             None, None)
         self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
             gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
-        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
-            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
-        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
-            gtk.ToolButton(gtk.STOCK_FIND_AND_REPLACE), self.show_filters, user_data=None)
-        self.toolbar.append_space()
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
+            None, None)
+#        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
+#            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
+#        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
+#            gtk.ToolButton(gtk.STOCK_FIND_AND_REPLACE), self.show_filters, user_data=None)
+#        self.toolbar.append_space()
         self.toolbar.show()
 
         self.imarea=gtk.DrawingArea()
@@ -591,11 +597,15 @@ class ImageBrowser(gtk.VBox):
     def select_delete(self,widget):
         fileops.worker.delete(self.tm.view,self.UpdateStatus)
 
+    def set_filter_text(self,widget):
+        self.set_sort_key(widget)
+
     def set_sort_key(self,widget):
        self.imarea.grab_focus()
-       key=widget.get_active_text()
-       if key:
-            self.tm.rebuild_view(key)
+       key=self.sort_order.get_active_text()
+       filter_text=self.filter_entry.get_text()
+       print 'sort&filter',key,filter_text
+       self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):
         print 'add_filter',widget

@@ -244,10 +244,16 @@ def ctime_filter(item,criteria):
     return False
 
 def keyword_filter(item,criteria):
-    val=get_keyword(item)
-    if criteria[0]=='in':
-        if val and criteria[1] in val.lower():
+    test=criteria[1]
+    for t in test:
+        if t in item.filename.lower():
             return True
+    for k,v in item.meta.iteritems():
+        if v:
+            for t in test:
+                if t in str(v).lower():
+                    return True
+    return False
 
 class Index(list):
     def __init__(self,key_cb=get_mtime,items=[]):
@@ -290,6 +296,8 @@ class Index(list):
             return True
         return False
     def __call__(self,index):
+        if index>=len(self):
+            return
         if self.reverse:
             return self[len(self)-1-index][1]
         else:

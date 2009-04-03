@@ -689,11 +689,19 @@ class Worker:
         self.event.set()
         return True
 
-    def rebuild_view(self,sort_key):
+    def rebuild_view(self,sort_key,filter_text=''):
         job=self.jobs['BUILDVIEW']
         if job.state:
             job.cancel_job()
         self.view.key_cb=imageinfo.sort_keys[sort_key]
+        print 'filter',filter_text
+        filter_text=filter_text.strip()
+        if filter_text:
+            text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
+            print 'filter:',text_keys
+            self.view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
+        else:
+            self.view.filters=None
         job.setevent()
         self.event.set()
 
