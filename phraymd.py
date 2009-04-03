@@ -54,6 +54,43 @@ import fileops
 
 settings.init() ##todo: make this call on first import inside the module
 
+class MetaDialog(gtk.Dialog):
+    def __init__(self,item):
+        gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
+        self.set_title(item.filename)
+        tags=[t[0:2] for t in exif.tags if t[2]]
+        rows=len(tags)
+        table = gtk.Table(rows=rows, columns=2, homogeneous=False)
+        self.item=item
+        r=0
+        for k,v in tags:
+            try:
+                print k,v
+                try:
+                    val=item.meta[k]
+                except:
+                    val=''
+                self.add_meta_row(table,k,v,val,r)
+            except:
+                None
+            r+=1
+        table.show_all()
+        self.vbox.pack_start(table)
+    def meta_changed(self,widget,key):
+        self.item.set_meta_key(key,widget.get_text())
+    def add_meta_row(self,table,key,label,data,row,writable=True):
+        child1=gtk.Label(label)
+        table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
+               xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+        if writable:
+            child2=gtk.Entry()
+            child2.set_text(data)
+            child2.connect("changed",self.meta_changed,key)
+        else:
+            child2=gtk.Label(data)
+        table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
+               xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+
 
 class ImageLoader:
     def __init__(self,viewer):
@@ -132,6 +169,9 @@ class ImageViewer(gtk.VBox):
         self.meta_table=self.CreateMetaTable()
         self.worker=worker
 
+        self.change_block=False
+
+
         self.meta_box=gtk.VBox()
         self.button_save=gtk.Button("Save",gtk.STOCK_SAVE)
         self.button_revert=gtk.Button("Revert",gtk.STOCK_REVERT_TO_SAVED)
@@ -204,8 +244,9 @@ class ImageViewer(gtk.VBox):
         return stable
 
     def UpdateMetaTable(self,item):
+        self.change_block=True
         try:
-            enable=self.item.meta_changed
+            enable=item.meta_changed
             self.button_save.set_sensitive(enable)
             self.button_revert.set_sensitive(enable)
         except:
@@ -232,8 +273,11 @@ class ImageViewer(gtk.VBox):
             except:
                 print 'error updating meta table'
                 print 'values',value,type(value)
+        self.change_block=False
 
     def MetadataChanged(self,widget,key):
+        if self.change_block:
+            return
         enable=self.item.set_meta_key(key,widget.get_text())
         self.button_save.set_sensitive(enable)
         self.button_revert.set_sensitive(enable)
@@ -681,7 +725,8 @@ class ImageBrowser(gtk.VBox):
 
     def edit_item(self,ind):
         item=self.tm.view(ind)
-        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
+        self.dlg=MetaDialog(item)
+        self.dlg.show()
 
     def rotate_item_left(self,ind):
         item=self.tm.view(ind)
@@ -703,6 +748,7 @@ class ImageBrowser(gtk.VBox):
 
     def hide_item(self,ind):
         item=self.tm.view(ind)
+        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
         pass
 
     def delete_item(self,ind):

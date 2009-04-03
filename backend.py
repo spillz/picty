@@ -377,7 +377,7 @@ class SaveViewJob(WorkerJob):
                     if item.meta_changed:
                         imagemanip.save_metadata(item)
                 else:
-                    if not item.changed:
+                    if item.meta_changed:
                         try:
                             orient=item.meta['Exif.Image.Orientation']
                         except:
