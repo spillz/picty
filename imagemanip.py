@@ -181,6 +181,7 @@ def load_metadata(item):
     except:
         print 'Error reading metadata for',item.filename
         item.meta=None
+    item.mark_meta_saved()
 
 
 def save_metadata(item):
@@ -195,6 +196,7 @@ def save_metadata(item):
         rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename
+    item.mark_meta_saved()
 
 
 def save_metadata_key(item,key,value):

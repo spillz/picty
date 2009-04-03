@@ -374,16 +374,10 @@ class SaveViewJob(WorkerJob):
             item=listitems(i)
             if not self.selected_only or listitems(i).selected:
                 if self.save:
-                    if 'meta_backup' in item.__dict__:
-                        if item.meta_backup!=item.meta:
-                            imagemanip.save_metadata(item)
-                        del item.meta_backup
+                    if item.meta_changed:
+                        imagemanip.save_metadata(item)
                 else:
-                    if 'meta_backup' in item.__dict__:
-                        if item.meta_backup!=item.meta:
-                            item.meta=item.meta_backup
-                        del item.meta_backup
-                        ##todo: need to recreate thumb if orientation changed
+                    if not item.changed:
                         try:
                             orient=item.meta['Exif.Image.Orientation']
                         except:
@@ -392,6 +386,8 @@ class SaveViewJob(WorkerJob):
                             orient_backup=item.meta_backup['Exif.Image.Orientation']
                         except:
                             orient_backup=None
+                        item.meta_revert()
+                        ##todo: need to recreate thumb if orientation changed
                         if orient!=orient_backup:
                             item.thumb=None
                             job=jobs['RECREATETHUMB']

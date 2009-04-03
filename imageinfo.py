@@ -39,8 +39,30 @@ class Item(list):
         self.image=None
         self.cannot_thumb=False
         self.selected=False
+        self.meta_changed=False
     def key(self):
         return 1
+    def meta_revert(self):
+        if self.meta_changed:
+            self.meta=self.meta_backup
+            del self.meta_backup
+        self.meta_changed=False
+    def mark_meta_saved(self):
+        if self.meta_changed:
+            del self.meta_backup
+        self.meta_changed=False
+    def set_meta_key(self,key,value):
+        if not self.meta_changed:
+            self.meta_backup=self.meta.copy()
+            self.meta_changed=True
+        if key in self.meta and key not in self.meta_backup and value=='':
+            del self.meta[key]
+        else:
+            self.meta[key]=value
+        if self.meta==self.meta_backup:
+            del self.meta_backup
+            self.meta_changed=False
+        return self.meta_changed
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         del odict['thumbsize']
@@ -56,6 +78,8 @@ class Item(list):
         self.thumbsize=None
         self.thumb=None
         self.thumbrgba=False
+        if 'meta_changed' not in self.__dict__:
+            self.meta_changed=False
         if 'thumburi' not in self.__dict__:
             self.thumburi=None
         self.qview=None

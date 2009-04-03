@@ -205,7 +205,7 @@ class ImageViewer(gtk.VBox):
 
     def UpdateMetaTable(self,item):
         try:
-            enable=self.item.meta_backup!=self.item.meta
+            enable=self.item.meta_changed
             self.button_save.set_sensitive(enable)
             self.button_revert.set_sensitive(enable)
         except:
@@ -234,33 +234,23 @@ class ImageViewer(gtk.VBox):
                 print 'values',value,type(value)
 
     def MetadataChanged(self,widget,key):
-        if 'meta_backup' not in self.item.__dict__:
-            self.item.meta_backup=self.item.meta.copy()
-        self.item.meta[key]=widget.get_text()
-        if key in self.item.meta and key not in self.item.meta_backup and widget.get_text()=='':
-            del self.item.meta[key]
-        enable=self.item.meta!=self.item.meta_backup ##TODO: only do the comp on writable keys AND '' == missing
+        enable=self.item.set_meta_key(key,widget.get_text())
         self.button_save.set_sensitive(enable)
         self.button_revert.set_sensitive(enable)
         print key,widget.get_text()
 
     def MetadataSave(self,widget):
         item=self.item
-        if 'meta_backup' in item.__dict__:
-            if item.meta_backup!=item.meta:
-                imagemanip.save_metadata(item)
-            del item.meta_backup
+        if item.meta_changed:
+            imagemanip.save_metadata(item)
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.UpdateMetaTable(item)
 
     def MetadataRevert(self,widget):
         item=self.item
-        if 'meta_backup' in item.__dict__:
-            if item.meta_backup!=item.meta:
-                item.meta=item.meta_backup
-            del item.meta_backup
-        ##todo: need to recreate thumb if orientation changed
+        if not item.changed:
+            return
         try:
             orient=item.meta['Exif.Image.Orientation']
         except:
@@ -269,6 +259,8 @@ class ImageViewer(gtk.VBox):
             orient_backup=item.meta_backup['Exif.Image.Orientation']
         except:
             orient_backup=None
+        item.meta_revert()
+        ##todo: need to recreate thumb if orientation changed
         if orient!=orient_backup:
             item.thumb=None
             self.worker.recreate_thumb(item)
@@ -402,13 +394,13 @@ class ImageViewer(gtk.VBox):
 #        gtk.HBox.__init__(self)
 #        gtk.ProgressBar()
 
-class ImageBrowser(gtk.HBox):
+class ImageBrowser(gtk.VBox):
     '''
     a widget designed to rapidly display a collection of objects
     from an image cache
     '''
     def __init__(self):
-        gtk.HBox.__init__(self)
+        gtk.VBox.__init__(self)
         self.Config()
         self.lock=threading.Lock()
         self.tm=backend.Worker(self)
@@ -477,7 +469,7 @@ class ImageBrowser(gtk.HBox):
 
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
-        self.vbox.pack_start(self.toolbar,False)
+#        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
         self.vbox.pack_start(self.status_bar,False)
         self.vbox.show()
@@ -486,8 +478,12 @@ class ImageBrowser(gtk.HBox):
         hpane.add1(self.iv)
         hpane.add2(self.vbox)
         hpane.show()
-        self.pack_start(hpane)
-        self.pack_start(self.vscroll,False)
+        hbox=gtk.HBox()
+        hbox.show()
+        hbox.pack_start(hpane)
+        hbox.pack_start(self.vscroll,False)
+        self.pack_start(self.toolbar,False,False)
+        self.pack_start(hbox)
         self.connect("destroy", self.Destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
@@ -719,11 +715,17 @@ class ImageBrowser(gtk.HBox):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
-        cmd=self.get_hover_command(ind,event.x,event.y)
-        if cmd>=0:
-            self.hover_cmds[cmd][0](ind)
+        if event.x>=(self.thumbheight+self.pad)*self.horizimgcount:
+            ind=-1
         else:
-            self.select_item(ind)
+            if event.type==gtk.gdk._2BUTTON_PRESS:
+                self.ViewImage(ind)
+            if event.type==gtk.gdk.BUTTON_PRESS:
+                cmd=self.get_hover_command(ind,event.x,event.y)
+                if cmd>=0:
+                    self.hover_cmds[cmd][0](ind)
+                else:
+                    self.select_item(ind)
 ##todo: if double left click then view image
 ##todo: if right click spawn a context menu
 #            self.ViewImage(ind)
@@ -733,6 +735,8 @@ class ImageBrowser(gtk.HBox):
         ind=(int(self.offsety)+int(y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
+        if x>=(self.thumbheight+self.pad)*self.horizimgcount:
+            ind=-1
         return ind
 
     def MouseMotion(self,obj,event):
@@ -921,7 +925,7 @@ class ImageBrowser(gtk.HBox):
                 #if not neededitem and not item.thumb and not  item.cannot_thumb:
                 #    neededitem=self.tm.view[i]
 #                thumbsneeded.insert(0,self.tm.view[i])
-            if self.hover_ind==i or ('meta_backup' in item.__dict__) or item.selected:
+            if self.hover_ind==i or item.meta_changed or item.selected:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     l=self.imarea.create_pango_layout('')
@@ -935,7 +939,7 @@ class ImageBrowser(gtk.HBox):
                 if self.hover_ind!=i:
                     for q in (1,2,3,4,5,6):
                         show[q]=False
-                if 'meta_backup' not in item.__dict__:
+                if not item.meta_changed:
                     show[0]=False
                     show[5]=False
                 for j in range(l):
