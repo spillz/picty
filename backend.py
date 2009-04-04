@@ -317,8 +317,8 @@ class BuildViewJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-            if i%20==0:
                 gobject.idle_add(browser.RefreshView)
+            if i%20==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Building Image View - %i of %i'%(i,len(collection)))
             i+=1
         if i<len(collection) and not self.cancel:
