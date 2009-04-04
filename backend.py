@@ -112,7 +112,7 @@ class CollectionUpdateJob(WorkerJob):
                 if view.del_item(item):
                     imagemanip.load_metadata(item)
                     view.add_item(item)
-                    gobject.idle_add(browser.UpdateView)
+                    gobject.idle_add(browser.RefreshView)
             if not imagemanip.has_thumb(item):
                 imagemanip.make_thumb(item)
                 gobject.idle_add(browser.RefreshView)
@@ -317,8 +317,8 @@ class BuildViewJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-                gobject.idle_add(browser.UpdateView)
             if i%20==0:
+                gobject.idle_add(browser.RefreshView)
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Building Image View - %i of %i'%(i,len(collection)))
             i+=1
         if i<len(collection) and not self.cancel:
@@ -327,6 +327,7 @@ class BuildViewJob(WorkerJob):
             self.pos=0
             self.cancel=False
             self.unsetevent()
+            gobject.idle_add(browser.RefreshView)
             gobject.idle_add(browser.UpdateStatus,2,'View Build complete')
 
 class SelectionJob(WorkerJob):
@@ -431,19 +432,19 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-                gobject.idle_add(browser.UpdateView)
+                gobject.idle_add(browser.RefreshView)
             if not imagemanip.has_thumb(item):
 #                print 'making thumb...',
                 imagemanip.make_thumb(item)
 #                print 'done!'
-                gobject.idle_add(browser.UpdateView)
+                gobject.idle_add(browser.RefreshView)
             ##print 'verifying',item.filename,os.path.isdir(item.filename)
             if not os.path.exists(item.filename) or os.path.isdir(item.filename):
                 browser.lock.acquire()
                 del collection[i]
                 browser.lock.release()
                 del_view_item(view,browser,item)
-                gobject.idle_add(browser.UpdateView)
+                gobject.idle_add(browser.RefreshView)
                 ##TODO: Notify viewer/browser of update
                 continue
             mtime=os.path.getmtime(item.filename)
@@ -459,7 +460,7 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-                gobject.idle_add(browser.UpdateView)
+                gobject.idle_add(browser.RefreshView)
             i+=1
             #time.sleep(0.001)
         self.countpos=i
@@ -499,7 +500,7 @@ class DirectoryUpdateJob(WorkerJob):
                         if j>=0:
                             del view[j]
                     browser.lock.release()
-                    gobject.idle_add(browser.UpdateView)
+                    gobject.idle_add(browser.RefreshView)
             if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
@@ -522,7 +523,7 @@ class DirectoryUpdateJob(WorkerJob):
                             browser.lock.acquire()
                             view.add_item(item)
                             browser.lock.release()
-                            gobject.idle_add(browser.UpdateView)
+                            gobject.idle_add(browser.RefreshView)
                     else:
                         item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
                         imagemanip.load_metadata(item)
@@ -532,7 +533,7 @@ class DirectoryUpdateJob(WorkerJob):
                         browser.lock.release()
                         if not imagemanip.has_thumb(item):
                             imagemanip.make_thumb(item)
-                        gobject.idle_add(browser.UpdateView)
+                        gobject.idle_add(browser.RefreshView)
         if len(self.queue)==0:
             self.unsetevent()
                 #todo: update browser/viewer
