@@ -308,6 +308,7 @@ class BuildViewJob(WorkerJob):
         browser.lock.acquire()
         if i==0:
             del view[:]
+        lastrefresh=i
         browser.lock.release()
         while i<len(collection) and jobs.ishighestpriority(self) and not self.cancel:
             item=collection[i]
@@ -317,7 +318,8 @@ class BuildViewJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-            if i%20==0:
+            if i-lastrefresh>20:
+                lastrefresh=i
                 gobject.idle_add(browser.RefreshView)
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Building Image View - %i of %i'%(i,len(collection)))
             i+=1
@@ -423,20 +425,11 @@ class VerifyImagesJob(WorkerJob):
             if i%20==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images - %i of %i'%(i,len(collection)))
             if item.meta==None:
-#                print 'loading metadata'
-#                print item.meta
-#                import sys
-#                sys.exit()
                 del_view_item(view,browser,item)
                 imagemanip.load_metadata(item) ##todo: check if exists already
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-                gobject.idle_add(browser.RefreshView)
-            if not imagemanip.has_thumb(item):
-#                print 'making thumb...',
-                imagemanip.make_thumb(item)
-#                print 'done!'
                 gobject.idle_add(browser.RefreshView)
             ##print 'verifying',item.filename,os.path.isdir(item.filename)
             if not os.path.exists(item.filename) or os.path.isdir(item.filename):
@@ -455,8 +448,8 @@ class VerifyImagesJob(WorkerJob):
                 item.qview=None
                 item.qview_size=None
                 imagemanip.load_metadata(item)
-                if not imagemanip.has_thumb(item):
-                    imagemanip.make_thumb(item)
+                item.thumb=None
+                item.thumburi=None
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
@@ -469,6 +462,31 @@ class VerifyImagesJob(WorkerJob):
             self.countpos=0
             gobject.idle_add(browser.UpdateStatus,2,'Verification complete')
             print 'image verification complete'
+            jobs['MAKETHUMBS'].setevent()
+
+
+class MakeThumbsJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'MAKETHUMBS')
+        self.countpos=0
+
+    def __call__(self,jobs,collection,view,browser):
+        i=self.countpos  ##todo: make sure this gets initialized
+        while i<len(collection) and jobs.ishighestpriority(self):
+            item=collection[i]
+            if i%20==0:
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Creating Missing Thumbnails - %i of %i'%(i,len(collection)))
+            if not imagemanip.has_thumb(item):
+                imagemanip.make_thumb(item)
+                gobject.idle_add(browser.RefreshView)
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Creating Missing Thumbnails - %i of %i'%(i,len(collection)))
+            i+=1
+            #time.sleep(0.001)
+        self.countpos=i
+        if i>=len(collection):
+            self.unsetevent()
+            self.countpos=0
+            gobject.idle_add(browser.UpdateStatus,2,'Thumbnailing complete')
 
 
 class DirectoryUpdateJob(WorkerJob):
@@ -544,7 +562,6 @@ class WorkerJobCollection(dict):
         self.collection=[
             WorkerJob('QUIT'),
             ThumbnailJob(),
-            RecreateThumbJob(),
             CollectionUpdateJob(),
             BuildViewJob(),
             LoadCollectionJob(),
@@ -552,7 +569,9 @@ class WorkerJobCollection(dict):
             WalkDirectoryJob(),
             SaveViewJob(),
             SelectionJob(),
-            DirectoryUpdateJob()
+            DirectoryUpdateJob(),
+            RecreateThumbJob(),
+            MakeThumbsJob()
             ]
         for i in range(len(self.collection)):
             self[self.collection[i].name]=self.collection[i]

@@ -1,7 +1,53 @@
+'''
+exif.py
 
+This module describes the exif, iptc and xmp metadata used by the program
+'''
 
 ##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
 ##todo: merge Iptc.Application2.Keywords with Xmp.dc.subject
+#apptags defines the application tags, which are created from and written to the
+#each entry in the tuple is itself a tuple containing:
+# * The short name of the tag (to be used in the program)
+# * The display name of the tag
+# * User Editable (TRUE/FALSE)
+# * The callback to convert to string and back (tuple, str, datetime, int, float)
+# * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
+
+#apptags=(
+#("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
+#("Title","Title",True,conv_str,("Xmp.dc.title",)),
+#("ImageDescription","Image Description",True,conv_str,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
+#("Tags","Tags",True,conv_keywords,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
+#("Artist","Artist",True,conv_str,("Iptc.Application2.Byline","Exif.Image.Artist")),
+#("Copyright","Copyright",True,conv_str,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+#("Rating",True,conv_int,("Xmp.xmp.Rating")),
+#("Album",True,conv_str,("Xmp.xmp.Label")),
+#("Make","Make",False,conv_str,("Exif.Image.Make",)),
+#("Model","Model",False,conv_str,("Exif.Image.Model",)),
+#("Orientation","Orientation",False,conv_int_tuple,("Exif.Image.Orientation",)),
+#("Exposure Time","Exposure Time",False,conv_int_tuple,("Exif.Photo.ExposureTime",)),
+#("FNumber","FNumber",False,conv_int_tuple,("Exif.Photo.FNumber",)),
+#("ExposureProgram","ExposureProgram",False,conv_str,("Exif.Photo.ExposureProgram",)),
+#("ExposureBiasValue","ExposureBiasValue",False,conv_str,("Exif.Photo.ExposureBiasValue",)),
+#("MeteringMode","MeteringMode",False,conv_str,("Exif.Photo.MeteringMode",)),
+#("Flash","Flash",False,conv_str,("Exif.Photo.Flash",)),
+#("FocalLength","FocalLength",False,conv_str,("Exif.Photo.FocalLength",)),
+#("SensingMethod","SensingMethod",False,conv_str,("Exif.Photo.SensingMethod",)),
+#("ExposureMode","ExposureMode",False,conv_str,("Exif.Photo.ExposureMode",)),
+#("WhiteBalance","WhiteBalance",False,conv_str,("Exif.Photo.WhiteBalance",)),
+#("DigitalZoomRatio","DigitalZoomRatio",False,conv_str,("Exif.Photo.DigitalZoomRatio",)),
+#("SceneCaptureType","SceneCaptureType",False,conv_str,("Exif.Photo.SceneCaptureType",)),
+#("GainControl","GainControl",False,conv_str,("Exif.Photo.GainControl",)),
+#("Contrast","Contrast",False,conv_str,("Exif.Photo.Contrast",)),
+#("Saturation","Saturation",False,conv_str,("Exif.Photo.Saturation",)),
+#("Sharpness","Sharpness",False,conv_str,("Exif.Photo.Sharpness",)),
+#("SubjectDistanceRange","SubjectDistanceRange",False,conv_str,("Exif.Photo.SubjectDistanceRange",)),
+#("Software","Software",False,conv_str,("Exif.Image.Software",)),
+#("IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
+#("ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
+#("Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
+#)
 
 writetags=(
 ("Exif.Image.ImageDescription","Image Description"),

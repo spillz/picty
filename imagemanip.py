@@ -30,6 +30,7 @@ import datetime
 import bisect
 import settings
 import imageinfo
+import os.path
 
 thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
 thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
@@ -45,7 +46,7 @@ def rotate_left(item):
         orient=item.meta['Exif.Image.Orientation']
     except:
         orient=1
-    item.meta['Exif.Image.Orientation']=settings.rotate_left_tx[orient]
+    item.set_meta_key('Exif.Image.Orientation',settings.rotate_left_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None
@@ -58,7 +59,7 @@ def rotate_right(item):
         orient=item.meta['Exif.Image.Orientation']
     except:
         orient=1
-    item.meta['Exif.Image.Orientation']=settings.rotate_right_tx[orient]
+    item.set_meta_key('Exif.Image.Orientation',settings.rotate_right_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None
@@ -139,7 +140,6 @@ def size_image(item,size,antialias=False):
         h=w*ih/iw
     if (w*h*iw*ih)==0:
         return False
-    print w,h,iw,ih
 #    t=time.time()
 #    image.draft(image.mode,(w,h))
 #    print 'draft time',time.time()-t
@@ -210,7 +210,7 @@ def save_metadata_key(item,key,value):
 
 
 def has_thumb(item):
-    if item.thumburi:
+    if item.thumburi and os.path.exists(item.thumburi):
         return True
     if not settings.maemo:
         uri = gnomevfs.get_uri_from_local_path(item.filename)
@@ -234,15 +234,14 @@ def delete_thumb(item):
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
-    if item.thumb==0:
-        item.thumburi=None
+    if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         return
-    ##todo: could also try extracting the thumb from the image
+    ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
     print 'making thumb',item
+    t=time.time()
     try:
         image=Image.open(item.filename)
-        #image.thumbnail((512,512))
         image.thumbnail((128,128),Image.ANTIALIAS)
     except:
         print 'creating FAILED thumbnail'
@@ -280,6 +279,7 @@ def make_thumb(item,interrupt_fn=None):
         return False
     uri=gnomevfs.get_uri_from_local_path(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
+    print 'successful thumb took',time.time()-t,'seconds'
     if item.thumb:
         item.thumburi=thumb_factory.lookup(uri,item.mtime)
         item.thumbsize=thumbsize
@@ -292,6 +292,7 @@ def make_thumb(item,interrupt_fn=None):
 def load_thumb(item):
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
+    image=None
     try:
         if settings.maemo:
             image = Image.open(item.filename)
@@ -301,8 +302,8 @@ def load_thumb(item):
             if not item.thumburi:
                 item.thumburi=thumb_factory.lookup(uri,item.mtime)
             if item.thumburi:
-                image = Image.open(item.thumburi)
-                s=image.size
+                image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+                s=(image.get_width(),image.get_height())
                 #image.thumbnail((128,128))
             else:
                 thumburi=thumb_factory_large.lookup(uri,item.mtime)
@@ -310,7 +311,7 @@ def load_thumb(item):
                     #print 'using large thumb'
                     image = Image.open(thumburi)
                     image.thumbnail((128,128))
-                else:
+                    image=gtk.gdk.pixbuf_new_from_data(image.tostring(), gtk.gdk.COLORSPACE_RGB, False, 8, image.size[0], image.size[1], 3*image.size[0])
                     #print 'full loading',fullpath
                     image=None
     except:
@@ -318,10 +319,10 @@ def load_thumb(item):
     thumb=None
     if image:
         try:
-            thumb=image.tostring()
+            thumb=image
         except:
             pass
     if thumb:
-        item.thumbsize=image.size
+        item.thumbsize=(image.get_width(),image.get_height())
         item.thumb=thumb
-        item.thumbrgba='A' in image.getbands()
+#        item.thumbrgba='A' in image.getbands()

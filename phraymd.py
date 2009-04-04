@@ -31,6 +31,7 @@ gtk.gdk.threads_init()
 
 import threading
 import os
+import os.path
 import subprocess
 import time
 import exif
@@ -519,6 +520,7 @@ class ImageBrowser(gtk.VBox):
 
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
+        self.status_bar.set_pulse_step(0.01)
 #        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
         self.vbox.pack_start(self.status_bar,False)
@@ -742,8 +744,6 @@ class ImageBrowser(gtk.VBox):
 
     def rotate_item_left(self,ind):
         item=self.tm.view(ind)
-        if 'meta_backup' not in item.__dict__:
-            item.meta_backup=item.meta.copy()
         imagemanip.rotate_left(item)
         self.UpdateThumbReqs()
         if ind==self.ind_viewed:
@@ -751,8 +751,6 @@ class ImageBrowser(gtk.VBox):
 
     def rotate_item_right(self,ind):
         item=self.tm.view(ind)
-        if 'meta_backup' not in item.__dict__:
-            item.meta_backup=item.meta.copy()
         imagemanip.rotate_right(item)
         self.UpdateThumbReqs()
         if ind==self.ind_viewed:
@@ -965,21 +963,22 @@ class ImageBrowser(gtk.VBox):
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
                 adjx=self.pad/2+(128-thumbwidth)/2
-                if item.thumbrgba:
-                    try:
-                        drawable.draw_rgb_32_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
-                                   gtk.gdk.RGB_DITHER_NONE,
-                                   item.thumb, -1, 0, 0)
-                    except:
-                        None
-                        #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
-                else:
-                    try:
-                        drawable.draw_rgb_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
-                                   gtk.gdk.RGB_DITHER_NONE,
-                                   item.thumb, -1, 0, 0)
-                    except:
-                        None
+                drawable.draw_pixbuf(gc, item.thumb, 0, 0,x+adjx,y+adjy)
+##                if item.thumbrgba:
+##                    try:
+##                        drawable.draw_rgb_32_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
+##                                   gtk.gdk.RGB_DITHER_NONE,
+##                                   item.thumb, -1, 0, 0)
+##                    except:
+##                        None
+##                        #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
+##                else:
+##                    try:
+##                        drawable.draw_rgb_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
+##                                   gtk.gdk.RGB_DITHER_NONE,
+##                                   item.thumb, -1, 0, 0)
+##                    except:
+##                        None
                         #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
 #            else:
 #                item=self.tm.view(i)
