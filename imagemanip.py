@@ -234,6 +234,9 @@ def delete_thumb(item):
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
+    if item.thumb==0:
+        item.thumburi=None
+        return
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
     print 'making thumb',item
@@ -273,6 +276,7 @@ def make_thumb(item,interrupt_fn=None):
         thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
     except:
         print 'error creating thumbnail',item.filename
+        item.thumb=0
         return False
     uri=gnomevfs.get_uri_from_local_path(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
