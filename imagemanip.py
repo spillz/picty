@@ -282,7 +282,7 @@ def make_thumb(item,interrupt_fn=None):
                 p.feed(imdata)
                 image = p.close()
                 print 'parse took',time.time()-t,'seconds'
-                image.thumbnail((128,128),Image.ANTIALIAS)
+                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
                 print 'thumb took',time.time()-t,'seconds'
             try:
                 orient=item.meta['Exif.Image.Orientation']

@@ -131,9 +131,10 @@ class RecreateThumbJob(WorkerJob):
                 if view.del_item(item):
                     imagemanip.load_metadata(item)
                     view.add_item(item)
-            imagemanip.make_thumb(item)
-            imagemanip.load_thumb(item)
-            gobject.idle_add(browser.RefreshView)
+            if item.meta!=None:
+                imagemanip.make_thumb(item)
+                imagemanip.load_thumb(item)
+                gobject.idle_add(browser.RefreshView)
         if len(self.queue)==0:
             self.unsetevent()
 
@@ -245,7 +246,7 @@ class WalkDirectoryJob(WorkerJob):
                 else:
                     i+=1
 
-            gobject.idle_add(browser.UpdateStatus,-1,'Searching for new images in '+root)
+            gobject.idle_add(browser.UpdateStatus,-1,'Scanning new images')
             for p in files: #may need some try, except blocks
                 ##todo: check if the item already exists in the collection
                 r=p.rfind('.')
@@ -305,6 +306,8 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW')
         self.pos=0
         self.cancel=False
+        self.sort_key='Date Last Modified'
+        self.filter_text=''
 
     def cancel_job(self):
         self.cancel=True
@@ -313,6 +316,13 @@ class BuildViewJob(WorkerJob):
         i=self.pos
         browser.lock.acquire()
         if i==0:
+            view.key_cb=imageinfo.sort_keys[self.sort_key]
+            filter_text=self.filter_text.strip()
+            if filter_text:
+                text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
+                view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
+            else:
+                view.filters=None
             del view[:]
         lastrefresh=i
         browser.lock.release()
@@ -719,15 +729,8 @@ class Worker:
         job=self.jobs['BUILDVIEW']
         if job.state:
             job.cancel_job()
-        self.view.key_cb=imageinfo.sort_keys[sort_key]
-        print 'filter',filter_text
-        filter_text=filter_text.strip()
-        if filter_text:
-            text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
-            print 'filter:',text_keys
-            self.view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
-        else:
-            self.view.filters=None
+        job.sort_key=sort_key
+        job.filter_text=filter_text
         job.setevent()
         self.event.set()
 
