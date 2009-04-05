@@ -31,6 +31,7 @@ import bisect
 import settings
 import imageinfo
 import os.path
+import os
 
 thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
 thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
@@ -243,58 +244,86 @@ def delete_thumb(item):
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
-    print 'try making thumb',item
+    if '.pef' in item.filename:
+        print 'try making thumb',item
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         return
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
-    print 'making thumb',item
+    if '.pef' in item.filename:
+        print 'making thumb',item
     t=time.time()
     try:
-        image=Image.open(item.filename)
-        image.thumbnail((128,128),Image.ANTIALIAS)
+        if '.pef' in item.filename:
+            print 'trying to thumb',item
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        mimetype=gnomevfs.get_mime_type(uri)
+        thumb_pb=None
+#        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
+        if not thumb_pb:
+            try:
+                image=Image.open(item.filename)
+                image.thumbnail((128,128),Image.ANTIALIAS)
+            except:
+                print 'first pass fail took',time.time()-t,'seconds'
+                cmd=settings.dcraw_cmd%(item.filename,)
+                print 'trying to thumb',item,cmd
+                imdata=os.popen(cmd).read()
+                print 'read took',time.time()-t,'seconds'
+                print 'opened cmd',len(imdata)
+#                pipe = subprocess.Popen(cmd, shell=True,
+#                        stdout=PIPE) ##, close_fds=True
+#                print pipe
+#                pipe=pipe.stdout
+#                print 'pipe opened'
+#                imdata=pipe.read()
+#                print 'pipe read'
+                p = ImageFile.Parser()
+                p.feed(imdata)
+                image = p.close()
+                print 'parse took',time.time()-t,'seconds'
+                image.thumbnail((128,128),Image.ANTIALIAS)
+                print 'thumb took',time.time()-t,'seconds'
+            try:
+                orient=item.meta['Exif.Image.Orientation']
+            except:
+                orient=1
+            if orient>1:
+                for method in settings.transposemethods[orient]:
+                    image=image.transpose(method)
+            thumbsize=image.size
+            thumb=image.tostring()
+            thumbrgba='A' in image.getbands()
+            try:
+                orient=item.meta['Exif.Image.Orientation']
+            except:
+                orient=1
+            width=thumbsize[0]
+            height=thumbsize[1]
+            if orient>1:
+                for method in settings.transposemethods[orient]:
+                    image=image.transpose(method)
+            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
     except:
-        print 'creating FAILED thumbnail'
+        print 'creating FAILED thumbnail',item
         item.thumbsize=(0,0)
         item.thumb=None
-        item.cannot_thumb=True
+        item.cannot_thumb=True ##TODO: check if this is used anywhere -- try to remove
         thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
         return False
-    try:
-        orient=item.meta['Exif.Image.Orientation']
-    except:
-        orient=1
-    if orient>1:
-        for method in settings.transposemethods[orient]:
-            image=image.transpose(method)
-    thumbsize=image.size
-    thumb=image.tostring()
-    thumbrgba='A' in image.getbands()
-    try:
-        orient=item.meta['Exif.Image.Orientation']
-    except:
-        orient=1
-    if orient>1:
-        for method in settings.transposemethods[orient]:
-            image=image.transpose(method)
-    width=thumbsize[0]
-    height=thumbsize[1]
+    width=thumb_pb.get_width()
+    height=thumb_pb.get_height()
 #    if height<128 and width<128:
 #        return False
-    try:
-        thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
-    except:
-        print 'error creating thumbnail',item.filename
-        item.thumb=0
-        return False
     uri=gnomevfs.get_uri_from_local_path(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
-    print 'successful thumb took',time.time()-t,'seconds'
+    item.thumburi=thumb_factory.lookup(uri,item.mtime)
+    if '.pef' in item.filename:
+        print 'successful thumb',item,'took',time.time()-t,'seconds'
     if item.thumb:
-        item.thumburi=thumb_factory.lookup(uri,item.mtime)
-        item.thumbsize=thumbsize
-        item.thumb=thumb
-        item.thumbrgba=thumbrgba
+        item.thumbsize=(width,height)
+        item.thumb=thumb_pb
+#        item.thumbrgba=thumbrgba ##todo: remove thumbrgba
         cache_thumb(item)
     return True
 
@@ -302,6 +331,8 @@ def make_thumb(item,interrupt_fn=None):
 def load_thumb(item):
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
+    if '.pef' in item.filename:
+        print 'loading',item
     image=None
     try:
         if settings.maemo:
@@ -332,7 +363,12 @@ def load_thumb(item):
             thumb=image
         except:
             pass
-    if thumb:
-        item.thumbsize=(image.get_width(),image.get_height())
+    if thumb!=None:
+        if '.pef' in item.filename:
+            print 'pef loaded',item,thumb,thumb.get_width(),thumb.get_height(),item.thumburi
+        item.thumbsize=(thumb.get_width(),thumb.get_height())
         item.thumb=thumb
+        return True
+    if '.pef' in item.filename:
+        print 'pef failed',item,thumb,item.thumburi
 #        item.thumbrgba='A' in image.getbands()

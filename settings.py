@@ -39,6 +39,7 @@ else:
     precache_count=500 ##not currently used
 
 edit_command_line='gimp'
+dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
 
 imagetypes=['jpg','jpeg','png']
 
