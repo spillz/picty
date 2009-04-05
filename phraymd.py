@@ -419,20 +419,21 @@ class ImageViewer(gtk.VBox):
             (iw,ih)=self.item.thumbsize
             x=(self.width-iw)/2
             y=(self.height-ih)/2
-            if self.item.thumbrgba:
-                try:
-                    drawable.draw_rgb_32_image(gc,x,y,iw,ih,
-                           gtk.gdk.RGB_DITHER_NONE,
-                           self.item.thumb, -1, 0, 0)
-                except:
-                    None
-            else:
-                try:
-                    drawable.draw_rgb_image(gc,x,y,iw,ih,
-                           gtk.gdk.RGB_DITHER_NONE,
-                           self.item.thumb, -1, 0, 0)
-                except:
-                    None
+            drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
+##            if self.item.thumbrgba:
+##                try:
+##                    drawable.draw_rgb_32_image(gc,x,y,iw,ih,
+##                           gtk.gdk.RGB_DITHER_NONE,
+##                           self.item.thumb, -1, 0, 0)
+##                except:
+##                    None
+##            else:
+##                try:
+##                    drawable.draw_rgb_image(gc,x,y,iw,ih,
+##                           gtk.gdk.RGB_DITHER_NONE,
+##                           self.item.thumb, -1, 0, 0)
+##                except:
+##                    None
 
 #class StatusBar(gtk.VBox):
 #    def __init__():
