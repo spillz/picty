@@ -253,7 +253,7 @@ class WalkDirectoryJob(WorkerJob):
                     continue
                 fullpath=os.path.join(root, p)
                 mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
-                if not mimetype.startswith('image'):
+                if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
                     continue
 #                print 'found mimetype',fullpath,mimetype
@@ -286,6 +286,12 @@ class WalkDirectoryJob(WorkerJob):
             print 'walk directory done'
             gobject.idle_add(browser.RefreshView)
             gobject.idle_add(browser.UpdateStatus,2,'Search complete')
+            if self.notify_items:
+                browser.lock.acquire()
+                for item in self.notify_items:
+                    collection.add(item)
+                browser.lock.release()
+                gobject.idle_add(browser.RefreshView)
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()

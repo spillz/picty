@@ -86,6 +86,12 @@ class Item(list):
         self.qview_size=None
         self.image=None
         self.selected=False
+        if self.meta:
+            try:
+                if self.meta['Exif.Image.Orientation']==0:
+                    print '###$$$###$$$###$$$###ZERO ORIENTATION',self.filename
+            except:
+                pass
 
 
 class Collection(list):

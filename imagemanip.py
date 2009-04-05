@@ -46,10 +46,15 @@ def rotate_left(item):
         orient=item.meta['Exif.Image.Orientation']
     except:
         orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
     item.set_meta_key('Exif.Image.Orientation',settings.rotate_left_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None
+    item.thumburi=None
+    print 'rotate left',item,'from',orient,'to',settings.rotate_left_tx[orient]
     make_thumb(item)
 
 
@@ -59,10 +64,14 @@ def rotate_right(item):
         orient=item.meta['Exif.Image.Orientation']
     except:
         orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
     item.set_meta_key('Exif.Image.Orientation',settings.rotate_right_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None
+    item.thumburi=None
     make_thumb(item)
 
 def cache_image(item):
@@ -234,6 +243,7 @@ def delete_thumb(item):
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
+    print 'try making thumb',item
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         return
     ##todo: could also try extracting the thumb from the image (essential for raw files)
