@@ -195,7 +195,7 @@ def get_keyword(item):
 
 def text_descr(item):
     try:
-        header=item.meta["Exif.Image.ImageDescription"]
+        header=item.meta["Xmp.dc.title"]
     except:
         header=get_fname(item)
     details=''
