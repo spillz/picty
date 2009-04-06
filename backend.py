@@ -578,7 +578,6 @@ class WorkerJobCollection(dict):
         self.collection=[
             WorkerJob('QUIT'),
             ThumbnailJob(),
-            CollectionUpdateJob(),
             BuildViewJob(),
             LoadCollectionJob(),
             VerifyImagesJob(),
@@ -587,6 +586,7 @@ class WorkerJobCollection(dict):
             SelectionJob(),
             DirectoryUpdateJob(),
             RecreateThumbJob(),
+            CollectionUpdateJob(),
             MakeThumbsJob()
             ]
         for i in range(len(self.collection)):
