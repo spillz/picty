@@ -49,12 +49,16 @@ This module describes the exif, iptc and xmp metadata used by the program
 #("Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
 #)
 
+
+##todo: remove this item -- currently used to define the keys to write in imagemanip.save_metadata
 writetags=(
+("Xmp.dc.title","Title"),
 ("Exif.Image.ImageDescription","Image Description"),
-("Exif.Photo.UserComment","UserComment"),
 ("Exif.Image.Artist","Artist"),
 ("Exif.Image.Copyright","Copyright"),
 ("Xmp.dc.subject","Tags"),
+("Iptc.Application2.Keywords","Keywords"),
+("Exif.Photo.UserComment","UserComment"),
 ("Exif.Image.ImageWidth","Width"),
 ("Exif.Image.ImageLength","Height"),
 ("Exif.Image.Orientation","Orientation")
@@ -67,9 +71,11 @@ tags=(
 ("Exif.Photo.DateTimeOriginal","DateTimeOriginal",False),
 ("Exif.Photo.DateTimeDigitized","DateTimeDigitized",False),
 #("Exif.Image.DocumentName","Document Name"),
+("Xmp.dc.title","Title",True),
 ("Exif.Image.ImageDescription","Image Description",True),
-("Exif.Photo.UserComment","UserComment",True),
 ("Xmp.dc.subject","Tags",True),
+("Iptc.Application2.Keywords","Keywords",True),
+("Exif.Photo.UserComment","UserComment",True),
 ("Exif.Image.Artist","Artist",True),
 ("Exif.Image.Copyright","Copyright",True),
 ("Exif.Image.Make","Make",False),
