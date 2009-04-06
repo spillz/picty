@@ -95,7 +95,7 @@ class Worker:
                 fileoperrors.append(('copy',item,self.destdir))
         if self.cb:
             gobject.idle_add(self.cb,2.0,'Finished Copying')
-        print 'finished copying'
+        self.active=False
 
     def copy(self,items,destdir,cb,selected_only=True):
         if self.active:
@@ -130,6 +130,7 @@ class Worker:
                 fileoperrors.append(('move',item,self.destdir))
         if self.cb:
             gobject.idle_add(self.cb,2.0,'Finished Moving')
+        self.active=False
 
     def move(self,items,destdir,cb,selected_only=True):
         if self.active:

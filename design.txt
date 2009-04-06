@@ -1,4 +1,7 @@
+PHRAYMD Design Document
+
 Image Photo database, indexing and filtering schema
+===================================================
 
 An Image is a structure describing an image identified by filename & mtime,
 with optional attributes including photo metadata, thumb and full size
@@ -9,12 +12,12 @@ The ImageCollection is a sorted list of Images, where the sort order is
 determined by the tuple (mtime,filename). Images are initially constructed from
 walking a selection of directories
 
-An Index is a sorted list of tuples (IndexVariable, Image) where the IndexVariable can be
+An Index is a sorted and/or filtered subset of the collection. The Index is a list with items that
+are tuples of the  form (IndexVariable, Image) where the IndexVariable can be
 mtime, filename, or any metadata. Indexes are used for the display of data in sorted order
 
-A Filter is a subset of an Index determined by FilterCriteria.
-
 GUI and Processing Elements
+===========================
 
 ImageBrowser: A thumbnail view of the image collection (sorted and/or
 filtered). Images can be viewed in the internal view, loaded into external
@@ -23,9 +26,9 @@ selected/deselected for batch operations.
 
 ImageViewer: A viewer and simple editor for single images.
 
-The ImageTracker is responsible for loading the image collection in a background thread.
+The Backend is responsible for loading the image collection in a background thread.
 * Initially the ImageLoader will walk the directory tree and find images
-* Found images are stored persistently
+* Found images are stored persistently (and loaded before future directory walks)
 * On new sessions, the store is loaded then checked against the tree for changes
 * The ImageTracker then enters a monitoring phase:
     * listens for changes to the file system for adds, deletes or changes to images,
@@ -45,47 +48,27 @@ Note that thumbs, metadata and fullsize image data are associated with Image
 items rather than the ImageViewer or ImageBrowser. This allows this data to
 be loaded on demand and cached.
 
+Backend Processing Logic
+===========================
 
+The collection and indexes are manipulated on a single background thread.
 
-### single worker thread version of program
+Notes:
+1. tasks are listed in order of priority
+2. all tasks should be interruptable by a higher priority task (i.e. check
+periodically for a kill state) but continue after the higher priority
+task completes. A task should also be cancellable (e.g. to reset the thumb
+cache request)
+3. tasks that change the imagecollection or index should use a lock during the change
+4. ui threads that access the ImageCollection or Index in a way that depends on it not
+changing should also use the lock
 
-Problem with this version is having to wait for full set of images to be found before
-user gets to interact.
-
-ImageTracker logic
-
-if imagestore:
-    open imagestore (pickle object)
-    loop ImageCollection:
-        verify image exists
-        no: drop it from ImageCollection
-walk tree:
-    is an image:
-        already in store:
-            if not verify mtime:
-                updateitem
-        else:
-            additem
-
-    create Image
-    notify viewer every xth Image
-start directory monitor
-wait for directory changes or index requests:
-    on directory change:
-        add, remove or update ImageCollection and Indexes
-    on index requests:
-        create sorted version of image
-    on thumb request:
-        create thumbnail of image (loading from cache or from full size image as necessary)
-    on image request:
-        load fullsize image
-
-
-### single worker thread version take 2
+Pseudo code for the collection managing worker thread:
 
 load imagestore ## may need to put this in the loop if it isn't fast enough
 start image monitor
-set verify images task to on
+set walk dir task to on
+set up inotify monitor for the image folder and all subfolders
 while true:
     if no pending tasks wait
 
@@ -104,14 +87,10 @@ while true:
         if done:
             notify requestor
         continue
-
-
 ## Lower priority tasks
     task == image collection task:
         task == verify images:
             remove deleted or changed images from the ImageCollection
-            if all images verified:
-                set walk directory task on
         task == walk directory:
             add new images
             get mtime, filename, filesize
@@ -120,17 +99,73 @@ while true:
                 set monitor state
         task == monitor request to add, remove or update images:
             add or remove images from ImageCollection and Index
-
 ## Lowest priority task
-    task == thumb cache request:
+    task == thumbnailing tasks:
         continue
-save imagestore
+    save imagestore
 
 
-tasks are listed in order of priority
-all tasks should be interruptable by a higher priority task (i.e. check
-periodically for a kill state) but continue after the higher priority
-task completes. A task should also be cancellable (e.g. to reset the thumb
-cache request)
-tasks that change the imagecollection should use a lock during the change
-ui threads that access the ImageCollection or Index should also use the lock
+Photo metadata
+==============
+
+The program uses the exiv2 lib to access image metadata, which includes EXIF, IPTC and XMP
+metadata standard. exiv2 provides read/write access for many types of images, but not all.
+
+In principle the PHRAYMD can provide read and write access to all metadata. However, only a
+subset of the metadata is interesting from a collection management standpoint: metadata that
+describe the images, place them in time (or location) or core photo.
+
+Need easy way to read/write
+
+
+Attributes Kept in Memory for Sort/Filter:
+
+Date Information:
+* Date Taken: "Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal"
+Descriptive Attributes:
+* Title:"Xmp.dc.title"
+* Description:"Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription"
+* Tags/Keywords:"Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment"
+* Artist:"Iptc.Application2.Byline","Exif.Image.Artist"
+* Copyright":"Iptc.Application2.Copyright","Exif.Image.Copyright"
+* Rating":"Xmp.xmp.Rating"
+* Album:"Xmp.xmp.Label"
+Photo Attributes:
+* Make:"Exif.Image.Make"
+* Model:"Exif.Image.Model"
+* Orientation:"Exif.Image.Orientation
+* Exposure Time:"Exif.Photo.ExposureTime
+* FNumber:"Exif.Photo.FNumber
+* ExposureProgram:"Exif.Photo.ExposureProgram
+* ExposureBiasValue:"Exif.Photo.ExposureBiasValue
+* MeteringMode:"Exif.Photo.MeteringMode
+* Flash:"Exif.Photo.Flash
+* FocalLength:"Exif.Photo.FocalLength
+* SensingMethod:"Exif.Photo.SensingMethod
+* ExposureMode:"Exif.Photo.ExposureMode
+* WhiteBalance:"Exif.Photo.WhiteBalance
+* DigitalZoomRatio:"Exif.Photo.DigitalZoomRatio
+* SceneCaptureType:"Exif.Photo.SceneCaptureType
+* GainControl:"Exif.Photo.GainControl
+* Contrast:Exif.Photo.Contrast
+* Saturation:"Exif.Photo.Saturation
+* Sharpness:Exif.Photo.Sharpness
+* SubjectDistanceRange:Exif.Photo.SubjectDistanceRange
+Digital Signature Info:
+* Software","Software",False,conv_str,("Exif.Image.Software",)),
+* IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
+* ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
+* Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
+
+
+Non metadata attributes
+=======================
+
+Other useful important attributes of images that are properties of the files themselves include:
+
+filename
+mtime (last modified time)
+height
+width
+size
+format (mimetype)
