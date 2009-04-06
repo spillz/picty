@@ -34,7 +34,6 @@ import os
 import os.path
 import subprocess
 import time
-import exif
 import datetime
 import bisect
 
@@ -47,11 +46,12 @@ except:
     import sys
     sys.exit()
 
-import settings
-import backend
-import imagemanip
-import imageinfo
-import fileops
+from phraymd import settings
+from phraymd import backend
+from phraymd import imagemanip
+from phraymd import imageinfo
+from phraymd import fileops
+from phraymd import exif
 
 settings.init() ##todo: make this call on first import inside the module
 

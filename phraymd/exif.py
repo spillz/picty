@@ -14,6 +14,34 @@ This module describes the exif, iptc and xmp metadata used by the program
 # * The callback to convert to string and back (tuple, str, datetime, int, float)
 # * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
 
+##The conv functions take a key and return a string representation of the metadata OR if value!=None convert the string value to a set of (metadata_key,value) tag pairs
+
+
+def conv_date_taken(item,metaobject,keys,value=None):
+    if value!=None:
+        return None
+    date=None
+    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
+        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
+        date=datetime.strptime(date)
+    if "Exif.Photo.DateTimeOriginal" in metaobject.exifKeys():
+        date=metaobject["Exif.Photo.DateTimeOriginal"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+    return date
+
+def get_ctime(item):
+    try:
+        date=item.meta["Exif.Photo.DateTimeOriginal"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+        return date
+    except:
+        return datetime.datetime(1900,1,1)
+
+
+
+
 #apptags=(
 #("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
 #("Title","Title",True,conv_str,("Xmp.dc.title",)),
