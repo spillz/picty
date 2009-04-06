@@ -244,18 +244,12 @@ def delete_thumb(item):
 
 def make_thumb(item,interrupt_fn=None):
     '''this assumes jpg'''
-    if '.pef' in item.filename:
-        print 'try making thumb',item
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         return
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
-    if '.pef' in item.filename:
-        print 'making thumb',item
     t=time.time()
     try:
-        if '.pef' in item.filename:
-            print 'trying to thumb',item
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mimetype=gnomevfs.get_mime_type(uri)
         thumb_pb=None
@@ -318,8 +312,6 @@ def make_thumb(item,interrupt_fn=None):
     uri=gnomevfs.get_uri_from_local_path(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
-    if '.pef' in item.filename:
-        print 'successful thumb',item,'took',time.time()-t,'seconds'
     if item.thumb:
         item.thumbsize=(width,height)
         item.thumb=thumb_pb
@@ -331,8 +323,6 @@ def make_thumb(item,interrupt_fn=None):
 def load_thumb(item):
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
-    if '.pef' in item.filename:
-        print 'loading',item
     image=None
     try:
         if settings.maemo:
@@ -364,11 +354,7 @@ def load_thumb(item):
         except:
             pass
     if thumb!=None:
-        if '.pef' in item.filename:
-            print 'pef loaded',item,thumb,thumb.get_width(),thumb.get_height(),item.thumburi
         item.thumbsize=(thumb.get_width(),thumb.get_height())
         item.thumb=thumb
         return True
-    if '.pef' in item.filename:
-        print 'pef failed',item,thumb,item.thumburi
 #        item.thumbrgba='A' in image.getbands()
