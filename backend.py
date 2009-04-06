@@ -248,7 +248,6 @@ class WalkDirectoryJob(WorkerJob):
 
             gobject.idle_add(browser.UpdateStatus,-1,'Scanning new images')
             for p in files: #may need some try, except blocks
-                ##todo: check if the item already exists in the collection
                 r=p.rfind('.')
                 if r<=0:
                     continue
@@ -257,7 +256,6 @@ class WalkDirectoryJob(WorkerJob):
                 if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
                     continue
-#                print 'found mimetype',fullpath,mimetype
                 mtime=os.path.getmtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
@@ -265,12 +263,8 @@ class WalkDirectoryJob(WorkerJob):
                     continue
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:
-#                    print 'found new item',fullpath
                     self.notify_items.append(item)
-#                    time.sleep(0.05)
-#                else:
-#                    print 'item in collection',fullpath
-            ## notify viewer(s)
+            # once we have found enough items add to collection and notify browser
             if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
                 self.last_update_time=time.time()
                 browser.lock.acquire()
@@ -279,10 +273,6 @@ class WalkDirectoryJob(WorkerJob):
                 browser.lock.release()
                 gobject.idle_add(browser.RefreshView)
                 self.notify_items=[]
-#            if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
-#                self.last_update_time=time.time()
-#                gobject.idle_add(browser.AddImages,self.notify_items)
-#                self.notify_items=[]
         if self.done:
             print 'walk directory done'
             gobject.idle_add(browser.RefreshView)
@@ -471,7 +461,6 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.release()
                 gobject.idle_add(browser.RefreshView)
             i+=1
-            #time.sleep(0.001)
         self.countpos=i
         if i>=len(collection):
             self.unsetevent()
@@ -497,7 +486,6 @@ class MakeThumbsJob(WorkerJob):
                 gobject.idle_add(browser.RefreshView)
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Creating Missing Thumbnails - %i of %i'%(i,len(collection)))
             i+=1
-            #time.sleep(0.001)
         self.countpos=i
         if i>=len(collection):
             self.unsetevent()
@@ -570,7 +558,6 @@ class DirectoryUpdateJob(WorkerJob):
                         gobject.idle_add(browser.RefreshView)
         if len(self.queue)==0:
             self.unsetevent()
-                #todo: update browser/viewer
 
 
 class WorkerJobCollection(dict):
@@ -642,7 +629,6 @@ class Worker:
             job=self.jobs.gethighest()
             if job:
                 job(self.jobs,self.collection,self.view,self.browser)
-            #time.sleep(0.05)
 
     def deferred_dir_update(self):
         job=self.jobs['DIRECTORYUPDATE']
