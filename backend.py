@@ -636,7 +636,6 @@ class Worker:
                 if self.dirtimer!=None:
                     self.dirtimer.cancel()
                 savejob=SaveCollectionJob()
-                print 'saving'
                 savejob(self.jobs,self.collection,self.view,self.browser)
                 print 'end worker loop'
                 return
@@ -646,7 +645,6 @@ class Worker:
             #time.sleep(0.05)
 
     def deferred_dir_update(self):
-        print 'change_notify timer'
         job=self.jobs['DIRECTORYUPDATE']
         job.deflock.acquire()
         for j in job.deferred:
@@ -658,7 +656,6 @@ class Worker:
         self.event.set()
 
     def directory_change_notify(self,path,action,isdir):
-        print 'change_notify',path,action,isdir
         homedir=os.path.normpath(settings.image_dirs[0])
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
