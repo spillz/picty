@@ -883,7 +883,8 @@ class ImageBrowser(gtk.VBox):
 
     def UpdateFirstLastIndex(self):
         self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        self.ind_view_last = min(len(self.tm.view),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+        self.ind_view_last = self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad))
+#        self.ind_view_last = min(len(self.tm.view),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
 
     def UpdateDimensions(self):
         self.offsety=self.offsety*self.horizimgcount
