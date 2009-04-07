@@ -179,6 +179,8 @@ def size_image(item,size,antialias=False):
 
 
 def load_metadata(item):
+    if item.meta==False:
+        return
     try:
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
@@ -190,11 +192,14 @@ def load_metadata(item):
                 pass
     except:
         print 'Error reading metadata for',item.filename
-        item.meta=None
+        item.meta=False
     item.mark_meta_saved()
+    return True
 
 
 def save_metadata(item):
+    if item.meta==False:
+        return False
     try:
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
@@ -206,7 +211,9 @@ def save_metadata(item):
         rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename
+        return False
     item.mark_meta_saved()
+    return True
 
 
 def save_metadata_key(item,key,value):

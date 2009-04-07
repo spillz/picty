@@ -17,29 +17,149 @@ This module describes the exif, iptc and xmp metadata used by the program
 ##The conv functions take a key and return a string representation of the metadata OR if value!=None convert the string value to a set of (metadata_key,value) tag pairs
 
 
-def conv_date_taken(item,metaobject,keys,value=None):
+def conv_date_taken(metaobject,keys,value=None):
     if value!=None:
-        return None
+        return True
     date=None
-    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
-        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
-        date=datetime.strptime(date)
+#    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
+#        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
+#        date=datetime.strptime(date)
     if "Exif.Photo.DateTimeOriginal" in metaobject.exifKeys():
         date=metaobject["Exif.Photo.DateTimeOriginal"]
         if type(date)==str:
             date=datetime.strptime(date)
     return date
 
-def get_ctime(item):
+def conv_str(metaobject,keys,value=None):
+    if value!=None:
+        metaobject[keys[0]]=value
+        ##todo: change or empty other keys
+        return True
+    for k in keys:
+        try:
+            val=metaobject[k]
+            return str(val)
+        except:
+            pass
+    return None
+
+def conv_int(metaobject,keys,value=None):
+    if value!=None:
+        metaobject[keys[0]]=value
+        ##todo: change or empty other keys
+        return True
+    for k in keys:
+        try:
+            val=metaobject[k]
+            return int(val)
+        except:
+            pass
+    return None
+
+def tag_split(tag_str):
+    quoted=False
+    tags=[]
+    curtag=''
+    for x in tag_str:
+        if x=='"':
+            quoted=not quoted
+            if quoted and curtag:
+                tags.append(curtag)
+                curtag=''
+            continue
+        if x==' ' or x=='\n' and not quoted:
+            if curtag:
+                tags.append(curtag)
+                curtag=''
+            continue
+        curtag+=x
+    if curtag:
+        tags.append(curtag)
+    return tags
+
+def tag_bind(tags):
+    pretag=[]
+    for tag in tags:
+        if ' ' in tag:
+            tag='"%s"'%(tag,)
+        pretag.append(tag)
+    ' '.join(pretag)
+
+def conv_keywords(metaobject,keys,value=None):
+    if value!=None:
+        metaobject["Iptc.Application2.Keywords"]=value
+        return True
     try:
-        date=item.meta["Exif.Photo.DateTimeOriginal"]
-        if type(date)==str:
-            date=datetime.strptime(date)
-        return date
+        val=metaobject["Iptc.Application2.Keywords"]
+        if type(val)==str:
+            return (val,)
+        return tuple(val)
     except:
-        return datetime.datetime(1900,1,1)
+        try:
+            ##todo: want to parse 'abc "def ghi" fdg' as three tags -- need quote parsing
+            val=metaobject["Exif.Photo.UserComment"]
+            vals=tag_split(value)
+            return val
+        except:
+            return None
 
+def conv_rational(metaobject,keys,value=None):
+    if value!=None:
+        ##todo: change or empty other keys
+        try:
+            if type(value)==str:
+                metaobject[keys[0]]=value
+                return True
+            if type(value)==tuple:
+                metaobject[keys[0]]='%i/%i'%value
+                return True
+        except:
+            pass
+        return False
+    for k in keys:
+        try:
+            val=metaobject[k]
+#            return str(val)
+            vals=val.split('/')
+            return (int(v[0]),int(v[1]))
+        except:
+            pass
+    return None
 
+apptags=(
+("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
+("Title","Title",True,conv_str,("Xmp.dc.title",)),
+("ImageDescription","Image Description",True,conv_str,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
+("Tags","Tags",True,conv_keywords,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
+("Artist","Artist",True,conv_str,("Iptc.Application2.Credit","Exif.Image.Artist")),
+("Copyright","Copyright",True,conv_str,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+#("Rating",True,conv_int,("Xmp.xmp.Rating")),
+("Album",True,conv_str,("Iptc.Application2.Subject")),
+("Make","Make",False,conv_str,("Exif.Image.Make",)),
+("Model","Model",False,conv_str,("Exif.Image.Model",)),
+("Orientation","Orientation",False,conv_int,("Exif.Image.Orientation",)),
+("Exposure Time","Exposure Time",False,conv_rational,("Exif.Photo.ExposureTime",)),
+("FNumber","FNumber",False,conv_rational,("Exif.Photo.FNumber",)),
+("ExposureProgram","ExposureProgram",False,conv_str,("Exif.Photo.ExposureProgram",)),
+("ExposureBiasValue","ExposureBiasValue",False,conv_str,("Exif.Photo.ExposureBiasValue",)),
+("MeteringMode","MeteringMode",False,conv_str,("Exif.Photo.MeteringMode",)),
+("Flash","Flash",False,conv_str,("Exif.Photo.Flash",)),
+("FocalLength","FocalLength",False,conv_str,("Exif.Photo.FocalLength",)),
+("SensingMethod","SensingMethod",False,conv_str,("Exif.Photo.SensingMethod",)),
+("ExposureMode","ExposureMode",False,conv_str,("Exif.Photo.ExposureMode",)),
+("WhiteBalance","WhiteBalance",False,conv_str,("Exif.Photo.WhiteBalance",)),
+("DigitalZoomRatio","DigitalZoomRatio",False,conv_str,("Exif.Photo.DigitalZoomRatio",)),
+("SceneCaptureType","SceneCaptureType",False,conv_str,("Exif.Photo.SceneCaptureType",)),
+("GainControl","GainControl",False,conv_str,("Exif.Photo.GainControl",)),
+("Contrast","Contrast",False,conv_str,("Exif.Photo.Contrast",)),
+("Saturation","Saturation",False,conv_str,("Exif.Photo.Saturation",)),
+("Sharpness","Sharpness",False,conv_str,("Exif.Photo.Sharpness",)),
+("SubjectDistanceRange","SubjectDistanceRange",False,conv_str,("Exif.Photo.SubjectDistanceRange",)),
+("Software","Software",False,conv_str,("Exif.Image.Software",)),
+("IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
+("ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
+("Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
+)
 
 
 #apptags=(
@@ -47,10 +167,10 @@ def get_ctime(item):
 #("Title","Title",True,conv_str,("Xmp.dc.title",)),
 #("ImageDescription","Image Description",True,conv_str,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
 #("Tags","Tags",True,conv_keywords,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-#("Artist","Artist",True,conv_str,("Iptc.Application2.Byline","Exif.Image.Artist")),
+#("Artist","Artist",True,conv_str,("Iptc.Application2.Credit","Exif.Image.Artist")),
 #("Copyright","Copyright",True,conv_str,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
-#("Album",True,conv_str,("Xmp.xmp.Label")),
+#("Album",True,conv_str,("Xmp.xmp.Label","Iptc.Application2.Subject")),
 #("Make","Make",False,conv_str,("Exif.Image.Make",)),
 #("Model","Model",False,conv_str,("Exif.Image.Model",)),
 #("Orientation","Orientation",False,conv_int_tuple,("Exif.Image.Orientation",)),
