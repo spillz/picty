@@ -185,7 +185,7 @@ def load_metadata(item):
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
         item.meta=dict()
-        get_exiv2_meta(item.meta,rawmeta)
+        exif.get_exiv2_meta(item.meta,rawmeta)
     except:
         print 'Error reading metadata for',item.filename
         item.meta=False
