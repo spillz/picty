@@ -78,10 +78,6 @@ class Item(list):
         self.thumbsize=None
         self.thumb=None
         self.thumbrgba=False
-        if 'meta_changed' not in self.__dict__:
-            self.meta_changed=False
-        if 'thumburi' not in self.__dict__:
-            self.thumburi=None
         self.qview=None
         self.qview_size=None
         self.image=None
@@ -226,6 +222,9 @@ def ctime_filter(item,criteria):
     if criteria[0]<=val<=criteria[1]:
         return True
     return False
+
+def selected_filter(item,criteria):
+    return item.selected==criteria
 
 def keyword_filter(item,criteria):
     test=criteria[1]
