@@ -14,9 +14,9 @@ def conv_date_taken(metaobject,keys,value=None):
     if value!=None:
         return True
     date=None
-#    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
-#        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
-#        date=datetime.strptime(date)
+###    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
+###        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
+###        date=datetime.strptime(date)
     if "Exif.Photo.DateTimeOriginal" in metaobject.exifKeys():
         date=metaobject["Exif.Photo.DateTimeOriginal"]
         if type(date)==str:
@@ -188,21 +188,30 @@ apptags_dict=dict([(x[0],x[1:]) for x in apptags])
 
 def get_exiv2_meta(app_meta,exiv2_meta):
     for appkey,data in apptags_dict.iteritems():
-        data[3](exiv2_meta,data[6],app_meta[appkey])
+        try:
+            val=data[2](exiv2_meta,data[5])
+            if val:
+                app_meta[appkey]=val
+        except:
+            pass
 
 def set_exiv2_meta(app_meta,exiv2_meta):
-    for appkey,data in apptags_dict.iteritems():
-        app_meta[appkey]=data[3](exiv2_meta,data[6])
+    for appkey in app_meta:
+        try:
+            data=apptags_dict[appkey]
+            data[2](exiv2_meta,data[5],app_meta[appkey])
+        except:
+            print 'exiv2 set data failure',appkey
 
 def app_key_from_string(key,string):
     try:
-        return apptags_dict[key][5](string)
+        return apptags_dict[key][4](string)
     except:
         return None
 
 def app_key_to_string(key,value):
     try:
-        return apptags_dict[key][4](app_meta[key])
+        return apptags_dict[key][3](app_meta[key])
     except:
         try:
             return str(app_meta[key])
@@ -211,7 +220,7 @@ def app_key_to_string(key,value):
 
 def app_key_as_sortable(key,value):
     try:
-        return apptags_dict[key][6](app_meta[key])
+        return apptags_dict[key][5](app_meta[key])
     except:
         try:
             return app_meta[key]

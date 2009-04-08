@@ -388,11 +388,11 @@ class SaveViewJob(WorkerJob):
                 else:
                     if item.meta_changed:
                         try:
-                            orient=item.meta['Exif.Image.Orientation']
+                            orient=item.meta['Orientation']
                         except:
                             orient=None
                         try:
-                            orient_backup=item.meta_backup['Exif.Image.Orientation']
+                            orient_backup=item.meta_backup['Orientation']
                         except:
                             orient_backup=None
                         item.meta_revert()
@@ -425,7 +425,6 @@ class VerifyImagesJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         i=self.countpos  ##todo: make sure this gets initialized
-        print 'verifying',len(collection),'images -',i,'done - view size',len(view)
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:

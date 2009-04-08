@@ -86,12 +86,6 @@ class Item(list):
         self.qview_size=None
         self.image=None
         self.selected=False
-        if self.meta:
-            try:
-                if self.meta['Exif.Image.Orientation']==0:
-                    print '###$$$###$$$###$$$###ZERO ORIENTATION',self.filename
-            except:
-                pass
 
 
 class Collection(list):
@@ -128,7 +122,7 @@ def get_mtime(item):
 
 def get_ctime(item):
     try:
-        date=item.meta["Exif.Photo.DateTimeOriginal"]
+        date=item.meta["DateTaken"]
         if type(date)==str:
             date=datetime.strptime(date)
         return date
@@ -144,66 +138,50 @@ def get_folder(item):
 def try_rational(item,key):
     try:
         value=item.meta[key]
+        return 1.0*int(value[0])/int(value[1])
     except:
-        return None
-#    print 'key value',value,type(value)
-    if value:
-        try:
-            return 1.0*int(value[0])/int(value[1])
-        except:
-            try:
-                val=str(value).split('/')
-                if val[0] and val[1]:
-                    return 1.0*int(val[0])/int(val[1])
-                return float(val[0])
-            except:
-                try:
-                    return float(value)
-                except:
-                    return -1
-    else:
         return None
 
 def get_speed(item):
-    return try_rational(item,'Exif.Photo.ExposureTime')
+    return try_rational(item,'ExposureTime')
 
 def get_aperture(item):
-    return try_rational(item,'Exif.Photo.FNumber')
+    return try_rational(item,'FNumber')
 
 def get_focal(item):
-    return try_rational(item,'Exif.Photo.FocalLength')
+    return try_rational(item,'FocalLength')
 
 def get_orient(item):
     try:
-        orient=int(item.meta['Exif.Image.Orientation'])
+        orient=int(item.meta['Orientation'])
     except:
         orient=1
     return orient
 
 def get_orient2(item):
     try:
-        return int(item.meta['Exif.Image.Orientation'])
+        return int(item.meta['Orientation'])
     except:
         return None
 
 def get_keyword(item):
     try:
-        return item.meta['Xmp.dc.subject']
+        return item.meta['Keywords']
     except:
         return None
 
 
 def text_descr(item):
     try:
-        header=item.meta["Xmp.dc.title"]
+        header=item.meta['Title']
     except:
         header=get_fname(item)
     details=''
     val=get_ctime(item)
     if val>datetime.datetime(1900,1,1):
         details+='Date: '+str(val)
-    else:
-        details+='Mod: '+str(get_mtime(item))
+#    else:
+#        details+='Mod: '+str(get_mtime(item))
     val=get_focal(item)
     exposure=''
     if val:
@@ -288,10 +266,8 @@ class Index(list):
         self.add(self.key_cb(item),item)
     def find_item(self,item):
         i=bisect.bisect_left(self,[self.key_cb(item),item])
-        print 'finding',i,self.key_cb(item),item
         if i>=len(self) or i<0:
             return -1
-        print 'found',i,self[i],item,item<self[i][1],item>self[i][1]
         if self[i][1]==item:
             return i
         return -1

@@ -44,7 +44,7 @@ memthumbs=[]
 def rotate_left(item):
     'rotates image anti-clockwise'
     try:
-        orient=item.meta['Exif.Image.Orientation']
+        orient=item.meta['Orientation']
     except:
         orient=1
     if orient<1 or orient>8:
@@ -62,7 +62,7 @@ def rotate_left(item):
 def rotate_right(item):
     'rotates image clockwise'
     try:
-        orient=item.meta['Exif.Image.Orientation']
+        orient=item.meta['Orientation']
     except:
         orient=1
     if orient<1 or orient>8:
@@ -103,7 +103,7 @@ def load_image(item,interrupt_fn):
         print 'interrupted'
         return False
     try:
-        orient=item.meta['Exif.Image.Orientation']
+        orient=item.meta['Orientation']
     except:
         orient=1
     if orient>1:
@@ -133,7 +133,7 @@ def size_image(item,size,antialias=False):
     if not image:
         return False
 #    try:
-#        orient=item.meta['Exif.Image.Orientation']
+#        orient=item.meta['Orientation']
 #    except:
 #        orient=1
 #    if orient<=4:
@@ -181,18 +181,18 @@ def size_image(item,size,antialias=False):
 def load_metadata(item):
     if item.meta==False:
         return
-    try:
-        rawmeta = pyexiv2.Image(item.filename)
-        rawmeta.readMetadata()
-        item.meta=dict()
-        for x in exif.tags:
-            try:
-                item.meta[x[0]]=rawmeta[x[0]]
-            except:
-                pass
-    except:
-        print 'Error reading metadata for',item.filename
-        item.meta=False
+    rawmeta = pyexiv2.Image(item.filename)
+    rawmeta.readMetadata()
+    item.meta=dict()
+    exif.get_exiv2_meta(item.meta,rawmeta)
+#    try:
+#        rawmeta = pyexiv2.Image(item.filename)
+#        rawmeta.readMetadata()
+#        item.meta=dict()
+#        get_exiv2_meta(item.meta,rawmeta)
+#    except:
+#        print 'Error reading metadata for',item.filename
+#        item.meta=False
     item.mark_meta_saved()
     return True
 
@@ -203,11 +203,12 @@ def save_metadata(item):
     try:
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
-        for x in exif.writetags:
-            try:
-                rawmeta[x[0]]=item.meta[x[0]]
-            except:
-                pass
+        exif.set_exiv2_meta(item.meta,rawmeta)
+#        for x in exif.writetags:
+#            try:
+#                rawmeta[x[0]]=item.meta[x[0]]
+#            except:
+#                pass
         rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename
@@ -286,7 +287,7 @@ def make_thumb(item,interrupt_fn=None):
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
                 print 'thumb took',time.time()-t,'seconds'
             try:
-                orient=item.meta['Exif.Image.Orientation']
+                orient=item.meta['Orientation']
             except:
                 orient=1
             if orient>1:
@@ -296,7 +297,7 @@ def make_thumb(item,interrupt_fn=None):
             thumb=image.tostring()
             thumbrgba='A' in image.getbands()
             try:
-                orient=item.meta['Exif.Image.Orientation']
+                orient=item.meta['Orientation']
             except:
                 orient=1
             width=thumbsize[0]

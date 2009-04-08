@@ -303,11 +303,11 @@ class ImageViewer(gtk.VBox):
         if not item.meta_changed:
             return
         try:
-            orient=item.meta['Exif.Image.Orientation']
+            orient=item.meta['Orientation']
         except:
             orient=None
         try:
-            orient_backup=item.meta_backup['Exif.Image.Orientation']
+            orient_backup=item.meta_backup['Orientation']
         except:
             orient_backup=None
         item.meta_revert()

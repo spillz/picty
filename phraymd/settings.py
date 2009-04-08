@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.2.0'
+version='0.2.1'
 
 ##todo: move to imagemanip to eliminate the Image dependency
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
