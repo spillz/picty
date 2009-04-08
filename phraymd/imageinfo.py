@@ -231,11 +231,12 @@ def keyword_filter(item,criteria):
     for t in test:
         if t in item.filename.lower():
             return True
-    for k,v in item.meta.iteritems():
-        if v:
-            for t in test:
-                if t in str(v).lower():
-                    return True
+    if item.meta:
+        for k,v in item.meta.iteritems():
+            if v:
+                for t in test:
+                    if t in str(v).lower():
+                        return True
     return False
 
 class Index(list):
