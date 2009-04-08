@@ -6,13 +6,6 @@ This module describes the exif, iptc and xmp metadata used by the program
 
 ##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
 ##todo: merge Iptc.Application2.Keywords with Xmp.dc.subject
-#apptags defines the application tags, which are created from and written to the
-#each entry in the tuple is itself a tuple containing:
-# * The short name of the tag (to be used in the program)
-# * The display name of the tag
-# * User Editable (TRUE/FALSE)
-# * The callback to convert to string and back (tuple, str, datetime, int, float)
-# * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
 
 ##The conv functions take a key and return a string representation of the metadata OR if value!=None convert the string value to a set of (metadata_key,value) tag pairs
 
@@ -126,41 +119,104 @@ def conv_rational(metaobject,keys,value=None):
             pass
     return None
 
+def str2rat(value):
+    vals=value.split('/')
+    return (int(vals[0]),int(vals[1]))
+
+def rat2str(value):
+    return '%i/%i'%value
+
+def rational_as_float(value_tuple):
+    return 1.0*value_tuple[0]/value_tuple[1]
+
+def date_as_sortable(date_value):
+    if date_value:
+        return date_value
+    return datatime.date(1900,1,1)
+
+'''
+apptags defines the exif metadata kept in the cache,
+which are created from and written to the item.
+each entry in the tuple is itself a tuple containing:
+ * The short name of the tag (to be used in the program)
+ * The display name of the tag
+ * User Editable (TRUE/FALSE) in a gtk.Entry
+ * The callback to convert to the container format (exiv2) and the
+    preferred representation of this app (tuple, str, datetime, int, float)
+ * A functionn to convert the internal rep to a string
+ * A function to convert a string to the internal rep
+ * A function to convert the key to a sortable
+ * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
+'''
+
 apptags=(
-("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
-("Title","Title",True,conv_str,("Xmp.dc.title",)),
-("ImageDescription","Image Description",True,conv_str,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
-("Tags","Tags",True,conv_keywords,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-("Artist","Artist",True,conv_str,("Iptc.Application2.Credit","Exif.Image.Artist")),
-("Copyright","Copyright",True,conv_str,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+("DateTaken","Date Taken",False,conv_date_taken,None,None,date_as_sortable,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
+("Title","Title",True,conv_str,None,None,None,("Iptc.Application2.Headline",)),
+("ImageDescription","Image Description",True,conv_str,None,None,None,("Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
+("Keywords","Keywords",True,conv_keywords,tag_bind,tag_split,None,("Iptc.Application2.Keywords","Exif.Photo.UserComment")),
+("Artist","Artist",True,conv_str,None,None,None,("Iptc.Application2.Credit","Exif.Image.Artist")),
+("Copyright","Copyright",True,conv_str,None,None,None,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
-("Album",True,conv_str,("Iptc.Application2.Subject")),
-("Make","Make",False,conv_str,("Exif.Image.Make",)),
-("Model","Model",False,conv_str,("Exif.Image.Model",)),
-("Orientation","Orientation",False,conv_int,("Exif.Image.Orientation",)),
-("Exposure Time","Exposure Time",False,conv_rational,("Exif.Photo.ExposureTime",)),
-("FNumber","FNumber",False,conv_rational,("Exif.Photo.FNumber",)),
-("ExposureProgram","ExposureProgram",False,conv_str,("Exif.Photo.ExposureProgram",)),
-("ExposureBiasValue","ExposureBiasValue",False,conv_str,("Exif.Photo.ExposureBiasValue",)),
-("MeteringMode","MeteringMode",False,conv_str,("Exif.Photo.MeteringMode",)),
-("Flash","Flash",False,conv_str,("Exif.Photo.Flash",)),
-("FocalLength","FocalLength",False,conv_str,("Exif.Photo.FocalLength",)),
-("SensingMethod","SensingMethod",False,conv_str,("Exif.Photo.SensingMethod",)),
-("ExposureMode","ExposureMode",False,conv_str,("Exif.Photo.ExposureMode",)),
-("WhiteBalance","WhiteBalance",False,conv_str,("Exif.Photo.WhiteBalance",)),
-("DigitalZoomRatio","DigitalZoomRatio",False,conv_str,("Exif.Photo.DigitalZoomRatio",)),
-("SceneCaptureType","SceneCaptureType",False,conv_str,("Exif.Photo.SceneCaptureType",)),
-("GainControl","GainControl",False,conv_str,("Exif.Photo.GainControl",)),
-("Contrast","Contrast",False,conv_str,("Exif.Photo.Contrast",)),
-("Saturation","Saturation",False,conv_str,("Exif.Photo.Saturation",)),
-("Sharpness","Sharpness",False,conv_str,("Exif.Photo.Sharpness",)),
-("SubjectDistanceRange","SubjectDistanceRange",False,conv_str,("Exif.Photo.SubjectDistanceRange",)),
-("Software","Software",False,conv_str,("Exif.Image.Software",)),
-("IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
-("ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
-("Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
+("Album",True,conv_str,None,None,None,("Iptc.Application2.Subject")),
+("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
+("Model","Model",False,conv_str,None,None,None,("Exif.Image.Model",)),
+("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",)),
+("Exposure Time","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",)),
+("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FNumber",)),
+("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FocalLength",)),
+("ExposureProgram","Exposure Program",False,conv_str,None,None,None,("Exif.Photo.ExposureProgram",)),
+("ExposureBiasValue","Exposure Bias Value",False,conv_str,None,None,None,("Exif.Photo.ExposureBiasValue",)),
+("MeteringMode","Metering Mode",False,conv_str,None,None,None,("Exif.Photo.MeteringMode",)),
+("Flash","Flash",False,conv_str,None,None,None,("Exif.Photo.Flash",)),
+("SensingMethod","Sensing Method",False,conv_str,None,None,None,("Exif.Photo.SensingMethod",)),
+("ExposureMode","Exposure Mode",False,conv_str,None,None,None,("Exif.Photo.ExposureMode",)),
+("WhiteBalance","White Balance",False,conv_str,None,None,None,("Exif.Photo.WhiteBalance",)),
+("DigitalZoomRatio","Digital Zoom Ratio",False,conv_str,None,None,None,("Exif.Photo.DigitalZoomRatio",)),
+("SceneCaptureType","Scene Capture Type",False,conv_str,None,None,None,("Exif.Photo.SceneCaptureType",)),
+("GainControl","Gain Control",False,conv_str,None,None,None,("Exif.Photo.GainControl",)),
+("Contrast","Contrast",False,conv_str,None,None,None,("Exif.Photo.Contrast",)),
+("Saturation","Saturation",False,conv_str,None,None,None,("Exif.Photo.Saturation",)),
+("Sharpness","Sharpness",False,conv_str,None,None,None,("Exif.Photo.Sharpness",)),
+("SubjectDistanceRange","Subject Distance",False,conv_str,None,None,None,("Exif.Photo.SubjectDistanceRange",)),
+("Software","Software",False,conv_str,None,None,None,("Exif.Image.Software",)),
+("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
+("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
+("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",))
 )
 
+apptags_dict=dict([(x[0],x[1:]) for x in apptags])
+
+def get_exiv2_meta(app_meta,exiv2_meta):
+    for appkey,data in apptags_dict.iteritems():
+        data[3](exiv2_meta,data[6],app_meta[appkey])
+
+def set_exiv2_meta(app_meta,exiv2_meta):
+    for appkey,data in apptags_dict.iteritems():
+        app_meta[appkey]=data[3](exiv2_meta,data[6])
+
+def app_key_from_string(key,string):
+    try:
+        return apptags_dict[key][5](string)
+    except:
+        return None
+
+def app_key_to_string(key,value):
+    try:
+        return apptags_dict[key][4](app_meta[key])
+    except:
+        try:
+            return str(app_meta[key])
+        except:
+            return None
+
+def app_key_as_sortable(key,value):
+    try:
+        return apptags_dict[key][6](app_meta[key])
+    except:
+        try:
+            return app_meta[key]
+        except:
+            return None
 
 #apptags=(
 #("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),

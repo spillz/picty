@@ -261,22 +261,25 @@ class ImageViewer(gtk.VBox):
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for k,v,w in exif.tags:
             value=''
-            try:
-                value=item.meta[k]
+            if not item.meta:
+                self.meta_table.data_items[k][1].set_text('')
+            else:
                 try:
-                    if len(value)==2:
-                        value='%4.3f'%(1.0*value[0]/value[1])
-                    else:
+                    value=item.meta[k]
+                    try:
+                        if len(value)==2:
+                            value='%4.3f'%(1.0*value[0]/value[1])
+                        else:
+                            value=str(value)
+                    except:
                         value=str(value)
                 except:
-                    value=str(value)
-            except:
-                value=''
-            try:
-                self.meta_table.data_items[k][1].set_text(value)
-            except:
-                print 'error updating meta table'
-                print 'values',value,type(value)
+                    value=''
+                try:
+                    self.meta_table.data_items[k][1].set_text(value)
+                except:
+                    print 'error updating meta table'
+                    print 'values',value,type(value)
         self.change_block=False
 
     def MetadataChanged(self,widget,key):

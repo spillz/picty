@@ -246,7 +246,7 @@ class WalkDirectoryJob(WorkerJob):
                 else:
                     i+=1
 
-            gobject.idle_add(browser.UpdateStatus,-1,'Scanning new images')
+            gobject.idle_add(browser.UpdateStatus,-1,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
                 if r<=0:
@@ -429,7 +429,7 @@ class VerifyImagesJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images in Collection - %i of %i'%(i,len(collection)))
             if item.meta==None:
                 del_view_item(view,browser,item)
                 imagemanip.load_metadata(item) ##todo: check if exists already

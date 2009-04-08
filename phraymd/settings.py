@@ -45,8 +45,8 @@ imagetypes=['jpg','jpeg','png']
 
 image_dirs=[]
 store_thumbs=True
-conf_file=os.path.join(os.environ['HOME'],'.phomgr-settings')
-collection_file=os.path.join(os.environ['HOME'],'.phomgr-collection')
+conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
+collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 
 def save():
     global version, image_dirs, store_thumbs, precache_count, conf_file
