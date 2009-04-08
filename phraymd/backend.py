@@ -327,7 +327,7 @@ class BuildViewJob(WorkerJob):
             if i-lastrefresh>20:
                 lastrefresh=i
                 gobject.idle_add(browser.RefreshView)
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Building Image View - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Rebuilding image view - %i of %i'%(i,len(collection)))
             i+=1
         if i<len(collection) and not self.cancel:
             self.pos=i
@@ -336,7 +336,7 @@ class BuildViewJob(WorkerJob):
             self.cancel=False
             self.unsetevent()
             gobject.idle_add(browser.RefreshView)
-            gobject.idle_add(browser.UpdateStatus,2,'View Build complete')
+            gobject.idle_add(browser.UpdateStatus,2,'View rebuild complete')
 
 class SelectionJob(WorkerJob):
     def __init__(self):
@@ -356,12 +356,12 @@ class SelectionJob(WorkerJob):
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
             listitems(i).selected=select
             if i%100==0:
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting Images - %i of %i'%(i,len(listitems)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
             i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting Images - %i of %i'%(i,len(listitems)))
+            gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
             gobject.idle_add(browser.RefreshView)
             self.pos=0
             self.cancel=False
@@ -404,14 +404,14 @@ class SaveViewJob(WorkerJob):
                             job.setevent()
             if i%100==0:
                 if self.save:
-                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving Changed Images in View - %i of %i'%(i,len(listitems)))
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
-                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Reverting Images in View - %i of %i'%(i,len(listitems)))
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
             i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(browser.UpdateStatus,2.0,'Saving images done')
+            gobject.idle_add(browser.UpdateStatus,2.0,'Saving images complete')
             gobject.idle_add(browser.RefreshView)
             self.pos=0
             self.cancel=False
@@ -428,7 +428,7 @@ class VerifyImagesJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying Images in Collection - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
             if item.meta==None:
                 del_view_item(view,browser,item)
                 imagemanip.load_metadata(item) ##todo: check if exists already
@@ -479,11 +479,11 @@ class MakeThumbsJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Creating Missing Thumbnails - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             if not imagemanip.has_thumb(item):
                 imagemanip.make_thumb(item)
                 gobject.idle_add(browser.RefreshView)
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Creating Missing Thumbnails - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             i+=1
         self.countpos=i
         if i>=len(collection):
