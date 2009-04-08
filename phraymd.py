@@ -62,7 +62,7 @@ class MetaDialog(gtk.Dialog):
     def __init__(self,item):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
         self.set_title(item.filename)
-        tags=[t[0:2] for t in exif.tags if t[2]]
+        tags=[t[0:2] for t in exif.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.item=item
@@ -228,7 +228,7 @@ class ImageViewer(gtk.VBox):
 
     def CreateMetaTable(self):
         rows=2
-        rows+=len(exif.tags)
+        rows+=len(exif.apptags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
@@ -236,7 +236,10 @@ class ImageViewer(gtk.VBox):
         self.AddMetaRow(table, stable.data_items,'FullPath','Full Path','',0)
         self.AddMetaRow(table, stable.data_items,'UnixLastModified','Last Modified','',1)
         r=2
-        for k,v,w in exif.tags:
+        for t in exif.apptags:
+            k=t[0]
+            v=t[1]
+            w=t[2]
             try:
                 self.AddMetaRow(table,stable.data_items,k,v,'',r,w)
             except:
@@ -259,7 +262,10 @@ class ImageViewer(gtk.VBox):
         self.meta_table.data_items['FullPath'][1].set_text(item.filename)
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
-        for k,v,w in exif.tags:
+        for t in exif.apptags:
+            k=t[0]
+            v=t[1]
+            w=t[2]
             value=''
             if not item.meta:
                 self.meta_table.data_items[k][1].set_text('')
@@ -327,14 +333,17 @@ class ImageViewer(gtk.VBox):
         d=datetime.datetime.fromtimestamp(item.mtime)
         #import exif
         if item.meta:
-            rows+=len(exif.tags)
+            rows+=len(exif.apptags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.AddMetaRow(table,'Full Path',item.filename,0)
         self.AddMetaRow(table,'Last Modified',d.isoformat(' '),1)
         r=2
-        for k,v in exif.tags:
+        for t in exif.apptags:
+            k=t[0]
+            v=t[1]
+            w=t[2]
             try:
                 self.AddMetaRow(table,v,str(item.meta[k]),r)
             except:

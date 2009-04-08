@@ -50,7 +50,7 @@ def rotate_left(item):
     if orient<1 or orient>8:
         print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
         orient=1
-    item.set_meta_key('Exif.Image.Orientation',settings.rotate_left_tx[orient])
+    item.set_meta_key('Orientation',settings.rotate_left_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None
@@ -68,7 +68,7 @@ def rotate_right(item):
     if orient<1 or orient>8:
         print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
         orient=1
-    item.set_meta_key('Exif.Image.Orientation',settings.rotate_right_tx[orient])
+    item.set_meta_key('Orientation',settings.rotate_right_tx[orient])
     item.image=None
     item.qview=None
     item.thumb=None

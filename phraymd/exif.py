@@ -25,7 +25,8 @@ def conv_date_taken(metaobject,keys,value=None):
 
 def conv_str(metaobject,keys,value=None):
     if value!=None:
-        metaobject[keys[0]]=value
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() or value!='':
+            metaobject[keys[0]]=value
         ##todo: change or empty other keys
         return True
     for k in keys:
@@ -38,7 +39,8 @@ def conv_str(metaobject,keys,value=None):
 
 def conv_int(metaobject,keys,value=None):
     if value!=None:
-        metaobject[keys[0]]=value
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() or value!=-1:
+            metaobject[keys[0]]=value
         ##todo: change or empty other keys
         return True
     for k in keys:
@@ -80,7 +82,8 @@ def tag_bind(tags):
 
 def conv_keywords(metaobject,keys,value=None):
     if value!=None:
-        metaobject["Iptc.Application2.Keywords"]=value
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() and len(value)>0:
+            metaobject["Iptc.Application2.Keywords"]=value
         return True
     try:
         val=metaobject["Iptc.Application2.Keywords"]
@@ -98,17 +101,18 @@ def conv_keywords(metaobject,keys,value=None):
 
 def conv_rational(metaobject,keys,value=None):
     if value!=None:
-        ##todo: change or empty other keys
-        try:
-            if type(value)==str:
-                metaobject[keys[0]]=value
-                return True
-            if type(value)==tuple:
-                metaobject[keys[0]]='%i/%i'%value
-                return True
-        except:
-            pass
-        return False
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() and len(value)>0:
+            ##todo: change or empty other keys
+            try:
+                if type(value)==str:
+                    metaobject[keys[0]]=value
+                    return True
+                if type(value)==tuple:
+                    metaobject[keys[0]]='%i/%i'%value
+                    return True
+            except:
+                pass
+        return True
     for k in keys:
         try:
             val=metaobject[k]
@@ -184,12 +188,16 @@ apptags=(
 ("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",))
 )
 
+##todo: remove this item -- currently used to define the keys to write in imagemanip.save_metadata
+writetags=[(x[0],x[1]) for x in apptags if x[3]]
+writetags.append(('Orientation','Orientation'))
+
 apptags_dict=dict([(x[0],x[1:]) for x in apptags])
 
 def get_exiv2_meta(app_meta,exiv2_meta):
     for appkey,data in apptags_dict.iteritems():
         try:
-            val=data[2](exiv2_meta,data[5])
+            val=data[2](exiv2_meta,data[6])
             if val:
                 app_meta[appkey]=val
         except:
@@ -199,7 +207,7 @@ def set_exiv2_meta(app_meta,exiv2_meta):
     for appkey in app_meta:
         try:
             data=apptags_dict[appkey]
-            data[2](exiv2_meta,data[5],app_meta[appkey])
+            data[2](exiv2_meta,data[6],app_meta[appkey])
         except:
             print 'exiv2 set data failure',appkey
 
@@ -263,19 +271,6 @@ def app_key_as_sortable(key,value):
 #)
 
 
-##todo: remove this item -- currently used to define the keys to write in imagemanip.save_metadata
-writetags=(
-("Xmp.dc.title","Title"),
-("Exif.Image.ImageDescription","Image Description"),
-("Exif.Image.Artist","Artist"),
-("Exif.Image.Copyright","Copyright"),
-("Xmp.dc.subject","Tags"),
-("Iptc.Application2.Keywords","Keywords"),
-("Exif.Photo.UserComment","UserComment"),
-("Exif.Image.ImageWidth","Width"),
-("Exif.Image.ImageLength","Height"),
-("Exif.Image.Orientation","Orientation")
-)
 
 
 #tag tuples: long name, short name, writeable
