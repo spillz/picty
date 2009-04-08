@@ -488,9 +488,9 @@ class ImageBrowser(gtk.VBox):
         self.filter_entry.show()
 
         self.toolbar=gtk.Toolbar()
-        self.toolbar.append_item("Save Changes", "Saves all changes to image metadata in the collection (description, tags, image orientation etc)", None,
+        self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
-        self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to image metadata in the collection (description, tags, image orientation etc)", None,
+        self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED), self.revert_all_changes, user_data=None)
         self.toolbar.append_space()
         self.toolbar.append_item("Select All", "Selects all images in the current view", None,
