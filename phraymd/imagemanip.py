@@ -96,8 +96,15 @@ def load_image(item,interrupt_fn):
     try:
         image=Image.open(item.filename)
     except:
-        image=None
-        return False
+        try:
+            cmd=settings.dcraw_cmd%(item.filename,)
+            imdata=os.popen(cmd).read()
+            p = ImageFile.Parser()
+            p.feed(imdata)
+            image = p.close()
+        except:
+            image=None
+            return False
     image.draft(image.mode,(1600,1600))
     if not interrupt_fn():
         print 'interrupted'
