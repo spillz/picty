@@ -200,11 +200,6 @@ def save_metadata(item):
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
         exif.set_exiv2_meta(item.meta,rawmeta)
-#        for x in exif.writetags:
-#            try:
-#                rawmeta[x[0]]=item.meta[x[0]]
-#            except:
-#                pass
         rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename

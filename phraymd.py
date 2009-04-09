@@ -67,21 +67,24 @@ class MetaDialog(gtk.Dialog):
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.item=item
         r=0
+        print item.meta
         for k,v in tags:
             try:
                 print k,v
-                try:
-                    val=item.meta[k]
-                except:
+                val=exif.app_key_to_string(k,item.meta[k])
+                if not val:
                     val=''
-                self.add_meta_row(table,k,v,val,r)
+                print 'item',k,val
             except:
-                None
+                val=''
+            self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()
         self.vbox.pack_start(table)
     def meta_changed(self,widget,key):
-        self.item.set_meta_key(key,widget.get_text())
+        value=exif.app_key_from_string(key,widget.get_text())
+        print 'value changed',key,value
+        self.item.set_meta_key(key,value)
     def add_meta_row(self,table,key,label,data,row,writable=True):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
@@ -175,7 +178,6 @@ class ImageViewer(gtk.VBox):
 
         self.change_block=False
 
-
         self.meta_box=gtk.VBox()
         self.button_save=gtk.Button("Save",gtk.STOCK_SAVE)
         self.button_revert=gtk.Button("Revert",gtk.STOCK_REVERT_TO_SAVED)
@@ -184,8 +186,8 @@ class ImageViewer(gtk.VBox):
         buttons=gtk.HBox()
         buttons.pack_start(self.button_revert,True,False)
         buttons.pack_start(self.button_save,True,False)
-        self.meta_box.pack_start(self.meta_table)
-        self.meta_box.pack_start(buttons,False)
+        self.meta_box.pack_start(self.meta_table,True)
+#        self.meta_box.pack_start(buttons,False)
         self.meta_box.show_all()
 
         f=gtk.VPaned()
@@ -216,12 +218,13 @@ class ImageViewer(gtk.VBox):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        if writable:
-            child2=gtk.Entry()
-            child2.set_text(data)
-            child2.connect("changed",self.MetadataChanged,key)
-        else:
-            child2=gtk.Label(data)
+        child2=gtk.Label(data)
+#        if writable:
+#            child2=gtk.Entry()
+#            child2.set_text(data)
+#            child2.connect("changed",self.MetadataChanged,key)
+#        else:
+#            child2=gtk.Label(data)
         table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
         data_items[key]=(child1,child2)
@@ -230,7 +233,7 @@ class ImageViewer(gtk.VBox):
         rows=2
         rows+=len(exif.apptags)
         stable=gtk.ScrolledWindow()
-        stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        stable.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         stable.data_items=dict()
         self.AddMetaRow(table, stable.data_items,'FullPath','Full Path','',0)
@@ -476,13 +479,15 @@ class ImageBrowser(gtk.VBox):
         self.ind_view_last=1
         self.ind_viewed=-1
         self.hover_ind=-1
-        self.hover_cmds=[(self.select_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
+        self.hover_cmds=[
+                        (self.save_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
+                        (self.revert_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
                         (self.launch_item,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
                         (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_left,self.render_icon(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)),
                         (self.rotate_item_right,self.render_icon(gtk.STOCK_GO_DOWN, gtk.ICON_SIZE_MENU)),
-                        (self.hide_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
-                        (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))]
+                        (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
+                        ]
 
         self.sort_order=gtk.combo_box_new_text()
         for s in imageinfo.sort_keys:
@@ -662,17 +667,20 @@ class ImageBrowser(gtk.VBox):
             self.iv.ImageNormal()
             self.vbox.show()
             self.vscroll.show()
+            self.toolbar.show()
         if event.keyval==65293: #enter
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
                     self.ViewImage(self.ind_viewed)
                     self.iv.ImageNormal()
                     self.vbox.show()
+                    self.toolbar.show()
                     self.vscroll.show()
                     self.is_iv_fullscreen=False
                 else:
                     self.ViewImage(self.ind_viewed)
                     self.iv.ImageFullscreen()
+                    self.toolbar.hide()
                     self.vbox.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
@@ -718,12 +726,14 @@ class ImageBrowser(gtk.VBox):
             self.ViewImage(self.ind_viewed)
             self.iv.ImageNormal()
             self.vbox.show()
+            self.toolbar.show()
             self.vscroll.show()
             self.is_iv_fullscreen=False
         else:
             self.ViewImage(self.ind_viewed)
             self.iv.ImageFullscreen()
             self.vbox.hide()
+            self.toolbar.hide()
             self.vscroll.hide()
             self.is_iv_fullscreen=True
 
@@ -742,6 +752,16 @@ class ImageBrowser(gtk.VBox):
             left+=self.hover_cmds[i][1].get_width()+self.pad/4
         return -1
 
+
+
+    def save_item(self,ind):
+        item=self.tm.view(ind)
+        if item.meta_changed:
+            imagemanip.save_metadata(item)
+
+    def revert_item(self,ind):
+        if item.meta_changed:
+            item.meta_revert()
 
     def select_item(self,ind):
         item=self.tm.view(ind)
@@ -1018,7 +1038,7 @@ class ImageBrowser(gtk.VBox):
                         show[q]=False
                 if not item.meta_changed:
                     show[0]=False
-                    show[5]=False
+                    show[1]=False
                 for j in range(l):
                     if show[j]:
                         drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)

@@ -62,7 +62,7 @@ def tag_split(tag_str):
                 tags.append(curtag)
                 curtag=''
             continue
-        if x==' ' or x=='\n' and not quoted:
+        if (x==' ' or x=='\n') and not quoted:
             if curtag:
                 tags.append(curtag)
                 curtag=''
@@ -212,17 +212,21 @@ def set_exiv2_meta(app_meta,exiv2_meta):
             print 'exiv2 set data failure',appkey
 
 def app_key_from_string(key,string):
-    try:
-        return apptags_dict[key][4](string)
-    except:
-        return None
+    fn=apptags_dict[key][4]
+    if fn:
+        try:
+            return fn(string)
+        except:
+            return None
+    else:
+        return string
 
 def app_key_to_string(key,value):
     try:
-        return apptags_dict[key][3](app_meta[key])
+        return apptags_dict[key][3](value)
     except:
         try:
-            return str(app_meta[key])
+            return str(value)
         except:
             return None
 

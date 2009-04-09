@@ -296,7 +296,7 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW')
         self.pos=0
         self.cancel=False
-        self.sort_key='Date Last Modified'
+        self.sort_key='Date Taken'
         self.filter_text=''
 
     def cancel_job(self):
