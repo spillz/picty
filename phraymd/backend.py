@@ -146,6 +146,7 @@ class LoadCollectionJob(WorkerJob):
 
     def __call__2(self,jobs,collection,view,browser):
         del collection[:]
+        collect.numselected=0
         del view[:]
         i=self.pos
         if i==0:
@@ -173,6 +174,7 @@ class LoadCollectionJob(WorkerJob):
     def __call__(self,jobs,collection,view,browser):
         browser.lock.acquire()
         del collection[:]
+        collection.numselected=0
         del view[:]
         browser.lock.release()
         try:
@@ -181,6 +183,7 @@ class LoadCollectionJob(WorkerJob):
             self.unsetevent()
             jobs['WALKDIRECTORY'].setevent()
             del collection[:]
+            collection.numselected=0
             return
         try:
             version=cPickle.load(f)
@@ -191,6 +194,7 @@ class LoadCollectionJob(WorkerJob):
             print 'error loading collection data'
             browser.lock.acquire()
             del collection[:]
+            collection.numselected=0
             browser.lock.release()
         finally:
             f.close()
@@ -356,6 +360,7 @@ class SelectionJob(WorkerJob):
         else:
             listitems=collection
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            collection.numselected+=select-listitems(i).selected
             listitems(i).selected=select
             if i%100==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
@@ -441,6 +446,7 @@ class VerifyImagesJob(WorkerJob):
             ##print 'verifying',item.filename,os.path.isdir(item.filename)
             if not os.path.exists(item.filename) or os.path.isdir(item.filename):
                 browser.lock.acquire()
+                collection.numselected-=collection[i].selected
                 del collection[i]
                 browser.lock.release()
                 del_view_item(view,browser,item)
@@ -517,6 +523,7 @@ class DirectoryUpdateJob(WorkerJob):
                     print 'delete item coll index',j
                     if j>=0:
                         it=collection[j]
+                        collection.numselected-=collection[j].selected
                         del collection[j]
                         j=view.find_item(it)
                         print 'delete item view index',j,it

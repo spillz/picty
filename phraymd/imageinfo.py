@@ -87,9 +87,12 @@ class Item(list):
 class Collection(list):
     def __init__(self,items):
         list.__init__(self)
+        self.numselected=0
         for item in items:
             self.add(item)
+            self.numselected+=item.selected
     def add(self,item):
+        self.numselected+=item.selected
         bisect.insort(self,item)
     def find(self,item):
         i=bisect.bisect_left(self,item)
@@ -101,12 +104,14 @@ class Collection(list):
     def delete(self,item):
         i=self.find(item)
         if i>=0:
+            self.numselected-=item.selected
             return self.pop(i)
         return None
     def __call__(self,ind):
         return self[ind]
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
+        del odict['numselected']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes

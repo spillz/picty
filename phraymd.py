@@ -473,6 +473,9 @@ class ImageBrowser(gtk.VBox):
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
 
+        self.info_bar=gtk.Label('Loading.... please wait')
+        self.info_bar.show()
+
         self.offsety=0
         self.offsetx=0
         self.ind_view_first=0
@@ -545,6 +548,7 @@ class ImageBrowser(gtk.VBox):
 #        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
         self.vbox.pack_start(self.status_bar,False)
+        self.vbox.pack_start(self.info_bar,False)
         self.vbox.show()
 
         hpane=gtk.HPaned()
@@ -759,11 +763,30 @@ class ImageBrowser(gtk.VBox):
             imagemanip.save_metadata(item)
 
     def revert_item(self,ind):
-        if item.meta_changed:
-            item.meta_revert()
+        item=self.tm.view(ind)
+        if not item.meta_changed:
+            return
+        try:
+            orient=item.meta['Orientation']
+        except:
+            orient=None
+        try:
+            orient_backup=item.meta_backup['Orientation']
+        except:
+            orient_backup=None
+        item.meta_revert()
+        if orient!=orient_backup:
+            item.thumb=None
+            self.tm.recreate_thumb(item)
+        self.RefreshView()
+
 
     def select_item(self,ind):
         item=self.tm.view(ind)
+        if item.selected:
+            self.tm.collection.numselected-=1
+        else:
+            self.tm.collection.numselected+=1
         item.selected=not item.selected
         self.RefreshView()
 
@@ -778,6 +801,7 @@ class ImageBrowser(gtk.VBox):
         self.dlg.show()
 
     def rotate_item_left(self,ind):
+        ##TODO: put this task in the background thread (using the recreate thumb job)
         item=self.tm.view(ind)
         imagemanip.rotate_left(item)
         self.UpdateThumbReqs()
@@ -785,15 +809,12 @@ class ImageBrowser(gtk.VBox):
             self.ViewImage(self.ind_viewed)
 
     def rotate_item_right(self,ind):
+        ##TODO: put this task in the background thread (using the recreate thumb job)
         item=self.tm.view(ind)
         imagemanip.rotate_right(item)
         self.UpdateThumbReqs()
         if ind==self.ind_viewed:
             self.ViewImage(self.ind_viewed)
-
-    def hide_item(self,ind):
-        item=self.tm.view(ind)
-        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
 
     def delete_item(self,ind):
         item=self.tm.view(ind)
@@ -850,6 +871,7 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
 #        if self.ind_viewed>=0:
 #            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
@@ -858,6 +880,7 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
 
     def AddImages(self,items):
 #        for item in items:
