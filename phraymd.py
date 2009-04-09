@@ -653,22 +653,28 @@ class ImageBrowser(gtk.VBox):
         self.status_bar.set_text(message)
 
     def KeyPress(self,obj,event):
-#        print 'key press',event.keyval
-        if event.keyval==65535:
+        if event.keyval==65535: #del key
             fileops.worker.delete(self.tm.view,self.UpdateStatus)
-        if event.keyval==92: #backslash
-            if self.ind_viewed>=0:
-                self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
-            self.tm.view.reverse=not self.tm.view.reverse
-            self.AddImage([])
-        if event.keyval==65307: #escape
+        elif event.keyval==65307: #escape
             self.ind_viewed=-1
             self.iv.hide()
             self.iv.ImageNormal()
             self.vbox.show()
             self.vscroll.show()
             self.toolbar.show()
-        if event.keyval==65293: #enter
+        elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
+            if self.is_fullscreen:
+                self.window.unfullscreen()
+                self.is_fullscreen=False
+            else:
+                self.window.fullscreen()
+                self.is_fullscreen=True
+        elif event.keyval==92: #backslash
+            if self.ind_viewed>=0:
+                self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+            self.tm.view.reverse=not self.tm.view.reverse
+            self.AddImage([])
+        elif event.keyval==65293: #enter
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
                     self.ViewImage(self.ind_viewed)
@@ -684,30 +690,23 @@ class ImageBrowser(gtk.VBox):
                     self.vbox.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
-        if (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
-            if self.is_fullscreen:
-                self.window.unfullscreen()
-                self.is_fullscreen=False
-            else:
-                self.window.fullscreen()
-                self.is_fullscreen=True
-        if event.keyval==65361: #left
+        elif event.keyval==65361: #left
             if self.ind_viewed>0:
                 self.ViewImage(self.ind_viewed-1)
-        if event.keyval==65363: #right
+        elif event.keyval==65363: #right
             if self.ind_viewed<len(self.tm.view)-1:
                 self.ViewImage(self.ind_viewed+1)
-        if event.keyval==65362: #up
+        elif event.keyval==65362: #up
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
-        if event.keyval==65364: #dn
+        elif event.keyval==65364: #dn
             self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
-        if event.keyval==65365: #pgup
+        elif event.keyval==65365: #pgup
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
-        if event.keyval==65366: #pgdn
+        elif event.keyval==65366: #pgdn
             self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
-        if event.keyval==65360: #home
+        elif event.keyval==65360: #home
             self.vscroll.set_value(self.scrolladj.lower)
-        if event.keyval==65367: #end
+        elif event.keyval==65367: #end
             self.vscroll.set_value(self.scrolladj.upper)
         return True
 
@@ -1068,6 +1067,8 @@ class MainWindow:
 #        self.imcache=ImageCache()
         self.drawing_area = ImageBrowser()
 
+#        self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
+#        self.window.connect("key-press-event",self.drawing_area.KeyPress)
 
         vb=gtk.VBox()
         vb.pack_start(self.drawing_area)

@@ -307,12 +307,13 @@ class BuildViewJob(WorkerJob):
         browser.lock.acquire()
         if i==0:
             view.key_cb=imageinfo.sort_keys[self.sort_key]
+            view.filters=None
             filter_text=self.filter_text.strip()
-            if filter_text:
+            if filter_text.lower()=='+selected':
+                view.filters=[(imageinfo.selected_filter,True)]
+            elif filter_text:
                 text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
                 view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
-            else:
-                view.filters=None
             del view[:]
         lastrefresh=i
         browser.lock.release()

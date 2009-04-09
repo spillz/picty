@@ -265,12 +265,8 @@ def make_thumb(item,interrupt_fn=None):
                 image=Image.open(item.filename)
                 image.thumbnail((128,128),Image.ANTIALIAS)
             except:
-                print 'first pass fail took',time.time()-t,'seconds'
                 cmd=settings.dcraw_cmd%(item.filename,)
-                print 'trying to thumb',item,cmd
                 imdata=os.popen(cmd).read()
-                print 'read took',time.time()-t,'seconds'
-                print 'opened cmd',len(imdata)
 #                pipe = subprocess.Popen(cmd, shell=True,
 #                        stdout=PIPE) ##, close_fds=True
 #                print pipe
@@ -281,9 +277,7 @@ def make_thumb(item,interrupt_fn=None):
                 p = ImageFile.Parser()
                 p.feed(imdata)
                 image = p.close()
-                print 'parse took',time.time()-t,'seconds'
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-                print 'thumb took',time.time()-t,'seconds'
             try:
                 orient=item.meta['Orientation']
             except:
