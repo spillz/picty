@@ -318,13 +318,14 @@ class BuildViewJob(WorkerJob):
         browser.lock.release()
         while i<len(collection) and jobs.ishighestpriority(self) and not self.cancel:
             item=collection[i]
-            if item.meta==None:
-                imagemanip.load_metadata(item)
+##todo: need to decide whether loading metadata at this point makes sense
+#            if item.meta==None:
+#                imagemanip.load_metadata(item)
             if item.meta!=None:
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-            if i-lastrefresh>20:
+            if i-lastrefresh>100:
                 lastrefresh=i
                 gobject.idle_add(browser.RefreshView)
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Rebuilding image view - %i of %i'%(i,len(collection)))
@@ -566,13 +567,13 @@ class WorkerJobCollection(dict):
             ThumbnailJob(),
             BuildViewJob(),
             LoadCollectionJob(),
+            RecreateThumbJob(),
+            CollectionUpdateJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
             SaveViewJob(),
             SelectionJob(),
             DirectoryUpdateJob(),
-            RecreateThumbJob(),
-            CollectionUpdateJob(),
             MakeThumbsJob()
             ]
         for i in range(len(self.collection)):

@@ -851,8 +851,8 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-        if self.ind_viewed>=0:
-            self.iv.SetItem(self.tm.view(self.ind_viewed))
+#        if self.ind_viewed>=0:
+#            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
     def UpdateView(self):
         self.UpdateDimensions()
