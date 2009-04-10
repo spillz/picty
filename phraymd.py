@@ -504,27 +504,54 @@ class ImageBrowser(gtk.VBox):
         self.filter_entry.connect("activate",self.set_filter_text)
         self.filter_entry.show()
 
+        self.selection_menu_button=gtk.Button('_Selection')
+        self.selection_menu_button.connect("clicked",self.selection_popup)
+        self.selection_menu_button.show()
+        self.selection_menu=gtk.Menu()
+        def menu_add(menu,text,callback):
+            item=gtk.MenuItem(text)
+            item.connect("activate",callback)
+            menu.append(item)
+            item.show()
+        menu_add(self.selection_menu,"Select _All",self.select_all)
+        menu_add(self.selection_menu,"Select _None",self.select_none)
+#        menu_add(self.selection_menu,"Show All _Selected",self.select_show)
+        menu_add(self.selection_menu,"_Copy Selection...",self.select_copy)
+        menu_add(self.selection_menu,"_Move Selection...",self.select_move)
+        menu_add(self.selection_menu,"_Delete Selection...",self.select_delete)
+#        menu_add(self.selection_menu,"Add _Keywords",self.select_keyword_add)
+#        menu_add(self.selection_menu,"_Remove Keywords",self.select_keyword_remove)
+#        menu_add(self.selection_menu,"Set Descriptive _Information",self.select_set_info)
+#        menu_add(self.selection_menu,"_Batch Manipulation",self.select_batch)
+
+##        self.selection_menu_item.set_submenu(self.selection_menu)
+        self.selection_menu.show()
+##        self.selection_menu_item.show()
+
         self.toolbar=gtk.Toolbar()
         self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
         self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED), self.revert_all_changes, user_data=None)
         self.toolbar.append_space()
-        self.toolbar.append_item("Select All", "Selects all images in the current view", None,
-            gtk.ToolButton(gtk.STOCK_ADD), self.select_all, user_data=None)
-        self.toolbar.append_item("Select None", "Deselects all images in the current view", None,
-            gtk.ToolButton(gtk.STOCK_CANCEL), self.select_none, user_data=None)
-        self.toolbar.append_item("Upload Selected", "Uploads the selected images", None,
-            gtk.ToolButton(gtk.STOCK_CONNECT), self.select_upload, user_data=None)
-        self.toolbar.append_item("Copy Selected", "Copies the selected images in the current view to a new folder location", None,
-            gtk.ToolButton(gtk.STOCK_COPY), self.select_copy, user_data=None)
-        self.toolbar.append_item("Move Selected", "Moves the selected images in the current view to a new folder location", None,
-            gtk.ToolButton(gtk.STOCK_CUT), self.select_move, user_data=None)
-        self.toolbar.append_item("Delete Selected", "Deletes the selected images in the current view", None,
-            gtk.ToolButton(gtk.STOCK_DELETE), self.select_delete, user_data=None)
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.selection_menu_button, None,"Perform operations on selections", None,
+            None, None, None)
+#        self.toolbar.append_item("Select All", "Selects all images in the current view", None,
+#            gtk.ToolButton(gtk.STOCK_ADD), self.select_all, user_data=None)
+#        self.toolbar.append_item("Select None", "Deselects all images in the current view", None,
+#            gtk.ToolButton(gtk.STOCK_CANCEL), self.select_none, user_data=None)
+#        self.toolbar.append_item("Upload Selected", "Uploads the selected images", None,
+#            gtk.ToolButton(gtk.STOCK_CONNECT), self.select_upload, user_data=None)
+#        self.toolbar.append_item("Copy Selected", "Copies the selected images in the current view to a new folder location", None,
+#            gtk.ToolButton(gtk.STOCK_COPY), self.select_copy, user_data=None)
+#        self.toolbar.append_item("Move Selected", "Moves the selected images in the current view to a new folder location", None,
+#            gtk.ToolButton(gtk.STOCK_CUT), self.select_move, user_data=None)
+#        self.toolbar.append_item("Delete Selected", "Deletes the selected images in the current view", None,
+#            gtk.ToolButton(gtk.STOCK_DELETE), self.select_delete, user_data=None)
         self.toolbar.append_space()
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the image attribute that determines the order images appear in", None, None,
             None, None)
+        ## TODO: toggle the icon and tooltip depending on whether we are currently showing ascending or descending order
         self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
             gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
@@ -586,6 +613,10 @@ class ImageBrowser(gtk.VBox):
         self.imarea.show()
         self.vscroll.show()
         #self.Resize(600,300)
+
+    def selection_popup(self,widget):
+        self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+        #m.attach(gtk.MenuItem())
 
     def save_all_changes(self,widget):
         self.tm.save_or_revert_view()
@@ -871,7 +902,7 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
+        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 #        if self.ind_viewed>=0:
 #            self.iv.SetItem(self.tm.view(self.ind_viewed))
 

@@ -116,9 +116,11 @@ def conv_rational(metaobject,keys,value=None):
     for k in keys:
         try:
             val=metaobject[k]
-#            return str(val)
-            vals=val.split('/')
-            return (int(v[0]),int(v[1]))
+            try:
+                return (int(val[0]),int(val[1]))
+            except:
+                vals=str(val).split('/')
+                return (int(vals[0]),int(vals[1]))
         except:
             pass
     return None
@@ -165,7 +167,7 @@ apptags=(
 ("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
 ("Model","Model",False,conv_str,None,None,None,("Exif.Image.Model",)),
 ("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",)),
-("Exposure Time","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",)),
+("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",)),
 ("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FNumber",)),
 ("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FocalLength",)),
 ("ExposureProgram","Exposure Program",False,conv_str,None,None,None,("Exif.Photo.ExposureProgram",)),
