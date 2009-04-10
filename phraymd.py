@@ -61,7 +61,7 @@ settings.init() ##todo: make this call on first import inside the module
 class MetaDialog(gtk.Dialog):
     def __init__(self,item):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
-        self.set_title(item.filename)
+        self.set_title('Edit Descriptive Info')
         tags=[t[0:2] for t in exif.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
@@ -80,7 +80,18 @@ class MetaDialog(gtk.Dialog):
             self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()
-        self.vbox.pack_start(table)
+        hbox=gtk.HBox()
+        if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
+            self.thumb=gtk.Image()
+            self.thumb.set_from_pixbuf(item.thumb)
+            hbox.pack_start(self.thumb)
+        hbox.pack_start(table)
+        hbox.show_all()
+        self.vbox.pack_start(hbox)
+        file_label=gtk.Label()
+        file_label.set_label(item.filename)
+        file_label.show()
+        self.vbox.pack_start(file_label)
     def meta_changed(self,widget,key):
         value=exif.app_key_from_string(key,widget.get_text())
         print 'value changed',key,value
