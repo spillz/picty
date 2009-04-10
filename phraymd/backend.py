@@ -374,6 +374,82 @@ class SelectionJob(WorkerJob):
             self.cancel=False
             self.unsetevent()
 
+ADD_KEYWORDS=1
+REMOVE_KEYWORDS=2
+CHANGE_META=3
+
+class EditMetaDataJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'EDITMETADATA')
+        self.pos=0
+        self.cancel=False
+        self.mode=0
+        self.keyword_string=''
+        self.meta=None
+
+    def __call__(self,jobs,collection,view,browser):
+        i=self.pos
+        if self.mode==ADD_KEYWORDS:
+            tags=exif.tag_split(self.keyword_string)
+            tags_lower=[t.lower() for t in tags]
+            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
+                item=view(i)
+                if item.selected and item.meta!=None and item.meta!=False:
+                    meta=item.meta.copy()
+                    try:
+                        tags_kw=meta['Keywords']
+                    except:
+                        tags_kw=[]
+                    tags_kw_lower=[t.lower() for t in tags_kw]
+                    new_tags=list(tags_kw)
+                    for j in range(len(tags)):
+                        if tags_lower[j] not in tags_kw_lower:
+                            new_tags.append(tags[j])
+                    if len(new_tags)==0:
+                        del meta['Keywords']
+                    else:
+                        meta['Keywords']=new_tags
+                    item.set_meta(meta)
+                if i%100==0:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Selecting images - %i of %i'%(i,len(view)))
+                i+=1
+        if self.mode==REMOVE_KEYWORDS:
+            tags=exif.tag_split(self.keyword_string)
+            tags_lower=[t.lower() for t in tags]
+            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
+                item=view(i)
+                if item.selected and item.meta!=None and item.meta!=False:
+                    meta=item.meta.copy()
+                    try:
+                        tags_kw=list(meta['Keywords'])
+                        tags_kw_lower=[t.lower() for t in tags_kw]
+                        new_tags=[]
+                        for j in range(len(tags_kw)):
+                            if tags_kw_lower[j] not in tags_lower:
+                                new_tags.append(tags_kw[j])
+                        if len(new_tags)==0:
+                            del meta['Keywords']
+                        else:
+                            meta['Keywords']=new_tags
+                        item.set_meta(meta)
+                    except:
+                        pass
+                if i%100==0:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Adding keywords - %i of %i'%(i,len(view)))
+                i+=1
+
+        if self.mode==CHANGE_META:
+            pass
+
+        if i<len(view) and not self.cancel:
+            self.pos=i
+        else:
+            gobject.idle_add(browser.UpdateStatus,2.0,'Metadata edit complete - %i of %i'%(i,len(view)))
+            gobject.idle_add(browser.RefreshView)
+            self.pos=0
+            self.cancel=False
+            self.unsetevent()
+
 
 class SaveViewJob(WorkerJob):
     def __init__(self):
@@ -574,13 +650,14 @@ class WorkerJobCollection(dict):
             WorkerJob('QUIT'),
             ThumbnailJob(),
             BuildViewJob(),
+            SelectionJob(),
+            EditMetaDataJob(),
             LoadCollectionJob(),
             RecreateThumbJob(),
             CollectionUpdateJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
             SaveViewJob(),
-            SelectionJob(),
             DirectoryUpdateJob(),
             MakeThumbsJob()
             ]
@@ -712,6 +789,20 @@ class Worker:
         job.pos=0
         job.select=select
         job.limit_to_view=view
+        job.setevent()
+        self.event.set()
+        return True
+
+    def keyword_edit(self,keyword_string,remove=False):
+        job=self.jobs['EDITMETADATA']
+        if job.state:
+            return False
+        job.pos=0
+        job.keyword_string=keyword_string
+        if remove:
+            job.mode=REMOVE_KEYWORDS
+        else:
+            job.mode=ADD_KEYWORDS
         job.setevent()
         self.event.set()
         return True

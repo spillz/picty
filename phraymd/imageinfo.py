@@ -63,6 +63,15 @@ class Item(list):
             del self.meta_backup
             self.meta_changed=False
         return self.meta_changed
+    def set_meta(self,meta):
+        if not self.meta_changed:
+            self.meta_backup=self.meta.copy()
+            self.meta_changed=True
+        self.meta=meta
+        if self.meta==self.meta_backup:
+            del self.meta_backup
+            self.meta_changed=False
+        return self.meta_changed
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         del odict['thumbsize']

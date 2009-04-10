@@ -515,14 +515,15 @@ class ImageBrowser(gtk.VBox):
             item.show()
         menu_add(self.selection_menu,"Select _All",self.select_all)
         menu_add(self.selection_menu,"Select _None",self.select_none)
-#        menu_add(self.selection_menu,"Show All _Selected",self.select_show)
+        menu_add(self.selection_menu,"_Invert Selection",self.select_invert)
+        menu_add(self.selection_menu,"Show All _Selected",self.select_show)
         menu_add(self.selection_menu,"_Copy Selection...",self.select_copy)
         menu_add(self.selection_menu,"_Move Selection...",self.select_move)
         menu_add(self.selection_menu,"_Delete Selection...",self.select_delete)
-#        menu_add(self.selection_menu,"Add _Keywords",self.select_keyword_add)
-#        menu_add(self.selection_menu,"_Remove Keywords",self.select_keyword_remove)
-#        menu_add(self.selection_menu,"Set Descriptive _Information",self.select_set_info)
-#        menu_add(self.selection_menu,"_Batch Manipulation",self.select_batch)
+        menu_add(self.selection_menu,"Add _Tags",self.select_keyword_add)
+        menu_add(self.selection_menu,"_Remove Tags",self.select_keyword_remove)
+        menu_add(self.selection_menu,"Set Descriptive _Info",self.select_set_info)
+        menu_add(self.selection_menu,"_Batch Manipulation",self.select_batch)
 
 ##        self.selection_menu_item.set_submenu(self.selection_menu)
         self.selection_menu.show()
@@ -623,6 +624,49 @@ class ImageBrowser(gtk.VBox):
 
     def revert_all_changes(self,widget):
         self.tm.save_or_revert_view(False)
+
+    def select_invert(self,widget):
+        pass
+
+    def select_show(self,widget):
+        self.filter_entry.set_text("+selected")
+        self.filter_entry.activate()
+
+    def entry_dialog(self,title,prompt,default=''):
+        dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,
+                         (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+        prompt_label=gtk.Label()
+        prompt_label.set_label(prompt)
+        entry=gtk.Entry()
+        entry.set_text(default)
+        hbox=gtk.HBox()
+        hbox.pack_start(prompt_label,False)
+        hbox.pack_start(entry)
+        hbox.show_all()
+        dialog.vbox.pack_start(hbox)
+        response=dialog.run()
+        if response==gtk.RESPONSE_ACCEPT:
+            ret_val=entry.get_text()
+        else:
+            ret_val=None
+        dialog.destroy()
+        return ret_val
+
+    def select_keyword_add(self,widget):
+        keyword_string=self.entry_dialog("Add Tags","Enter tags")
+        if keyword_string:
+            self.tm.keyword_edit(keyword_string)
+
+    def select_keyword_remove(self,widget):
+        keyword_string=self.entry_dialog("Remove Tags","Enter Tags")
+        if keyword_string:
+            self.tm.keyword_edit(keyword_string,True)
+
+    def select_set_info(self,widget):
+        pass
+
+    def select_batch(self,widget):
+        pass
 
     def select_all(self,widget):
         self.tm.select_all_items()
