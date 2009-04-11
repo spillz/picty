@@ -99,6 +99,9 @@ def load_image(item,interrupt_fn):
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
             imdata=os.popen(cmd).read()
+            if not imdata or len(imdata)<100:
+                cmd=settings.dcraw_backup_cmd%(item.filename,)
+                imdata=os.popen(cmd).read()
             p = ImageFile.Parser()
             p.feed(imdata)
             image = p.close()
@@ -208,10 +211,11 @@ def save_metadata(item):
         rawmeta.readMetadata()
         exif.set_exiv2_meta(item.meta,rawmeta)
         rawmeta.writeMetadata()
+        update_thumb_date(item)
+        item.mark_meta_saved()
     except:
         print 'Error writing metadata for',item.filename
         return False
-    item.mark_meta_saved()
     return True
 
 
@@ -221,6 +225,7 @@ def save_metadata_key(item,key,value):
         rawmeta.readMetadata()
         rawmeta[key]=value
         rawmeta.writeMetadata()
+        update_thumb_date(item)
     except:
         print 'Error writing metadata for',item.filename
 
@@ -248,8 +253,18 @@ def delete_thumb(item):
         item.thumburi=None
 
 
+def update_thumb_date(item,interrupt_fn=None):
+    item.mtime=os.path.getmtime(item.filename)
+    if item.thumb and item.thumburi:
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        thumb_factory.save_thumbnail(item.thumb,uri,item.mtime)
+        item.thumburi=thumb_factory.lookup(uri,item.mtime)
+        return True
+    return make_thumb(item,interrupt_fn)
+
+
+
 def make_thumb(item,interrupt_fn=None):
-    '''this assumes jpg'''
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         return
     ##todo: could also try extracting the thumb from the image (essential for raw files)
@@ -267,6 +282,9 @@ def make_thumb(item,interrupt_fn=None):
             except:
                 cmd=settings.dcraw_cmd%(item.filename,)
                 imdata=os.popen(cmd).read()
+                if not imdata or len(imdata)<100:
+                    cmd=settings.dcraw_backup_cmd%(item.filename,)
+                    imdata=os.popen(cmd).read()
 #                pipe = subprocess.Popen(cmd, shell=True,
 #                        stdout=PIPE) ##, close_fds=True
 #                print pipe

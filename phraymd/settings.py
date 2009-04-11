@@ -40,6 +40,7 @@ else:
 
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
+dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
 
 imagetypes=['jpg','jpeg','png']
 

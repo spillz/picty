@@ -680,7 +680,7 @@ class WorkerJobCollection(dict):
 class Worker:
     def __init__(self,browser):
         self.collection=imageinfo.Collection([])
-        self.view_key=imageinfo.get_ctime
+        self.view_key=imageinfo.get_mtime
         self.view=imageinfo.Index(self.view_key,[])
         self.jobs=WorkerJobCollection()
         self.event=threading.Event()

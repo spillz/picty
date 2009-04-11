@@ -78,11 +78,11 @@ def tag_bind(tags):
         if ' ' in tag:
             tag='"%s"'%(tag,)
         pretag.append(tag)
-    ' '.join(pretag)
+    return ' '.join(pretag)
 
 def conv_keywords(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() and len(value)>0:
+        if (keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys()) or len(value)>0:
             metaobject["Iptc.Application2.Keywords"]=value
         return True
     try:
@@ -92,7 +92,7 @@ def conv_keywords(metaobject,keys,value=None):
         return tuple(val)
     except:
         try:
-            ##todo: want to parse 'abc "def ghi" fdg' as three tags -- need quote parsing
+            #parse 'abc "def ghi" fdg' as three tags -- need quote parsing
             val=metaobject["Exif.Photo.UserComment"]
             vals=tag_split(value)
             return val

@@ -77,6 +77,7 @@ class MetaDialog(gtk.Dialog):
                 print 'item',k,val
             except:
                 val=''
+                print 'item err',k,val
             self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()
@@ -868,13 +869,14 @@ class ImageBrowser(gtk.VBox):
 
 
     def select_item(self,ind):
-        item=self.tm.view(ind)
-        if item.selected:
-            self.tm.collection.numselected-=1
-        else:
-            self.tm.collection.numselected+=1
-        item.selected=not item.selected
-        self.RefreshView()
+        if 0<=ind<len(self.tm.view):
+            item=self.tm.view(ind)
+            if item.selected:
+                self.tm.collection.numselected-=1
+            else:
+                self.tm.collection.numselected+=1
+            item.selected=not item.selected
+            self.RefreshView()
 
     def launch_item(self,ind):
         item=self.tm.view(ind)
