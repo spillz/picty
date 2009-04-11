@@ -656,6 +656,8 @@ class ImageBrowser(gtk.VBox):
         hbox.pack_start(entry)
         hbox.show_all()
         dialog.vbox.pack_start(hbox)
+        entry.set_property("activates-default",True)
+        dialog.set_default_response(gtk.RESPONSE_ACCEPT)
         response=dialog.run()
         if response==gtk.RESPONSE_ACCEPT:
             ret_val=entry.get_text()
