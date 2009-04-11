@@ -750,18 +750,26 @@ class Worker:
         #only processed after some delay because many events may be generated
         #before the file is closed)
         job=self.jobs['DIRECTORYUPDATE']
-        if action in ('MODIFY','CREATE'):
-            job.deflock.acquire()
-            if self.dirtimer!=None:
-                self.dirtimer.cancel()
-            self.dirtimer=threading.Timer(1,self.deferred_dir_update)
-            self.dirtimer.start()
-            job.deferred.append((path,action))
-            job.deflock.release()
-        else:
-            job.queue.append((path,action))
-            job.setevent()
-            self.event.set()
+        job.deflock.acquire()
+        if self.dirtimer!=None:
+            self.dirtimer.cancel()
+        self.dirtimer=threading.Timer(1,self.deferred_dir_update)
+        self.dirtimer.start()
+        job.deferred.append((path,action))
+        job.deflock.release()
+##
+##        if action in ('MODIFY','CREATE'):
+##            job.deflock.acquire()
+##            if self.dirtimer!=None:
+##                self.dirtimer.cancel()
+##            self.dirtimer=threading.Timer(1,self.deferred_dir_update)
+##            self.dirtimer.start()
+##            job.deferred.append((path,action))
+##            job.deflock.release()
+##        else:
+##            job.queue.append((path,action))
+##            job.setevent()
+##            self.event.set()
 
     def quit(self):
         self.jobs['QUIT'].setevent()
