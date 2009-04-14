@@ -300,7 +300,7 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW')
         self.pos=0
         self.cancel=False
-        self.sort_key='Date Taken'
+        self.sort_key='Date Last Modified'
         self.filter_text=''
 
     def cancel_job(self):
@@ -319,6 +319,7 @@ class BuildViewJob(WorkerJob):
                 text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
                 view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
             del view[:]
+            gobject.idle_add(browser.UpdateView)
         lastrefresh=i
         browser.lock.release()
         while i<len(collection) and jobs.ishighestpriority(self) and not self.cancel:

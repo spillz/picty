@@ -40,6 +40,7 @@ import bisect
 import sys
 sys.path.append('/usr/share/phraymd') ##private module location on installed version
 
+
 try:
     import gnome.ui
     import gnomevfs
@@ -55,6 +56,7 @@ from phraymd import imagemanip
 from phraymd import imageinfo
 from phraymd import fileops
 from phraymd import exif
+from phraymd import register_icons
 
 settings.init() ##todo: make this call on first import inside the module
 
@@ -203,8 +205,9 @@ class ImageViewer(gtk.VBox):
         self.meta_box.show_all()
 
         f=gtk.VPaned()
-        f.add1(self.imarea)
-        f.add2(self.meta_box)
+        f.add1(self.meta_box)
+        f.add2(self.imarea)
+        f.set_position(0)
         self.pack_start(f)
 
         self.imarea.connect("realize",self.Render)
@@ -499,8 +502,8 @@ class ImageBrowser(gtk.VBox):
                         (self.revert_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
                         (self.launch_item,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
                         (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_left,self.render_icon(gtk.STOCK_GO_UP, gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_right,self.render_icon(gtk.STOCK_GO_DOWN, gtk.ICON_SIZE_MENU)),
+                        (self.rotate_item_left,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU)),
+                        (self.rotate_item_right,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU)),
                         (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
                         ]
 
@@ -591,16 +594,17 @@ class ImageBrowser(gtk.VBox):
         self.vbox.pack_start(self.info_bar,False)
         self.vbox.show()
 
-        hpane=gtk.HPaned()
-        hpane.add1(self.iv)
-        hpane.add2(self.vbox)
-        hpane.show()
-        hbox=gtk.HBox()
-        hbox.show()
-        hbox.pack_start(hpane)
-        hbox.pack_start(self.vscroll,False)
+        self.hbox=gtk.HBox()
+        self.hbox.show()
+        self.hbox.pack_start(self.vbox)
+        self.hbox.pack_start(self.vscroll,False)
+        self.hpane=gtk.HPaned()
+        self.hpane.add1(self.hbox)
+        self.hpane.add2(self.iv)
+        self.hpane.show()
+        self.hpane.set_position(self.thumbwidth+2*self.pad)
         self.pack_start(self.toolbar,False,False)
-        self.pack_start(hbox)
+        self.pack_start(self.hpane)
         self.connect("destroy", self.Destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
@@ -624,7 +628,9 @@ class ImageBrowser(gtk.VBox):
 #        self.vscroll.grab_focus()
 
         self.imarea.show()
+        self.last_width=2*self.pad+self.thumbwidth
         self.vscroll.show()
+
         #self.Resize(600,300)
 
     def selection_popup(self,widget):
@@ -819,14 +825,14 @@ class ImageBrowser(gtk.VBox):
             self.iv.ImageNormal()
             self.vbox.show()
             self.toolbar.show()
-            self.vscroll.show()
+            self.hbox.show()
             self.is_iv_fullscreen=False
         else:
             self.ViewImage(self.ind_viewed)
             self.iv.ImageFullscreen()
             self.vbox.hide()
             self.toolbar.hide()
-            self.vscroll.hide()
+            self.hbox.hide()
             self.is_iv_fullscreen=True
 
     def get_hover_command(self, ind, x, y):
@@ -843,8 +849,6 @@ class ImageBrowser(gtk.VBox):
                 return i
             left+=self.hover_cmds[i][1].get_width()+self.pad/4
         return -1
-
-
 
     def save_item(self,ind):
         item=self.tm.view(ind)
@@ -966,6 +970,7 @@ class ImageBrowser(gtk.VBox):
 #            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
     def UpdateView(self):
+        self.offsety=0
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
@@ -1000,8 +1005,12 @@ class ImageBrowser(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def UpdateScrollbar(self):
+        upper=len(self.tm.view)/self.horizimgcount
+        if len(self.tm.view)%self.horizimgcount!=0:
+            upper+=1
+        upper=upper*(self.thumbheight+self.pad)
         self.scrolladj.set_all(value=self.offsety, lower=0,
-                upper=len(self.tm.view)*(self.thumbheight+self.pad)/self.horizimgcount,
+                upper=upper,
                 step_increment=max(1,self.thumbheight+self.pad)/5,
                 page_increment=self.height, page_size=self.height)
 
@@ -1051,6 +1060,11 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+
+#    def on_set_pane(self,obj,event)
+#
+#    def config_pane(self,obj,event):
+#        self.hpane.set_position(event.width-self.last_width)
 
     def Expose(self,event,arg):
         self.Render(event)
@@ -1186,9 +1200,12 @@ class MainWindow:
         vb=gtk.VBox()
         vb.pack_start(self.drawing_area)
         self.window.add(vb)
+
         self.window.show()
         vb.show()
         self.drawing_area.show()
+#        self.window.add_events(gtk.gdk.STRUCTURE_MASK)
+#        self.window.connect("configure-event",self.drawing_area.config_pane)
 
     def on_down(self, widget, data=None):
         self.drawing_area.ScrollDown()
