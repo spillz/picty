@@ -491,6 +491,11 @@ class ImageBrowser(gtk.VBox):
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
 
+        self.pixbuf_thumb_fail=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
+        self.pixbuf_thumb_load=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
+        self.pixbuf_thumb_fail.fill(0xC0000080)
+        self.pixbuf_thumb_load.fill(0xFFFFFF20)
+
         self.offsety=0
         self.offsetx=0
         self.ind_view_first=0
@@ -1122,33 +1127,21 @@ class ImageBrowser(gtk.VBox):
                 except:
                     pass
 #            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
+            fail_item=False
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                 adjy=self.pad/2+(128-thumbheight)/2
                 adjx=self.pad/2+(128-thumbwidth)/2
                 drawable.draw_pixbuf(gc, item.thumb, 0, 0,x+adjx,y+adjy)
-##                if item.thumbrgba:
-##                    try:
-##                        drawable.draw_rgb_32_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
-##                                   gtk.gdk.RGB_DITHER_NONE,
-##                                   item.thumb, -1, 0, 0)
-##                    except:
-##                        None
-##                        #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
-##                else:
-##                    try:
-##                        drawable.draw_rgb_image(gc,x+adjx,y+adjy,thumbwidth,thumbheight,
-##                                   gtk.gdk.RGB_DITHER_NONE,
-##                                   item.thumb, -1, 0, 0)
-##                    except:
-##                        None
-                        #print 'thumberror',self.tm.view[i].filename,self.tm.view[i].thumbsize
-#            else:
-#                item=self.tm.view(i)
-                #if not neededitem and not item.thumb and not  item.cannot_thumb:
-                #    neededitem=self.tm.view[i]
-#                thumbsneeded.insert(0,self.tm.view[i])
-            if self.hover_ind==i or item.meta_changed or item.selected:
+            elif item.cannot_thumb:
+                adjy=self.pad/2
+                adjx=self.pad/2
+                drawable.draw_pixbuf(gc, self.pixbuf_thumb_fail, 0, 0,x+adjx,y+adjy)
+            else:
+                adjy=self.pad/2
+                adjx=self.pad/2
+                drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,x+adjx,y+adjy)
+            if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     l=self.imarea.create_pango_layout('')
@@ -1188,8 +1181,8 @@ class MainWindow:
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         sett=gtk.settings_get_default()
-        sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"medusa:main") #gtk.ICON_SIZE_MENU
-        sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"medusa:main")
+        sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU
+        sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"phraymd:main")
 
 #        self.imcache=ImageCache()
         self.drawing_area = ImageBrowser()
