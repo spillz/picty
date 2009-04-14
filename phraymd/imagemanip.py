@@ -53,10 +53,8 @@ def rotate_left(item):
     item.set_meta_key('Orientation',settings.rotate_left_tx[orient])
     item.image=None
     item.qview=None
-    item.thumb=None
-    item.thumburi=None
     print 'rotate left',item,'from',orient,'to',settings.rotate_left_tx[orient]
-    make_thumb(item)
+    rotate_thumb(item,False)
 
 
 def rotate_right(item):
@@ -71,9 +69,7 @@ def rotate_right(item):
     item.set_meta_key('Orientation',settings.rotate_right_tx[orient])
     item.image=None
     item.qview=None
-    item.thumb=None
-    item.thumburi=None
-    make_thumb(item)
+    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
 def cache_image(item):
     memimages.append(item)
@@ -263,6 +259,41 @@ def update_thumb_date(item,interrupt_fn=None):
     return make_thumb(item,interrupt_fn)
 
 
+def rotate_thumb(item,right=True,interrupt_fn=None):
+    if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
+        print 'has failed'
+        return False
+    ##todo: could also try extracting the thumb from the image (essential for raw files)
+    ## would not need to make the thumb in that case
+    print 'transform',item,item.thumburi
+    if item.thumburi:
+#        try:
+        image=Image.open(item.thumburi)
+        if right:
+            image=image.transpose(Image.ROTATE_270)
+        else:
+            image=image.transpose(Image.ROTATE_90)
+        thumbsize=image.size
+        thumbrgba='A' in image.getbands()
+        width=thumbsize[0]
+        height=thumbsize[1]
+        thumb_pb=gtk.gdk.pixbuf_new_from_data(data=image.tostring(), colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
+        width=thumb_pb.get_width()
+        height=thumb_pb.get_height()
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
+        item.thumburi=thumb_factory.lookup(uri,item.mtime)
+        if item.thumb:
+            item.thumbsize=(width,height)
+            item.thumb=thumb_pb
+            cache_thumb(item)
+        print 'transformed thumb',item
+        return True
+#        except:
+#            return False
+    return False
+
+
 
 def make_thumb(item,interrupt_fn=None):
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
@@ -363,6 +394,7 @@ def load_thumb(item):
                     image=gtk.gdk.pixbuf_new_from_data(image.tostring(), gtk.gdk.COLORSPACE_RGB, False, 8, image.size[0], image.size[1], 3*image.size[0])
                     #print 'full loading',fullpath
                     image=None
+                    item.thumburi=thumburi
     except:
         image=None
     thumb=None
