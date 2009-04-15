@@ -440,7 +440,14 @@ class EditMetaDataJob(WorkerJob):
                 i+=1
 
         if self.mode==CHANGE_META:
-            pass
+            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
+                item=view(i)
+                if item.selected and item.meta!=None and item.meta!=False:
+                    for k,v in self.meta.iteritems():
+                        item.set_meta_key(k,v)
+                if i%100==0:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Adding keywords - %i of %i'%(i,len(view)))
+                i+=1
 
         if i<len(view) and not self.cancel:
             self.pos=i
@@ -798,6 +805,18 @@ class Worker:
         job.pos=0
         job.select=select
         job.limit_to_view=view
+        job.setevent()
+        self.event.set()
+        return True
+
+    def info_edit(self,meta):
+        job=self.jobs['EDITMETADATA']
+        if job.state:
+            return False
+        job.pos=0
+        job.keyword_string=None
+        job.meta=meta
+        job.mode=CHANGE_META
         job.setevent()
         self.event.set()
         return True
