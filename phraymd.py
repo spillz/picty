@@ -659,8 +659,6 @@ class ImageBrowser(gtk.VBox):
         self.status_bar.set_pulse_step(0.01)
 #        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
-        self.vbox.pack_start(self.status_bar,False)
-        self.vbox.pack_start(self.info_bar,False)
         self.vbox.show()
 
         self.hbox=gtk.HBox()
@@ -674,6 +672,8 @@ class ImageBrowser(gtk.VBox):
         self.hpane.set_position(self.thumbwidth+2*self.pad)
         self.pack_start(self.toolbar,False,False)
         self.pack_start(self.hpane)
+        self.pack_start(self.status_bar,False)
+        self.pack_start(self.info_bar,False)
         self.connect("destroy", self.Destroy)
         self.imarea.connect("realize",self.Render)
         self.imarea.connect("configure_event",self.Configure)
@@ -713,7 +713,10 @@ class ImageBrowser(gtk.VBox):
         self.tm.save_or_revert_view(False)
 
     def select_invert(self,widget):
-        pass
+        dlg=gtk.MessageDialog('gtk.DIALOG_MODAL',buttons=gtk.BUTTONS_CLOSE)
+        dlg.text='Not implemented yet'
+        dlg.run()
+        dlg.destroy()
 
     def select_show(self,widget):
         self.filter_entry.set_text("+selected")
@@ -761,7 +764,10 @@ class ImageBrowser(gtk.VBox):
             self.tm.info_edit(item.meta)
 
     def select_batch(self,widget):
-        pass
+        dlg=gtk.MessageDialog('gtk.DIALOG_MODAL',buttons=gtk.BUTTONS_CLOSE)
+        dlg.text='Not implemented yet'
+        dlg.run()
+        dlg.destroy()
 
     def select_all(self,widget):
         self.tm.select_all_items()
@@ -901,6 +907,7 @@ class ImageBrowser(gtk.VBox):
             self.vbox.show()
             self.toolbar.show()
             self.hbox.show()
+            self.info_bar.show()
             self.is_iv_fullscreen=False
         else:
             self.ViewImage(self.ind_viewed)
@@ -908,6 +915,7 @@ class ImageBrowser(gtk.VBox):
             self.vbox.hide()
             self.toolbar.hide()
             self.hbox.hide()
+            self.info_bar.hide()
             self.is_iv_fullscreen=True
 
     def get_hover_command(self, ind, x, y):
