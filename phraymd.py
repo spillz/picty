@@ -933,6 +933,23 @@ class ImageBrowser(gtk.VBox):
             left+=self.hover_cmds[i][1].get_width()+self.pad/4
         return -1
 
+    def popup_item(self,item):
+        def menu_add(menu,text,callback,*args):
+            item=gtk.MenuItem(text)
+            item.connect("activate",callback,*args)
+            menu.append(item)
+            item.show()
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        menu=gtk.Menu()
+        for app in gnomevfs.mime_get_all_applications(gnomevfs.get_mime_type(uri)):
+            menu_add(menu,'Open with '+app[1],self.mime_open,app[2],item)
+        ##menu_add(menu,"Select _None",self.select_none)
+        menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+
+    def mime_open(self,widget,app_cmd,item):
+        print 'mime_open',app_cmd,item
+        subprocess.Popen(app_cmd+' "'+item.filename+'"',shell=True)
+
     def save_item(self,ind):
         item=self.tm.view(ind)
         if item.meta_changed:
@@ -1006,14 +1023,17 @@ class ImageBrowser(gtk.VBox):
         if event.x>=(self.thumbheight+self.pad)*self.horizimgcount:
             ind=-1
         else:
-            if event.type==gtk.gdk._2BUTTON_PRESS:
+            if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
                 self.ViewImage(ind)
-            if event.type==gtk.gdk.BUTTON_PRESS:
+            if event.button==1 and event.type==gtk.gdk.BUTTON_PRESS:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
                     self.hover_cmds[cmd][0](ind)
                 else:
                     self.select_item(ind)
+            if event.button==3:
+                self.popup_item(self.tm.view(ind))
+
 ##todo: if double left click then view image
 ##todo: if right click spawn a context menu
 #            self.ViewImage(ind)
