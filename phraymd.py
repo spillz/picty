@@ -38,7 +38,7 @@ import datetime
 import bisect
 
 import sys
-sys.path.append('/usr/share/phraymd') ##private module location on installed version
+sys.path.insert(0,'/usr/share') ##private module location on installed version
 
 
 try:

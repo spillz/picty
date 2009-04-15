@@ -24,11 +24,11 @@ DEPENDENCIES
 
 The ubuntu packages required to run this project are:
 
-python-gtk
+python-gtk2
 python-gnome2
 python-gnome2-desktop
 python-gnome2-extras
-python-exiv2
+python-pyexiv2
 python-pyinotify
 
 (python v2.5 is assumed, the program may work with other versions, but may not)
