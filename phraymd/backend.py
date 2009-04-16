@@ -126,16 +126,20 @@ class RecreateThumbJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         while len(self.queue)>0 and jobs.ishighestpriority(self):
+            gobject.idle_add(browser.UpdateStatus,1.0/(1+len(self.queue)),'Recreating thumbnails')
             item=self.queue.pop(0)
             if item.meta==None:
+                browser.lock.acquire()
                 if view.del_item(item):
                     imagemanip.load_metadata(item)
                     view.add_item(item)
+                browser.lock.release()
             if item.meta!=None:
                 imagemanip.make_thumb(item)
                 imagemanip.load_thumb(item)
                 gobject.idle_add(browser.RefreshView)
         if len(self.queue)==0:
+            gobject.idle_add(browser.UpdateStatus,2.0,'Recreating thumbnails done')
             self.unsetevent()
 
 

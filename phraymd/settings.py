@@ -38,6 +38,13 @@ else:
     max_memimages=3
     precache_count=500 ##not currently used
 
+#custom launchers understand the following variable substituions:
+#$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
+custom_launchers={
+'image/jpeg':(('GIMP','gimp "$FULLPATH"'),),
+'image/png':(('GIMP','gimp "$FULLPATH"'),)
+}
+
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
 dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'

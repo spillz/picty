@@ -946,15 +946,46 @@ class ImageBrowser(gtk.VBox):
             menu.append(item)
             item.show()
         uri=gnomevfs.get_uri_from_local_path(item.filename)
-        menu=gtk.Menu()
-        for app in gnomevfs.mime_get_all_applications(gnomevfs.get_mime_type(uri)):
-            menu_add(menu,'Open with '+app[1],self.mime_open,app[2],item)
+        mime=gnomevfs.get_mime_type(uri)
+        launch_menu=gtk.Menu()
+        if mime in settings.custom_launchers:
+            for app in settings.custom_launchers[mime]:
+                menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
+        launch_menu.append(gtk.SeparatorMenuItem())
+        for app in gnomevfs.mime_get_all_applications(mime):
+            menu_add(launch_menu,app[1],self.mime_open,app[2],item)
         ##menu_add(menu,"Select _None",self.select_none)
+        menu_add(launch_menu,'Edit External Launchers...',self.edit_custom_mime_apps,item)
+
+        menu=gtk.Menu()
+        launch_item=gtk.MenuItem("Open with")
+        launch_item.show()
+        launch_item.set_submenu(launch_menu)
+        menu.append(launch_item)
+        menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+
+    def edit_custom_mime_apps(self,widget,item):
+        pass
+
+    def item_make_thumb(self,widget,item):
+        self.tm.recreate_thumb(item)
 
     def mime_open(self,widget,app_cmd,item):
         print 'mime_open',app_cmd,item
         subprocess.Popen(app_cmd+' "'+item.filename+'"',shell=True)
+
+    def custom_mime_open(self,widget,app_cmd_template,item):
+        from string import Template
+        fullpath=item.filename
+        directory=os.path.split(item.filename)[0]
+        fullname=os.path.split(item.filename)[1]
+        name=os.path.splitext(fullname)[0]
+        ext=os.path.splitext(fullname)[1]
+        app_cmd=Template(app_cmd_template).substitute(
+            {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
+        print 'mime_open',app_cmd,item
+        subprocess.Popen(app_cmd,shell=True)
 
     def save_item(self,ind):
         item=self.tm.view(ind)
@@ -992,8 +1023,27 @@ class ImageBrowser(gtk.VBox):
 
     def launch_item(self,ind):
         item=self.tm.view(ind)
-        print 'launching',settings.edit_command_line+" "+item.filename
-        subprocess.Popen(settings.edit_command_line+" "+item.filename,shell=True)
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        mime=gnomevfs.get_mime_type(uri)
+        if mime in settings.custom_launchers:
+            for app in settings.custom_launchers[mime]:
+                from string import Template
+                fullpath=item.filename
+                directory=os.path.split(item.filename)[0]
+                fullname=os.path.split(item.filename)[1]
+                name=os.path.splitext(fullname)[0]
+                ext=os.path.splitext(fullname)[1]
+                cmd=Template(app[1]).substitute(
+                    {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
+                break
+        if not cmd:
+            for app in gnomevfs.mime_get_all_applications(mime):
+                cmd=app[2]+' "%s"'%(item.filename,)
+        if cmd:
+            print 'mime_open',cmd
+            subprocess.Popen(cmd,shell=True)
+        else:
+            print 'no known command for ',item.filename,' mimetype',mime
 
     def edit_item(self,ind):
         item=self.tm.view(ind)
