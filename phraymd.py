@@ -1025,6 +1025,7 @@ class ImageBrowser(gtk.VBox):
         item=self.tm.view(ind)
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mime=gnomevfs.get_mime_type(uri)
+        cmd=None
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
                 from string import Template

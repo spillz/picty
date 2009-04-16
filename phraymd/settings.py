@@ -42,7 +42,8 @@ else:
 #$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
 custom_launchers={
 'image/jpeg':(('GIMP','gimp "$FULLPATH"'),),
-'image/png':(('GIMP','gimp "$FULLPATH"'),)
+'image/png':(('GIMP','gimp "$FULLPATH"'),),
+'image/x-pentax-pef':(('UFRaw','ufraw "$FULLPATH"'),),
 }
 
 edit_command_line='gimp'
