@@ -1078,15 +1078,15 @@ class ImageBrowser(gtk.VBox):
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
+#            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
                 self.ViewImage(ind)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
-            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
-                    self.hover_cmds[cmd][0](ind)
+                    if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
+                        self.hover_cmds[cmd][0](self.pressed_ind)
                 else:
-                    self.select_item(ind)
+                    self.select_item(self.pressed_ind)
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.popup_item(self.tm.view(ind))
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
