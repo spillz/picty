@@ -152,8 +152,32 @@ def try_rational(item,key):
     except:
         return None
 
+def try_rational_str(item,key):
+    try:
+        value=item.meta[key]
+        try:
+            num=int(value[0])
+            denom=int(value[1])
+        except:
+            (num,denom)=str(value).split('/')
+            num=int(num)
+            denom=int(denom)
+        if num<denom:
+            for x in xrange(num,0,-1):
+                if denom%x==0:
+                    return '%i/%i'%(num/x,denom/x)
+        if num>denom:
+            return '%3.1f'%(1.0*num/denom,)
+        return '1'
+    except:
+        return None
+
+
 def get_speed(item):
     return try_rational(item,'ExposureTime')
+
+def get_speed_str(item):
+    return try_rational_str(item,'ExposureTime')
 
 def get_aperture(item):
     return try_rational(item,'FNumber')
@@ -199,9 +223,9 @@ def text_descr(item):
     val=get_aperture(item)
     if val:
         exposure+='f/%3.1f'%(val,)
-    val=get_speed(item)
+    val=get_speed_str(item)
     if val:
-        exposure+=' %3.1fs'%(val,)
+        exposure+=' %ss'%(val,)
     if exposure:
         details+='\n'+exposure
     val=str(get_keyword(item))

@@ -859,7 +859,7 @@ class ImageBrowser(gtk.VBox):
             if self.ind_viewed>=0:
                 self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
             self.tm.view.reverse=not self.tm.view.reverse
-            self.AddImage([])
+            self.RefreshView()
         elif event.keyval==65293: #enter
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
@@ -1138,21 +1138,6 @@ class ImageBrowser(gtk.VBox):
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
         self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
-
-    def AddImages(self,items):
-#        for item in items:
-#            self.tm.view.add(item)
-        self.UpdateDimensions()
-        self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-
-    def AddImage(self,item):
-#        self.tm.view.add(item)
-        self.UpdateDimensions()
-        self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
 
     def ScrollSignalPane(self,obj,event):
         if event.direction==gtk.gdk.SCROLL_UP:
