@@ -555,6 +555,9 @@ class ImageBrowser(gtk.VBox):
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
 
+        self.pressed_ind=-1
+        self.pressed_item=None
+
         self.pixbuf_thumb_fail=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
         self.pixbuf_thumb_load=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
         self.pixbuf_thumb_fail.fill(0xC0000080)
@@ -683,8 +686,10 @@ class ImageBrowser(gtk.VBox):
         self.scrolladj.connect("value-changed",self.ScrollSignal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.ScrollSignalPane)
-        self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
-        self.imarea.connect("button-press-event",self.ButtonPress)
+        self.imarea.add_events(gtk.gdk.BUTTON_PRESS_MASK)
+        self.imarea.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
+        self.imarea.connect("button-press-event",self.button_press)
+        self.imarea.connect("button-release-event",self.button_press)
         self.imarea.grab_focus()
 
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
@@ -713,10 +718,11 @@ class ImageBrowser(gtk.VBox):
         self.tm.save_or_revert_view(False)
 
     def select_invert(self,widget):
-        dlg=gtk.MessageDialog('gtk.DIALOG_MODAL',buttons=gtk.BUTTONS_CLOSE)
-        dlg.text='Not implemented yet'
-        dlg.run()
-        dlg.destroy()
+        self.tm.select_all_items(backend.INVERT_SELECT)
+##        dlg=gtk.MessageDialog(flags=gtk.DIALOG_MODAL,buttons=gtk.BUTTONS_CLOSE)
+##        dlg.text='Not implemented yet'
+##        dlg.run()
+##        dlg.destroy()
 
     def select_show(self,widget):
         self.filter_entry.set_text("+selected")
@@ -773,7 +779,7 @@ class ImageBrowser(gtk.VBox):
         self.tm.select_all_items()
 
     def select_none(self,widget):
-        self.tm.select_all_items(False)
+        self.tm.select_all_items(backend.DESELECT)
 
     def select_upload(self,widget):
         print 'upload',widget
@@ -1014,29 +1020,31 @@ class ImageBrowser(gtk.VBox):
         item=self.tm.view(ind)
         fileops.worker.delete([item],None,False)
 
-    def ButtonPress(self,obj,event):
+    def button_press(self,obj,event):
+        print 'press',event.button,event.type
         self.imarea.grab_focus()
         self.lock.acquire()
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
-        if event.x>=(self.thumbheight+self.pad)*self.horizimgcount:
-            ind=-1
-        else:
-            if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
+        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
+            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
                 self.ViewImage(ind)
-            if event.button==1 and event.type==gtk.gdk.BUTTON_PRESS:
+        elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
+            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
                     self.hover_cmds[cmd][0](ind)
                 else:
                     self.select_item(ind)
-            if event.button==3:
-                self.popup_item(self.tm.view(ind))
-
-##todo: if double left click then view image
-##todo: if right click spawn a context menu
-#            self.ViewImage(ind)
+        elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
+            self.popup_item(self.tm.view(ind))
+        if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
+            self.pressed_ind=ind
+            self.pressed_item=self.tm.view(ind)
+        else:
+            self.pressed_ind=-1
+            self.pressed_item=None
         self.lock.release()
 
     def recalc_hover_ind(self,x,y):

@@ -345,24 +345,33 @@ class BuildViewJob(WorkerJob):
             gobject.idle_add(browser.RefreshView)
             gobject.idle_add(browser.UpdateStatus,2,'View rebuild complete')
 
+SELECT=0
+DESELECT=1
+INVERT_SELECT=2
+
 class SelectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'SELECTION')
         self.pos=0
         self.cancel=False
         self.limit_to_view=True
-        self.select=False
+        self.mode=SELECT
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
-        select=self.select
+        select=self.mode==SELECT
         if self.limit_to_view:
             listitems=view
         else:
             listitems=collection
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
-            collection.numselected+=select-listitems(i).selected
-            listitems(i).selected=select
+            item=listitems(i)
+            prev=item.selected
+            if self.mode==INVERT_SELECT:
+                item.selected=not prev
+            else:
+                item.selected=select
+            collection.numselected+=item.selected-prev
             if i%100==0:
                 gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
             i+=1
@@ -798,12 +807,12 @@ class Worker:
         job.setevent()
         self.event.set()
 
-    def select_all_items(self,select=True,view=True):
+    def select_all_items(self,mode=SELECT,view=True):
         job=self.jobs['SELECTION']
         if job.state:
             return False
         job.pos=0
-        job.select=select
+        job.mode=mode
         job.limit_to_view=view
         job.setevent()
         self.event.set()
