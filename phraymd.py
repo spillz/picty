@@ -656,6 +656,8 @@ class ImageBrowser(gtk.VBox):
         self.Resize(160,200)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
+        self.vscroll.set_property("has-tooltip",True)
+        self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
@@ -723,6 +725,17 @@ class ImageBrowser(gtk.VBox):
 ##        dlg.text='Not implemented yet'
 ##        dlg.run()
 ##        dlg.destroy()
+
+    def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
+        print 'tooltip',widget,x, y, keyboard_mode, tooltip
+        height=widget.window.get_size()[1]
+        yscroll=y*self.scrolladj.upper/height
+        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.thumbheight+self.pad)*self.horizimgcount))
+        key=self.sort_order.get_active_text()
+        key_fn=imageinfo.sort_keys[key]
+        item=self.tm.view(ind)
+        tooltip.set_text(key+': '+str(key_fn(item)))
+        return True
 
     def select_show(self,widget):
         self.filter_entry.set_text("+selected")
@@ -1150,6 +1163,7 @@ class ImageBrowser(gtk.VBox):
         self.UpdateFirstLastIndex()
         self.UpdateThumbReqs()
         self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.vscroll.trigger_tooltip_query()
 
     def UpdateScrollbar(self):
         upper=len(self.tm.view)/self.horizimgcount
