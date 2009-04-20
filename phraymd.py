@@ -876,25 +876,28 @@ class ImageBrowser(gtk.VBox):
         elif event.keyval==65293: #enter
             if self.ind_viewed>=0:
                 if self.is_iv_fullscreen:
-                    self.ViewImage(self.ind_viewed)
+                    self.ViewImage(self.iv.item)
                     self.iv.ImageNormal()
                     self.vbox.show()
                     self.toolbar.show()
                     self.vscroll.show()
                     self.is_iv_fullscreen=False
                 else:
-                    self.ViewImage(self.ind_viewed)
+                    self.ViewImage(self.iv.item)
                     self.iv.ImageFullscreen()
                     self.toolbar.hide()
                     self.vbox.hide()
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
         elif event.keyval==65361: #left
-            if self.ind_viewed>0:
-                self.ViewImage(self.ind_viewed-1)
+            pass
+            ##todo: increment/decrement algorithm
+#            if self.ind_viewed>0:
+#                self.ViewImage(self.ind_viewed-1)
         elif event.keyval==65363: #right
-            if self.ind_viewed<len(self.tm.view)-1:
-                self.ViewImage(self.ind_viewed+1)
+            pass
+#            if self.ind_viewed<len(self.tm.view)-1:
+#                self.ViewImage(self.ind_viewed+1)
         elif event.keyval==65362: #up
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
         elif event.keyval==65364: #dn
@@ -909,11 +912,11 @@ class ImageBrowser(gtk.VBox):
             self.vscroll.set_value(self.scrolladj.upper)
         return True
 
-    def ViewImage(self,ind):
-        self.ind_viewed=ind
+    def ViewImage(self,item):
         self.iv.show()
-        self.iv.SetItem(self.tm.view(ind))
-        self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
+        self.iv.SetItem(item)
+        ##todo: better alorithm to center browser on item
+        #self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
@@ -921,7 +924,7 @@ class ImageBrowser(gtk.VBox):
 
     def ButtonPress_iv(self,obj,event):
         if self.is_iv_fullscreen:
-            self.ViewImage(self.ind_viewed)
+##            self.ViewImage(self.ind_viewed)
             self.iv.ImageNormal()
             self.vbox.show()
             self.toolbar.show()
@@ -929,7 +932,7 @@ class ImageBrowser(gtk.VBox):
             self.info_bar.show()
             self.is_iv_fullscreen=False
         else:
-            self.ViewImage(self.ind_viewed)
+##            self.ViewImage(self.ind_viewed)
             self.iv.ImageFullscreen()
             self.vbox.hide()
             self.toolbar.hide()
@@ -975,6 +978,13 @@ class ImageBrowser(gtk.VBox):
         launch_item.show()
         launch_item.set_submenu(launch_menu)
         menu.append(launch_item)
+        if item.meta_changed:
+            menu_add(menu,'Save Metadata Changes',self.save_item,item)
+            menu_add(menu,'Revert Metadata Changes',self.revert_item,item)
+        menu_add(menu,'Edit Metadata',self.edit_item,item)
+        menu_add(menu,'Rotate Clockwise',self.rotate_item_right,item)
+        menu_add(menu,'Rotate Anti-Clockwise',self.rotate_item_left,item)
+        menu_add(menu,'Delete Image',self.delete_item,item)
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
@@ -1000,13 +1010,11 @@ class ImageBrowser(gtk.VBox):
         print 'mime_open',app_cmd,item
         subprocess.Popen(app_cmd,shell=True)
 
-    def save_item(self,ind):
-        item=self.tm.view(ind)
+    def save_item(self,item):
         if item.meta_changed:
             imagemanip.save_metadata(item)
 
-    def revert_item(self,ind):
-        item=self.tm.view(ind)
+    def revert_item(self,item):
         if not item.meta_changed:
             return
         try:
@@ -1034,8 +1042,7 @@ class ImageBrowser(gtk.VBox):
             item.selected=not item.selected
             self.RefreshView()
 
-    def launch_item(self,ind):
-        item=self.tm.view(ind)
+    def launch_item(self,item):
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mime=gnomevfs.get_mime_type(uri)
         cmd=None
@@ -1059,29 +1066,25 @@ class ImageBrowser(gtk.VBox):
         else:
             print 'no known command for ',item.filename,' mimetype',mime
 
-    def edit_item(self,ind):
-        item=self.tm.view(ind)
+    def edit_item(self,item):
         self.dlg=MetaDialog(item)
         self.dlg.show()
 
-    def rotate_item_left(self,ind):
+    def rotate_item_left(self,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
-        item=self.tm.view(ind)
         imagemanip.rotate_left(item)
         self.UpdateThumbReqs()
-        if ind==self.ind_viewed:
-            self.ViewImage(self.ind_viewed)
+        if item==self.iv.item:
+            self.ViewImage(item)
 
-    def rotate_item_right(self,ind):
+    def rotate_item_right(self,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
-        item=self.tm.view(ind)
         imagemanip.rotate_right(item)
         self.UpdateThumbReqs()
-        if ind==self.ind_viewed:
-            self.ViewImage(self.ind_viewed)
+        if item==self.iv.item:
+            self.ViewImage(item)
 
-    def delete_item(self,ind):
-        item=self.tm.view(ind)
+    def delete_item(self,item):
         fileops.worker.delete([item],None,False)
 
     def button_press(self,obj,event):
@@ -1091,18 +1094,19 @@ class ImageBrowser(gtk.VBox):
         ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
         ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
+        item=self.tm.view(ind)
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
 #            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
-                self.ViewImage(ind)
+                self.ViewImage(item)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
-                    if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
-                        self.hover_cmds[cmd][0](self.pressed_ind)
+                    if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
+                        self.hover_cmds[cmd][0](self.pressed_item)
                 else:
                     self.select_item(self.pressed_ind)
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
-            self.popup_item(self.tm.view(ind))
+            self.popup_item(item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
             self.pressed_ind=ind
             self.pressed_item=self.tm.view(ind)
@@ -1274,7 +1278,7 @@ class ImageBrowser(gtk.VBox):
                 break
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
-            if self.ind_viewed==i:
+            if item==self.iv.item:
                 try:
                     (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                     adjy=self.pad/2+(128-thumbheight)/2-3
