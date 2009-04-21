@@ -1042,6 +1042,7 @@ class ImageBrowser(gtk.VBox):
                 self.tm.collection.numselected+=1
             item.selected=not item.selected
             self.last_selected=item
+            self.last_selected_ind=ind
             self.RefreshView()
 
     def launch_item(self,item):
@@ -1099,13 +1100,19 @@ class ImageBrowser(gtk.VBox):
     def multi_select(self,ind_from,ind_to):
         self.tm.lock.acquire()
         select=self.tm.view(ind_from).selected
-        print 'multi select',select,ind_from,ind_to
         if ind_to>ind_from:
             for x in range(ind_from+1,ind_to+1):
+                if not item.selected and select:
+                    self.tm.collection.numselected+=1
+                if item.selected and not select:
+                    self.tm.collection.numselected-=1
                 self.tm.view(x).selected=select
         else:
-            print 'multi select',select,ind_from,ind_to,range(ind_to,ind_from,-1)
             for x in range(ind_from-1,ind_to-1,-1):
+                if not item.selected and select:
+                    self.tm.collection.numselected+=1
+                if item.selected and not select:
+                    self.tm.collection.numselected-=1
                 self.tm.view(x).selected=select
         self.tm.lock.release()
         self.RefreshView()
