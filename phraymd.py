@@ -563,6 +563,7 @@ class ImageBrowser(gtk.VBox):
         self.pixbuf_thumb_fail.fill(0xC0000080)
         self.pixbuf_thumb_load.fill(0xFFFFFF20)
 
+        self.last_selected=None
         self.offsety=0
         self.offsetx=0
         self.ind_view_first=0
@@ -890,14 +891,15 @@ class ImageBrowser(gtk.VBox):
                     self.vscroll.hide()
                     self.is_iv_fullscreen=True
         elif event.keyval==65361: #left
-            pass
-            ##todo: increment/decrement algorithm
-#            if self.ind_viewed>0:
-#                self.ViewImage(self.ind_viewed-1)
+            if self.iv.item:
+                ind=self.item_to_view_index(self.iv.item)
+                if len(self.tm.view)>ind>0:
+                    self.ViewImage(self.tm.view(ind-1))
         elif event.keyval==65363: #right
-            pass
-#            if self.ind_viewed<len(self.tm.view)-1:
-#                self.ViewImage(self.ind_viewed+1)
+            if self.iv.item:
+                ind=self.item_to_view_index(self.iv.item)
+                if len(self.tm.view)-1>ind>=0:
+                    self.ViewImage(self.tm.view(ind+1))
         elif event.keyval==65362: #up
             self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
         elif event.keyval==65364: #dn
@@ -915,8 +917,7 @@ class ImageBrowser(gtk.VBox):
     def ViewImage(self,item):
         self.iv.show()
         self.iv.SetItem(item)
-        ##todo: better alorithm to center browser on item
-        #self.offsety=max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
+        self.offsety=self.item_to_scroll_value(item)
         self.UpdateDimensions()
         self.UpdateScrollbar()
         self.UpdateThumbReqs()
@@ -1040,6 +1041,7 @@ class ImageBrowser(gtk.VBox):
             else:
                 self.tm.collection.numselected+=1
             item.selected=not item.selected
+            self.last_selected=item
             self.RefreshView()
 
     def launch_item(self,item):
@@ -1087,6 +1089,27 @@ class ImageBrowser(gtk.VBox):
     def delete_item(self,item):
         fileops.worker.delete([item],None,False)
 
+    def item_to_view_index(self,item):
+        return self.tm.view.find_item(item)
+
+    def item_to_scroll_value(self,item):
+        ind=self.item_to_view_index(item)
+        return max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
+
+    def multi_select(self,ind_from,ind_to):
+        self.tm.lock.acquire()
+        select=self.tm.view(ind_from).selected
+        print 'multi select',select,ind_from,ind_to
+        if ind_to>ind_from:
+            for x in range(ind_from+1,ind_to+1):
+                self.tm.view(x).selected=select
+        else:
+            print 'multi select',select,ind_from,ind_to,range(ind_to,ind_from,-1)
+            for x in range(ind_from-1,ind_to-1,-1):
+                self.tm.view(x).selected=select
+        self.tm.lock.release()
+        self.RefreshView()
+
     def button_press(self,obj,event):
         print 'press',event.button,event.type
         self.imarea.grab_focus()
@@ -1104,7 +1127,12 @@ class ImageBrowser(gtk.VBox):
                     if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
                         self.hover_cmds[cmd][0](self.pressed_item)
                 else:
-                    self.select_item(self.pressed_ind)
+                    if self.last_selected and event.state&gtk.gdk.SHIFT_MASK:
+                        ind=self.item_to_view_index(self.last_selected)
+                        if ind>=0:
+                            self.multi_select(ind,self.pressed_ind)
+                    else:
+                        self.select_item(self.pressed_ind)
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.popup_item(item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
