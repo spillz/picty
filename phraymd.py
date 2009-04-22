@@ -557,13 +557,16 @@ class ImageBrowser(gtk.VBox):
 
         self.pressed_ind=-1
         self.pressed_item=None
+        self.last_selected_ind=-1
+        self.last_selected=None
+
+        self.shift_state=False
 
         self.pixbuf_thumb_fail=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
         self.pixbuf_thumb_load=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,128,128)
         self.pixbuf_thumb_fail.fill(0xC0000080)
         self.pixbuf_thumb_load.fill(0xFFFFFF20)
 
-        self.last_selected=None
         self.offsety=0
         self.offsetx=0
         self.ind_view_first=0
@@ -696,7 +699,9 @@ class ImageBrowser(gtk.VBox):
         self.imarea.grab_focus()
 
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
+        self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
         self.imarea.connect("key-press-event",self.KeyPress)
+        self.imarea.connect("key-release-event",self.KeyPress)
 
         #self.set_flags(gtk.CAN_FOCUS)
 
@@ -853,65 +858,76 @@ class ImageBrowser(gtk.VBox):
         self.status_bar.set_text(message)
 
     def KeyPress(self,obj,event):
-        if event.keyval==65535: #del key
-            fileops.worker.delete(self.tm.view,self.UpdateStatus)
-        elif event.keyval==65307: #escape
-            self.ind_viewed=-1
-            self.iv.hide()
-            self.iv.ImageNormal()
-            self.vbox.show()
-            self.vscroll.show()
-            self.toolbar.show()
-        elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
-            if self.is_fullscreen:
-                self.window.unfullscreen()
-                self.is_fullscreen=False
-            else:
-                self.window.fullscreen()
-                self.is_fullscreen=True
-        elif event.keyval==92: #backslash
-            if self.ind_viewed>=0:
-                self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
-            self.tm.view.reverse=not self.tm.view.reverse
-            self.RefreshView()
-        elif event.keyval==65293: #enter
-            if self.ind_viewed>=0:
-                if self.is_iv_fullscreen:
-                    self.ViewImage(self.iv.item)
-                    self.iv.ImageNormal()
-                    self.vbox.show()
-                    self.toolbar.show()
-                    self.vscroll.show()
-                    self.is_iv_fullscreen=False
+        print event.keyval
+        if event.type==gtk.gdk.KEY_PRESS:
+            if event.keyval==65535: #del key
+                fileops.worker.delete(self.tm.view,self.UpdateStatus)
+            elif event.keyval==65307: #escape
+                self.ind_viewed=-1
+                self.iv.hide()
+                self.iv.ImageNormal()
+                self.vbox.show()
+                self.vscroll.show()
+                self.toolbar.show()
+            elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
+                if self.is_fullscreen:
+                    self.window.unfullscreen()
+                    self.is_fullscreen=False
                 else:
-                    self.ViewImage(self.iv.item)
-                    self.iv.ImageFullscreen()
-                    self.toolbar.hide()
-                    self.vbox.hide()
-                    self.vscroll.hide()
-                    self.is_iv_fullscreen=True
-        elif event.keyval==65361: #left
-            if self.iv.item:
-                ind=self.item_to_view_index(self.iv.item)
-                if len(self.tm.view)>ind>0:
-                    self.ViewImage(self.tm.view(ind-1))
-        elif event.keyval==65363: #right
-            if self.iv.item:
-                ind=self.item_to_view_index(self.iv.item)
-                if len(self.tm.view)-1>ind>=0:
-                    self.ViewImage(self.tm.view(ind+1))
-        elif event.keyval==65362: #up
-            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
-        elif event.keyval==65364: #dn
-            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
-        elif event.keyval==65365: #pgup
-            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
-        elif event.keyval==65366: #pgdn
-            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
-        elif event.keyval==65360: #home
-            self.vscroll.set_value(self.scrolladj.lower)
-        elif event.keyval==65367: #end
-            self.vscroll.set_value(self.scrolladj.upper)
+                    self.window.fullscreen()
+                    self.is_fullscreen=True
+            elif event.keyval==92: #backslash
+                if self.ind_viewed>=0:
+                    self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+                self.tm.view.reverse=not self.tm.view.reverse
+                self.RefreshView()
+            elif event.keyval==65293: #enter
+                if self.ind_viewed>=0:
+                    if self.is_iv_fullscreen:
+                        self.ViewImage(self.iv.item)
+                        self.iv.ImageNormal()
+                        self.vbox.show()
+                        self.toolbar.show()
+                        self.vscroll.show()
+                        self.is_iv_fullscreen=False
+                    else:
+                        self.ViewImage(self.iv.item)
+                        self.iv.ImageFullscreen()
+                        self.toolbar.hide()
+                        self.vbox.hide()
+                        self.vscroll.hide()
+                        self.is_iv_fullscreen=True
+            elif event.keyval==65361: #left
+                if self.iv.item:
+                    ind=self.item_to_view_index(self.iv.item)
+                    if len(self.tm.view)>ind>0:
+                        self.ViewImage(self.tm.view(ind-1))
+            elif event.keyval==65363: #right
+                if self.iv.item:
+                    ind=self.item_to_view_index(self.iv.item)
+                    if len(self.tm.view)-1>ind>=0:
+                        self.ViewImage(self.tm.view(ind+1))
+            elif event.keyval==65362: #up
+                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
+            elif event.keyval==65364: #dn
+                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
+            elif event.keyval==65365: #pgup
+                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
+            elif event.keyval==65366: #pgdn
+                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
+            elif event.keyval==65360: #home
+                self.vscroll.set_value(self.scrolladj.lower)
+            elif event.keyval==65367: #end
+                self.vscroll.set_value(self.scrolladj.upper)
+            elif event.keyval==65505: #end
+##                self.shift_state=True
+                self.RefreshView()
+        if event.type==gtk.gdk.KEY_RELEASE:
+            if event.keyval==65505: #end
+##                self.shift_state=False
+                self.RefreshView()
+#        if event.state&gtk.gdk.SHIFT_MASK:
+#            self.shift_state=True
         return True
 
     def ViewImage(self,item):
@@ -1102,18 +1118,20 @@ class ImageBrowser(gtk.VBox):
         select=self.tm.view(ind_from).selected
         if ind_to>ind_from:
             for x in range(ind_from+1,ind_to+1):
+                item=self.tm.view(x)
                 if not item.selected and select:
                     self.tm.collection.numselected+=1
                 if item.selected and not select:
                     self.tm.collection.numselected-=1
-                self.tm.view(x).selected=select
+                item.selected=select
         else:
             for x in range(ind_from-1,ind_to-1,-1):
+                item=self.tm.view(x)
                 if not item.selected and select:
                     self.tm.collection.numselected+=1
                 if item.selected and not select:
                     self.tm.collection.numselected-=1
-                self.tm.view(x).selected=select
+                item.selected=select
         self.tm.lock.release()
         self.RefreshView()
 
@@ -1292,6 +1310,12 @@ class ImageBrowser(gtk.VBox):
         black = colormap.alloc('black')
         drawable.set_background(black)
 
+        green = colormap.alloc('green')
+        gc_g = drawable.new_gc(foreground=green)
+        red= colormap.alloc('red')
+        gc_r = drawable.new_gc(foreground=red)
+
+
         (mx,my)=self.imarea.get_pointer()
         if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
             self.hover_ind=self.recalc_hover_ind(mx,my)
@@ -1311,6 +1335,13 @@ class ImageBrowser(gtk.VBox):
                 item=self.tm.view(i)
             else:
                 break
+            if self.last_selected_ind>=0 and self.hover_ind>=0 and (self.last_selected_ind>=i>=self.hover_ind or self.last_selected_ind<=i<=self.hover_ind):
+                if gtk.gdk.display_get_default().get_pointer()[3]&gtk.gdk.SHIFT_MASK:
+                    if self.last_selected:
+                        if self.last_selected.selected:
+                            drawable.draw_rectangle(gc_g, True, x+self.pad/16, y+self.pad/16, self.thumbwidth+self.pad*7/8, self.thumbheight+self.pad*7/8)
+                        else:
+                            drawable.draw_rectangle(gc_r, True, x+self.pad/16, y+self.pad/16, self.thumbwidth+self.pad*7/8, self.thumbheight+self.pad*7/8)
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
             if item==self.iv.item:
