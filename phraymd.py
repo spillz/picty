@@ -733,12 +733,11 @@ class ImageBrowser(gtk.VBox):
 ##        dlg.destroy()
 
     def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
-        print 'tooltip',widget,x, y, keyboard_mode, tooltip
         height=widget.window.get_size()[1]
         yscroll=y*self.scrolladj.upper/height
         ind=min(len(self.tm.view),max(0,int(yscroll)/(self.thumbheight+self.pad)*self.horizimgcount))
         key=self.sort_order.get_active_text()
-        key_fn=imageinfo.sort_keys[key]
+        key_fn=imageinfo.sort_keys_str[key]
         item=self.tm.view(ind)
         tooltip.set_text(key+': '+str(key_fn(item)))
         return True

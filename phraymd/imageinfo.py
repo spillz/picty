@@ -129,6 +129,8 @@ class Collection(list):
 def get_mtime(item):
     return item.mtime
 
+def get_mtime_str(item):
+    return datetime.datetime.fromtimestamp(item.mtime)
 
 def get_ctime(item):
     try:
@@ -162,11 +164,11 @@ def try_rational_str(item,key):
             (num,denom)=str(value).split('/')
             num=int(num)
             denom=int(denom)
-        if num<denom:
+        if abs(num)<denom:
             for x in xrange(num,0,-1):
                 if denom%x==0:
                     return '%i/%i'%(num/x,denom/x)
-        if num>denom:
+        if abs(num)>denom:
             return '%3.1f'%(1.0*num/denom,)
         return '1'
     except:
@@ -182,8 +184,14 @@ def get_speed_str(item):
 def get_aperture(item):
     return try_rational(item,'FNumber')
 
+def get_aperture_str(item):
+    return try_rational_str(item,'FNumber')
+
 def get_focal(item):
     return try_rational(item,'FocalLength')
+
+def get_focal_str(item):
+    return try_rational_str(item,'FocalLength')
 
 def get_orient(item):
     try:
@@ -246,6 +254,18 @@ sort_keys={
         'Aperture':get_aperture,
 #        'ISO Speed':get_iso,
         'Focal Length':get_focal
+        }
+
+sort_keys_str={
+        'Date Taken':get_ctime,
+        'Date Last Modified':get_mtime_str,
+        'File Name':get_fname,
+        'Orientation':get_orient,
+        'Folder':get_folder,
+        'Shutter Speed':get_speed_str,
+        'Aperture':get_aperture_str,
+#        'ISO Speed':get_iso,
+        'Focal Length':get_focal_str
         }
 
 
