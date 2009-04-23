@@ -81,6 +81,7 @@ class Item(list):
         del odict['qview_size']
         del odict['image']
         del odict['selected']
+        del odict['relevance']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
@@ -91,6 +92,7 @@ class Item(list):
         self.qview_size=None
         self.image=None
         self.selected=False
+        self.relevance=0
 
 
 class Collection(list):
@@ -212,8 +214,11 @@ def get_keyword(item):
     except:
         return None
 
+def get_relevance(item):
+    return item.relevance
 
 def text_descr(item):
+    ##TODO: tidy this up using functions above
     try:
         header=item.meta['Title']
     except:
@@ -244,6 +249,7 @@ def text_descr(item):
             details=details+'\n'+val[:28]+'...'
     return (header,details)
 
+
 sort_keys={
         'Date Taken':get_ctime,
         'Date Last Modified':get_mtime,
@@ -253,7 +259,8 @@ sort_keys={
         'Shutter Speed':get_speed,
         'Aperture':get_aperture,
 #        'ISO Speed':get_iso,
-        'Focal Length':get_focal
+        'Focal Length':get_focal,
+        'Relevance':get_relevance
         }
 
 sort_keys_str={
@@ -265,8 +272,11 @@ sort_keys_str={
         'Shutter Speed':get_speed_str,
         'Aperture':get_aperture_str,
 #        'ISO Speed':get_iso,
-        'Focal Length':get_focal_str
+        'Focal Length':get_focal_str,
+        'Relevance':get_relevance
         }
+
+
 
 
 def mtime_filter(item,criteria):
@@ -285,17 +295,31 @@ def selected_filter(item,criteria):
     return item.selected==criteria
 
 def keyword_filter(item,criteria):
+    relevance=0
     test=criteria[1]
-    for t in test:
-        if t in item.filename.lower():
-            return True
+    item_string=''
+    item_string+=item.filename.lower()
     if item.meta:
         for k,v in item.meta.iteritems():
             if v:
-                for t in test:
-                    if t in str(v).lower():
-                        return True
-    return False
+                if type(v) in (tuple,list):
+                    for vi in v:
+                        item_string+=' '+str(vi).lower()
+                else:
+                    item_string+=' '+str(v).lower()
+    item_string.replace('/',' ')
+    item_string.replace('\n',' ')
+#    print item_string
+    for t in test:
+        (left,match,right)=item_string.partition(t)
+        while match:
+            relevance+=1
+            if (left=='' and not match or left.endswith(' ')) and (right=='' or right.startswith(' ')):
+                relevance+=1
+            (left,match,right)=right.partition(t)
+#            print item,(left,match,right)
+    item.relevance=relevance
+    return relevance>0
 
 class Index(list):
     def __init__(self,key_cb=get_mtime,items=[]):

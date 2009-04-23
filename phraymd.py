@@ -584,8 +584,12 @@ class ImageBrowser(gtk.VBox):
                         ]
 
         self.sort_order=gtk.combo_box_new_text()
+        i=0
         for s in imageinfo.sort_keys:
             self.sort_order.append_text(s)
+            if s=='Relevance':
+                self.sort_order_relevance_ind=i
+            i+=1
         self.sort_order.set_active(0)
         self.sort_order.set_property("can-focus",False)
         self.sort_order.connect("changed",self.set_sort_key)
@@ -826,6 +830,15 @@ class ImageBrowser(gtk.VBox):
 
     def set_filter_text(self,widget):
         self.set_sort_key(widget)
+#        if not self.tm.view.reverse:
+#            self.tm.view.reverse=True
+#            if self.ind_viewed>=0:
+#                self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+#        if self.sort_order.get_active()!=self.sort_order_relevance_ind:
+#            self.sort_order.set_active(self.sort_order_relevance_ind)
+#        else:
+#            self.sort_order.emit("changed")
+#        self.set_sort_key(widget)
 
     def set_sort_key(self,widget):
        self.imarea.grab_focus()
@@ -1026,11 +1039,11 @@ class ImageBrowser(gtk.VBox):
         print 'mime_open',app_cmd,item
         subprocess.Popen(app_cmd,shell=True)
 
-    def save_item(self,item):
+    def save_item(self,widget,item):
         if item.meta_changed:
             imagemanip.save_metadata(item)
 
-    def revert_item(self,item):
+    def revert_item(self,widget,item):
         if not item.meta_changed:
             return
         try:
@@ -1047,20 +1060,7 @@ class ImageBrowser(gtk.VBox):
             self.tm.recreate_thumb(item)
         self.RefreshView()
 
-
-    def select_item(self,ind):
-        if 0<=ind<len(self.tm.view):
-            item=self.tm.view(ind)
-            if item.selected:
-                self.tm.collection.numselected-=1
-            else:
-                self.tm.collection.numselected+=1
-            item.selected=not item.selected
-            self.last_selected=item
-            self.last_selected_ind=ind
-            self.RefreshView()
-
-    def launch_item(self,item):
+    def launch_item(self,widget,item):
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mime=gnomevfs.get_mime_type(uri)
         cmd=None
@@ -1084,25 +1084,25 @@ class ImageBrowser(gtk.VBox):
         else:
             print 'no known command for ',item.filename,' mimetype',mime
 
-    def edit_item(self,item):
+    def edit_item(self,widget,item):
         self.dlg=MetaDialog(item)
         self.dlg.show()
 
-    def rotate_item_left(self,item):
+    def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_left(item)
         self.UpdateThumbReqs()
         if item==self.iv.item:
             self.ViewImage(item)
 
-    def rotate_item_right(self,item):
+    def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_right(item)
         self.UpdateThumbReqs()
         if item==self.iv.item:
             self.ViewImage(item)
 
-    def delete_item(self,item):
+    def delete_item(self,widget,item):
         fileops.worker.delete([item],None,False)
 
     def item_to_view_index(self,item):
@@ -1134,6 +1134,18 @@ class ImageBrowser(gtk.VBox):
         self.tm.lock.release()
         self.RefreshView()
 
+    def select_item(self,ind):
+        if 0<=ind<len(self.tm.view):
+            item=self.tm.view(ind)
+            if item.selected:
+                self.tm.collection.numselected-=1
+            else:
+                self.tm.collection.numselected+=1
+            item.selected=not item.selected
+            self.last_selected=item
+            self.last_selected_ind=ind
+            self.RefreshView()
+
     def button_press(self,obj,event):
         print 'press',event.button,event.type
         self.imarea.grab_focus()
@@ -1149,7 +1161,7 @@ class ImageBrowser(gtk.VBox):
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
                     if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
-                        self.hover_cmds[cmd][0](self.pressed_item)
+                        self.hover_cmds[cmd][0](None,self.pressed_item)
                 else:
                     if self.last_selected and event.state&gtk.gdk.SHIFT_MASK:
                         ind=self.item_to_view_index(self.last_selected)
