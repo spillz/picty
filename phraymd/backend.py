@@ -226,6 +226,7 @@ class SaveCollectionJob(WorkerJob):
 
 
 class WalkDirectoryJob(WorkerJob):
+    '''this walks the collection directory adding new items the collection (but not the view)'''
     def __init__(self):
         WorkerJob.__init__(self,'WALKDIRECTORY')
         self.collection_walker=None
@@ -236,8 +237,12 @@ class WalkDirectoryJob(WorkerJob):
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
-                self.collection_walker=os.walk(settings.image_dirs[0])
+                scan_dir=settings.image_dirs[0]
+                self.collection_walker=os.walk(scan_dir)
         except StopIteration:
+            self.notify_items=[]
+            self.collection_walker=None
+            self.unsetevent()
             print 'aborted directory walk'
             return
         print 'starting directory walk'
@@ -297,6 +302,84 @@ class WalkDirectoryJob(WorkerJob):
             jobs['VERIFYIMAGES'].setevent()
         else:
             print 'pausing directory walk'
+
+
+class WalkSubDirectoryJob(WorkerJob):
+    '''this walks a sub-folder in the collection directory adding new items to both view and collection'''
+    def __init__(self):
+        WorkerJob.__init__(self,'WALKSUBDIRECTORY')
+        self.collection_walker=None
+        self.notify_items=[]
+        self.done=False
+        self.sub_dir=''
+
+    def __call__(self,jobs,collection,view,browser):
+        self.last_update_time=time.time()
+        try:
+            if not self.collection_walker:
+                scan_dir=self.sub_dir
+                self.collection_walker=os.walk(scan_dir)
+        except StopIteration:
+            print 'aborted subdirectory walk'
+            self.notify_items=[]
+            self.collection_walker=None
+            self.unsetevent()
+            return
+        print 'starting subdirectory walk'
+        while jobs.ishighestpriority(self):
+            try:
+                root,dirs,files=self.collection_walker.next()
+            except StopIteration:
+                self.done=True
+                break
+            i=0
+            while i<len(dirs):
+                if dirs[i].startswith('.'):
+                    dirs.pop(i)
+                else:
+                    i+=1
+
+            gobject.idle_add(browser.UpdateStatus,-1,'Scanning for new images')
+            for p in files: #may need some try, except blocks
+                r=p.rfind('.')
+                if r<=0:
+                    continue
+                fullpath=os.path.join(root, p)
+                mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                if not mimetype.lower().startswith('image'):
+                    print 'invalid mimetype',fullpath,mimetype
+                    continue
+                mtime=os.path.getmtime(fullpath)
+                st=os.stat(fullpath)
+                if os.path.isdir(fullpath):
+                    print '*** WALK DIR: ITEM IS A DIRECTORY!!!***'
+                    continue
+                item=imageinfo.Item(fullpath,mtime)
+                if collection.find(item)<0:
+                    browser.lock.acquire()
+                    collection.add(item)
+                    browser.lock.release()
+                    del_view_item(view,browser,item)
+                    imagemanip.load_metadata(item) ##todo: check if exists already
+                    browser.lock.acquire()
+                    view.add_item(item)
+                    browser.lock.release()
+                    gobject.idle_add(browser.RefreshView)
+        if self.done:
+            print 'walk subdirectory done'
+            gobject.idle_add(browser.RefreshView)
+            gobject.idle_add(browser.UpdateStatus,2,'Search complete')
+            if self.notify_items:
+                browser.lock.acquire()
+                for item in self.notify_items:
+                    collection.add(item)
+                browser.lock.release()
+                gobject.idle_add(browser.RefreshView)
+            self.notify_items=[]
+            self.collection_walker=None
+            self.unsetevent()
+        else:
+            print 'pausing subdirectory walk'
 
 
 class BuildViewJob(WorkerJob):
@@ -609,7 +692,7 @@ class DirectoryUpdateJob(WorkerJob):
         #todo: acquire and release collection lock
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
-            if action=='DELETE' or action=='MOVED_FROM':
+            if action in ('DELETE','MOVED_FROM'):
                 ##todo: if the deleted item was a dir, we almost always won't get notification of deleted images in that dir
                 ##not obvious how to handle this because we don't know for sure that the removed item was a directory
                 ##if we did know, could just start a new verify job
@@ -628,7 +711,7 @@ class DirectoryUpdateJob(WorkerJob):
                             del view[j]
                     browser.lock.release()
                     gobject.idle_add(browser.RefreshView)
-            if action=='MOVED_TO' or action=='MODIFY' or action=='CREATE':
+            if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
                     if not mimetype.startswith('image'):
@@ -661,6 +744,12 @@ class DirectoryUpdateJob(WorkerJob):
                         if not imagemanip.has_thumb(item):
                             imagemanip.make_thumb(item)
                         gobject.idle_add(browser.RefreshView)
+                if os.path.exists(fullpath) and os.path.isdir(fullpath):
+                    if action=='MOVED_TO':
+                        job=jobs['WALKSUBDIRECTORY']
+                        job.sub_dir=fullpath
+                        job.setevent()
+
         if len(self.queue)==0:
             self.unsetevent()
 
@@ -678,6 +767,7 @@ class WorkerJobCollection(dict):
             CollectionUpdateJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
+            WalkSubDirectoryJob(),
             SaveViewJob(),
             DirectoryUpdateJob(),
             MakeThumbsJob()
@@ -761,15 +851,17 @@ class Worker:
                 print 'change_notify invalid',path,action
                 return
         if isdir:
+            print 'dir action',path,action
             if action in ('MOVED_FROM','DELETE'):
-                ##todo: queue a verify job since we get individual image removal notifications
+                #queue a verify job since we won't get individual image removal notifications
                 self.jobs['VERIFYIMAGES'].countpos=0
                 self.jobs['VERIFYIMAGES'].setevent()
-                pass
-            return
-        #valid file, so queue the update (modify and create notifications are
+                return
+        #valid file or a moved directory, so queue the update
+        #(modify and create notifications are
         #only processed after some delay because many events may be generated
-        #before the file is closed)
+        #before the files are closed)
+        ##todo: respond to file close events instead of modify/create events??
         job=self.jobs['DIRECTORYUPDATE']
         job.deflock.acquire()
         if self.dirtimer!=None:

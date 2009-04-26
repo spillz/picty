@@ -53,6 +53,8 @@ class Item(list):
             del self.meta_backup
         self.meta_changed=False
     def set_meta_key(self,key,value):
+        if self.meta==False or self.meta==None:
+            return None
         if not self.meta_changed:
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
