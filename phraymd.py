@@ -1259,6 +1259,12 @@ class ImageBrowser(gtk.VBox):
         self.height=y
         self.horizimgcount=(self.width/(self.thumbwidth+self.pad))
         self.maxoffsety=len(self.tm.view)*(self.thumbheight+self.pad)/self.horizimgcount
+        try:
+            self.UpdateDimensions()
+            self.UpdateScrollbar()
+            self.UpdateThumbReqs()
+        except:
+            pass
 
     def ScrollUp(self,step=10):
         self.vscroll.set_value(self.vscroll.get_value()-step)

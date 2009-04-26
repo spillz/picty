@@ -40,6 +40,7 @@ class Item(list):
         self.cannot_thumb=False
         self.selected=False
         self.meta_changed=False
+        self.relevance=0
     def key(self):
         return 1
     def meta_revert(self):
