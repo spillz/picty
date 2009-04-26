@@ -310,7 +310,7 @@ def keyword_filter(item,criteria):
                         item_string+=' '+str(vi).lower()
                 else:
                     item_string+=' '+str(v).lower()
-    item_string.replace('/',' ')
+##    item_string.replace('/',' ')
     item_string.replace('\n',' ')
 #    print item_string
     for t in test:

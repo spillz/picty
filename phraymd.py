@@ -1000,6 +1000,8 @@ class ImageBrowser(gtk.VBox):
         for app in gnomevfs.mime_get_all_applications(mime):
             menu_add(launch_menu,app[1],self.mime_open,app[2],item)
         ##menu_add(menu,"Select _None",self.select_none)
+        for app in settings.custom_launchers['default']:
+            menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
         menu_add(launch_menu,'Edit External Launchers...',self.edit_custom_mime_apps,item)
 
         menu=gtk.Menu()
