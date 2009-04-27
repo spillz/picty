@@ -719,17 +719,18 @@ class DirectoryUpdateJob(WorkerJob):
                     i=collection.find([fullpath])
                     if i>=0:
                         if os.path.getmtime(fullpath)!=collection[i].mtime:
-                            collection[i].mtime=os.path.getmtime(fullpath)
                             item=collection[i]
                             browser.lock.acquire()
                             j=view.find_item(item)
+                            print 'monitor: finding item'
                             if j>=0:
                                 del view[j]
+                            else:
+                                print 'failed to find'
                             browser.lock.release()
-                            if item.meta==None:
-                                imagemanip.load_metadata(item)
-                            if not imagemanip.has_thumb(item):
-                                imagemanip.make_thumb(item)
+                            item.mtime=os.path.getmtime(fullpath)
+                            imagemanip.load_metadata(item)
+                            imagemanip.make_thumb(item)
                             browser.lock.acquire()
                             view.add_item(item)
                             browser.lock.release()
