@@ -722,11 +722,8 @@ class DirectoryUpdateJob(WorkerJob):
                             item=collection[i]
                             browser.lock.acquire()
                             j=view.find_item(item)
-                            print 'monitor: finding item'
                             if j>=0:
                                 del view[j]
-                            else:
-                                print 'failed to find'
                             browser.lock.release()
                             item.mtime=os.path.getmtime(fullpath)
                             imagemanip.load_metadata(item)

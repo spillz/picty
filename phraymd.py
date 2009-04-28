@@ -461,7 +461,7 @@ class ImageViewer(gtk.VBox):
         if not self.imarea.window:
             return
         if item.filename==self.item.filename:
-            self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+            self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         else:
             print 'sized wrong item'
 
@@ -470,18 +470,18 @@ class ImageViewer(gtk.VBox):
 
     def SetItem(self,item):
         self.item=item
-        self.il.set_item(item,(self.width,self.height))
+        self.il.set_item(item,(self.geo_width,self.geo_height))
         self.UpdateMetaTable(item)
         if not self.imarea.window:
             return
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-        #self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        #self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def Configure(self,obj,event):
-        self.width=event.width
-        self.height=event.height
-        self.il.update_image_size(self.width,self.height)
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.geo_width=event.width
+        self.geo_height=event.height
+        self.il.update_image_size(self.geo_width,self.geo_height)
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def Expose(self,event,arg):
         self.Render(event)
@@ -495,8 +495,8 @@ class ImageViewer(gtk.VBox):
         drawable.clear()
         if self.item and self.item.qview:
             (iw,ih)=self.item.qview_size
-            x=(self.width-iw)/2
-            y=(self.height-ih)/2
+            x=(self.geo_width-iw)/2
+            y=(self.geo_height-ih)/2
             #if x>=0 and y>=0:
             if self.item.imagergba:
                 try:
@@ -514,8 +514,8 @@ class ImageViewer(gtk.VBox):
                     None
         elif self.item and self.item.thumb:
             (iw,ih)=self.item.thumbsize
-            x=(self.width-iw)/2
-            y=(self.height-ih)/2
+            x=(self.geo_width-iw)/2
+            y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
 ##            if self.item.thumbrgba:
 ##                try:
@@ -544,7 +544,7 @@ class ImageBrowser(gtk.VBox):
     '''
     def __init__(self):
         gtk.VBox.__init__(self)
-        self.Config()
+        self.configure_geometry()
         self.lock=threading.Lock()
         self.tm=backend.Worker(self)
         self.neededitem=None
@@ -567,10 +567,10 @@ class ImageBrowser(gtk.VBox):
         self.pixbuf_thumb_fail.fill(0xC0000080)
         self.pixbuf_thumb_load.fill(0xFFFFFF20)
 
-        self.offsety=0
+        self.geo_view_offset=0
         self.offsetx=0
-        self.ind_view_first=0
-        self.ind_view_last=1
+        self.geo_ind_view_first=0
+        self.geo_ind_view_last=1
         self.ind_viewed=-1
         self.hover_ind=-1
         self.hover_cmds=[
@@ -661,7 +661,6 @@ class ImageBrowser(gtk.VBox):
 
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
-        self.Resize(160,200)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
         self.vscroll.set_property("has-tooltip",True)
@@ -682,7 +681,7 @@ class ImageBrowser(gtk.VBox):
         self.hpane.add1(self.hbox)
         self.hpane.add2(self.iv)
         self.hpane.show()
-        self.hpane.set_position(self.thumbwidth+2*self.pad)
+        self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad)
         self.pack_start(self.toolbar,False,False)
         self.pack_start(self.hpane)
         self.pack_start(self.status_bar,False)
@@ -714,10 +713,9 @@ class ImageBrowser(gtk.VBox):
 #        self.vscroll.grab_focus()
 
         self.imarea.show()
-        self.last_width=2*self.pad+self.thumbwidth
+        self.last_width=2*self.geo_pad+self.geo_thumbwidth
         self.vscroll.show()
 
-        #self.Resize(600,300)
 
     def selection_popup(self,widget):
         self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
@@ -739,7 +737,7 @@ class ImageBrowser(gtk.VBox):
     def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         height=widget.window.get_size()[1]
         yscroll=y*self.scrolladj.upper/height
-        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.thumbheight+self.pad)*self.horizimgcount))
+        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count))
         key=self.sort_order.get_active_text()
         key_fn=imageinfo.sort_keys_str[key]
         item=self.tm.view(ind)
@@ -945,11 +943,10 @@ class ImageBrowser(gtk.VBox):
     def ViewImage(self,item):
         self.iv.show()
         self.iv.SetItem(item)
-        self.offsety=self.item_to_scroll_value(item)
-        self.UpdateDimensions()
+        self.update_geometry()
         self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.update_required_thumbs()
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def ButtonPress_iv(self,obj,event):
         if self.is_iv_fullscreen:
@@ -970,18 +967,18 @@ class ImageBrowser(gtk.VBox):
             self.is_iv_fullscreen=True
 
     def get_hover_command(self, ind, x, y):
-        offset=ind-self.ind_view_first
-        left=(offset%self.horizimgcount)*(self.thumbwidth+self.pad)
-        left+=self.pad/4
-        top=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
-        top+=offset/self.horizimgcount*(self.thumbheight+self.pad)
-        top+=self.pad/4
+        offset=ind-self.geo_ind_view_first
+        left=(offset%self.geo_horiz_count)*(self.geo_thumbwidth+self.geo_pad)
+        left+=self.geo_pad/4
+        top=self.geo_ind_view_first*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count-int(self.geo_view_offset)
+        top+=offset/self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad)
+        top+=self.geo_pad/4
         for i in range(len(self.hover_cmds)):
             right=left+self.hover_cmds[i][1].get_width()
             bottom=top+self.hover_cmds[i][1].get_height()
             if left<x<=right and top<y<=bottom:
                 return i
-            left+=self.hover_cmds[i][1].get_width()+self.pad/4
+            left+=self.hover_cmds[i][1].get_width()+self.geo_pad/4
         return -1
 
     def popup_item(self,item):
@@ -1093,14 +1090,14 @@ class ImageBrowser(gtk.VBox):
     def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_left(item)
-        self.UpdateThumbReqs()
+        self.update_required_thumbs()
         if item==self.iv.item:
             self.ViewImage(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_right(item)
-        self.UpdateThumbReqs()
+        self.update_required_thumbs()
         if item==self.iv.item:
             self.ViewImage(item)
 
@@ -1112,7 +1109,7 @@ class ImageBrowser(gtk.VBox):
 
     def item_to_scroll_value(self,item):
         ind=self.item_to_view_index(item)
-        return max(0,ind*(self.thumbheight+self.pad)/self.horizimgcount)#-self.width/2)
+        return max(0,ind*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)#-self.geo_width/2)
 
     def multi_select(self,ind_from,ind_to):
         self.tm.lock.acquire()
@@ -1152,17 +1149,17 @@ class ImageBrowser(gtk.VBox):
         print 'press',event.button,event.type
         self.imarea.grab_focus()
         self.lock.acquire()
-        ind=(int(self.offsety)+int(event.y))/(self.thumbheight+self.pad)*self.horizimgcount
-        ind+=min(self.horizimgcount,int(event.x)/(self.thumbwidth+self.pad))
+        ind=(int(self.geo_view_offset)+int(event.y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
+        ind+=min(self.geo_horiz_count,int(event.x)/(self.geo_thumbwidth+self.geo_pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
         item=self.tm.view(ind)
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-#            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
+#            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                 self.ViewImage(item)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
-                    if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.thumbheight+self.pad)*self.horizimgcount:
+                    if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                         self.hover_cmds[cmd][0](None,self.pressed_item)
                 else:
                     if self.last_selected and event.state&gtk.gdk.SHIFT_MASK:
@@ -1182,10 +1179,10 @@ class ImageBrowser(gtk.VBox):
         self.lock.release()
 
     def recalc_hover_ind(self,x,y):
-        ind=(int(self.offsety)+int(y))/(self.thumbheight+self.pad)*self.horizimgcount
-        ind+=min(self.horizimgcount,int(x)/(self.thumbwidth+self.pad))
+        ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
+        ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
-        if x>=(self.thumbheight+self.pad)*self.horizimgcount:
+        if x>=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
             ind=-1
         return ind
 
@@ -1202,71 +1199,48 @@ class ImageBrowser(gtk.VBox):
     def Thumb_cb(self,item):
         ##TODO: Check if image is still on screen
 #        if item.thumb:
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def RefreshView(self):
-        if self.ind_view_first<0 or self.ind_view_first>=len(self.tm.view):
-            self.UpdateView()
-        self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.update_geometry()
+        self.update_required_thumbs()
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 #        if self.ind_viewed>=0:
 #            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
     def UpdateView(self):
-        self.offsety=0
-        self.UpdateDimensions()
-        self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
+        self.geo_view_offset=0
+        self.RefreshView()
+#        self.geo_view_offset=0
+#        self.update_geometry()
+#        self.UpdateScrollbar()
+#        self.update_required_thumbs()
+#        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+#        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
 
     def ScrollSignalPane(self,obj,event):
         if event.direction==gtk.gdk.SCROLL_UP:
-            self.ScrollUp(max(1,self.thumbheight+self.pad)/5)
+            self.ScrollUp(max(1,self.geo_thumbheight+self.geo_pad)/5)
         if event.direction==gtk.gdk.SCROLL_DOWN:
-            self.ScrollDown(max(1,self.thumbheight+self.pad)/5)
+            self.ScrollDown(max(1,self.geo_thumbheight+self.geo_pad)/5)
 
     def ScrollSignal(self,obj):
-        self.offsety=self.scrolladj.get_value()
-        self.UpdateFirstLastIndex()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
+        self.geo_view_offset=self.scrolladj.get_value()
+        self.update_view_index_range()
+        self.update_required_thumbs()
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.vscroll.trigger_tooltip_query()
 
     def UpdateScrollbar(self):
-        upper=len(self.tm.view)/self.horizimgcount
-        if len(self.tm.view)%self.horizimgcount!=0:
+        upper=len(self.tm.view)/self.geo_horiz_count
+        if len(self.tm.view)%self.geo_horiz_count!=0:
             upper+=1
-        upper=upper*(self.thumbheight+self.pad)
-        self.scrolladj.set_all(value=self.offsety, lower=0,
+        upper=upper*(self.geo_thumbheight+self.geo_pad)
+        self.scrolladj.set_all(value=self.geo_view_offset, lower=0,
                 upper=upper,
-                step_increment=max(1,self.thumbheight+self.pad)/5,
-                page_increment=self.height, page_size=self.height)
-
-    def Config(self):
-        self.width=160
-        self.height=400
-        self.thumbwidth=128
-        self.thumbheight=128
-        if settings.maemo:
-            self.pad=20
-        else:
-            self.pad=30
-
-    def Resize(self,x,y):
-        self.imarea.set_size_request(x, y)
-        self.width=x
-        self.height=y
-        self.horizimgcount=(self.width/(self.thumbwidth+self.pad))
-        self.maxoffsety=len(self.tm.view)*(self.thumbheight+self.pad)/self.horizimgcount
-        try:
-            self.UpdateDimensions()
-            self.UpdateScrollbar()
-            self.UpdateThumbReqs()
-        except:
-            pass
+                step_increment=max(1,self.geo_thumbheight+self.geo_pad)/5,
+                page_increment=self.geo_height, page_size=self.geo_height)
 
     def ScrollUp(self,step=10):
         self.vscroll.set_value(self.vscroll.get_value()-step)
@@ -1274,46 +1248,67 @@ class ImageBrowser(gtk.VBox):
     def ScrollDown(self,step=10):
         self.vscroll.set_value(self.vscroll.get_value()+step)
 
-    def UpdateFirstLastIndex(self):
-        self.ind_view_first = int(self.offsety)/(self.thumbheight+self.pad)*self.horizimgcount
-        self.ind_view_last = self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad))
-#        self.ind_view_last = min(len(self.tm.view),self.ind_view_first+self.horizimgcount*(2+self.height/(self.thumbheight+self.pad)))
+    def configure_geometry(self):
+        self.geo_thumbwidth=128
+        self.geo_thumbheight=128
+        if settings.maemo:
+            self.geo_pad=20
+        else:
+            self.geo_pad=30
+        self.geo_view_offset=0
+        self.geo_screen_offset=0
+        self.geo_ind_view_first=0
+        self.geo_ind_view_last=0
+        self.geo_horiz_count=1
 
-    def UpdateDimensions(self):
-        self.offsety=self.offsety*self.horizimgcount
-        self.horizimgcount=max(self.width/(self.thumbwidth+self.pad),1)
-        self.maxoffsety=len(self.tm.view)*(self.thumbheight+self.pad)/self.horizimgcount
-        self.offsety=self.offsety/self.horizimgcount
-        if self.ind_viewed>=0:
-            self.ind_view_first=max(self.ind_viewed-self.height/2/(self.thumbwidth+self.pad)*self.horizimgcount,0)
-            self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
-        self.UpdateFirstLastIndex()
-        self.offsety=self.ind_view_first*(self.thumbheight+self.pad)/self.horizimgcount
+    def update_view_index_range(self):
+        self.geo_ind_view_first = int(self.geo_view_offset/(self.geo_thumbheight+self.geo_pad))*self.geo_horiz_count
+        self.geo_ind_view_last = self.geo_ind_view_first+self.geo_horiz_count*(2+self.geo_height/(self.geo_thumbheight+self.geo_pad))
+
+    def update_geometry(self,recenter=False):
+        nudge=self.calc_screen_offset()
+        self.geo_horiz_count=max(int(self.geo_width/(self.geo_thumbwidth+self.geo_pad)),1)
+        self.geo_view_offset_max=max(1,len(self.tm.view)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
+        if recenter:
+            if self.iv.item!=None:
+                ind=self.item_to_view_index(self.iv.item)
+            else:
+                ind=-1
+            if self.geo_ind_view_first<=ind<=self.geo_ind_view_last:
+                self.center_view_offset(ind)
+            else:
+                self.set_view_offset(self.geo_ind_view_first)
+                self.geo_view_offset-=nudge
+        self.update_view_index_range()
+
+    def calc_screen_offset(self):
+        return int(self.geo_ind_view_first/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)-self.geo_view_offset
+
+    def set_view_offset(self,index):
+        self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)+self.geo_screen_offset
+
+    def center_view_offset(self,index):
+        self.geo_screen_offset=0
+        self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)-self.geo_height/2+(self.geo_pad+self.geo_thumbheight)/2
+        self.geo_view_offset=min(self.geo_view_offset_max-self.geo_height,max(0,self.geo_view_offset))
 
     def Configure(self,obj,event):
-        self.width=event.width
-        self.height=event.height
-        self.UpdateDimensions()
+        print 'configure',self.geo_ind_view_first,self.geo_ind_view_last
+        self.geo_width=event.width
+        self.geo_height=event.height
+        self.update_geometry(True)
         self.UpdateScrollbar()
-        self.UpdateThumbReqs()
-        self.imarea.window.invalidate_rect((0,0,self.width,self.height),True)
-
-#    def on_set_pane(self,obj,event)
-#
-#    def config_pane(self,obj,event):
-#        self.hpane.set_position(event.width-self.last_width)
+        print 'post configure',self.geo_ind_view_first,self.geo_ind_view_last
+##        self.update_required_thumbs()
+##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def Expose(self,event,arg):
         self.Render(event)
 
-    def UpdateThumbReqs(self):
+    def update_required_thumbs(self):
         ## DATA NEEDED
-        count=self.ind_view_last-self.ind_view_first
-#        first=max(0,self.ind_view_first-count)
-#        last=min(len(self.tm.view),self.ind_view_last+count)
-        onscreen_items=self.tm.view.get_items(self.ind_view_first,self.ind_view_last)
-#        onscreen_items+=self.tm.view.get_items(first,self.ind_view_first)
-#        onscreen_items+=self.tm.view.get_items(self.ind_view_last,last)
+        count=self.geo_ind_view_last-self.geo_ind_view_first
+        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,self.geo_ind_view_last)
         self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
 
     def Render(self,event):
@@ -1327,13 +1322,12 @@ class ImageBrowser(gtk.VBox):
         gc_v = drawable.new_gc(foreground=white)
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
-        drawable.set_background(black)
-
         green = colormap.alloc('green')
         gc_g = drawable.new_gc(foreground=green)
         red= colormap.alloc('red')
         gc_r = drawable.new_gc(foreground=red)
 
+        drawable.set_background(black)
 
         (mx,my)=self.imarea.get_pointer()
         if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
@@ -1343,13 +1337,13 @@ class ImageBrowser(gtk.VBox):
 
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         display_space=True
-        imgind=self.ind_view_first
+        imgind=self.geo_ind_view_first
         x=0
-        y=imgind*(self.thumbheight+self.pad)/self.horizimgcount-int(self.offsety)
+        y=self.calc_screen_offset()
         drawable.clear()
         i=imgind
         neededitem=None
-        while i<self.ind_view_last:
+        while i<self.geo_ind_view_last:
             if 0<=i<len(self.tm.view):
                 item=self.tm.view(i)
             else:
@@ -1358,44 +1352,44 @@ class ImageBrowser(gtk.VBox):
                 if gtk.gdk.display_get_default().get_pointer()[3]&gtk.gdk.SHIFT_MASK:
                     if self.last_selected:
                         if self.last_selected.selected:
-                            drawable.draw_rectangle(gc_g, True, x+self.pad/16, y+self.pad/16, self.thumbwidth+self.pad*7/8, self.thumbheight+self.pad*7/8)
+                            drawable.draw_rectangle(gc_g, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
                         else:
-                            drawable.draw_rectangle(gc_r, True, x+self.pad/16, y+self.pad/16, self.thumbwidth+self.pad*7/8, self.thumbheight+self.pad*7/8)
+                            drawable.draw_rectangle(gc_r, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
             if item.selected:
-                drawable.draw_rectangle(gc_s, True, x+self.pad/8, y+self.pad/8, self.thumbwidth+self.pad*3/4, self.thumbheight+self.pad*3/4)
+                drawable.draw_rectangle(gc_s, True, x+self.geo_pad/8, y+self.geo_pad/8, self.geo_thumbwidth+self.geo_pad*3/4, self.geo_thumbheight+self.geo_pad*3/4)
             if item==self.iv.item:
                 try:
                     (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
-                    adjy=self.pad/2+(128-thumbheight)/2-3
-                    adjx=self.pad/2+(128-thumbwidth)/2-3
+                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
+                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
                     drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
                 except:
                     pass
-#            drawable.draw_rectangle(gc, True, x+self.pad/4, y+self.pad/4, self.thumbwidth+self.pad/2, self.thumbheight+self.pad/2)
+#            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
-                adjy=self.pad/2+(128-thumbheight)/2
-                adjx=self.pad/2+(128-thumbwidth)/2
+                adjy=self.geo_pad/2+(128-thumbheight)/2
+                adjx=self.geo_pad/2+(128-thumbwidth)/2
                 drawable.draw_pixbuf(gc, item.thumb, 0, 0,x+adjx,y+adjy)
             elif item.cannot_thumb:
-                adjy=self.pad/2
-                adjx=self.pad/2
+                adjy=self.geo_pad/2
+                adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_fail, 0, 0,x+adjx,y+adjy)
             else:
-                adjy=self.pad/2
-                adjx=self.pad/2
+                adjy=self.geo_pad/2
+                adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,x+adjx,y+adjy)
             if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     l=self.imarea.create_pango_layout('')
                     l.set_markup('<b><big>'+a+'</big></b>\n'+b)
-                    drawable.draw_layout(gc,x+self.pad/4,y+self.pad+self.thumbheight-l.get_pixel_size()[1]-self.pad/4,l,white)
+                    drawable.draw_layout(gc,x+self.geo_pad/4,y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4,l,white)
 #                    print imageinfo.text_descr(item)
                 l=len(self.hover_cmds)
-                offx=self.pad/4
-                offy=self.pad/4
+                offx=self.geo_pad/4
+                offy=self.geo_pad/4
                 show=[True for r in range(l)]
                 if self.hover_ind!=i:
                     for q in (1,2,3,4,5,6):
@@ -1406,12 +1400,12 @@ class ImageBrowser(gtk.VBox):
                 for j in range(l):
                     if show[j]:
                         drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
-                    offx+=self.hover_cmds[j][1].get_width()+self.pad/4
+                    offx+=self.hover_cmds[j][1].get_width()+self.geo_pad/4
             i+=1
-            x+=self.thumbwidth+self.pad
-            if x+self.thumbwidth+self.pad>=self.width:
-                y+=self.thumbheight+self.pad
-                if y>=self.height+self.pad:
+            x+=self.geo_thumbwidth+self.geo_pad
+            if x+self.geo_thumbwidth+self.geo_pad>=self.geo_width:
+                y+=self.geo_thumbheight+self.geo_pad
+                if y>=self.geo_height+self.geo_pad:
                     break
                 else:
                     x=0
