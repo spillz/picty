@@ -96,7 +96,7 @@ class ThumbnailJob(WorkerJob):
                     cu_job.setevent()
                     cu_job.queue.append(item)
         if len(self.queue_onscreen)==0:
-            gobject.idle_add(browser.Thumb_cb,None)
+            gobject.idle_add(browser.redraw_view)
             self.unsetevent()
 
 

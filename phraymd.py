@@ -247,10 +247,11 @@ class ImageLoader:
 
 
 class ImageViewer(gtk.VBox):
-    def __init__(self,worker,click_callback=None):
+    def __init__(self,worker,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
+        self.imarea.set_property("can-focus",True)
         self.meta_table=self.CreateMetaTable()
         self.worker=worker
 
@@ -274,18 +275,25 @@ class ImageViewer(gtk.VBox):
         f.set_position(0)
         self.pack_start(f)
 
-        self.imarea.connect("realize",self.Render)
-        self.imarea.connect("configure_event",self.Configure)
-        self.imarea.connect("expose_event",self.Expose)
+        self.imarea.connect("realize",self.realize_signal)
+        self.imarea.connect("configure_event",self.configure_signal)
+        self.imarea.connect("expose_event",self.expose_signal)
         self.button_save.connect("clicked",self.MetadataSave)
         self.button_revert.connect("clicked",self.MetadataRevert)
         self.connect("destroy", self.Destroy)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+
+        self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
+        self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
+
         if not click_callback:
             self.imarea.connect("button-press-event",self.ButtonPress)
         else:
             self.imarea.connect("button-press-event",click_callback)
+        if key_press_callback:
+            self.imarea.connect("key-press-event",key_press_callback)
+            self.imarea.connect("key-release-event",key_press_callback)
 
         self.imarea.set_size_request(300,200)
         self.imarea.show()
@@ -477,16 +485,16 @@ class ImageViewer(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         #self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
-    def Configure(self,obj,event):
+    def configure_signal(self,obj,event):
         self.geo_width=event.width
         self.geo_height=event.height
         self.il.update_image_size(self.geo_width,self.geo_height)
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
-    def Expose(self,event,arg):
-        self.Render(event)
+    def expose_signal(self,event,arg):
+        self.realize_signal(event)
 
-    def Render(self,event):
+    def realize_signal(self,event):
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
@@ -548,7 +556,7 @@ class ImageBrowser(gtk.VBox):
         self.lock=threading.Lock()
         self.tm=backend.Worker(self)
         self.neededitem=None
-        self.iv=ImageViewer(self.tm,self.ButtonPress_iv)
+        self.iv=ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
 
@@ -687,11 +695,11 @@ class ImageBrowser(gtk.VBox):
         self.pack_start(self.status_bar,False)
         self.pack_start(self.info_bar,False)
         self.connect("destroy", self.Destroy)
-        self.imarea.connect("realize",self.Render)
-        self.imarea.connect("configure_event",self.Configure)
-        self.imarea.connect("expose_event",self.Expose)
+        self.imarea.connect("realize",self.realize_signal)
+        self.imarea.connect("configure_event",self.configure_signal)
+        self.imarea.connect("expose_event",self.expose_signal)
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
-        self.imarea.connect("motion-notify-event",self.MouseMotion)
+        self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
         self.scrolladj.connect("value-changed",self.ScrollSignal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.ScrollSignalPane)
@@ -703,8 +711,8 @@ class ImageBrowser(gtk.VBox):
 
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
-        self.imarea.connect("key-press-event",self.KeyPress)
-        self.imarea.connect("key-release-event",self.KeyPress)
+        self.imarea.connect("key-press-event",self.key_press_signal)
+        self.imarea.connect("key-release-event",self.key_press_signal)
 
         #self.set_flags(gtk.CAN_FOCUS)
 
@@ -715,6 +723,11 @@ class ImageBrowser(gtk.VBox):
         self.imarea.show()
         self.last_width=2*self.geo_pad+self.geo_thumbwidth
         self.vscroll.show()
+
+
+    def Destroy(self,event):
+        self.tm.quit()
+        return False
 
 
     def selection_popup(self,widget):
@@ -867,7 +880,7 @@ class ImageBrowser(gtk.VBox):
             self.status_bar.hide()
         self.status_bar.set_text(message)
 
-    def KeyPress(self,obj,event):
+    def key_press_signal(self,obj,event):
         print event.keyval
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
@@ -877,8 +890,10 @@ class ImageBrowser(gtk.VBox):
                 self.iv.hide()
                 self.iv.ImageNormal()
                 self.vbox.show()
-                self.vscroll.show()
+                self.hbox.show()
                 self.toolbar.show()
+                self.vscroll.show()
+                self.is_iv_fullscreen=False
             elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
                 if self.is_fullscreen:
                     self.window.unfullscreen()
@@ -890,33 +905,35 @@ class ImageBrowser(gtk.VBox):
                 if self.ind_viewed>=0:
                     self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
                 self.tm.view.reverse=not self.tm.view.reverse
-                self.RefreshView()
+                self.redraw_view()
             elif event.keyval==65293: #enter
                 if self.ind_viewed>=0:
                     if self.is_iv_fullscreen:
-                        self.ViewImage(self.iv.item)
+                        self.view_image(self.iv.item)
                         self.iv.ImageNormal()
                         self.vbox.show()
+                        self.hbox.show()
                         self.toolbar.show()
                         self.vscroll.show()
                         self.is_iv_fullscreen=False
                     else:
-                        self.ViewImage(self.iv.item)
+                        self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
                         self.toolbar.hide()
                         self.vbox.hide()
+                        self.hbox.hide()
                         self.vscroll.hide()
                         self.is_iv_fullscreen=True
             elif event.keyval==65361: #left
                 if self.iv.item:
                     ind=self.item_to_view_index(self.iv.item)
                     if len(self.tm.view)>ind>0:
-                        self.ViewImage(self.tm.view(ind-1))
+                        self.view_image(self.tm.view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
                     ind=self.item_to_view_index(self.iv.item)
                     if len(self.tm.view)-1>ind>=0:
-                        self.ViewImage(self.tm.view(ind+1))
+                        self.view_image(self.tm.view(ind+1))
             elif event.keyval==65362: #up
                 self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
             elif event.keyval==65364: #dn
@@ -929,28 +946,24 @@ class ImageBrowser(gtk.VBox):
                 self.vscroll.set_value(self.scrolladj.lower)
             elif event.keyval==65367: #end
                 self.vscroll.set_value(self.scrolladj.upper)
-            elif event.keyval==65505: #end
-##                self.shift_state=True
-                self.RefreshView()
+            elif event.keyval==65505: #shift
+                self.redraw_view()
         if event.type==gtk.gdk.KEY_RELEASE:
-            if event.keyval==65505: #end
-##                self.shift_state=False
-                self.RefreshView()
-#        if event.state&gtk.gdk.SHIFT_MASK:
-#            self.shift_state=True
+            if event.keyval==65505: #shift
+                self.redraw_view()
         return True
 
-    def ViewImage(self,item):
+    def view_image(self,item):
         self.iv.show()
         self.iv.SetItem(item)
-        self.update_geometry()
+        self.update_geometry(True)
         self.UpdateScrollbar()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
-    def ButtonPress_iv(self,obj,event):
+    def button_press_image_viewer(self,obj,event):
         if self.is_iv_fullscreen:
-##            self.ViewImage(self.ind_viewed)
+##            self.view_image(self.ind_viewed)
             self.iv.ImageNormal()
             self.vbox.show()
             self.toolbar.show()
@@ -958,7 +971,7 @@ class ImageBrowser(gtk.VBox):
             self.info_bar.show()
             self.is_iv_fullscreen=False
         else:
-##            self.ViewImage(self.ind_viewed)
+##            self.view_image(self.ind_viewed)
             self.iv.ImageFullscreen()
             self.vbox.hide()
             self.toolbar.hide()
@@ -1057,7 +1070,7 @@ class ImageBrowser(gtk.VBox):
         if orient!=orient_backup:
             item.thumb=None
             self.tm.recreate_thumb(item)
-        self.RefreshView()
+        self.redraw_view()
 
     def launch_item(self,widget,item):
         uri=gnomevfs.get_uri_from_local_path(item.filename)
@@ -1092,14 +1105,14 @@ class ImageBrowser(gtk.VBox):
         imagemanip.rotate_left(item)
         self.update_required_thumbs()
         if item==self.iv.item:
-            self.ViewImage(item)
+            self.view_image(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_right(item)
         self.update_required_thumbs()
         if item==self.iv.item:
-            self.ViewImage(item)
+            self.view_image(item)
 
     def delete_item(self,widget,item):
         fileops.worker.delete([item],None,False)
@@ -1131,7 +1144,7 @@ class ImageBrowser(gtk.VBox):
                     self.tm.collection.numselected-=1
                 item.selected=select
         self.tm.lock.release()
-        self.RefreshView()
+        self.redraw_view()
 
     def select_item(self,ind):
         if 0<=ind<len(self.tm.view):
@@ -1143,7 +1156,7 @@ class ImageBrowser(gtk.VBox):
             item.selected=not item.selected
             self.last_selected=item
             self.last_selected_ind=ind
-            self.RefreshView()
+            self.redraw_view()
 
     def button_press(self,obj,event):
         print 'press',event.button,event.type
@@ -1155,7 +1168,7 @@ class ImageBrowser(gtk.VBox):
         item=self.tm.view(ind)
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
 #            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
-                self.ViewImage(item)
+                self.view_image(item)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
@@ -1186,46 +1199,38 @@ class ImageBrowser(gtk.VBox):
             ind=-1
         return ind
 
-    def MouseMotion(self,obj,event):
+    def mouse_motion_signal(self,obj,event):
         ind=self.recalc_hover_ind(event.x,event.y)
         if self.hover_ind!=ind:
             self.hover_ind=ind
-            self.RefreshView()
+            self.redraw_view()
 
-    def Destroy(self,event):
-        self.tm.quit()
-        return False
-
-    def Thumb_cb(self,item):
-        ##TODO: Check if image is still on screen
-#        if item.thumb:
+    def redraw_view(self):
+        '''redraw the view without recomputing geometry or changing position'''
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def RefreshView(self):
+        '''update geometry, scrollbars, redraw the thumbnail view'''
         self.update_geometry()
         self.update_required_thumbs()
+        self.UpdateScrollbar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
-#        if self.ind_viewed>=0:
-#            self.iv.SetItem(self.tm.view(self.ind_viewed))
 
     def UpdateView(self):
+        '''reset position, update geometry, scrollbars, redraw the thumbnail view'''
         self.geo_view_offset=0
         self.RefreshView()
-#        self.geo_view_offset=0
-#        self.update_geometry()
-#        self.UpdateScrollbar()
-#        self.update_required_thumbs()
-#        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-#        self.info_bar.set_label('%i images selected, %i images in the current view, %i images in the collection'%(self.tm.collection.numselected,len(self.tm.view),len(self.tm.collection)))
 
     def ScrollSignalPane(self,obj,event):
+        '''scrolls the view on mouse wheel motion'''
         if event.direction==gtk.gdk.SCROLL_UP:
             self.ScrollUp(max(1,self.geo_thumbheight+self.geo_pad)/5)
         if event.direction==gtk.gdk.SCROLL_DOWN:
             self.ScrollDown(max(1,self.geo_thumbheight+self.geo_pad)/5)
 
     def ScrollSignal(self,obj):
+        '''signal response when the scroll position changes'''
         self.geo_view_offset=self.scrolladj.get_value()
         self.update_view_index_range()
         self.update_required_thumbs()
@@ -1233,6 +1238,7 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.trigger_tooltip_query()
 
     def UpdateScrollbar(self):
+        '''called to resync the scrollbar to changes in view geometry'''
         upper=len(self.tm.view)/self.geo_horiz_count
         if len(self.tm.view)%self.geo_horiz_count!=0:
             upper+=1
@@ -1249,6 +1255,7 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.set_value(self.vscroll.get_value()+step)
 
     def configure_geometry(self):
+        '''first time initialization of geometry (called from __init__)'''
         self.geo_thumbwidth=128
         self.geo_thumbheight=128
         if settings.maemo:
@@ -1262,10 +1269,13 @@ class ImageBrowser(gtk.VBox):
         self.geo_horiz_count=1
 
     def update_view_index_range(self):
+        '''computes the first and last indices in the view'''
         self.geo_ind_view_first = int(self.geo_view_offset/(self.geo_thumbheight+self.geo_pad))*self.geo_horiz_count
         self.geo_ind_view_last = self.geo_ind_view_first+self.geo_horiz_count*(2+self.geo_height/(self.geo_thumbheight+self.geo_pad))
 
     def update_geometry(self,recenter=False):
+        '''recompute the changeable parts of the geometry (usually called in response to window
+           size changes, or changes to the number of items in the collection'''
         nudge=self.calc_screen_offset()
         self.geo_horiz_count=max(int(self.geo_width/(self.geo_thumbwidth+self.geo_pad)),1)
         self.geo_view_offset_max=max(1,len(self.tm.view)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
@@ -1281,37 +1291,39 @@ class ImageBrowser(gtk.VBox):
                 self.geo_view_offset-=nudge
         self.update_view_index_range()
 
+    def update_required_thumbs(self):
+        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,self.geo_ind_view_last)
+        self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
+
     def calc_screen_offset(self):
+        '''computes how much to offset the first item in the view from the top of the screen (this should be negative)'''
         return int(self.geo_ind_view_first/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)-self.geo_view_offset
 
     def set_view_offset(self,index):
+        '''reset the view offset position to keep the first item on screen after a window size change'''
         self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)+self.geo_screen_offset
 
     def center_view_offset(self,index):
+        '''center the view on particular item in the view (receives an index)'''
         self.geo_screen_offset=0
         self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)-self.geo_height/2+(self.geo_pad+self.geo_thumbheight)/2
         self.geo_view_offset=min(self.geo_view_offset_max-self.geo_height,max(0,self.geo_view_offset))
 
-    def Configure(self,obj,event):
-        print 'configure',self.geo_ind_view_first,self.geo_ind_view_last
+    def configure_signal(self,obj,event):
+        '''received when the window size of the drawing area changes'''
         self.geo_width=event.width
         self.geo_height=event.height
         self.update_geometry(True)
         self.UpdateScrollbar()
-        print 'post configure',self.geo_ind_view_first,self.geo_ind_view_last
 ##        self.update_required_thumbs()
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
-    def Expose(self,event,arg):
-        self.Render(event)
+    def expose_signal(self,event,arg):
+        '''received when part of the drawing area needs to be shown'''
+        self.realize_signal(event)
 
-    def update_required_thumbs(self):
-        ## DATA NEEDED
-        count=self.geo_ind_view_last-self.geo_ind_view_first
-        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,self.geo_ind_view_last)
-        self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
-
-    def Render(self,event):
+    def realize_signal(self,event):
+        '''renders the view - received when the drawing area needs to be shown'''
         self.lock.acquire()
         drawable = self.imarea.window
         gc = drawable.new_gc()
@@ -1427,7 +1439,7 @@ class MainWindow:
         self.drawing_area = ImageBrowser()
 
 #        self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
-#        self.window.connect("key-press-event",self.drawing_area.KeyPress)
+#        self.window.connect("key-press-event",self.drawing_area.key_press_signal)
 
         vb=gtk.VBox()
         vb.pack_start(self.drawing_area)
