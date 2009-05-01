@@ -961,6 +961,9 @@ class ImageBrowser(gtk.VBox):
         self.iv.show()
         self.iv.SetItem(item)
         self.update_geometry(True)
+        if self.iv.item!=None:
+            ind=self.item_to_view_index(self.iv.item)
+            self.center_view_offset(ind)
         self.UpdateScrollbar()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
