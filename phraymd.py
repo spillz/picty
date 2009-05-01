@@ -563,6 +563,7 @@ class ImageBrowser(gtk.VBox):
         self.iv=ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
+        self.is_iv_showing=False
 
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
@@ -583,7 +584,7 @@ class ImageBrowser(gtk.VBox):
         self.offsetx=0
         self.geo_ind_view_first=0
         self.geo_ind_view_last=1
-        self.ind_viewed=-1
+##        self.ind_viewed=-1
         self.hover_ind=-1
         self.hover_cmds=[
                         (self.save_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
@@ -869,8 +870,8 @@ class ImageBrowser(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        if self.ind_viewed>=0:
-            self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+##        if self.ind_viewed>=0:
+##            self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
         self.tm.view.reverse=not self.tm.view.reverse
         self.RefreshView()
 
@@ -890,14 +891,7 @@ class ImageBrowser(gtk.VBox):
             if event.keyval==65535: #del key
                 fileops.worker.delete(self.tm.view,self.UpdateStatus)
             elif event.keyval==65307: #escape
-                self.ind_viewed=-1
-                self.iv.hide()
-                self.iv.ImageNormal()
-                self.vbox.show()
-                self.hbox.show()
-                self.toolbar.show()
-                self.vscroll.show()
-                self.is_iv_fullscreen=False
+                self.hide_image()
             elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
                 if self.is_fullscreen:
                     self.window.unfullscreen()
@@ -906,12 +900,12 @@ class ImageBrowser(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
-                if self.ind_viewed>=0:
-                    self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
+##                if self.ind_viewed>=0:
+##                    self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
                 self.tm.view.reverse=not self.tm.view.reverse
                 self.redraw_view()
             elif event.keyval==65293: #enter
-                if self.ind_viewed>=0:
+                if self.iv.item:
                     if self.is_iv_fullscreen:
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
@@ -957,9 +951,10 @@ class ImageBrowser(gtk.VBox):
                 self.redraw_view()
         return True
 
-    def view_image(self,item):
+    def view_image(self,item,fullwindow=False):
         self.iv.show()
         self.iv.SetItem(item)
+        self.is_iv_showing=True
         self.update_geometry(True)
         if self.iv.item!=None:
             ind=self.item_to_view_index(self.iv.item)
@@ -967,6 +962,16 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+
+    def hide_image(self):
+        self.iv.hide()
+        self.iv.ImageNormal()
+        self.vbox.show()
+        self.hbox.show()
+        self.toolbar.show()
+        self.vscroll.show()
+        self.is_iv_fullscreen=False
+        self.is_iv_showing=False
 
     def button_press_image_viewer(self,obj,event):
         if self.is_iv_fullscreen:
@@ -1123,6 +1128,15 @@ class ImageBrowser(gtk.VBox):
 
     def delete_item(self,widget,item):
         fileops.worker.delete([item],None,False)
+        ind=self.tm.view.find_item(item)
+        if ind>=0:
+            self.tm.view.del_item(item)
+            if self.is_iv_showing:
+                ind=min(ind,len(self.tm.view)-1)
+                self.view_image(self.tm.view(ind))
+        elif self.is_iv_showing:
+            self.hide_image()
+        self.RefreshView()
 
     def item_to_view_index(self,item):
         return self.tm.view.find_item(item)
