@@ -1286,6 +1286,7 @@ class ImageBrowser(gtk.VBox):
         nudge=self.calc_screen_offset()
         self.geo_horiz_count=max(int(self.geo_width/(self.geo_thumbwidth+self.geo_pad)),1)
         self.geo_view_offset_max=max(1,len(self.tm.view)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
+        self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
         if recenter:
             if self.iv.item!=None:
                 ind=self.item_to_view_index(self.iv.item)
@@ -1296,6 +1297,7 @@ class ImageBrowser(gtk.VBox):
             else:
                 self.set_view_offset(self.geo_ind_view_first)
                 self.geo_view_offset-=nudge
+        print 'geo',self.geo_view_offset
         self.update_view_index_range()
 
     def update_required_thumbs(self):
@@ -1309,12 +1311,13 @@ class ImageBrowser(gtk.VBox):
     def set_view_offset(self,index):
         '''reset the view offset position to keep the first item on screen after a window size change'''
         self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)+self.geo_screen_offset
+        self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
 
     def center_view_offset(self,index):
         '''center the view on particular item in the view (receives an index)'''
         self.geo_screen_offset=0
         self.geo_view_offset=int(index/self.geo_horiz_count)*(self.geo_pad+self.geo_thumbheight)-self.geo_height/2+(self.geo_pad+self.geo_thumbheight)/2
-        self.geo_view_offset=min(self.geo_view_offset_max-self.geo_height,max(0,self.geo_view_offset))
+        self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
 
     def configure_signal(self,obj,event):
         '''received when the window size of the drawing area changes'''
