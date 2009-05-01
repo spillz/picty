@@ -303,16 +303,20 @@ class ImageViewer(gtk.VBox):
 
     def AddMetaRow(self,table,data_items,key,label,data,row,writable=False):
         child1=gtk.Label(label)
-        table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
+        align=gtk.Alignment(0,0.5,0,0)
+        align.add(child1)
+        table.attach(align, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
         child2=gtk.Label(data)
+        align=gtk.Alignment(0,0.5,0,0)
+        align.add(child2)
 #        if writable:
 #            child2=gtk.Entry()
 #            child2.set_text(data)
 #            child2.connect("changed",self.MetadataChanged,key)
 #        else:
 #            child2=gtk.Label(data)
-        table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
+        table.attach(align, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
         data_items[key]=(child1,child2)
 
@@ -1315,7 +1319,7 @@ class ImageBrowser(gtk.VBox):
         self.geo_height=event.height
         self.update_geometry(True)
         self.UpdateScrollbar()
-##        self.update_required_thumbs()
+        self.update_required_thumbs()
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def expose_signal(self,event,arg):

@@ -90,7 +90,19 @@ def cache_thumb(item):
 
 def load_image(item,interrupt_fn):
     try:
+##        non-parsed version
         image=Image.open(item.filename)
+##        parsed version
+##        f=open(item.filename,'rb')
+##        imdata=f.read(10000)
+##        p = ImageFile.Parser()
+##        while imdata and len(imdata)>0:
+##            p.feed(imdata)
+##            if not interrupt_fn():
+##                return False
+##            imdata=f.read(10000)
+##        f.close()
+##        image = p.close()
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -98,6 +110,8 @@ def load_image(item,interrupt_fn):
             if not imdata or len(imdata)<100:
                 cmd=settings.dcraw_backup_cmd%(item.filename,)
                 imdata=os.popen(cmd).read()
+                if not interrupt_fn():
+                    return False
             p = ImageFile.Parser()
             p.feed(imdata)
             image = p.close()
