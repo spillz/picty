@@ -584,7 +584,6 @@ class ImageBrowser(gtk.VBox):
         self.offsetx=0
         self.geo_ind_view_first=0
         self.geo_ind_view_last=1
-##        self.ind_viewed=-1
         self.hover_ind=-1
         self.hover_cmds=[
                         (self.save_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
@@ -846,15 +845,6 @@ class ImageBrowser(gtk.VBox):
 
     def set_filter_text(self,widget):
         self.set_sort_key(widget)
-#        if not self.tm.view.reverse:
-#            self.tm.view.reverse=True
-#            if self.ind_viewed>=0:
-#                self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
-#        if self.sort_order.get_active()!=self.sort_order_relevance_ind:
-#            self.sort_order.set_active(self.sort_order_relevance_ind)
-#        else:
-#            self.sort_order.emit("changed")
-#        self.set_sort_key(widget)
 
     def set_sort_key(self,widget):
        self.imarea.grab_focus()
@@ -870,8 +860,6 @@ class ImageBrowser(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-##        if self.ind_viewed>=0:
-##            self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
         self.tm.view.reverse=not self.tm.view.reverse
         self.RefreshView()
 
@@ -900,8 +888,6 @@ class ImageBrowser(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
-##                if self.ind_viewed>=0:
-##                    self.ind_viewed=len(self.tm.view)-1-self.ind_viewed
                 self.tm.view.reverse=not self.tm.view.reverse
                 self.redraw_view()
             elif event.keyval==65293: #enter
@@ -975,7 +961,6 @@ class ImageBrowser(gtk.VBox):
 
     def button_press_image_viewer(self,obj,event):
         if self.is_iv_fullscreen:
-##            self.view_image(self.ind_viewed)
             self.iv.ImageNormal()
             self.vbox.show()
             self.toolbar.show()
@@ -983,7 +968,6 @@ class ImageBrowser(gtk.VBox):
             self.info_bar.show()
             self.is_iv_fullscreen=False
         else:
-##            self.view_image(self.ind_viewed)
             self.iv.ImageFullscreen()
             self.vbox.hide()
             self.toolbar.hide()
