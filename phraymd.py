@@ -1290,7 +1290,7 @@ class ImageBrowser(gtk.VBox):
            size changes, or changes to the number of items in the collection'''
         nudge=self.calc_screen_offset()
         self.geo_horiz_count=max(int(self.geo_width/(self.geo_thumbwidth+self.geo_pad)),1)
-        self.geo_view_offset_max=max(1,len(self.tm.view)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
+        self.geo_view_offset_max=max(1,(self.geo_thumbheight+self.geo_pad)+(len(self.tm.view)-1)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
         self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
         if recenter:
             if self.iv.item!=None:
