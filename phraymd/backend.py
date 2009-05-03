@@ -572,6 +572,8 @@ class SaveViewJob(WorkerJob):
                 if self.save:
                     if item.meta_changed:
                         imagemanip.save_metadata(item)
+                        gobject.idle_add(browser.RefreshView)
+                        gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
                     if item.meta_changed:
                         try:
@@ -589,6 +591,8 @@ class SaveViewJob(WorkerJob):
                             job=jobs['RECREATETHUMB']
                             job.queue.append(item)
                             job.setevent()
+                        gobject.idle_add(browser.RefreshView)
+                        gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
             if i%100==0:
                 if self.save:
                     gobject.idle_add(browser.UpdateStatus,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
