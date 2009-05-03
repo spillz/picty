@@ -628,7 +628,7 @@ class VerifyImagesJob(WorkerJob):
                 browser.lock.release()
                 gobject.idle_add(browser.RefreshView)
             ##print 'verifying',item.filename,os.path.isdir(item.filename)
-            if not os.path.exists(item.filename) or os.path.isdir(item.filename):
+            if not os.path.exists(item.filename) or os.path.isdir(item.filename) or item.filename!=os.path.normcase(item.filename):
                 browser.lock.acquire()
                 collection.numselected-=collection[i].selected
                 del collection[i]
