@@ -932,8 +932,12 @@ class ImageBrowser(gtk.VBox):
                 self.vscroll.set_value(self.scrolladj.upper)
             elif event.keyval==65505: #shift
                 self.redraw_view()
+            elif event.keyval==65507: #control
+                self.redraw_view()
         if event.type==gtk.gdk.KEY_RELEASE:
             if event.keyval==65505: #shift
+                self.redraw_view()
+            elif event.keyval==65507: #control
                 self.redraw_view()
         return True
 
@@ -1129,11 +1133,12 @@ class ImageBrowser(gtk.VBox):
         ind=self.item_to_view_index(item)
         return max(0,ind*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)#-self.geo_width/2)
 
-    def multi_select(self,ind_from,ind_to):
+    def multi_select(self,ind_from,ind_to,select=True):
         self.tm.lock.acquire()
-        select=self.tm.view(ind_from).selected
+        print 'multi select',select
+##        select=self.tm.view(ind_from).selected
         if ind_to>ind_from:
-            for x in range(ind_from+1,ind_to+1):
+            for x in range(ind_from,ind_to+1):
                 item=self.tm.view(x)
                 if not item.selected and select:
                     self.tm.collection.numselected+=1
@@ -1141,7 +1146,7 @@ class ImageBrowser(gtk.VBox):
                     self.tm.collection.numselected-=1
                 item.selected=select
         else:
-            for x in range(ind_from-1,ind_to-1,-1):
+            for x in range(ind_from,ind_to-1,-1):
                 item=self.tm.view(x)
                 if not item.selected and select:
                     self.tm.collection.numselected+=1
@@ -1180,10 +1185,11 @@ class ImageBrowser(gtk.VBox):
                     if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                         self.hover_cmds[cmd][0](None,self.pressed_item)
                 else:
-                    if self.last_selected and event.state&gtk.gdk.SHIFT_MASK:
+                    print 'multi selecting',event.state&gtk.gdk.SHIFT_MASK,event.state&gtk.gdk.CONTROL_MASK
+                    if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                         ind=self.item_to_view_index(self.last_selected)
                         if ind>=0:
-                            self.multi_select(ind,self.pressed_ind)
+                            self.multi_select(ind,self.pressed_ind,bool(event.state&gtk.gdk.SHIFT_MASK))
                     else:
                         self.select_item(self.pressed_ind)
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
@@ -1212,7 +1218,8 @@ class ImageBrowser(gtk.VBox):
 
     def redraw_view(self):
         '''redraw the view without recomputing geometry or changing position'''
-        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        self.RefreshView()
+#        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def RefreshView(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
@@ -1295,7 +1302,7 @@ class ImageBrowser(gtk.VBox):
             else:
                 self.set_view_offset(self.geo_ind_view_first)
                 self.geo_view_offset-=nudge
-        print 'geo',self.geo_view_offset
+        #print 'geo',self.geo_view_offset
         self.update_view_index_range()
 
     def update_required_thumbs(self):
@@ -1369,9 +1376,10 @@ class ImageBrowser(gtk.VBox):
             else:
                 break
             if self.last_selected_ind>=0 and self.hover_ind>=0 and (self.last_selected_ind>=i>=self.hover_ind or self.last_selected_ind<=i<=self.hover_ind):
-                if gtk.gdk.display_get_default().get_pointer()[3]&gtk.gdk.SHIFT_MASK:
+                key_mods=gtk.gdk.display_get_default().get_pointer()[3]
+                if key_mods&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                     if self.last_selected:
-                        if self.last_selected.selected:
+                        if key_mods&gtk.gdk.SHIFT_MASK:
                             drawable.draw_rectangle(gc_g, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
                         else:
                             drawable.draw_rectangle(gc_r, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
