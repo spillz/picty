@@ -26,6 +26,7 @@ import os.path
 
 class Item(list):
     def __init__(self,filename,mtime):
+        filename=os.path.normcase(filename)
         list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime

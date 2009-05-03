@@ -264,7 +264,7 @@ class WalkDirectoryJob(WorkerJob):
                 r=p.rfind('.')
                 if r<=0:
                     continue
-                fullpath=os.path.join(root, p)
+                fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
                 if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
@@ -344,7 +344,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 r=p.rfind('.')
                 if r<=0:
                     continue
-                fullpath=os.path.join(root, p)
+                fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
                 if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
@@ -841,6 +841,7 @@ class Worker:
 
     def directory_change_notify(self,path,action,isdir):
         homedir=os.path.normpath(settings.image_dirs[0])
+        path=os.path.normcase(path)
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
             print 'change_notify invalid',path,action
