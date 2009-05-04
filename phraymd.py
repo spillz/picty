@@ -889,7 +889,7 @@ class ImageBrowser(gtk.VBox):
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
                 self.tm.view.reverse=not self.tm.view.reverse
-                self.redraw_view()
+                self.RefreshView()
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
@@ -1218,8 +1218,8 @@ class ImageBrowser(gtk.VBox):
 
     def redraw_view(self):
         '''redraw the view without recomputing geometry or changing position'''
-        self.RefreshView()
-#        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+#        self.RefreshView()
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def RefreshView(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
