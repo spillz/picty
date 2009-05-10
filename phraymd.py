@@ -771,7 +771,7 @@ class ImageBrowser(gtk.VBox):
         return True
 
     def select_show(self,widget):
-        self.filter_entry.set_text("+selected")
+        self.filter_entry.set_text("selected")
         self.filter_entry.activate()
 
     def entry_dialog(self,title,prompt,default=''):
@@ -1164,6 +1164,7 @@ class ImageBrowser(gtk.VBox):
                     self.tm.collection.numselected-=1
                 item.selected=select
         self.tm.lock.release()
+        self.update_info_bar()
         self.redraw_view()
 
     def select_item(self,ind):
@@ -1176,6 +1177,7 @@ class ImageBrowser(gtk.VBox):
             item.selected=not item.selected
             self.last_selected=item
             self.last_selected_ind=ind
+            self.update_info_bar()
             self.redraw_view()
 
     def button_press(self,obj,event):
@@ -1231,13 +1233,16 @@ class ImageBrowser(gtk.VBox):
 #        self.RefreshView()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
+    def update_info_bar(self):
+        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+
     def RefreshView(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
         self.update_geometry()
         self.update_required_thumbs()
         self.UpdateScrollbar()
+        self.update_info_bar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
     def post_build_view(self):
         print 'post build',self.tm.view.tag_cloud
