@@ -1037,6 +1037,7 @@ class ImageBrowser(gtk.VBox):
         menu_add(menu,'Rotate Anti-Clockwise',self.rotate_item_left,item)
         menu_add(menu,'Delete Image',self.delete_item,item)
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
+        menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
         menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def edit_custom_mime_apps(self,widget,item):
@@ -1044,6 +1045,9 @@ class ImageBrowser(gtk.VBox):
 
     def item_make_thumb(self,widget,item):
         self.tm.recreate_thumb(item)
+
+    def item_reload_metadata(self,widget,item):
+        self.tm.reload_metadata(item)
 
     def mime_open(self,widget,app_cmd,item):
         print 'mime_open',app_cmd,item

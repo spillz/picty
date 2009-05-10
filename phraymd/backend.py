@@ -147,6 +147,30 @@ class RecreateThumbJob(WorkerJob):
             gobject.idle_add(browser.UpdateStatus,2.0,'Recreating thumbnails done')
             self.unsetevent()
 
+class ReloadMetadataJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'RELOADMETADATA')
+        self.queue=[]
+
+    def __call__(self,jobs,collection,view,browser):
+        while len(self.queue)>0 and jobs.ishighestpriority(self):
+            gobject.idle_add(browser.UpdateStatus,1.0/(1+len(self.queue)),'Reloading metadata')
+            item=self.queue.pop(0)
+            browser.lock.acquire()
+            item.meta=None
+            if view.del_item(item):
+                imagemanip.load_metadata(item)
+                view.add_item(item)
+            browser.lock.release()
+#            if item.meta!=None:
+#                imagemanip.make_thumb(item)
+#                imagemanip.load_thumb(item)
+#                gobject.idle_add(browser.RefreshView)
+        if len(self.queue)==0:
+            gobject.idle_add(browser.UpdateStatus,2.0,'Reloading metadata')
+            self.unsetevent()
+
+
 
 class LoadCollectionJob(WorkerJob):
     def __init__(self):
@@ -791,6 +815,7 @@ class WorkerJobCollection(dict):
             EditMetaDataJob(),
             LoadCollectionJob(),
             RecreateThumbJob(),
+            ReloadMetadataJob(),
             CollectionUpdateJob(),
             VerifyImagesJob(),
             WalkDirectoryJob(),
@@ -931,6 +956,13 @@ class Worker:
         job.queue.append(item)
         job.setevent()
         self.event.set()
+
+    def reload_metadata(self,item):
+        job=self.jobs['RELOADMETADATA']
+        job.queue.append(item)
+        job.setevent()
+        self.event.set()
+
 
     def select_all_items(self,mode=SELECT,view=True):
         job=self.jobs['SELECTION']
