@@ -169,6 +169,7 @@ apptags=(
 ("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",)),
 ("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",)),
 ("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FNumber",)),
+("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Exif.Photo.ISOSpeedRatings",)),
 ("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FocalLength",)),
 ("ExposureProgram","Exposure Program",False,conv_str,None,None,None,("Exif.Photo.ExposureProgram",)),
 ("ExposureBiasValue","Exposure Bias Value",False,conv_str,None,None,None,("Exif.Photo.ExposureBiasValue",)),

@@ -19,10 +19,69 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+##this file contains the basic data structures for images, collections, views and tags
+
 import bisect
 import threading
 import datetime
 import os.path
+import simple_parser as sp
+
+
+class TagCloud():
+    def __init__(self):
+        self.tags=dict()
+    def __repr__(self):
+        return self.tags.__repr__()
+    def empty(self):
+        self.tags=dict()
+    def tag_add(self,keywords):
+        for k in keywords:
+            if k in self.tags:
+                self.tags[k]+=1
+            else:
+                self.tags[k]=1
+    def tag_remove(self,keywords):
+        for k in keywords:
+            if k in self.tags:
+                self.tags[k]-=1
+            else:
+                print 'warning: removing item',item,'with keyword',k,'not in tag cloud'
+    def add(self,item):
+        if item.meta==None or item.meta==False:
+            return False
+        try:
+            self.tag_add(item.meta['Keywords'])
+        except:
+            return False
+        return True
+    def remove(self,item):
+        if item.meta==None or item.meta==False:
+            return False
+        try:
+            self.tag_remove(item.meta['Keywords'])
+        except:
+            return False
+        return True
+    def update(self,item):
+        try:
+            self.tag_remove(item.meta_backup['Keywords'])
+        except:
+            pass
+        try:
+            self.tag_add(item.meta['Keywords'])
+        except:
+            pass
+    def revert(self,item):
+        try:
+            self.tag_remove(item.meta['Keywords'])
+        except:
+            pass
+        try:
+            self.tag_add(item.meta_backup['Keywords'])
+        except:
+            pass
+
 
 class Item(list):
     def __init__(self,filename,mtime):
@@ -106,6 +165,7 @@ class Collection(list):
         for item in items:
             self.add(item)
             self.numselected+=item.selected
+##        self.tag_cloud=TagCloud()
     def add(self,item):
         self.numselected+=item.selected
         bisect.insort(self,item)
@@ -283,24 +343,24 @@ sort_keys_str={
 
 
 
-def mtime_filter(item,criteria):
+
+def mtime_filter(l,r,item):
     val=get_mtime(item)
     if criteria[0]<=val<=criteria[1]:
         return True
     return False
 
-def ctime_filter(item,criteria):
+def ctime_filter(l,r,item):
     val=get_ctime(item)
     if criteria[0]<=val<=criteria[1]:
         return True
     return False
 
-def selected_filter(item,criteria):
-    return item.selected==criteria
+def selected_filter(l,r,item):
+    return item.selected
 
-def keyword_filter(item,criteria):
+def keyword_filter(item,test):
     relevance=0
-    test=criteria[1]
     item_string=''
     item_string+=item.filename.lower()
     if item.meta:
@@ -311,19 +371,55 @@ def keyword_filter(item,criteria):
                         item_string+=' '+str(vi).lower()
                 else:
                     item_string+=' '+str(v).lower()
-##    item_string.replace('/',' ')
-    item_string.replace('\n',' ')
-#    print item_string
-    for t in test:
-        (left,match,right)=item_string.partition(t)
-        while match:
+    item_string=item_string.replace('\n',' ')
+    (left,match,right)=item_string.partition(test)
+    while match:
+        relevance+=1
+        if (left=='' and not match or left.endswith(' ')) and (right=='' or right.startswith(' ')):
             relevance+=1
-            if (left=='' and not match or left.endswith(' ')) and (right=='' or right.startswith(' ')):
-                relevance+=1
-            (left,match,right)=right.partition(t)
-#            print item,(left,match,right)
+        (left,match,right)=right.partition(test)
     item.relevance=relevance
     return relevance>0
+
+
+def contains_tag(l,r,item):
+    text=r.strip()
+    try:
+        if text in item.meta['Keywords']:
+            item.relevance+=3
+            return True
+    except:
+        return False
+
+def _not(l,r,item):
+    return not r
+
+def _or(l,r,item):
+    return l or r
+
+def _and(l,r,item):
+    return l and r
+
+
+def str2bool(val,item):
+    return keyword_filter(item,val)
+
+
+converter={
+(str,bool):str2bool
+}
+
+
+
+TOKENS=[
+(' ',(_or,bool,bool)),
+('&',(_and,bool,bool)),
+('|',(_or,bool,bool)),
+('!',(_not,None,bool)),
+('tag=',(contains_tag,None,str)),
+('selected',(selected_filter,None,None))
+]
+
 
 class Index(list):
     def __init__(self,key_cb=get_mtime,items=[]):
@@ -331,15 +427,24 @@ class Index(list):
         for item in items:
             self.add(key_cb(item),item)
         self.key_cb=key_cb
-        self.filters=None
+        self.filter_tree=None
+        self.tag_cloud=TagCloud()
 ##        self.filters=[(keyword_filter,('in','tom'))] #tests out the filtering mechanism
         self.reverse=False
+    def copy(self):
+        dup=Index(self.key_cb)
+        dup+=self
+        return dup
+    def set_filter(self,expr):
+        self.filter_tree=sp.parse_expr(TOKENS[:],expr)
+    def clear_filter(self,expr):
+        self.filter_tree=None
     def add(self,key,item):
-        if self.filters:
-            for f in self.filters:
-                if not f[0](item,f[1]):
-                    return
+        if self.filter_tree:
+            if not sp.call_tree(bool,self.filter_tree,converter,item):
+                return False
         bisect.insort(self,[key,item])
+        return True
     def remove(self,key,item):
         ind=bisect.bisect_left(self,[key,item])
         i=list.__getitem__(self,ind)
@@ -349,7 +454,8 @@ class Index(list):
                 return
             raise KeyError
     def add_item(self,item):
-        self.add(self.key_cb(item),item)
+        if self.add(self.key_cb(item),item):
+            self.tag_cloud.add(item)
     def find_item(self,item):
         i=bisect.bisect_left(self,[self.key_cb(item),item])
         if i>=len(self) or i<0:
@@ -360,6 +466,7 @@ class Index(list):
     def del_item(self,item):
         ind=self.find_item(item)
         if ind>=0:
+            self.tag_cloud.remove(item)
             del self[ind]
             return True
         return False

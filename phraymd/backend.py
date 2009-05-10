@@ -87,6 +87,7 @@ class ThumbnailJob(WorkerJob):
         cu_job=jobs['COLLECTIONUPDATE']
         cu_job.queue=[]
         cu_job.unsetevent()
+        i=0
         while jobs.ishighestpriority(self) and len(self.queue_onscreen)>0:
             item=self.queue_onscreen.pop(0)
             if item.thumb:
@@ -95,6 +96,10 @@ class ThumbnailJob(WorkerJob):
                 if not imagemanip.has_thumb(item):
                     cu_job.setevent()
                     cu_job.queue.append(item)
+                    continue
+            i+=1
+            if i%20==0:
+                gobject.idle_add(browser.redraw_view)
         if len(self.queue_onscreen)==0:
             gobject.idle_add(browser.redraw_view)
             self.unsetevent()
@@ -382,6 +387,24 @@ class WalkSubDirectoryJob(WorkerJob):
             print 'pausing subdirectory walk'
 
 
+def parse_filter_text(text):
+    ch_loc=0
+    filters=[]
+    while 0<=ch_loc<len(text):
+        i=text[ch_loc:].find(' ')
+        j=text[ch_loc:].find('"')
+        if i<j:
+            filters.append(text[ch_loc:i])
+            ch_loc=i+1
+        else:
+            k=ch_loc
+            ch_loc=text[ch_loc:].find('"')
+            if ch_loc>=0:
+                ch_loc+=1
+                filters.append(text[k:ch_loc])
+    return filters
+
+
 class BuildViewJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'BUILDVIEW')
@@ -389,6 +412,7 @@ class BuildViewJob(WorkerJob):
         self.cancel=False
         self.sort_key='Date Last Modified'
         self.filter_text=''
+        self.superset=None
 
     def cancel_job(self):
         self.cancel=True
@@ -400,20 +424,23 @@ class BuildViewJob(WorkerJob):
             view.key_cb=imageinfo.sort_keys[self.sort_key]
             view.filters=None
             filter_text=self.filter_text.strip()
-            if filter_text.lower()=='+selected':
-                view.filters=[(imageinfo.selected_filter,True)]
-            elif filter_text:
-                text_keys=[c.strip().lower() for c in filter_text.split(' ') if c.strip()]
-                view.filters=[(imageinfo.keyword_filter,('in',text_keys))]
-            del view[:]
+            if filter_text.startswith('view:'):
+                filter_text=filter_text[5:]
+                self.superset=view.copy()
+            else:
+                self.superset=collection
+            if filter_text.strip():
+                view.set_filter(filter_text)
+            else:
+                view.clear_filter(filter_text)
+            del view[:] ##todo: create a view method to empty the view
+            if view.tag_cloud:
+                view.tag_cloud.empty()
             gobject.idle_add(browser.UpdateView)
         lastrefresh=i
         browser.lock.release()
-        while i<len(collection) and jobs.ishighestpriority(self) and not self.cancel:
-            item=collection[i]
-##todo: need to decide whether loading metadata at this point makes sense
-#            if item.meta==None:
-#                imagemanip.load_metadata(item)
+        while i<len(self.superset) and jobs.ishighestpriority(self) and not self.cancel:
+            item=self.superset(i)
             if item.meta!=None:
                 browser.lock.acquire()
                 view.add_item(item)
@@ -421,9 +448,9 @@ class BuildViewJob(WorkerJob):
             if i-lastrefresh>100:
                 lastrefresh=i
                 gobject.idle_add(browser.RefreshView)
-                gobject.idle_add(browser.UpdateStatus,1.0*i/len(collection),'Rebuilding image view - %i of %i'%(i,len(collection)))
+                gobject.idle_add(browser.UpdateStatus,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
-        if i<len(collection) and not self.cancel:
+        if i<len(self.superset) and not self.cancel:
             self.pos=i
         else:
             self.pos=0
@@ -431,6 +458,7 @@ class BuildViewJob(WorkerJob):
             self.unsetevent()
             gobject.idle_add(browser.RefreshView)
             gobject.idle_add(browser.UpdateStatus,2,'View rebuild complete')
+            gobject.idle_add(browser.post_build_view)
 
 SELECT=0
 DESELECT=1
@@ -697,9 +725,6 @@ class DirectoryUpdateJob(WorkerJob):
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
             if action in ('DELETE','MOVED_FROM'):
-                ##todo: if the deleted item was a dir, we almost always won't get notification of deleted images in that dir
-                ##not obvious how to handle this because we don't know for sure that the removed item was a directory
-                ##if we did know, could just start a new verify job
                 print 'deleting',fullpath
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
@@ -823,6 +848,7 @@ class Worker:
                 savejob=SaveCollectionJob()
                 savejob(self.jobs,self.collection,self.view,self.browser)
                 print 'end worker loop'
+                print self.view.tag_cloud
                 return
             job=self.jobs.gethighest()
             if job:
@@ -947,6 +973,7 @@ class Worker:
         job=self.jobs['BUILDVIEW']
         if job.state:
             job.cancel_job()
+        job.tag_cloud=self.view.tag_cloud
         job.sort_key=sort_key
         job.filter_text=filter_text
         job.setevent()
@@ -961,3 +988,4 @@ class Worker:
         job.save=save
         job.setevent()
         self.event.set()
+

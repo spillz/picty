@@ -57,6 +57,7 @@ from phraymd import imageinfo
 from phraymd import fileops
 from phraymd import exif
 from phraymd import register_icons
+from phraymd import tagui
 
 settings.init() ##todo: make this call on first import inside the module
 
@@ -636,6 +637,10 @@ class ImageBrowser(gtk.VBox):
         self.selection_menu.show()
 ##        self.selection_menu_item.show()
 
+        self.tag_menu_button=gtk.ToggleButton('_Tag')
+        self.tag_menu_button.connect("clicked",self.activate_tag_frame)
+        self.tag_menu_button.show()
+
         self.toolbar=gtk.Toolbar()
         self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
@@ -644,18 +649,6 @@ class ImageBrowser(gtk.VBox):
         self.toolbar.append_space()
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.selection_menu_button, None,"Perform operations on selections", None,
             None, None, None)
-#        self.toolbar.append_item("Select All", "Selects all images in the current view", None,
-#            gtk.ToolButton(gtk.STOCK_ADD), self.select_all, user_data=None)
-#        self.toolbar.append_item("Select None", "Deselects all images in the current view", None,
-#            gtk.ToolButton(gtk.STOCK_CANCEL), self.select_none, user_data=None)
-#        self.toolbar.append_item("Upload Selected", "Uploads the selected images", None,
-#            gtk.ToolButton(gtk.STOCK_CONNECT), self.select_upload, user_data=None)
-#        self.toolbar.append_item("Copy Selected", "Copies the selected images in the current view to a new folder location", None,
-#            gtk.ToolButton(gtk.STOCK_COPY), self.select_copy, user_data=None)
-#        self.toolbar.append_item("Move Selected", "Moves the selected images in the current view to a new folder location", None,
-#            gtk.ToolButton(gtk.STOCK_CUT), self.select_move, user_data=None)
-#        self.toolbar.append_item("Delete Selected", "Deletes the selected images in the current view", None,
-#            gtk.ToolButton(gtk.STOCK_DELETE), self.select_delete, user_data=None)
         self.toolbar.append_space()
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the image attribute that determines the order images appear in", None, None,
             None, None)
@@ -664,6 +657,8 @@ class ImageBrowser(gtk.VBox):
             gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
             None, None)
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.tag_menu_button, None,"Toggle the tag panel", None,
+            None, None, None)
 #        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
 #            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
 #        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
@@ -678,6 +673,9 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.set_property("has-tooltip",True)
         self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
+        self.tagframe=tagui.TagFrame(self.tm,self)
+        #self.tagframe.show_all()
+
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
@@ -690,8 +688,12 @@ class ImageBrowser(gtk.VBox):
         self.hbox.pack_start(self.vbox)
         self.hbox.pack_start(self.vscroll,False)
         self.hpane=gtk.HPaned()
-        self.hpane.add1(self.hbox)
+        self.hpane_ext=gtk.HPaned()
+        self.hpane.add1(self.hpane_ext)
         self.hpane.add2(self.iv)
+        self.hpane_ext.add1(self.tagframe)
+        self.hpane_ext.add2(self.hbox)
+        self.hpane_ext.show()
         self.hpane.show()
         self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad)
         self.pack_start(self.toolbar,False,False)
@@ -732,6 +734,13 @@ class ImageBrowser(gtk.VBox):
     def Destroy(self,event):
         self.tm.quit()
         return False
+
+    def activate_tag_frame(self,widget):
+        if widget.get_active():
+            self.tagframe.show_all()
+        else:
+            self.tagframe.hide()
+        self.imarea.grab_focus()
 
 
     def selection_popup(self,widget):
@@ -893,10 +902,11 @@ class ImageBrowser(gtk.VBox):
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
+                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
                         self.vbox.show()
-                        self.hbox.show()
+                        self.hpane_ext.show()
                         self.toolbar.show()
                         self.vscroll.show()
                         self.is_iv_fullscreen=False
@@ -905,7 +915,7 @@ class ImageBrowser(gtk.VBox):
                         self.iv.ImageFullscreen()
                         self.toolbar.hide()
                         self.vbox.hide()
-                        self.hbox.hide()
+                        self.hpane_ext.hide()
                         self.vscroll.hide()
                         self.is_iv_fullscreen=True
             elif event.keyval==65361: #left
@@ -968,14 +978,14 @@ class ImageBrowser(gtk.VBox):
             self.iv.ImageNormal()
             self.vbox.show()
             self.toolbar.show()
-            self.hbox.show()
+            self.hpane_ext.show()
             self.info_bar.show()
             self.is_iv_fullscreen=False
         else:
             self.iv.ImageFullscreen()
             self.vbox.hide()
             self.toolbar.hide()
-            self.hbox.hide()
+            self.hpane_ext.hide()
             self.info_bar.hide()
             self.is_iv_fullscreen=True
 
@@ -1228,6 +1238,10 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+
+    def post_build_view(self):
+        print 'post build',self.tm.view.tag_cloud
+        self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def UpdateView(self):
         '''reset position, update geometry, scrollbars, redraw the thumbnail view'''
