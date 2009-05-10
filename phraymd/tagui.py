@@ -49,7 +49,10 @@ class TagFrame(gtk.VBox):
         self.tv.append_column(tvc_check)
         self.tv.append_column(tvc_bitmap)
         self.tv.append_column(tvc_text)
-        self.pack_start(self.tv)
+        scrolled_window = gtk.ScrolledWindow()
+        scrolled_window.add_with_viewport(self.tv)
+        scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
+        self.pack_start(scrolled_window)
 #        self.model.append(None,(None,'test',False))
 
     def tag_activate(self,treeview, path, view_column):
@@ -66,14 +69,12 @@ class TagFrame(gtk.VBox):
 if __name__=='__main__':
     window = gtk.Window()
     tree = TagFrame()
-    scrolled_window = gtk.ScrolledWindow()
     vertical_box = gtk.VBox(False, 6)
     button_box = gtk.HButtonBox()
     insert = gtk.Button('Tag Images')
     description = gtk.Button('Untag Images')
 
-    scrolled_window.add_with_viewport(tree)
-    vertical_box.pack_start(scrolled_window)
+    vertical_box.pack_start(tree)
     vertical_box.pack_start(button_box, False, False)
     button_box.pack_start(insert)
     button_box.pack_start(description)

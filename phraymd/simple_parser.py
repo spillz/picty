@@ -40,7 +40,7 @@ def parse_expr(tokens,expr):
             token=tokens.pop(0)
             tree=parse_expr(tokens[:],expr)
         else:
-            tree=expr
+            tree=expr.replace('"','')
     return tree
 
 def call_tree(rtype,tree,conv,*args):
@@ -55,7 +55,7 @@ def call_tree(rtype,tree,conv,*args):
         r=call_tree(tree[0][2],tree[2],conv,*args)
         return tree[0][0](l,r,*args)
     else:
-        tree=tree.replace('"','')
+#        tree=tree.replace('"','')
         if rtype and type(tree)!=rtype:
             return conv[(type(tree),rtype)](tree,*args)
         return tree
