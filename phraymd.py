@@ -673,7 +673,7 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.set_property("has-tooltip",True)
         self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
-        self.tagframe=tagui.TagFrame(self.tm,self)
+        self.tagframe=tagui.TagFrame(self.tm,self,settings.user_tag_info)
         #self.tagframe.show_all()
 
         self.vbox=gtk.VBox()
@@ -733,6 +733,9 @@ class ImageBrowser(gtk.VBox):
 
     def Destroy(self,event):
         self.tm.quit()
+        settings.user_tag_info=self.tagframe.get_user_tags()
+        print settings.user_tag_info
+        settings.save()
         return False
 
     def activate_tag_frame(self,widget):

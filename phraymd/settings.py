@@ -1,4 +1,4 @@
-##Image viewers global settings
+##phraymd global settings
 import os
 import cPickle
 import Image
@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.2.1'
+version='0.2.2'
 
 ##todo: move to imagemanip to eliminate the Image dependency
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
@@ -58,8 +58,10 @@ store_thumbs=True
 conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
 collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 
+user_tag_info=[]
+
 def save():
-    global version, image_dirs, store_thumbs, precache_count, conf_file
+    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info
     try:
         f=open(conf_file,'wb')
     except:
@@ -69,21 +71,28 @@ def save():
         cPickle.dump(image_dirs,f,-1)
         cPickle.dump(store_thumbs,f,-1)
         cPickle.dump(precache_count,f,-1)
+        cPickle.dump(user_tag_info,f,-1)
+        cPickle.dump(custom_launchers,f,-1)
     finally:
         f.close()
 
 def load():
-    global version, image_dirs, store_thumbs, precache_count
+    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info
     try:
         f=open(conf_file,'rb')
     except:
         return False
     try:
-        version=cPickle.load(f)
+        file_version=cPickle.load(f)
+        print 'loaded version',file_version
         image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
+        if version>='0.2.2':
+            user_tag_info=cPickle.load(f)
+            custom_launchers=cPickle.load(f)
         print 'load'
+        print user_tag_info
     finally:
         f.close()
 
