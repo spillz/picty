@@ -584,7 +584,7 @@ class EditMetaDataJob(WorkerJob):
                     except:
                         pass
                 if i%100==0:
-                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Adding keywords - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Removing keywords - %i of %i'%(i,len(view)))
                 i+=1
 
         if self.mode==CHANGE_META:
@@ -594,7 +594,7 @@ class EditMetaDataJob(WorkerJob):
                     for k,v in self.meta.iteritems():
                         item.set_meta_key(k,v)
                 if i%100==0:
-                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Adding keywords - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Setting keywords - %i of %i'%(i,len(view)))
                 i+=1
 
         if i<len(view) and not self.cancel:

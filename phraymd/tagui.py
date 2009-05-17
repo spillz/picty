@@ -62,7 +62,7 @@ class TagFrame(gtk.VBox):
         self.tv.append_column(tvc_bitmap)
         self.tv.append_column(tvc_text)
         self.tv.enable_model_drag_dest([('tag-tree-row', gtk.TARGET_SAME_WIDGET, 0),
-                                    ('tag-tree-bitmap', gtk.TARGET_SAME_APP, 0)],
+                                    ('image-filename', gtk.TARGET_SAME_APP, 1)],
                                     gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
         self.tv.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
                   [('tag-tree-row', gtk.TARGET_SAME_WIDGET, 0)],
@@ -73,10 +73,43 @@ class TagFrame(gtk.VBox):
         scrolled_window.add_with_viewport(self.tv)
         scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
         self.pack_start(scrolled_window)
+
+        button_box = gtk.HButtonBox()
+        tag_mode_button= gtk.ToggleButton('Tag _Mode')
+        tag_mode_button.connect("toggled",self.tag_model_toggle_signal)
+        tag_mode_button.set_tooltip_text('When  this button is depressed, clicking on images in the browser adds the checked tags above, CTRL+click removes the tags')
+        button_box.pack_start(tag_mode_button)
+        button_box.show_all()
+        self.pack_start(button_box,False)
+
+
         self.model.append(None,('',None,'Favorites',False,''))
         self.model.append(None,('',None,'Other',False,''))
         print 'TESTING',self.model.row_draggable((0,))
         self.set_user_tags(user_tag_info)
+
+    def tag_model_toggle_signal(self, button):
+        if button.get_active():
+            self.browser.mode=self.browser.MODE_TAG
+        else:
+            self.browser.mode=self.browser.MODE_NORMAL
+        self.browser.imarea.grab_focus()
+
+    def iter_all_children(self,iter_node):
+        '''iterate all rows from iter_node and their children'''
+        while iter_node:
+            yield self.model[iter_node]
+            for r in self.iter_all_children(self.model.iter_children(iter_node)):
+                yield r
+            iter_node=self.model.iter_next(iter_node)
+
+    def iter_all(self):
+        '''iterate over entire tree'''
+        for x in self.iter_all_children(self.model.get_iter_root()):
+            yield x
+
+    def get_checked_tags(self):
+        return [it[0] for it in self.iter_all() if it[0]!='' and it[3]]
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''something was dropped on a tree row'''
@@ -84,7 +117,6 @@ class TagFrame(gtk.VBox):
         if drop_info:
             drop_row,pos=drop_info
             drop_iter=self.model.get_iter(drop_row)
-            print 'drop info',drop_row,pos
             data=selection_data.data
             if selection_data.type=='tag-tree-row':
                 paths=data.split('-')
@@ -93,13 +125,19 @@ class TagFrame(gtk.VBox):
                     iters.append(self.model.get_iter(path))
                 for it in iters:
                     row=list(self.model[it])
-                    print 'dropped',row
-                    self.model.remove(it)
+                    print 'drop row',drop_row
                     if self.model[drop_row][0]=='':
-                        self.model.append(drop_iter,row)
+                        new_it=self.model.append(drop_iter,row)
                     else:
-                        self.model.insert_after(None,drop_iter,row)
-                print 'recv',paths
+                        new_it=self.model.insert_before(None,drop_iter,row)
+                    new_path=self.model.get_path(new_it)
+                    self.model.remove(it)
+                    if self.model.get_path(it)[0]==0:
+                        del self.user_tags[row[0]]
+                    if new_path[0]==0:
+                        self.user_tags[row[0]]=gtk.TreeRowReference(self.model,new_path)
+            elif selection_data.type=='image-filename':
+                pass
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
         treeselection = self.tv.get_selection()
@@ -130,7 +168,7 @@ class TagFrame(gtk.VBox):
             path=row[0]
             parent=self.model.get_iter(path[0:len(path)-1])
             self.model.append(parent,[row[1],None,row[2],False,row[3]])
-            self.user_tags[row[1]]=self.model.get_iter(path)
+            self.user_tags[row[1]]=gtk.TreeRowReference(self.model,path)
         self.load_user_bitmaps(usertaginfo)
 
     def get_user_tags_rec(self,usertaginfo, iter):
@@ -162,7 +200,7 @@ class TagFrame(gtk.VBox):
     def load_user_bitmaps(self,usertaginfo):
         for t in self.user_tags:
             if t:
-                row=self.model[self.user_tags[t]]
+                row=self.model[self.user_tags[t].get_path()]
                 if row[4]!='':
                     try:
                         row[2]=gtk.gdk.pixbuf_new_from_file(row[4])
@@ -193,12 +231,14 @@ class TagFrame(gtk.VBox):
         self.model.remove(path)
         self.model.append(None,('',None,'Other',False,''))
         for k in self.user_tags:
-            path=self.user_tags[k]
-            self.model[path][2]=k+' (0)'
+            path=self.user_tags[k].get_path()
+            if path:
+                self.model[path][2]=k+' (0)'
         for k in tag_cloud.tags:
             if k in self.user_tags:
-                path=self.user_tags[k]
-                self.model[path][2]=k+' (%i)'%(tag_cloud.tags[k])
+                path=self.user_tags[k].get_path()
+                if path:
+                    self.model[path][2]=k+' (%i)'%(tag_cloud.tags[k])
             else:
                 path=self.model.get_iter((1,))
                 self.model.append(path,(k,None,k+' (%i)'%(tag_cloud.tags[k],),False,''))

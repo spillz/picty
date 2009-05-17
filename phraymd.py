@@ -555,6 +555,8 @@ class ImageBrowser(gtk.VBox):
     a widget designed to rapidly display a collection of objects
     from an image cache
     '''
+    MODE_NORMAL=1
+    MODE_TAG=2
     def __init__(self):
         gtk.VBox.__init__(self)
         self.configure_geometry()
@@ -565,6 +567,8 @@ class ImageBrowser(gtk.VBox):
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
+
+        self.mode=self.MODE_NORMAL
 
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
@@ -1177,11 +1181,15 @@ class ImageBrowser(gtk.VBox):
     def select_item(self,ind):
         if 0<=ind<len(self.tm.view):
             item=self.tm.view(ind)
-            if item.selected:
-                self.tm.collection.numselected-=1
-            else:
-                self.tm.collection.numselected+=1
-            item.selected=not item.selected
+            if self.mode==self.MODE_TAG:
+                tags=self.tagframe.get_checked_tags()
+                imageinfo.add_tags(item,tags)
+            elif self.mode==self.MODE_NORMAL:
+                if item.selected:
+                    self.tm.collection.numselected-=1
+                else:
+                    self.tm.collection.numselected+=1
+                item.selected=not item.selected
             self.last_selected=item
             self.last_selected_ind=ind
             self.update_info_bar()

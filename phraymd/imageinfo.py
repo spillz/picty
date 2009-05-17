@@ -157,6 +157,53 @@ class Item(list):
         self.selected=False
         self.relevance=0
 
+def add_tags(item,tags):
+    tags_lower=[t.lower() for t in tags]
+    meta=item.meta.copy()
+    try:
+        tags_kw=meta['Keywords']
+    except:
+        tags_kw=[]
+    tags_kw_lower=[t.lower() for t in tags_kw]
+    new_tags=list(tags_kw)
+    for j in range(len(tags)):
+        if tags_lower[j] not in tags_kw_lower:
+            new_tags.append(tags[j])
+    if len(new_tags)==0:
+        try:
+            del meta['Keywords']
+        except:
+            pass
+    else:
+        meta['Keywords']=new_tags
+    item.set_meta(meta)
+
+def remove_tags(item,tags):
+    tags_lower=[t.lower() for t in tags]
+    meta=item.meta.copy()
+    try:
+        tags_kw=list(meta['Keywords'])
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=[]
+        for j in range(len(tags_kw)):
+            if tags_kw_lower[j] not in tags_lower:
+                new_tags.append(tags_kw[j])
+        if len(new_tags)==0:
+            del meta['Keywords']
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta)
+    except:
+        pass
+
+def set_tags(item,tags):
+    meta=item.meta.copy()
+    try:
+        meta['Keywords']=tags
+    except:
+        return
+    item.set_meta(meta)
+
 
 class Collection(list):
     def __init__(self,items):
