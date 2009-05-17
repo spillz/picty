@@ -158,30 +158,33 @@ class Item(list):
         self.relevance=0
 
 def add_tags(item,tags):
-    tags_lower=[t.lower() for t in tags]
-    meta=item.meta.copy()
     try:
-        tags_kw=meta['Keywords']
-    except:
-        tags_kw=[]
-    tags_kw_lower=[t.lower() for t in tags_kw]
-    new_tags=list(tags_kw)
-    for j in range(len(tags)):
-        if tags_lower[j] not in tags_kw_lower:
-            new_tags.append(tags[j])
-    if len(new_tags)==0:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
         try:
-            del meta['Keywords']
+            tags_kw=meta['Keywords']
         except:
-            pass
-    else:
-        meta['Keywords']=new_tags
-    item.set_meta(meta)
+            tags_kw=[]
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=list(tags_kw)
+        for j in range(len(tags)):
+            if tags_lower[j] not in tags_kw_lower:
+                new_tags.append(tags[j])
+        if len(new_tags)==0:
+            try:
+                del meta['Keywords']
+            except:
+                pass
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta)
+    except:
+        pass
 
 def remove_tags(item,tags):
-    tags_lower=[t.lower() for t in tags]
-    meta=item.meta.copy()
     try:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
         tags_kw=list(meta['Keywords'])
         tags_kw_lower=[t.lower() for t in tags_kw]
         new_tags=[]
@@ -197,12 +200,12 @@ def remove_tags(item,tags):
         pass
 
 def set_tags(item,tags):
-    meta=item.meta.copy()
     try:
+        meta=item.meta.copy()
         meta['Keywords']=tags
+        item.set_meta(meta)
     except:
-        return
-    item.set_meta(meta)
+        pass
 
 
 class Collection(list):
