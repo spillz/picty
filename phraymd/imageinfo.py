@@ -26,7 +26,7 @@ import threading
 import datetime
 import os.path
 import simple_parser as sp
-
+import exif
 
 class TagCloud():
     def __init__(self):
@@ -309,6 +309,12 @@ def get_focal(item):
 def get_focal_str(item):
     return try_rational_str(item,'FocalLength')
 
+def get_iso_str(item):
+    try:
+        return str(item.meta['IsoSpeed'])
+    except:
+        return None
+
 def get_orient(item):
     try:
         orient=int(item.meta['Orientation'])
@@ -353,6 +359,9 @@ def text_descr(item):
     val=get_speed_str(item)
     if val:
         exposure+=' %ss'%(val,)
+    val=get_iso_str(item)
+    if val:
+        exposure+=' iso%s'%(val,)
     if exposure:
         details+='\n'+exposure
     val=str(get_keyword(item))
@@ -409,6 +418,9 @@ def ctime_filter(l,r,item):
 def selected_filter(l,r,item):
     return item.selected
 
+def changed_filter(l,r,item):
+    return item.meta_changed
+
 def keyword_filter(item,test):
     relevance=0
     item_string=''
@@ -431,6 +443,83 @@ def keyword_filter(item,test):
     item.relevance=relevance
     return relevance>0
 
+class StringEquals:
+    def __init__(self,field,insens=True,exact=True):
+        self.field=field
+        if exact:
+            self.__call__=self.call2 if insens else self.call1
+        else:
+            self.__call__=self.call4 if insens else self.call3
+    def call1(self,l,r,item):
+        text=r.strip()
+        try:
+            if text==item.meta[self.field]:
+                return True
+        except:
+            return False
+    def call2(self,l,r,item):
+        text=r.strip()
+        try:
+            if text.lower()==item.meta[self.field].lower():
+                return True
+        except:
+            return False
+    def call3(self,l,r,item):
+        text=r.strip()
+        try:
+            if text in item.meta[self.field]:
+                return True
+        except:
+            return False
+    def call4(self,l,r,item):
+        text=r.strip()
+        try:
+            if text.lower() in item.meta[self.field].lower():
+                return True
+        except:
+            return False
+
+class RationalCompare:
+    def __init__(self,field,op=float.__eq__):
+        self.field=field
+        self.op=op
+    def __call__(self,l,r,item):
+        text=r.strip()
+        try:
+            val=float(text)
+            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+        except:
+##            print 'error on item',item,val
+##            print exif.app_key_as_sortable(item.meta,self.field)
+##            print self.op(val,exif.app_key_as_sortable(item.meta,self.field))
+            return False
+
+
+def eq(int1,int2):
+    return int1==int2
+def gt(int1,int2):
+    return int1>int2
+def lt(int1,int2):
+    return int1<int2
+def ge(int1,int2):
+    return int1>=int2
+def le(int1,int2):
+    return int1<=int2
+
+class IntCompare:
+    def __init__(self,field,op=eq):
+        self.field=field
+        self.op=op
+    def __call__(self,l,r,item):
+        text=r.strip()
+        try:
+            val=int(text)
+            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+        except:
+            print 'int cmp fail',item,val
+            print exif.app_key_as_sortable(item.meta,self.field)
+            print self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+            return False
 
 def contains_tag(l,r,item):
     text=r.strip()
@@ -467,7 +556,38 @@ TOKENS=[
 ('|',(_or,bool,bool)),
 ('!',(_not,None,bool)),
 ('tag=',(contains_tag,None,str)),
-('selected',(selected_filter,None,None))
+('title=',(StringEquals('Title'),None,str)),
+('descr=',(StringEquals('ImageDescription'),None,str)),
+('artist=',(StringEquals('Artist'),None,str)),
+('copyright=',(StringEquals('Copyright'),None,str)),
+('album=',(StringEquals('Album'),None,str)),
+('title~',(StringEquals('Title',True,False),None,str)),
+('descr~',(StringEquals('ImageDescription',True,False),None,str)),
+('artist~',(StringEquals('Artist',True,False),None,str)),
+('copyright~',(StringEquals('Copyright',True,False),None,str)),
+('album~',(StringEquals('Album',True,False),None,str)),
+('shutter=',(RationalCompare('ExposureTime'),None,str)),
+('shutter>=',(RationalCompare('ExposureTime',float.__ge__),None,str)),
+('shutter<=',(RationalCompare('ExposureTime',float.__le__),None,str)),
+('shutter>',(RationalCompare('ExposureTime',float.__gt__),None,str)),
+('shutter<',(RationalCompare('ExposureTime',float.__lt__),None,str)),
+('aperture=',(RationalCompare('FNumber'),None,str)),
+('aperture>=',(RationalCompare('FNumber',float.__ge__),None,str)),
+('aperture<=',(RationalCompare('FNumber',float.__le__),None,str)),
+('aperture>',(RationalCompare('FNumber',float.__gt__),None,str)),
+('aperture<',(RationalCompare('FNumber',float.__lt__),None,str)),
+('focal=',(RationalCompare('FocalLength'),None,str)),
+('focal>=',(RationalCompare('FocalLength',float.__ge__),None,str)),
+('focal<=',(RationalCompare('FocalLength',float.__le__),None,str)),
+('focal>',(RationalCompare('FocalLength',float.__gt__),None,str)),
+('focal<',(RationalCompare('FocalLength',float.__lt__),None,str)),
+('iso=',(IntCompare('IsoSpeed'),None,str)),
+('iso>=',(IntCompare('IsoSpeed',ge),None,str)),
+('iso<=',(IntCompare('IsoSpeed',le),None,str)),
+('iso>',(IntCompare('IsoSpeed',gt),None,str)),
+('iso<',(IntCompare('IsoSpeed',lt),None,str)),
+('selected',(selected_filter,None,None)),
+('changed',(changed_filter,None,None))
 ]
 
 

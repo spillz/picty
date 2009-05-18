@@ -233,10 +233,13 @@ def app_key_to_string(key,value):
         except:
             return None
 
-def app_key_as_sortable(key,value):
-    try:
-        return apptags_dict[key][5](app_meta[key])
-    except:
+def app_key_as_sortable(app_meta,key):
+    if apptags_dict[key][5]!=None:
+        try:
+            return apptags_dict[key][5](app_meta[key])
+        except:
+            return None
+    else:
         try:
             return app_meta[key]
         except:
