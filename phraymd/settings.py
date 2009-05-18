@@ -88,11 +88,13 @@ def load():
         image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
-        if version>='0.2.2':
+        if file_version>='0.2.2':
             user_tag_info=cPickle.load(f)
             custom_launchers=cPickle.load(f)
         print 'load'
         print user_tag_info
+    except:
+        pass
     finally:
         f.close()
 
