@@ -11,7 +11,7 @@ def split_expr(token,text):
         k=text[j+1:].find('"')
         if k>=0:
             l=text[k+j+2:].find(token)
-            if l>0:
+            if l>=0:
                 return [token,text[:k+j+l+2],text[k+j+l+2+len(token):]]
         return [text]
     if i>=0:
@@ -83,6 +83,7 @@ if __name__=='__main__':
     }
 
     print split_expr(' ','"abc de "f g')
+    print split_expr(' ','"anc def" "ghu"')
 
 
     TOKENS=[
@@ -100,6 +101,7 @@ if __name__=='__main__':
     'samantha',
     'abc def&ab|cd cd',
     '!selected "selected"')
+
 
     for expr in exprs:
         print 'expression',expr

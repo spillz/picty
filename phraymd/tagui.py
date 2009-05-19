@@ -41,22 +41,29 @@ class TagModel(gtk.TreeStore):
 #        return False
 
 class TagFrame(gtk.VBox):
+    ##column indices of the treestore
+    M_TYPE=0 #type of row: 0=Favorite, 1=Other, 2=Category, 3=Tag
+    M_KEY=1 #name of the tag or category
+    M_PIXBUF=2 #pixbuf image displayed next to tag
+    M_DISP=3 #display text
+    M_CHECK=4 #state of check box
+    M_PIXPATH=5 #path to pixbuf
     def __init__(self,worker,browser,user_tag_info):
         gtk.VBox.__init__(self)
         self.user_tags={}
         self.worker=worker
         self.browser=browser
-        self.model=gtk.TreeStore(str,gtk.gdk.Pixbuf,str,'gboolean',str)
+        self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
         self.tv=gtk.TreeView(self.model)
 #        self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
         self.tv.connect("row-activated",self.tag_activate)
-        tvc_bitmap=gtk.TreeViewColumn(None,gtk.CellRendererPixbuf(),pixbuf=1)
-        tvc_text=gtk.TreeViewColumn(None,gtk.CellRendererText(),text=2)
+        tvc_bitmap=gtk.TreeViewColumn(None,gtk.CellRendererPixbuf(),pixbuf=self.M_PIXBUF)
+        tvc_text=gtk.TreeViewColumn(None,gtk.CellRendererText(),text=self.M_DISP)
         toggle=gtk.CellRendererToggle()
         toggle.set_property("activatable",True)
         toggle.connect("toggled",self.toggle_signal)
-        tvc_check=gtk.TreeViewColumn(None,toggle,active=3)
+        tvc_check=gtk.TreeViewColumn(None,toggle,active=self.M_CHECK)
         ##gtk.CellRendererText
         self.tv.append_column(tvc_check)
         self.tv.append_column(tvc_bitmap)
@@ -69,6 +76,8 @@ class TagFrame(gtk.VBox):
                   gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
         self.tv.connect("drag-data-received",self.drag_receive_signal)
         self.tv.connect("drag-data-get",self.drag_get_signal)
+        self.tv.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        self.tv.connect("button-release-event",self.context_menu)
         scrolled_window = gtk.ScrolledWindow()
         scrolled_window.add_with_viewport(self.tv)
         scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
@@ -77,16 +86,78 @@ class TagFrame(gtk.VBox):
         button_box = gtk.HButtonBox()
         tag_mode_button= gtk.ToggleButton('Tag _Mode')
         tag_mode_button.connect("toggled",self.tag_model_toggle_signal)
-        tag_mode_button.set_tooltip_text('When  this button is depressed, clicking on images in the browser adds the checked tags above, CTRL+click removes the tags')
+        tag_mode_button.set_tooltip_text('When this button is depressed, clicking on images in the browser adds the checked tags above, CTRL+click removes the tags')
         button_box.pack_start(tag_mode_button)
         button_box.show_all()
         self.pack_start(button_box,False)
 
-
-        self.model.append(None,('',None,'Favorites',False,''))
-        self.model.append(None,('',None,'Other',False,''))
-        print 'TESTING',self.model.row_draggable((0,))
+        self.model.append(None,(0,'Favorites',None,'Favorites',False,''))
+        self.model.append(None,(1,'Other',None,'Other',False,''))
         self.set_user_tags(user_tag_info)
+
+    def context_menu(self,widget,event):
+        if event.button==3:
+            (row_path,tvc,tvc_x,tvc_y)=self.tv.get_path_at_pos(event.x, event.y)
+            row_iter=self.model.get_iter(row_path)
+            menu=gtk.Menu()
+            def menu_add(menu,text,callback):
+                item=gtk.MenuItem(text)
+                item.connect("activate",callback,row_iter)
+                menu.append(item)
+                item.show()
+            if row_path[0]==0:
+                if self.model[row_path][self.M_TYPE] in (0,2):
+                    menu_add(menu,"New _Category",self.add_category)
+                    menu_add(menu,"New _Tag",self.add_tag)
+                if len(row_path)>1:
+                    if self.model[row_path][self.M_TYPE]==3:
+                        menu_add(menu,"_Delete Tag",self.remove_tag)
+                        menu_add(menu,"Re_name Tag",self.rename_tag)
+                        menu_add(menu,"_Apply to Selected Images",self.apply_tag_to_browser_selection)
+                        menu_add(menu,"Re_move from Selected Images",self.remove_tag_from_browser_selection)
+                    if self.model[row_path][self.M_TYPE]==2:
+                        menu_add(menu,"_Delete Category",self.remove_category)
+                        menu_add(menu,"Re_name Category",self.rename_category)
+                menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+
+    def add_tag(self,widget,parent):
+        k=self.browser.entry_dialog('Add a Tag','Name:')
+        if k==None:
+            return
+        try:
+            new_iter=self.model.append(parent,(3,k,None,k+' (%i)'%(0,),False,''))
+            new_path=self.model.get_path(new_iter)
+            self.user_tags[k]=gtk.TreeRowReference(self.model,new_path)
+        except:
+            pass
+    def remove_tag(self,widget,iter):
+        try:
+            k=self.model[iter][self.M_KEY]
+            self.model.remove(iter)
+            del self.user_tags[k]
+        except:
+            pass
+    def rename_tag(self,widget,parent):
+        pass
+    def add_category(self,widget,parent):
+        k=self.browser.entry_dialog('Add a Category','Name:')
+        if k==None:
+            return
+        try:
+            self.model.append(parent,(2,k,None,k,False,''))
+        except:
+            pass
+    def remove_category(self,widget,iter):
+        try:
+            self.model.remove(iter)
+        except:
+            pass
+    def rename_category(self,widget,parent):
+        pass
+    def apply_tag_to_browser_selection(self,widget):
+        pass
+    def remove_tag_from_browser_selection(self,widget):
+        pass
 
     def tag_model_toggle_signal(self, button):
         if button.get_active():
@@ -109,10 +180,11 @@ class TagFrame(gtk.VBox):
             yield x
 
     def get_checked_tags(self):
-        return [it[0] for it in self.iter_all() if it[0]!='' and it[3]]
+        return [it[self.M_KEY] for it in self.iter_all() if it[self.M_TYPE]==3]
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''something was dropped on a tree row'''
+        print 'drop receive'
         drop_info = self.tv.get_dest_row_at_pos(x, y)
         if drop_info:
             drop_row,pos=drop_info
@@ -124,18 +196,19 @@ class TagFrame(gtk.VBox):
                 for path in paths:
                     iters.append(self.model.get_iter(path))
                 for it in iters:
+                    old_path=self.model.get_path(it)
                     row=list(self.model[it])
                     print 'drop row',drop_row
-                    if self.model[drop_row][0]=='':
+                    if self.model[drop_row][self.M_TYPE]<3:
                         new_it=self.model.append(drop_iter,row)
                     else:
                         new_it=self.model.insert_before(None,drop_iter,row)
                     new_path=self.model.get_path(new_it)
                     self.model.remove(it)
-                    if self.model.get_path(it)[0]==0:
-                        del self.user_tags[row[0]]
-                    if new_path[0]==0:
-                        self.user_tags[row[0]]=gtk.TreeRowReference(self.model,new_path)
+                    if old_path[0]==0 and row[self.M_TYPE]==3:
+                        del self.user_tags[row[self.M_KEY]]
+                    if new_path[0]==0 and row[self.M_TYPE]==3:
+                        self.user_tags[row[self.M_KEY]]=gtk.TreeRowReference(self.model,new_path)
             elif selection_data.type=='image-filename':
                 pass
 
@@ -144,12 +217,12 @@ class TagFrame(gtk.VBox):
         model, paths = treeselection.get_selected_rows()
         strings=[]
         for p in paths:
-            if self.model[p][0]!='':
+            print 'drag get',p,self.model[p][self.M_TYPE]
+            if self.model[p][self.M_TYPE] not in (0,1):
                 strings.append(self.model.get_string_from_iter(self.model.get_iter(p)))
         if len(strings)==0:
             return False
         selection_data.set('tag-tree-row', 8, '-'.join(strings))
-        print 'get',selection_data,'value',paths
 
     def set_user_tags(self,usertaginfo):
         '''
@@ -161,22 +234,26 @@ class TagFrame(gtk.VBox):
         self.user_tags={}
         path=self.model.get_iter((0,))
         self.model.remove(path)
-        self.model.insert(None,0,('',None,'Favorites',False,''))
-        print 'setting up tag frame',usertaginfo
+        self.model.insert(None,0,(0,'',None,'Favorites',False,''))
+##        try:
         for row in usertaginfo:
-            print 'row',row
             path=row[0]
             parent=self.model.get_iter(path[0:len(path)-1])
-            self.model.append(parent,[row[1],None,row[2],False,row[3]])
-            self.user_tags[row[1]]=gtk.TreeRowReference(self.model,path)
+            self.model.append(parent,[row[1],row[2],None,row[3],False,row[4]])
+            self.user_tags[row[2]]=gtk.TreeRowReference(self.model,path)
         self.load_user_bitmaps(usertaginfo)
+##        except:
+##            self.user_tags={}
+##            path=self.model.get_iter((0,))
+##            self.model.remove(path)
+##            self.model.insert(None,0,(0,'',None,'Favorites',False,''))
 
     def get_user_tags_rec(self,usertaginfo, iter):
         '''from a given node iter, recursively appends rows to usertaginfo'''
         while iter:
             row=list(self.model[iter])
-            row.pop(1)
-            row.pop(2)
+            row.pop(self.M_CHECK) ##todo: reverse order of pop is critical here
+            row.pop(self.M_PIXBUF)
             usertaginfo.append([self.model.get_path(iter)]+row)
             self.get_user_tags_rec(usertaginfo, self.model.iter_children(iter))
             iter=self.model.iter_next(iter)
@@ -201,47 +278,48 @@ class TagFrame(gtk.VBox):
         for t in self.user_tags:
             if t:
                 row=self.model[self.user_tags[t].get_path()]
-                if row[4]!='':
+                if row[self.M_PIXPATH]!='':
                     try:
-                        row[2]=gtk.gdk.pixbuf_new_from_file(row[4])
+                        row[self.M_PIXBUF]=gtk.gdk.pixbuf_new_from_file(row[self.M_PIXPATH])
                     except:
                         pass
 
     def set_and_save_user_bitmap(self,tree_path,pixbuf):
-        self.model[tree_path][2]=pixbuf
+        self.model[tree_path][self.M_PIXBUF]=pixbuf
         png_path=os.path.join(os.environ['HOME'],'.phraymd/tag_png')
         if not os.path.exists(png_path):
             os.makedirs(png_path)
         if not os.path.isdir(png_path):
             return False
         fullname=os.path.join(png_path,self.model[tree_path][2])
-        self.model[tree_path][4]=fullname
+        self.model[tree_path][self.M_PIXPATH]=fullname
         pixbuf.save(fullname,'png')
 
     def tag_activate(self,treeview, path, view_column):
-        if self.model[path][0]:
+        if self.model[path][self.M_KEY]:
             self.browser.filter_entry.set_text('view:tag="%s"'%self.model[path][0])
             self.browser.filter_entry.activate()
 
     def toggle_signal(self,cellrenderertoggle, path):
-        self.model[path][3]=not self.model[path][3]
+        self.model[path][self.M_CHECK]=not self.model[path][self.M_CHECK]
 
     def refresh(self,tag_cloud):
         path=self.model.get_iter((1,))
         self.model.remove(path)
-        self.model.append(None,('',None,'Other',False,''))
+        self.model.append(None,(1,'',None,'Other',False,''))
         for k in self.user_tags:
             path=self.user_tags[k].get_path()
-            if path:
-                self.model[path][2]=k+' (0)'
+            row=self.model[path]
+            if row[self.M_TYPE]==3:
+                row[self.M_DISP]=k+' (0)'
         for k in tag_cloud.tags:
             if k in self.user_tags:
                 path=self.user_tags[k].get_path()
                 if path:
-                    self.model[path][2]=k+' (%i)'%(tag_cloud.tags[k])
+                    self.model[path][self.M_DISP]=k+' (%i)'%(tag_cloud.tags[k])
             else:
                 path=self.model.get_iter((1,))
-                self.model.append(path,(k,None,k+' (%i)'%(tag_cloud.tags[k],),False,''))
+                self.model.append(path,(3,k,None,k+' (%i)'%(tag_cloud.tags[k],),False,''))
         self.tv.expand_row((0,),False)
         self.tv.expand_row((1,),False)
 

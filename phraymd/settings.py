@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.2.2'
+version='0.2.3'
 
 ##todo: move to imagemanip to eliminate the Image dependency
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
@@ -88,7 +88,7 @@ def load():
         image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
-        if file_version>='0.2.2':
+        if file_version>='0.2.3':
             user_tag_info=cPickle.load(f)
             custom_launchers=cPickle.load(f)
         print 'load'
