@@ -615,6 +615,7 @@ class ImageBrowser(gtk.VBox):
         self.filter_entry=gtk.Entry()
         self.filter_entry.connect("activate",self.set_filter_text)
         self.filter_entry.show()
+        self.filter_entry.set_width_chars(40)
 
         self.selection_menu_button=gtk.Button('_Selection')
         self.selection_menu_button.connect("clicked",self.selection_popup)
@@ -661,6 +662,8 @@ class ImageBrowser(gtk.VBox):
             gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
             None, None)
+        self.toolbar.append_item("Clear Filter", "Clear the filter and reset the view to the entire collection", None,
+            gtk.ToolButton(gtk.STOCK_CLEAR), self.clear_filter, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.tag_menu_button, None,"Toggle the tag panel", None,
             None, None, None)
 #        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
@@ -733,7 +736,6 @@ class ImageBrowser(gtk.VBox):
         self.imarea.show()
         self.last_width=2*self.geo_pad+self.geo_thumbwidth
         self.vscroll.show()
-
 
     def Destroy(self,event):
         self.tm.quit()
@@ -860,6 +862,10 @@ class ImageBrowser(gtk.VBox):
         fileops.worker.delete(self.tm.view,self.UpdateStatus)
 
     def set_filter_text(self,widget):
+        self.set_sort_key(widget)
+
+    def clear_filter(self,widget):
+        self.filter_entry.set_text('')
         self.set_sort_key(widget)
 
     def set_sort_key(self,widget):

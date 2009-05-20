@@ -130,6 +130,7 @@ class TagFrame(gtk.VBox):
             self.user_tags[k]=gtk.TreeRowReference(self.model,new_path)
         except:
             pass
+
     def remove_tag(self,widget,iter):
         try:
             k=self.model[iter][self.M_KEY]
@@ -137,8 +138,20 @@ class TagFrame(gtk.VBox):
             del self.user_tags[k]
         except:
             pass
+
     def rename_tag(self,widget,parent):
-        pass
+        old_key=self.model[iter][self.M_KEY]
+        k=self.browser.entry_dialog('Rename Tag','New Name:',old_key)
+        if k==None or k==old_key:
+            return
+        try:
+            self.model[iter][self.M_KEY]=k
+            self.model[iter][self.M_DISP]=k
+            self.user_tags[k]=self.user_tags[old_key]
+            del self.user_tags[old_key]
+        except:
+            pass
+
     def add_category(self,widget,parent):
         k=self.browser.entry_dialog('Add a Category','Name:')
         if k==None:
@@ -147,17 +160,39 @@ class TagFrame(gtk.VBox):
             self.model.append(parent,(2,k,None,k,False,''))
         except:
             pass
+
     def remove_category(self,widget,iter):
         try:
             self.model.remove(iter)
         except:
             pass
-    def rename_category(self,widget,parent):
-        pass
-    def apply_tag_to_browser_selection(self,widget):
-        pass
-    def remove_tag_from_browser_selection(self,widget):
-        pass
+
+    def rename_category(self,widget,iter):
+        old_key=self.model[iter][self.M_KEY]
+        k=self.browser.entry_dialog('Rename Category','New Name:',old_key)
+        if k==None or k==old_key:
+            return
+        try:
+            self.model[iter][self.M_KEY]=k
+            self.model[iter][self.M_DISP]=k
+        except:
+            pass
+
+    def apply_tag_to_browser_selection(self,widget,iter):
+        row=self.model[iter]
+        if row[self.M_TYPE]!=3:
+            return
+        keyword_string='"%s"'%(row[self.M_KEY],)
+        if keyword_string:
+            self.worker.keyword_edit(keyword_string)
+
+    def remove_tag_from_browser_selection(self,widget,iter):
+        row=self.model[iter]
+        if row[self.M_TYPE]!=3:
+            return
+        keyword_string='"%s"'%(row[self.M_KEY],)
+        if keyword_string:
+            self.worker.keyword_edit(keyword_string,True)
 
     def tag_model_toggle_signal(self, button):
         if button.get_active():
@@ -173,6 +208,12 @@ class TagFrame(gtk.VBox):
             for r in self.iter_all_children(self.model.iter_children(iter_node)):
                 yield r
             iter_node=self.model.iter_next(iter_node)
+
+    def iter_row_children(self,iter_node):
+        '''generator for current row and all children'''
+        yield self.model[iter_node]
+        for x in self.iter_all_children(self.model.iter_children(iter_node)):
+            yield x
 
     def iter_all(self):
         '''iterate over entire tree'''
@@ -296,8 +337,12 @@ class TagFrame(gtk.VBox):
         pixbuf.save(fullname,'png')
 
     def tag_activate(self,treeview, path, view_column):
-        if self.model[path][self.M_KEY]:
-            self.browser.filter_entry.set_text('view:tag="%s"'%self.model[path][0])
+        text=''
+        for row in self.iter_row_children(self.model.get_iter(path)):
+            if row[self.M_TYPE]==3:
+                text+='tag="%s" '%row[self.M_KEY]
+        if text:
+            self.browser.filter_entry.set_text('view:'+text.strip())
             self.browser.filter_entry.activate()
 
     def toggle_signal(self,cellrenderertoggle, path):
