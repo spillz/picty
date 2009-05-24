@@ -1,5 +1,8 @@
 #!/usr/bin/python2.5
 
+###TODOs: Smart check boxes (parents check children, children update parents)
+###       Moving rows should move children
+
 '''
 
     phraymd
@@ -659,7 +662,7 @@ class ImageBrowser(gtk.VBox):
             None, None)
         ## TODO: toggle the icon and tooltip depending on whether we are currently showing ascending or descending order
         self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
-            gtk.ToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
+            gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
             None, None)
         self.toolbar.append_item("Clear Filter", "Clear the filter and reset the view to the entire collection", None,
@@ -726,6 +729,17 @@ class ImageBrowser(gtk.VBox):
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
         self.imarea.connect("key-press-event",self.key_press_signal)
         self.imarea.connect("key-release-event",self.key_press_signal)
+
+        target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
+        gtk.target_list_add_uri_targets(target_list,0)
+        self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
+                  target_list,
+                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+
+        self.imarea.connect("drag-data-get",self.drag_get_signal)
+        self.imarea.connect("drag-begin", self.drag_begin_signal)
+        #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
+
 
         #self.set_flags(gtk.CAN_FOCUS)
 
@@ -883,6 +897,7 @@ class ImageBrowser(gtk.VBox):
 
     def reverse_sort_order(self,widget):
         self.tm.view.reverse=not self.tm.view.reverse
+        widget.set_active(self.tm.view.reverse)
         self.RefreshView()
 
     def UpdateStatus(self,progress,message):
@@ -1218,7 +1233,6 @@ class ImageBrowser(gtk.VBox):
                     if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                         self.hover_cmds[cmd][0](None,self.pressed_item)
                 else:
-                    print 'multi selecting',event.state&gtk.gdk.SHIFT_MASK,event.state&gtk.gdk.CONTROL_MASK
                     if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                         ind=self.item_to_view_index(self.last_selected)
                         if ind>=0:
@@ -1228,12 +1242,38 @@ class ImageBrowser(gtk.VBox):
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.popup_item(item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
+            self.drag_item=item
             self.pressed_ind=ind
             self.pressed_item=self.tm.view(ind)
         else:
             self.pressed_ind=-1
             self.pressed_item=None
         self.lock.release()
+
+
+
+    def drag_begin_signal(self, widget, drag_context):
+        pass
+#        self.drag_item=None
+#        x,y=self.imarea.get_pointer()
+#        print 'drag begin',x,y
+#        if not (0<=x<self.geo_width or 0<=y<self.geo_height):
+#            return False
+#        ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
+#        ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
+#        if 0<=ind<len(self.tm.view):
+#            self.drag_item=self.tm.view(ind)
+#            return True
+#        else:
+#            self.drag_item=None
+#            return False
+
+    def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
+        print 'drag get'
+        if self.drag_item==None:
+            return
+        selection_data.set('image-filename', 8, self.drag_item.filename)
+        self.drag_item=None
 
     def recalc_hover_ind(self,x,y):
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count

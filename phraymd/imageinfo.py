@@ -85,7 +85,7 @@ class TagCloud():
 
 class Item(list):
     def __init__(self,filename,mtime):
-        filename=os.path.normcase(filename)
+        filename=os.path.normcase(filename) ##todo: remove this - doesn't do anything and might break stuff in future
         list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime
@@ -422,6 +422,8 @@ def changed_filter(l,r,item):
     return item.meta_changed
 
 def keyword_filter(item,test):
+    if not test:
+        return True
     relevance=0
     item_string=''
     item_string+=item.filename.lower()
