@@ -22,6 +22,8 @@ License:
 import gtk
 import imageinfo
 
+###TODOs: Moving rows should move children
+
 
 ## provides gui elements for working with tags
 ## 1. tree interface for choosing tags to "paint" onto  images
@@ -29,12 +31,12 @@ import imageinfo
 ## 3. tag auto-completer
 ## tag collection object (keeps track of available tags and counts)
 
-class TagModel(gtk.TreeStore):
-    def __init__(self,*args):
-        gtk.TreeStore.__init__(self,*args)
-    def row_draggable(self, path):
-        print 'tag model'
-        return self[path][0]!=''
+#class TagModel(gtk.TreeStore):
+#    def __init__(self,*args):
+#        gtk.TreeStore.__init__(self,*args)
+#    def row_draggable(self, path):
+#        print 'tag model'
+#        return self[path][0]!=''
 #    def drag_data_delete(self, path):
 #        return False
 #    def drag_data_get(self, path, selection_data):
@@ -219,10 +221,50 @@ class TagFrame(gtk.VBox):
         for x in self.iter_all_children(self.model.iter_children(iter_node)):
             yield x
 
+    def iter_children(self,iter):
+        iter=self.model.iter_children(iter)
+        while iter:
+            print iter
+            yield self.model[iter]
+            iter=self.model.iter_next(iter)
+
     def iter_all(self):
         '''iterate over entire tree'''
         for x in self.iter_all_children(self.model.get_iter_root()):
             yield x
+
+##    def iter_all_children(self,iter_node):
+##        '''generator for current row and all children'''
+##        iter_node=self.model.iter_children(iter_node)
+##        while iter_node:
+##            for iter_node in self.iter_all_children(self.model.iter_children(iter_node)):
+##                yield iter_node
+##            iter_node=self.model.iter_next(iter_node)
+
+    def move_row_and_children(self,iter_node,dest_iter,rownum=None):
+        def copy(iter_node,dest_iter,rownum=None):
+            row=list(self.model[iter_node])
+            if rownum!=None:
+                print 'inserting',row,rownum
+                dest_iter=self.model.insert(dest_iter,rownum,row)
+            else:
+                print 'appending',row,rownum
+                dest_iter=self.model.append(dest_iter,row)
+            row=self.model[dest_iter]
+            print 'dest',dest_iter
+            if row[self.M_TYPE]==3:
+                self.user_tags[self.M_KEY]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
+            iter_node=self.model.iter_children(iter_node)
+            while iter_node:
+                copy(iter_node,dest_iter)
+                iter_node=self.model.iter_next(iter_node)
+        iter=dest_iter
+        while iter: ##abort if user is trying to drag a row to one of its children
+            if self.model.get_path(iter)==self.model.get_path(iter_node):
+                return
+            iter=self.model.iter_parent(iter)
+        copy(iter_node,dest_iter,rownum)
+        self.model.remove(iter_node)
 
     def get_checked_tags(self):
         return [it[self.M_KEY] for it in self.iter_all() if it[self.M_TYPE]==3 and it[self.M_CHECK]]
@@ -241,18 +283,24 @@ class TagFrame(gtk.VBox):
                 for path in paths:
                     iters.append(self.model.get_iter(path))
                 for it in iters:
-                    old_path=self.model.get_path(it)
-                    row=list(self.model[it])
-                    if self.model[drop_row][self.M_TYPE]<3:
-                        new_it=self.model.append(drop_iter,row)
+                    path=list(self.model.get_path(drop_iter))
+                    rownum=path.pop()
+                    if self.model[it]<2:
+                        continue
+                    ##gtk.TREE_VIEW_DROP_BEFORE, gtk.TREE_VIEW_DROP_AFTER, gtk.TREE_VIEW_DROP_INTO_OR_BEFORE or gtk.TREE_VIEW_DROP_INTO_OR_AFTER
+                    if self.model[drop_iter][self.M_TYPE]==3:
+                        if pos in [gtk.TREE_VIEW_DROP_AFTER,gtk.TREE_VIEW_DROP_INTO_OR_AFTER]:
+                            rownum+=1
+                        drop_iter=self.model.iter_parent(drop_iter)
+                        print drop_iter,path,rownum
+                        self.move_row_and_children(it,drop_iter,rownum)
                     else:
-                        new_it=self.model.insert_before(None,drop_iter,row)
-                    new_path=self.model.get_path(new_it)
-                    self.model.remove(it)
-                    if old_path[0]==0 and row[self.M_TYPE]==3:
-                        del self.user_tags[row[self.M_KEY]]
-                    if new_path[0]==0 and row[self.M_TYPE]==3:
-                        self.user_tags[row[self.M_KEY]]=gtk.TreeRowReference(self.model,new_path)
+                        if pos in [gtk.TREE_VIEW_DROP_INTO_OR_BEFORE,gtk.TREE_VIEW_DROP_INTO_OR_AFTER]:
+                            self.move_row_and_children(it,drop_iter)
+                        else:
+                            if pos==gtk.TREE_VIEW_DROP_AFTER:
+                                pos+=1
+                            self.move_row_and_children(it,drop_iter,pos)
             elif selection_data.type=='image-filename':
                 path=data
                 import imageinfo
@@ -386,8 +434,19 @@ class TagFrame(gtk.VBox):
             self.browser.filter_entry.set_text('view:'+text.strip())
             self.browser.filter_entry.activate()
 
-    def toggle_signal(self,cellrenderertoggle, path):
-        self.model[path][self.M_CHECK]=not self.model[path][self.M_CHECK]
+    def check_row(self,path,state):
+        self.model[path][self.M_CHECK]=state
+        iter=self.model.get_iter(path)
+        for row in self.iter_row_children(iter):
+            row[self.M_CHECK]=state
+        iter=self.model.iter_parent(iter)
+        while iter:
+            self.model[iter][self.M_CHECK]=reduce(bool.__and__,[r[self.M_CHECK] for r in self.iter_children(iter)],True)
+            iter=self.model.iter_parent(iter)
+
+    def toggle_signal(self,toggle_widget, path):
+        state = not toggle_widget.get_active()
+        self.check_row(path,state)
 
     def refresh(self,tag_cloud):
         path=self.model.get_iter((1,))

@@ -1,8 +1,5 @@
 #!/usr/bin/python2.5
 
-###TODOs: Smart check boxes (parents check children, children update parents)
-###       Moving rows should move children
-
 '''
 
     phraymd
