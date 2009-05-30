@@ -157,6 +157,41 @@ class Item(list):
         self.selected=False
         self.relevance=0
 
+def toggle_tags(item,tags):
+    try:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
+        try:
+            tags_kw=meta['Keywords']
+        except:
+            tags_kw=[]
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=list(tags_kw)
+        all_present=reduce(bool.__and__,[t in tags_kw_lower for t in tags_lower],True)
+        if all_present:
+            print 'removing tags',new_tags,tags_kw_lower,tags_lower
+            j=0
+            while j<len(new_tags):
+                if tags_kw_lower[j] in tags_lower:
+                    new_tags.pop(j)
+                    tags_kw_lower.pop(j)
+                else:
+                    j+=1
+        else:
+            for j in range(len(tags)):
+                if tags_lower[j] not in tags_kw_lower:
+                    new_tags.append(tags[j])
+        if len(new_tags)==0:
+            try:
+                del meta['Keywords']
+            except:
+                pass
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta)
+    except:
+        pass
+
 def add_tags(item,tags):
     try:
         tags_lower=[t.lower() for t in tags]

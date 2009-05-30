@@ -46,7 +46,7 @@ try:
     import gnomevfs
     import pyexiv2
 except:
-    print 'missing modules... exiting!'
+    print 'ERROR: missing modules gnome.ui, gnomevfs and pyexiv2'
     import sys
     sys.exit()
 
@@ -733,8 +733,13 @@ class ImageBrowser(gtk.VBox):
                   target_list,
                   gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
 
+        self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
+                [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
+                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+
         self.imarea.connect("drag-data-get",self.drag_get_signal)
         self.imarea.connect("drag-begin", self.drag_begin_signal)
+        self.imarea.connect("drag-data-received",self.drag_receive_signal)
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
 
 
@@ -1201,7 +1206,7 @@ class ImageBrowser(gtk.VBox):
             item=self.tm.view(ind)
             if self.mode==self.MODE_TAG:
                 tags=self.tagframe.get_checked_tags()
-                imageinfo.add_tags(item,tags)
+                imageinfo.toggle_tags(item,tags)
             elif self.mode==self.MODE_NORMAL:
                 if item.selected:
                     self.tm.collection.numselected-=1
@@ -1225,6 +1230,7 @@ class ImageBrowser(gtk.VBox):
 #            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                 self.view_image(item)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
+                self.drop_item=item
                 cmd=self.get_hover_command(ind,event.x,event.y)
                 if cmd>=0:
                     if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
@@ -1264,6 +1270,18 @@ class ImageBrowser(gtk.VBox):
 #        else:
 #            self.drag_item=None
 #            return False
+
+    def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
+        if selection_data.type=='tag-tree-row':
+            ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
+            ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
+            ind=max(0,min(len(self.tm.view)-1,ind))
+            item=self.tm.view(ind)
+            data=selection_data.data
+            paths=data.split('-')
+            tags=self.tagframe.get_tags(paths[0])
+            imageinfo.toggle_tags(item,tags)
+
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
         print 'drag get'

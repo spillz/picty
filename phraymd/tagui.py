@@ -75,7 +75,7 @@ class TagFrame(gtk.VBox):
                                     gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
         self.tv.connect("drag-data-received",self.drag_receive_signal)
         self.tv.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
-                  [('tag-tree-row', gtk.TARGET_SAME_WIDGET, 0)],
+                  [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
                   gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
         self.tv.connect("drag-data-get",self.drag_get_signal)
         self.tv.add_events(gtk.gdk.BUTTON_MOTION_MASK)
@@ -86,6 +86,10 @@ class TagFrame(gtk.VBox):
         self.pack_start(scrolled_window)
 
         button_box = gtk.HButtonBox()
+        tag_sel_button= gtk.Button('Tag _Selected')
+        tag_sel_button.connect("clicked",self.tag_selected_signal)
+        tag_sel_button.set_tooltip_text('Applies checked tags above to the selected images in the view')
+        button_box.pack_start(tag_sel_button)
         tag_mode_button= gtk.ToggleButton('Tag _Mode')
         tag_mode_button.connect("toggled",self.tag_mode_toggle_signal)
         tag_mode_button.set_tooltip_text('When this button is depressed, clicking on images in the browser adds the checked tags above, CTRL+click removes the tags')
@@ -207,6 +211,14 @@ class TagFrame(gtk.VBox):
             self.browser.mode=self.browser.MODE_NORMAL
         self.browser.imarea.grab_focus()
 
+    def tag_selected_signal(self, button):
+        tags=self.get_checked_tags()
+        keyword_string=''
+        for t in tags:
+            keyword_string+='"%s" '%(t,)
+        if keyword_string:
+            self.worker.keyword_edit(keyword_string)
+
     def iter_all_children(self,iter_node):
         '''iterate all rows from iter_node and their children'''
         while iter_node:
@@ -268,6 +280,10 @@ class TagFrame(gtk.VBox):
 
     def get_checked_tags(self):
         return [it[self.M_KEY] for it in self.iter_all() if it[self.M_TYPE]==3 and it[self.M_CHECK]]
+
+    def get_tags(self,path):
+        iter=self.model.get_iter(path)
+        return [it[self.M_KEY] for it in self.iter_row_children(iter) if it[self.M_TYPE]==3]
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''something was dropped on a tree row'''

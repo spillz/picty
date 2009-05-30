@@ -2,6 +2,8 @@
 exif.py
 
 This module describes the exif, iptc and xmp metadata used by the program
+and provides a dictionary to handle conversion between exiv2 formats and internal
+representation
 '''
 
 ##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
@@ -141,8 +143,8 @@ def date_as_sortable(date_value):
     return datatime.date(1900,1,1)
 
 '''
-apptags defines the exif metadata kept in the cache,
-which are created from and written to the item.
+apptags defines the exif metadata kept in the cache.
+the data are created from and written to the item.
 each entry in the tuple is itself a tuple containing:
  * The short name of the tag (to be used in the program)
  * The display name of the tag
