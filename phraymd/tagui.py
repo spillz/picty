@@ -76,7 +76,7 @@ class TagFrame(gtk.VBox):
         self.tv.connect("drag-data-received",self.drag_receive_signal)
         self.tv.enable_model_drag_source(gtk.gdk.BUTTON1_MASK,
                   [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
-                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY | gtk.gdk.ACTION_MOVE)
         self.tv.connect("drag-data-get",self.drag_get_signal)
         self.tv.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.tv.connect("button-release-event",self.context_menu)
@@ -86,7 +86,7 @@ class TagFrame(gtk.VBox):
         self.pack_start(scrolled_window)
 
         button_box = gtk.HButtonBox()
-        tag_sel_button= gtk.Button('Tag _Selected')
+        tag_sel_button= gtk.Button('_Tag Selected')
         tag_sel_button.connect("clicked",self.tag_selected_signal)
         tag_sel_button.set_tooltip_text('Applies checked tags above to the selected images in the view')
         button_box.pack_start(tag_sel_button)
@@ -265,7 +265,7 @@ class TagFrame(gtk.VBox):
             row=self.model[dest_iter]
             print 'dest',dest_iter
             if row[self.M_TYPE]==3:
-                self.user_tags[self.M_KEY]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
+                self.user_tags[row[self.M_KEY]]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
             iter_node=self.model.iter_children(iter_node)
             while iter_node:
                 copy(iter_node,dest_iter)
@@ -472,7 +472,13 @@ class TagFrame(gtk.VBox):
             path=self.user_tags[k].get_path()
             row=self.model[path]
             if row[self.M_TYPE]==3:
-                row[self.M_DISP]=k+' (0)'
+                try:
+                    row[self.M_DISP]=k+' (0)'
+                except:
+                    print 'ERROR'
+                    print row
+                    print k
+                    print self.user_tags
         for k in tag_cloud.tags:
             if k in self.user_tags:
                 path=self.user_tags[k].get_path()

@@ -735,7 +735,7 @@ class ImageBrowser(gtk.VBox):
 
         self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
                 [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
-                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
 
         self.imarea.connect("drag-data-get",self.drag_get_signal)
         self.imarea.connect("drag-begin", self.drag_begin_signal)
@@ -913,7 +913,7 @@ class ImageBrowser(gtk.VBox):
         self.status_bar.set_text(message)
 
     def key_press_signal(self,obj,event):
-        print event.keyval
+#        print event.keyval
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
                 fileops.worker.delete(self.tm.view,self.UpdateStatus)
@@ -1339,6 +1339,7 @@ class ImageBrowser(gtk.VBox):
     def ScrollSignal(self,obj):
         '''signal response when the scroll position changes'''
         self.geo_view_offset=self.scrolladj.get_value()
+#        self.update_geometry()
         self.update_view_index_range()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
