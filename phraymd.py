@@ -1013,6 +1013,7 @@ class ImageBrowser(gtk.VBox):
         self.UpdateScrollbar()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        self.imarea.grab_focus()
 
     def hide_image(self):
         self.iv.hide()
@@ -1025,6 +1026,7 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.show()
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
+        self.imarea.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
         if self.is_iv_fullscreen:
@@ -1041,6 +1043,7 @@ class ImageBrowser(gtk.VBox):
             self.hpane_ext.hide()
             self.info_bar.hide()
             self.is_iv_fullscreen=True
+        self.imarea.grab_focus()
 
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
