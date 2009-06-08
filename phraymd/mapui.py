@@ -2,11 +2,14 @@ import sys
 print sys.path
 sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
 
-import osmgpsmap
-
 import os
 import gtk
-import osmgpsmap
+import math
+
+try:
+    import osmgpsmap
+except:
+    pass
 
 gtk.gdk.threads_init()
 
@@ -15,12 +18,15 @@ class MapFrame(gtk.VBox):
         gtk.VBox.__init__(self,False, 0)
         hbox = gtk.HBox(False, 0)
 
-        self.osm = osmgpsmap.GpsMap(
-            tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
-            tile_cache_is_full_path=True
-        )
-        self.osm.connect('button-release-event', self.map_clicked)
-        self.osm.connect('button-press-event', self.map_clicked)
+        try:
+            self.osm = osmgpsmap.GpsMap(
+                tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
+                tile_cache_is_full_path=True
+            )
+            self.osm.connect('button-release-event', self.map_clicked)
+            self.osm.connect('button-press-event', self.map_clicked)
+        except:
+            self.osm=gtk.HBox()
         self.latlon_entry = gtk.Entry()
 
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
@@ -66,15 +72,17 @@ class MapFrame(gtk.VBox):
     def map_clicked(self,osm, event):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             coords=osm.get_co_ordinates(event.x, event.y)
+            lat=coords[0]/math.pi*180
+            lon=coords[1]/math.pi*180
             self.latlon_entry.set_text(
                 'latitude %s longitude %s c %s,%s x %s y %s' % (
                     osm.get_property('latitude'),
                     osm.get_property('longitude'),
-                    coords[0],
-                    coords[1],
+                    str(lat),
+                    str(lon),
                     event.x,event.y
                     ))
-##            osm.set_mapcenter(coords[1], coords[0], osm.get_property('zoom'))
+            osm.set_mapcenter(lat, lon, osm.get_property('zoom'))
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
             pass
 ##            self.latlon_entry.set_text(
