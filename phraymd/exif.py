@@ -190,7 +190,14 @@ apptags=(
 ("Software","Software",False,conv_str,None,None,None,("Exif.Image.Software",)),
 ("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
 ("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
-("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",))
+("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
+("LatitudeRef","Latitude Ref",False,conv_str,None,None,None,("Exif.GPSInfo.LatitudeRef",)),
+("Latitude","Latitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Latitude",)),
+("LongitudeRef","Longitude Ref",False,conv_str,None,None,None,("Exif.GPSInfo.LongitudeRef",)),
+("Longitude","Longitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Longitude",)),
+("AltitudeRef","Altitude Ref",False,conv_str,None,None,None,"Exif.GPSInfo.AltitudeRef",),
+("Altitude","Altitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Altitude")),
+##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 
 ##todo: remove this item -- currently used to define the keys to write in imagemanip.save_metadata
@@ -336,7 +343,14 @@ tags=(
 ("Exif.Image.Software","Software",False),
 ("Exif.Image.IPTCNAA","IPTCNAA",False),
 ("Exif.Photo.ImageUniqueID","ImageUniqueID",False),
-("Exif.Image.ProcessingSoftware","Processing Software",False)
+("Exif.Image.ProcessingSoftware","Processing Software",False),
+("Exif.GPSInfo.LatitudeRef","LatitudeRef",False),
+("Exif.GPSInfo.Latitude","Latitude",False),
+("Exif.GPSInfo.LongitudeRef","LongitudeRef",False),
+("Exif.GPSInfo.Longitude","Longitude",False),
+("Exif.GPSInfo.AltitudeRef","AltitudeRef",False),
+("Exif.GPSInfo.Altitude","Altitude",False),
+("Exif.GPSInfo.GPSTimeStamp","GPSTimeStamp",False),
 )
 
 

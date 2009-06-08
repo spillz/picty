@@ -58,6 +58,7 @@ from phraymd import fileops
 from phraymd import exif
 from phraymd import register_icons
 from phraymd import tagui
+from phraymd import mapui
 
 settings.init() ##todo: make this call on first import inside the module
 
@@ -642,9 +643,14 @@ class ImageBrowser(gtk.VBox):
         self.selection_menu.show()
 ##        self.selection_menu_item.show()
 
-        self.tag_menu_button=gtk.ToggleButton('_Tag')
+        self.tag_menu_button=gtk.ToggleButton('_Tags')
         self.tag_menu_button.connect("clicked",self.activate_tag_frame)
         self.tag_menu_button.show()
+
+        self.map_menu_button=gtk.ToggleButton('_Map')
+        self.map_menu_button.connect("clicked",self.activate_map_frame)
+        self.map_menu_button.show()
+
 
         self.toolbar=gtk.Toolbar()
         self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
@@ -666,6 +672,8 @@ class ImageBrowser(gtk.VBox):
             gtk.ToolButton(gtk.STOCK_CLEAR), self.clear_filter, user_data=None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.tag_menu_button, None,"Toggle the tag panel", None,
             None, None, None)
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.map_menu_button, None,"Toggle the map panel", None,
+            None, None, None)
 #        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
 #            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
 #        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
@@ -681,6 +689,7 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
         self.tagframe=tagui.TagFrame(self.tm,self,settings.user_tag_info)
+        self.mapframe=mapui.MapFrame()
         #self.tagframe.show_all()
 
         self.vbox=gtk.VBox()
@@ -696,9 +705,13 @@ class ImageBrowser(gtk.VBox):
         self.hbox.pack_start(self.vscroll,False)
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
+        self.hpane_ext2=gtk.HPaned()
+        self.hpane_ext2.add1(self.tagframe)
+        self.hpane_ext2.add2(self.mapframe)
+        self.hpane_ext2.show()
         self.hpane.add1(self.hpane_ext)
         self.hpane.add2(self.iv)
-        self.hpane_ext.add1(self.tagframe)
+        self.hpane_ext.add1(self.hpane_ext2)
         self.hpane_ext.add2(self.hbox)
         self.hpane_ext.show()
         self.hpane.show()
@@ -765,6 +778,14 @@ class ImageBrowser(gtk.VBox):
             self.tagframe.show_all()
         else:
             self.tagframe.hide()
+        self.imarea.grab_focus()
+
+    def activate_map_frame(self,widget):
+        print 'activate map'
+        if widget.get_active():
+            self.mapframe.show_all()
+        else:
+            self.mapframe.hide()
         self.imarea.grab_focus()
 
 
@@ -999,6 +1020,8 @@ class ImageBrowser(gtk.VBox):
         self.vbox.show()
         self.hbox.show()
         self.toolbar.show()
+        self.hpane_ext.show()
+        self.info_bar.show()
         self.vscroll.show()
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
