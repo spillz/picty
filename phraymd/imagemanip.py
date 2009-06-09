@@ -38,8 +38,43 @@ thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 
 import time
 
+##global ram cache for images and thumbs
 memimages=[]
 memthumbs=[]
+
+
+def scale_pixbuf(pixbuf,size):
+    tw=pixbuf.get_width()
+    th=pixbuf.get_height()
+    dest=pixbuf.copy()
+    dest_x=0
+    dest_y=0
+    if tw>th:
+        h=size
+        w=tw*size/th
+        dest_x=(w-h)/2
+    else:
+        w=size
+        h=th*size/tw
+        dest_y=(h-w)/2
+    print 'scaling pixbuf',dest_x,dest_y,w,h
+    pb=pixbuf.scale_simple(w,h, gtk.gdk.INTERP_BILINEAR)
+    pb_square=pb.subpixbuf(dest_x,dest_y,size,size)
+    return pb_square
+
+
+def small_pixbuf(pixbuf):
+    width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
+    width=width*2
+    height=height*2
+    tw=pixbuf.get_width()
+    th=pixbuf.get_height()
+    if width/height>tw/th:
+        width=height*tw/th
+    else:
+        height=width*th/tw
+    return pixbuf.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
+
 
 def rotate_left(item):
     'rotates image anti-clockwise'
@@ -71,6 +106,7 @@ def rotate_right(item):
     item.qview=None
     rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
+
 def cache_image(item):
     memimages.append(item)
     if len(memimages)>settings.max_memimages:
@@ -79,6 +115,7 @@ def cache_image(item):
             olditem.image=None
             olditem.qview_size=(0,0)
             olditem.qview=None
+
 
 def cache_thumb(item):
     memthumbs.append(item)

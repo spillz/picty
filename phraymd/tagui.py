@@ -287,7 +287,6 @@ class TagFrame(gtk.VBox):
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''something was dropped on a tree row'''
-        print 'drop receive'
         drop_info = self.tv.get_dest_row_at_pos(x, y)
         if drop_info:
             drop_row,pos=drop_info

@@ -425,9 +425,7 @@ class ImageViewer(gtk.VBox):
     def CreateMetadataFrame(self):
         item=self.item
         rows=2
-        #import datetime
         d=datetime.datetime.fromtimestamp(item.mtime)
-        #import exif
         if item.meta:
             rows+=len(exif.apptags)
         stable=gtk.ScrolledWindow()
@@ -489,7 +487,6 @@ class ImageViewer(gtk.VBox):
         if not self.imarea.window:
             return
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-        #self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def configure_signal(self,obj,event):
         self.geo_width=event.width
@@ -674,11 +671,6 @@ class ImageBrowser(gtk.VBox):
             None, None, None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.map_menu_button, None,"Toggle the map panel", None,
             None, None, None)
-#        self.toolbar.append_item("Add Filter", "Adds additional criteria that items in the current view must satisfy", None,
-#            gtk.ToolButton(gtk.STOCK_FIND), self.add_filter, user_data=None)
-#        self.toolbar.append_item("Show Filters", "Show the toolbar for the currently active filters", None,
-#            gtk.ToolButton(gtk.STOCK_FIND_AND_REPLACE), self.show_filters, user_data=None)
-#        self.toolbar.append_space()
         self.toolbar.show()
 
         self.imarea=gtk.DrawingArea()
@@ -689,13 +681,11 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
         self.tagframe=tagui.TagFrame(self.tm,self,settings.user_tag_info)
-        self.mapframe=mapui.MapFrame()
-        #self.tagframe.show_all()
+        self.mapframe=mapui.MapFrame(self.tm)
 
         self.vbox=gtk.VBox()
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
-#        self.vbox.pack_start(self.toolbar,False)
         self.vbox.pack_start(self.imarea)
         self.vbox.show()
 
@@ -744,7 +734,7 @@ class ImageBrowser(gtk.VBox):
         gtk.target_list_add_uri_targets(target_list,0)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
                   target_list,
-                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE)
+                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
 
         self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
                 [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
@@ -754,13 +744,6 @@ class ImageBrowser(gtk.VBox):
         self.imarea.connect("drag-begin", self.drag_begin_signal)
         self.imarea.connect("drag-data-received",self.drag_receive_signal)
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
-
-
-        #self.set_flags(gtk.CAN_FOCUS)
-
-#        self.vscroll.add_events(gtk.gdk.KEY_PRESS_MASK)
-#        self.vscroll.set_flags(gtk.CAN_FOCUS)
-#        self.vscroll.grab_focus()
 
         self.imarea.show()
         self.last_width=2*self.geo_pad+self.geo_thumbwidth
@@ -934,7 +917,6 @@ class ImageBrowser(gtk.VBox):
         self.status_bar.set_text(message)
 
     def key_press_signal(self,obj,event):
-#        print event.keyval
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
                 fileops.worker.delete(self.tm.view,self.UpdateStatus)
@@ -969,6 +951,7 @@ class ImageBrowser(gtk.VBox):
                         self.hpane_ext.hide()
                         self.vscroll.hide()
                         self.is_iv_fullscreen=True
+                    self.imarea.grab_focus()
             elif event.keyval==65361: #left
                 if self.iv.item:
                     ind=self.item_to_view_index(self.iv.item)
@@ -1310,7 +1293,6 @@ class ImageBrowser(gtk.VBox):
 
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
-        print 'drag get'
         if self.drag_item==None:
             return
         selection_data.set('image-filename', 8, self.drag_item.filename)
