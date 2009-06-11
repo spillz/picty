@@ -368,13 +368,7 @@ class ImageViewer(gtk.VBox):
             else:
                 try:
                     value=item.meta[k]
-                    try:
-                        if len(value)==2:
-                            value='%4.3f'%(1.0*value[0]/value[1])
-                        else:
-                            value=str(value)
-                    except:
-                        value=str(value)
+                    value=exif.app_key_to_string(k,value)
                 except:
                     value=''
                 try:
@@ -759,16 +753,22 @@ class ImageBrowser(gtk.VBox):
     def activate_tag_frame(self,widget):
         if widget.get_active():
             self.tagframe.show_all()
+            self.hpane_ext2.show()
         else:
             self.tagframe.hide()
+            if not self.map_menu_button.get_active():
+                self.hpane_ext2.hide()
         self.imarea.grab_focus()
 
     def activate_map_frame(self,widget):
         print 'activate map'
         if widget.get_active():
             self.mapframe.show_all()
+            self.hpane_ext2.show()
         else:
             self.mapframe.hide()
+            if not self.tag_menu_button.get_active():
+                self.hpane_ext2.hide()
         self.imarea.grab_focus()
 
 
@@ -1555,11 +1555,7 @@ class MainWindow:
         sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU
         sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"phraymd:main")
 
-#        self.imcache=ImageCache()
         self.drawing_area = ImageBrowser()
-
-#        self.window.add_events(gtk.gdk.KEY_PRESS_MASK)
-#        self.window.connect("key-press-event",self.drawing_area.key_press_signal)
 
         vb=gtk.VBox()
         vb.pack_start(self.drawing_area)
@@ -1568,8 +1564,6 @@ class MainWindow:
         self.window.show()
         vb.show()
         self.drawing_area.show()
-#        self.window.add_events(gtk.gdk.STRUCTURE_MASK)
-#        self.window.connect("configure-event",self.drawing_area.config_pane)
 
     def on_down(self, widget, data=None):
         self.drawing_area.ScrollDown()

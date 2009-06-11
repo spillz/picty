@@ -484,6 +484,54 @@ class BuildViewJob(WorkerJob):
             gobject.idle_add(browser.UpdateStatus,2,'View rebuild complete')
             gobject.idle_add(browser.post_build_view)
 
+
+class MapImagesJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'MAPIMAGES')
+        self.pos=0
+        self.cancel=False
+        self.limit_to_view=True
+        self.update_callback=None
+        self.pblist=[]
+        self.region=(0,0,0,0)
+        self.max_images=50
+        self.im_count=0
+        self.restart=False
+
+    def __call__(self,jobs,collection,view,browser):
+        i=self.pos
+        print 'map job',i
+        if self.limit_to_view:
+            listitems=view
+        else:
+            listitems=collection
+        while i<len(listitems) and jobs.ishighestpriority(self) and self.im_count<self.max_images and not self.cancel:
+            item=listitems(i)
+            if imageinfo.item_in_region(item,*self.region):
+                imagemanip.load_thumb(item)
+                if item.thumb:
+                    pb=imagemanip.scale_pixbuf(item.thumb,40)
+                    self.pblist.append((item,pb))
+                    self.im_count+=1
+            if self.update_callback and i%100==0:
+                gobject.idle_add(self.update_callback,self.pblist)
+                self.pblist=[]
+            i+=1
+        if i<len(listitems) and self.im_count<self.max_images and not self.cancel:
+            self.pos=i
+        else:
+            gobject.idle_add(self.update_callback,self.pblist)
+            self.pblist=[]
+            self.pos=0
+            self.cancel=False
+            if not self.restart:
+                self.unsetevent()
+            self.restart=False
+            self.im_count=0
+        print 'map job end',i
+
+
+
 SELECT=0
 DESELECT=1
 INVERT_SELECT=2
@@ -811,6 +859,7 @@ class WorkerJobCollection(dict):
             WorkerJob('QUIT'),
             ThumbnailJob(),
             BuildViewJob(),
+            MapImagesJob(),
             SelectionJob(),
             EditMetaDataJob(),
             LoadCollectionJob(),
@@ -943,6 +992,15 @@ class Worker:
         self.event.set()
         while self.thread.isAlive():
             time.sleep(0.1)
+
+    def request_map_images(self,region,callback):
+        job=self.jobs['MAPIMAGES']
+        job.restart=True
+        job.cancel=True
+        job.region=region
+        job.update_callback=callback
+        job.setevent()
+        self.event.set()
 
     def request_thumbnails(self,itemlist):
         job=self.jobs['THUMBNAIL']

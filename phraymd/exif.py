@@ -127,6 +127,39 @@ def conv_rational(metaobject,keys,value=None):
             pass
     return None
 
+def conv_latlon(metaobject,keys,value=None):
+    if value!=None:
+        lat,lon=value
+        rat_lat=(int(abs(lat)*1000000),1000000)
+        rat_lon=(int(abs(lon)*1000000),1000000)
+        latref='N' if lat>=0 else 'S'
+        lonref='E' if lon>=0 else 'W'
+        metaobject[keys[0]]=rat_lat
+        metaobject[keys[1]]=latref
+        metaobject[keys[2]]=rat_lon
+        metaobject[keys[3]]=lonref
+    else:
+        try:
+            rat_lat=metaobject[keys[0]]
+            latref=metaobject[keys[1]]
+            rat_lon=metaobject[keys[2]]
+            lonref=metaobject[keys[3]]
+            lat=(1.0 if latref=='E' else -1.0)*rat_lat[0]/rat_lat[1]
+            lon=(1.0 if lonref=='N' else -1.0)*rat_lon[0]/rat_lon[1]
+            return (lat,lon)
+        except:
+            return None
+
+def tup2str(value):
+    try:
+        return '%3.6f;%3.6f'%value
+    except:
+        return ''
+
+def str2tup(value):
+    vals=value.split(';')
+    return (float(vals[0]),float(vals[1]))
+
 def str2rat(value):
     vals=value.split('/')
     return (int(vals[0]),int(vals[1]))
@@ -151,7 +184,7 @@ each entry in the tuple is itself a tuple containing:
  * User Editable (TRUE/FALSE) in a gtk.Entry
  * The callback to convert to the container format (exiv2) and the
     preferred representation of this app (tuple, str, datetime, int, float)
- * A functionn to convert the internal rep to a string
+ * A function to convert the internal rep to a string
  * A function to convert a string to the internal rep
  * A function to convert the key to a sortable
  * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
@@ -191,12 +224,7 @@ apptags=(
 ("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
 ("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
 ("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
-("LatitudeRef","Latitude Ref",False,conv_str,None,None,None,("Exif.GPSInfo.LatitudeRef",)),
-("Latitude","Latitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Latitude",)),
-("LongitudeRef","Longitude Ref",False,conv_str,None,None,None,("Exif.GPSInfo.LongitudeRef",)),
-("Longitude","Longitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Longitude",)),
-("AltitudeRef","Altitude Ref",False,conv_str,None,None,None,"Exif.GPSInfo.AltitudeRef",),
-("Altitude","Altitude",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.GPSInfo.Altitude")),
+("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.Latitude","Exif.GPSInfo.LatitudeRef","Exif.GPSInfo.Longitude","Exif.GPSInfo.LongitudeRef")),
 ##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 

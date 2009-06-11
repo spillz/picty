@@ -57,7 +57,6 @@ def scale_pixbuf(pixbuf,size):
         w=size
         h=th*size/tw
         dest_y=(h-w)/2
-    print 'scaling pixbuf',dest_x,dest_y,w,h
     pb=pixbuf.scale_simple(w,h, gtk.gdk.INTERP_BILINEAR)
     pb_square=pb.subpixbuf(dest_x,dest_y,size,size)
     return pb_square

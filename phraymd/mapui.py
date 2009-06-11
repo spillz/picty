@@ -5,6 +5,7 @@ sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
 import os
 import gtk
 import math
+import imageinfo
 
 try:
     import osmgpsmap
@@ -53,6 +54,7 @@ class MapFrame(gtk.VBox):
         self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
                 gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
         self.osm.connect("drag-data-received",self.drag_receive_signal)
+        self.update_map_items()
 
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':
@@ -70,12 +72,8 @@ class MapFrame(gtk.VBox):
                 import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
                 osm.add_image(lat,lon,pb)
-                rat_lat=(int(abs(lat)*1000000),1000000)
-                rat_lon=(int(abs(lon)*1000000),1000000)
-                item.set_meta_key('Latitude',rat_lat)
-                item.set_meta_key('Longitude',rat_lon)
-                item.set_meta_key('LatitudeRef','N' if lat>=0 else 'S')
-                item.set_meta_key('LongitudeRef','E' if lon>=0 else 'W')
+                imageinfo.set_coords(item,lat,lon)
+                self.update_map_items()
 
     def print_tiles(self,osm):
         if osm.get_property('tiles-queued') != 0:
@@ -84,17 +82,20 @@ class MapFrame(gtk.VBox):
 
     def zoom_in_clicked(self,button, osm):
         osm.set_zoom(osm.get_property('zoom') + 1)
+        self.update_map_items()
 
     def zoom_out_clicked(self,button, osm):
         osm.set_zoom(osm.get_property('zoom') - 1)
+        self.update_map_items()
 
     def home_clicked(self,button, osm):
         osm.set_mapcenter(-44.39, 171.25, 12)
+        self.update_map_items()
 
     def cache_clicked(self,button, osm):
         bbox = osm.get_bbox()
         osm.download_maps(
-            bbox[0],bbox[1],bbox[2],bbox[3], #was *bbox
+            bbox[0],bbox[1],bbox[2],bbox[3], #was *bbox, but that doesn't work
             zoom_start=osm.get_property('zoom'),
             zoom_end=osm.get_property('max-zoom')
         )
@@ -115,4 +116,26 @@ class MapFrame(gtk.VBox):
                     osm.get_property('latitude'),
                     osm.get_property('longitude'),)
                     )
+        self.update_map_items()
         self.ignore_release=False
+
+    def update_map_items(self):
+        '''adds images to the map that are in the current view'''
+        if not self.osm.window:
+            return
+        w,h=self.osm.window.get_size()
+        coords_tl=self.osm.get_co_ordinates(0,0)
+        coords_br=self.osm.get_co_ordinates(w-1,h-1)
+        self.osm.clear_images()
+        lat0=coords_tl[0]/math.pi*180
+        lon0=coords_tl[1]/math.pi*180
+        lat1=coords_br[0]/math.pi*180
+        lon1=coords_br[1]/math.pi*180
+        self.worker.request_map_images((lat0,lon0,lat1,lon1),self.update_map_items_signal)
+
+    def update_map_items_signal(self,list_pairs):
+        '''notification of a list of images'''
+        for l in list_pairs:
+            print 'update',l
+            lat,lon=imageinfo.get_coords(l[0])
+            self.osm.add_image(lat,lon,l[1])

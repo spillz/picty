@@ -84,6 +84,7 @@ class TagCloud():
 
 
 class Item(list):
+    '''An item is a class containing an image, pixbuf representations and related metadata'''
     def __init__(self,filename,mtime):
         filename=os.path.normcase(filename) ##todo: remove this - doesn't do anything and might break stuff in future
         list.__init__(self,[filename])
@@ -243,7 +244,27 @@ def set_tags(item,tags):
         pass
 
 
+def get_coords(item):
+    '''retrieve a pair of latitude longitude coordinates in degrees from item'''
+    try:
+        return item.meta['LatLon']
+    except:
+        return None
+
+def set_coords(item,lat,lon):
+    '''set the latitude and longitude in degrees to the item's exif metadata'''
+    item.set_meta_key('LatLon',(lat,lon))
+
+def item_in_region(item,lat0,lon0,lat1,lon1):
+    '''returns true if the item's geolocation is contained in the rectangular region (lat0,lon0),(lat1,lon1)'''
+    c=get_coords(item)
+    if c and lat1<=c[0]<=lat0 and lon0<=c[1]<=lon1:
+            return True
+    return False
+
+
 class Collection(list):
+    '''defines a sorted collection of Items'''
     def __init__(self,items):
         list.__init__(self)
         self.numselected=0
