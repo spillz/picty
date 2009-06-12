@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.2.3'
+version='0.2.4'
 
 ##todo: move to imagemanip to eliminate the Image dependency
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
@@ -58,10 +58,12 @@ store_thumbs=True
 conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
 collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 
+places={}
+
 user_tag_info=[]
 
 def save():
-    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info
+    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
     try:
         f=open(conf_file,'wb')
     except:
@@ -73,11 +75,12 @@ def save():
         cPickle.dump(precache_count,f,-1)
         cPickle.dump(user_tag_info,f,-1)
         cPickle.dump(custom_launchers,f,-1)
+        cPickle.dump(places,f,-1)
     finally:
         f.close()
 
 def load():
-    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info
+    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
     try:
         f=open(conf_file,'rb')
     except:
@@ -91,6 +94,8 @@ def load():
         if file_version>='0.2.3':
             user_tag_info=cPickle.load(f)
             custom_launchers=cPickle.load(f)
+        if file_version>='0.2.4':
+            places=cPickle.load(f)
         print 'load'
         print user_tag_info
     except:

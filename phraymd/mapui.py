@@ -6,6 +6,7 @@ import os
 import gtk
 import math
 import imageinfo
+import settings
 
 try:
     import osmgpsmap
@@ -32,6 +33,10 @@ class MapFrame(gtk.VBox):
         except:
             self.osm=gtk.HBox()
         self.latlon_entry = gtk.Entry()
+        self.places_combo = gtk.combo_box_entry_new_text()
+        for p in settings.places:
+            self.places_combo.append_text(p)
+        self.places_combo.connect("changed",self.set_place_signal)
 
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
         zoom_in_button.connect('clicked', self.zoom_in_clicked, self.osm)
@@ -39,22 +44,57 @@ class MapFrame(gtk.VBox):
         zoom_out_button.connect('clicked', self.zoom_out_clicked, self.osm)
         home_button = gtk.Button(stock=gtk.STOCK_HOME)
         home_button.connect('clicked', self.home_clicked, self.osm)
-        cache_button = gtk.Button('Cache')
-        cache_button.connect('clicked', self.cache_clicked, self.osm)
+        add_place_button = gtk.Button(stock=gtk.STOCK_ADD)
+        add_place_button.connect('clicked', self.add_place_signal)
+        delete_place_button = gtk.Button(stock=gtk.STOCK_REMOVE)
+        delete_place_button.connect('clicked', self.delete_place_signal)
+
+        if not settings.places:
+            settings.places={'Home':(0.0,0.0,1)}
+#        cache_button = gtk.Button('Cache')
+#        cache_button.connect('clicked', self.cache_clicked, self.osm)
 
         self.pack_start(self.osm)
         hbox.pack_start(zoom_in_button)
         hbox.pack_start(zoom_out_button)
         hbox.pack_start(home_button)
-        hbox.pack_start(cache_button)
+#        hbox.pack_start(cache_button)
         self.pack_start(hbox, False)
         self.pack_start(self.latlon_entry, False)
+        hbox_place=gtk.HBox()
+        hbox_place.pack_start(self.places_combo)
+        hbox_place.pack_start(add_place_button,False)
+        hbox_place.pack_start(delete_place_button,False)
+
+        self.pack_start(hbox_place, False)
 
         target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
         self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
                 gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
         self.osm.connect("drag-data-received",self.drag_receive_signal)
         self.update_map_items()
+
+    def add_place_signal(self,widget):
+        place=self.places_combo.get_active_text()
+        if place not in settings.places:
+            self.places_combo.append_text(place)
+        settings.places[place]=(self.osm.get_property('latitude'),
+            self.osm.get_property('longitude'),self.osm.get_property('zoom'))
+
+    def delete_place_signal(self,widget):
+        i=self.places_combo.get_active()
+        place=self.places_combo.get_active_text()
+        if i>=0:
+            self.places_combo.remove_text(i)
+        if place in settings.places:
+            del settings.places[place]
+        self.places_combo.child.set_text('')
+
+    def set_place_signal(self,combo):
+        place=combo.get_active_text()
+        if place in settings.places:
+            self.osm.set_mapcenter(*settings.places[place])
+        self.update_latlon_entry(False)
 
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':
@@ -82,14 +122,18 @@ class MapFrame(gtk.VBox):
 
     def zoom_in_clicked(self,button, osm):
         osm.set_zoom(osm.get_property('zoom') + 1)
+        self.update_latlon_entry()
         self.update_map_items()
 
     def zoom_out_clicked(self,button, osm):
         osm.set_zoom(osm.get_property('zoom') - 1)
+        self.update_latlon_entry()
         self.update_map_items()
 
     def home_clicked(self,button, osm):
-        osm.set_mapcenter(-44.39, 171.25, 12)
+        if 'Home' in settings.places:
+            osm.set_mapcenter(*settings.places['Home'])
+        self.update_latlon_entry()
         self.update_map_items()
 
     def cache_clicked(self,button, osm):
@@ -99,6 +143,16 @@ class MapFrame(gtk.VBox):
             zoom_start=osm.get_property('zoom'),
             zoom_end=osm.get_property('max-zoom')
         )
+
+    def update_latlon_entry(self,reset_place=True):
+        self.latlon_entry.set_text(
+                'latitude %s longitude %s' % (
+                self.osm.get_property('latitude'),
+                self.osm.get_property('longitude'),)
+                )
+        if reset_place:
+            self.places_combo.child.set_text('')
+
 
     def map_clicked(self,osm, event):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
@@ -111,11 +165,7 @@ class MapFrame(gtk.VBox):
             lat=coords[0]/math.pi*180
             lon=coords[1]/math.pi*180
             osm.set_mapcenter(lat, lon, osm.get_property('zoom'))
-            self.latlon_entry.set_text(
-                    'latitude %s longitude %s' % (
-                    osm.get_property('latitude'),
-                    osm.get_property('longitude'),)
-                    )
+        self.update_latlon_entry()
         self.update_map_items()
         self.ignore_release=False
 
