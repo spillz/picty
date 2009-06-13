@@ -18,11 +18,11 @@ map_source=(
 #('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID),
 #('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE),
 #('Google Satellite Quad',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE_QUAD),
-('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE),
+('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE,'mapsforfree'),
 #('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP),
-('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP),
-('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER),
-('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE))
+('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
+('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
+('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'))
 
 
 gtk.gdk.threads_init()
@@ -36,21 +36,8 @@ class MapFrame(gtk.VBox):
         self.ignore_release=False
 
         self.osm_box=gtk.HBox()
-        try:
-            self.osm = osmgpsmap.GpsMap(
-                tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
-                tile_cache_is_full_path=True,
-                repo_uri=map_source[0]
-            )
-            self.osm.connect('button-release-event', self.map_clicked)
-            self.osm.connect('button-press-event', self.map_clicked)
-            target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
-            self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
-                    gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
-            self.osm.connect("drag-data-received",self.drag_receive_signal)
-            self.osm_box.pack_start(osm)
-        except:
-            pass
+        self.osm=gtk.HBox()
+
         self.latlon_entry = gtk.Entry()
         self.places_combo = gtk.combo_box_entry_new_text()
         for p in settings.places:
@@ -103,7 +90,7 @@ class MapFrame(gtk.VBox):
         try:
             self.osm_box.remove(self.osm)
             self.osm = osmgpsmap.GpsMap(
-                tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
+                tile_cache=os.path.expanduser('~/Maps/'+map_source[widget.get_active()][2]),
                 tile_cache_is_full_path=True,
                 repo_uri=map_source[widget.get_active()][1]
             )
