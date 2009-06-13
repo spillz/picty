@@ -1,6 +1,6 @@
 import sys
 print sys.path
-##sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
+sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
 
 import os
 import gtk
@@ -11,18 +11,19 @@ import settings
 
 try:
     import osmgpsmap
-except:
-    pass
+    map_source=(
+    #('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID),
+    #('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE),
+    #('Google Satellite Quad',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE_QUAD),
+    ('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE,'mapsforfree'),
+    #('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP),
+    ('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
+    ('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
+    ('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'))
 
-map_source=(
-#('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID),
-#('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE),
-#('Google Satellite Quad',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE_QUAD),
-('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE,'mapsforfree'),
-#('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP),
-('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
-('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
-('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'))
+
+except:
+    map_source=tuple()
 
 
 gtk.gdk.threads_init()
@@ -36,7 +37,7 @@ class MapFrame(gtk.VBox):
         self.ignore_release=False
 
         self.osm_box=gtk.HBox()
-        self.osm=gtk.HBox()
+        self.osm=None
 
         self.latlon_entry = gtk.Entry()
         self.places_combo = gtk.combo_box_entry_new_text()
@@ -87,8 +88,12 @@ class MapFrame(gtk.VBox):
         self.update_map_items()
 
     def set_source_signal(self,widget):
-        try:
-            self.osm_box.remove(self.osm)
+            if self.osm:
+                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
+                self.osm_box.remove(self.osm)
+                self.osm.destroy()
+            else:
+                place=(0.0,0.0,7)
             self.osm = osmgpsmap.GpsMap(
                 tile_cache=os.path.expanduser('~/Maps/'+map_source[widget.get_active()][2]),
                 tile_cache_is_full_path=True,
@@ -101,9 +106,8 @@ class MapFrame(gtk.VBox):
                     gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
             self.osm.connect("drag-data-received",self.drag_receive_signal)
             self.osm_box.pack_start(self.osm)
-        except:
-            pass
-        self.osm_box.show_all()
+            self.osm_box.show_all()
+            ##self.osm.set_mapcenter(0.0,0.0,1) #todo: this causes an assertion - why?
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
@@ -202,7 +206,7 @@ class MapFrame(gtk.VBox):
 
     def update_map_items(self):
         '''adds images to the map that are in the current view'''
-        if not self.osm.window:
+        if not self.osm or not self.osm.window:
             return
         w,h=self.osm.window.get_size()
         coords_tl=self.osm.get_co_ordinates(0,0)
