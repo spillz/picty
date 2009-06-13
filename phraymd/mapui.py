@@ -8,10 +8,22 @@ import math
 import imageinfo
 import settings
 
+
 try:
     import osmgpsmap
 except:
     pass
+
+map_source=(
+#('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID),
+#('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE),
+#('Google Satellite Quad',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE_QUAD),
+('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE),
+#('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP),
+('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP),
+('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER),
+('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE))
+
 
 gtk.gdk.threads_init()
 
@@ -23,27 +35,41 @@ class MapFrame(gtk.VBox):
 
         self.ignore_release=False
 
+        self.osm_box=gtk.HBox()
         try:
             self.osm = osmgpsmap.GpsMap(
                 tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
-                tile_cache_is_full_path=True
+                tile_cache_is_full_path=True,
+                repo_uri=map_source[0]
             )
             self.osm.connect('button-release-event', self.map_clicked)
             self.osm.connect('button-press-event', self.map_clicked)
+            target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
+            self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
+                    gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+            self.osm.connect("drag-data-received",self.drag_receive_signal)
+            self.osm_box.pack_start(osm)
         except:
-            self.osm=gtk.HBox()
+            pass
         self.latlon_entry = gtk.Entry()
         self.places_combo = gtk.combo_box_entry_new_text()
         for p in settings.places:
             self.places_combo.append_text(p)
         self.places_combo.connect("changed",self.set_place_signal)
 
+        self.source_combo=gtk.combo_box_new_text()
+        for s in map_source:
+            self.source_combo.append_text(s[0])
+        self.source_combo.connect("changed",self.set_source_signal)
+        self.source_combo.set_active(1)
+
+
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
-        zoom_in_button.connect('clicked', self.zoom_in_clicked, self.osm)
+        zoom_in_button.connect('clicked', self.zoom_in_clicked)
         zoom_out_button = gtk.Button(stock=gtk.STOCK_ZOOM_OUT)
-        zoom_out_button.connect('clicked', self.zoom_out_clicked, self.osm)
+        zoom_out_button.connect('clicked', self.zoom_out_clicked)
         home_button = gtk.Button(stock=gtk.STOCK_HOME)
-        home_button.connect('clicked', self.home_clicked, self.osm)
+        home_button.connect('clicked', self.home_clicked)
         add_place_button = gtk.Button(stock=gtk.STOCK_ADD)
         add_place_button.connect('clicked', self.add_place_signal)
         delete_place_button = gtk.Button(stock=gtk.STOCK_REMOVE)
@@ -54,13 +80,16 @@ class MapFrame(gtk.VBox):
 #        cache_button = gtk.Button('Cache')
 #        cache_button.connect('clicked', self.cache_clicked, self.osm)
 
-        self.pack_start(self.osm)
+        self.pack_start(self.osm_box)
         hbox.pack_start(zoom_in_button)
         hbox.pack_start(zoom_out_button)
         hbox.pack_start(home_button)
 #        hbox.pack_start(cache_button)
         self.pack_start(hbox, False)
-        self.pack_start(self.latlon_entry, False)
+        hbox_info=gtk.HBox()
+        hbox_info.pack_start(self.latlon_entry, False)
+        hbox_info.pack_start(self.source_combo, False)
+        self.pack_start(hbox_info,False)
         hbox_place=gtk.HBox()
         hbox_place.pack_start(self.places_combo)
         hbox_place.pack_start(add_place_button,False)
@@ -68,11 +97,26 @@ class MapFrame(gtk.VBox):
 
         self.pack_start(hbox_place, False)
 
-        target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
-        self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
-                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
-        self.osm.connect("drag-data-received",self.drag_receive_signal)
         self.update_map_items()
+
+    def set_source_signal(self,widget):
+        try:
+            self.osm_box.remove(self.osm)
+            self.osm = osmgpsmap.GpsMap(
+                tile_cache=os.path.expanduser('~/Maps/OpenStreetMap'),
+                tile_cache_is_full_path=True,
+                repo_uri=map_source[widget.get_active()][1]
+            )
+            self.osm.connect('button-release-event', self.map_clicked)
+            self.osm.connect('button-press-event', self.map_clicked)
+            target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
+            self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
+                    gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+            self.osm.connect("drag-data-received",self.drag_receive_signal)
+            self.osm_box.pack_start(self.osm)
+        except:
+            pass
+        self.osm_box.show_all()
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
@@ -111,37 +155,37 @@ class MapFrame(gtk.VBox):
                 lon=coords[1]/math.pi*180
                 import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
-                osm.add_image(lat,lon,pb)
+                self.osm.add_image(lat,lon,pb)
                 imageinfo.set_coords(item,lat,lon)
                 self.update_map_items()
 
-    def print_tiles(self,osm):
-        if osm.get_property('tiles-queued') != 0:
-            print osm.get_property('tiles-queued'), 'tiles queued'
+    def print_tiles(self):
+        if self.osm.get_property('tiles-queued') != 0:
+            print self.osm.get_property('tiles-queued'), 'tiles queued'
         return True
 
-    def zoom_in_clicked(self,button, osm):
-        osm.set_zoom(osm.get_property('zoom') + 1)
+    def zoom_in_clicked(self, button):
+        self.osm.set_zoom(self.osm.get_property('zoom') + 1)
         self.update_latlon_entry()
         self.update_map_items()
 
-    def zoom_out_clicked(self,button, osm):
-        osm.set_zoom(osm.get_property('zoom') - 1)
+    def zoom_out_clicked(self, button):
+        self.osm.set_zoom(self.osm.get_property('zoom') - 1)
         self.update_latlon_entry()
         self.update_map_items()
 
-    def home_clicked(self,button, osm):
+    def home_clicked(self, button):
         if 'Home' in settings.places:
-            osm.set_mapcenter(*settings.places['Home'])
+            self.osm.set_mapcenter(*settings.places['Home'])
         self.update_latlon_entry()
         self.update_map_items()
 
-    def cache_clicked(self,button, osm):
-        bbox = osm.get_bbox()
-        osm.download_maps(
+    def cache_clicked(self, button):
+        bbox = self.osm.get_bbox()
+        self.osm.download_maps(
             bbox[0],bbox[1],bbox[2],bbox[3], #was *bbox, but that doesn't work
-            zoom_start=osm.get_property('zoom'),
-            zoom_end=osm.get_property('max-zoom')
+            zoom_start=self.osm.get_property('zoom'),
+            zoom_end=self.osm.get_property('max-zoom')
         )
 
     def update_latlon_entry(self,reset_place=True):
@@ -154,17 +198,17 @@ class MapFrame(gtk.VBox):
             self.places_combo.child.set_text('')
 
 
-    def map_clicked(self,osm, event):
+    def map_clicked(self, osm, event):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             ##todo: if 2nd BUTTON_PRESS occurs affer _2BUTTON_PRESS, need to wait until after that event before zooing
             self.ignore_release=True
-            osm.set_zoom(osm.get_property('zoom') + 1)
+            self.osm.set_zoom(self.osm.get_property('zoom') + 1)
             return
         if event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE and not self.ignore_release:
-            coords=osm.get_co_ordinates(event.x, event.y)
+            coords=self.osm.get_co_ordinates(event.x, event.y)
             lat=coords[0]/math.pi*180
             lon=coords[1]/math.pi*180
-            osm.set_mapcenter(lat, lon, osm.get_property('zoom'))
+            self.osm.set_mapcenter(lat, lon, self.osm.get_property('zoom'))
         self.update_latlon_entry()
         self.update_map_items()
         self.ignore_release=False
