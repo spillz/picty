@@ -88,7 +88,6 @@ class MapFrame(gtk.VBox):
         self.update_map_items()
 
     def set_source_signal(self,widget):
-        try:
             if self.osm:
 #                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
                 ll=self.osm.screen_to_geographic(0,0)
@@ -114,8 +113,7 @@ class MapFrame(gtk.VBox):
             self.osm_box.show_all()
             if place:
                 self.osm.set_mapcenter(*place) #todo: this causes an assertion - why?
-        except:
-            pass
+                self.update_map_items()
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
@@ -138,6 +136,7 @@ class MapFrame(gtk.VBox):
         if place in settings.places:
             self.osm.set_mapcenter(*settings.places[place])
         self.update_latlon_entry(False)
+        self.update_map_items()
 
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':

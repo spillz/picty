@@ -224,7 +224,7 @@ apptags=(
 ("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
 ("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
 ("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
-("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.Latitude","Exif.GPSInfo.LatitudeRef","Exif.GPSInfo.Longitude","Exif.GPSInfo.LongitudeRef")),
+("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.GPSLatitude","Exif.GPSInfo.GPSLatitudeRef","Exif.GPSInfo.GPSLongitude","Exif.GPSInfo.GPSLongitudeRef")),
 ##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 
