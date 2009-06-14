@@ -75,7 +75,7 @@ class MapFrame(gtk.VBox):
 #        hbox.pack_start(cache_button)
         self.pack_start(hbox, False)
         hbox_info=gtk.HBox()
-        hbox_info.pack_start(self.latlon_entry, False)
+        hbox_info.pack_start(self.latlon_entry)
         hbox_info.pack_start(self.source_combo, False)
         self.pack_start(hbox_info,False)
         hbox_place=gtk.HBox()
@@ -88,16 +88,21 @@ class MapFrame(gtk.VBox):
         self.update_map_items()
 
     def set_source_signal(self,widget):
+        try:
             if self.osm:
-                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
+#                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
+                ll=self.osm.screen_to_geographic(0,0)
+                place=(ll[0],ll[1],self.osm.get_property('zoom'))
+                print 'NEW MAP PLACE',place
                 self.osm_box.remove(self.osm)
                 self.osm.destroy()
             else:
-                place=(0.0,0.0,7)
+                place=None
+##                place=(0.0,0.0,1)
             self.osm = osmgpsmap.GpsMap(
                 tile_cache=os.path.expanduser('~/Maps/'+map_source[widget.get_active()][2]),
                 tile_cache_is_full_path=True,
-                repo_uri=map_source[widget.get_active()][1]
+                repo_uri=map_source[widget.get_active()][1],
             )
             self.osm.connect('button-release-event', self.map_clicked)
             self.osm.connect('button-press-event', self.map_clicked)
@@ -107,7 +112,10 @@ class MapFrame(gtk.VBox):
             self.osm.connect("drag-data-received",self.drag_receive_signal)
             self.osm_box.pack_start(self.osm)
             self.osm_box.show_all()
-            ##self.osm.set_mapcenter(0.0,0.0,1) #todo: this causes an assertion - why?
+            if place:
+                self.osm.set_mapcenter(*place) #todo: this causes an assertion - why?
+        except:
+            pass
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
