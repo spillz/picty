@@ -709,6 +709,8 @@ class ImageBrowser(gtk.VBox):
         self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
+        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
+        self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
         self.scrolladj.connect("value-changed",self.ScrollSignal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
@@ -761,7 +763,6 @@ class ImageBrowser(gtk.VBox):
         self.imarea.grab_focus()
 
     def activate_map_frame(self,widget):
-        print 'activate map'
         if widget.get_active():
             self.mapframe.show_all()
             self.hpane_ext2.show()
@@ -1250,7 +1251,8 @@ class ImageBrowser(gtk.VBox):
                         if ind>=0:
                             self.multi_select(ind,self.pressed_ind,bool(event.state&gtk.gdk.SHIFT_MASK))
                     else:
-                        self.select_item(self.pressed_ind)
+                        if item==self.pressed_item:
+                            self.select_item(self.pressed_ind)
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.popup_item(item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
@@ -1310,6 +1312,11 @@ class ImageBrowser(gtk.VBox):
         ind=self.recalc_hover_ind(event.x,event.y)
         if self.hover_ind!=ind:
             self.hover_ind=ind
+            self.redraw_view()
+
+    def mouse_leave_signal(self,obj,event):
+        if self.hover_ind>=0:
+            self.hover_ind=-1
             self.redraw_view()
 
     def redraw_view(self):
