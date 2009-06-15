@@ -144,8 +144,8 @@ def conv_latlon(metaobject,keys,value=None):
             latref=metaobject[keys[1]]
             rat_lon=metaobject[keys[2]]
             lonref=metaobject[keys[3]]
-            lat=(1.0 if latref=='E' else -1.0)*rat_lat[0]/rat_lat[1]
-            lon=(1.0 if lonref=='N' else -1.0)*rat_lon[0]/rat_lon[1]
+            lat=(1.0 if latref=='N' else -1.0)*rat_lat[0]/rat_lat[1]
+            lon=(1.0 if lonref=='E' else -1.0)*rat_lon[0]/rat_lon[1]
             return (lat,lon)
         except:
             return None
