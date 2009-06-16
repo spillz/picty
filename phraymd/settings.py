@@ -87,7 +87,7 @@ def load():
         return False
     try:
         file_version=cPickle.load(f)
-        print 'loaded version',file_version
+        print 'loaded settings file with version',file_version
         image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
@@ -96,8 +96,6 @@ def load():
             custom_launchers=cPickle.load(f)
         if file_version>='0.2.4':
             places=cPickle.load(f)
-        print 'load'
-        print user_tag_info
     except:
         pass
     finally:

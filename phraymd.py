@@ -669,6 +669,7 @@ class ImageBrowser(gtk.VBox):
 
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
+        self.imarea.set_size_request(160,160)
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
         self.vscroll.set_property("has-tooltip",True)
@@ -748,7 +749,6 @@ class ImageBrowser(gtk.VBox):
     def Destroy(self,event):
         self.tm.quit()
         settings.user_tag_info=self.tagframe.get_user_tags()
-        print settings.user_tag_info
         settings.save()
         return False
 
@@ -771,7 +771,6 @@ class ImageBrowser(gtk.VBox):
             if not self.tag_menu_button.get_active():
                 self.hpane_ext2.hide()
         self.imarea.grab_focus()
-
 
     def selection_popup(self,widget):
         self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
@@ -991,6 +990,13 @@ class ImageBrowser(gtk.VBox):
         self.iv.SetItem(item)
         self.is_iv_showing=True
         self.update_geometry(True)
+        w,h=self.hpane.window.get_size()
+        if self.hpane.get_position()<self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position():
+            w,h=self.hpane.window.get_size()
+            if w<=self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position():
+                self.hpane.set_position(w/2)
+            else:
+                self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position())
         if self.iv.item!=None:
             ind=self.item_to_view_index(self.iv.item)
             self.center_view_offset(ind)

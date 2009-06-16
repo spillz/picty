@@ -922,7 +922,6 @@ class Worker:
                 savejob=SaveCollectionJob()
                 savejob(self.jobs,self.collection,self.view,self.browser)
                 print 'end worker loop'
-                print self.view.tag_cloud
                 return
             job=self.jobs.gethighest()
             if job:
