@@ -573,7 +573,8 @@ class SelectionJob(WorkerJob):
 
 ADD_KEYWORDS=1
 REMOVE_KEYWORDS=2
-CHANGE_META=3
+TOGGLE_KEYWORDS=3
+CHANGE_META=4
 
 class EditMetaDataJob(WorkerJob):
     def __init__(self):
@@ -607,6 +608,15 @@ class EditMetaDataJob(WorkerJob):
                     else:
                         meta['Keywords']=new_tags
                     item.set_meta(meta)
+                if i%100==0:
+                    gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Selecting images - %i of %i'%(i,len(view)))
+                i+=1
+        if self.mode==TOGGLE_KEYWORDS:
+            tags=exif.tag_split(self.keyword_string)
+            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
+                item=view(i)
+                if item.selected and item.meta!=None and item.meta!=False:
+                    imageinfo.toggle_tags(item,tags)
                 if i%100==0:
                     gobject.idle_add(browser.UpdateStatus,1.0*i/len(view),'Selecting images - %i of %i'%(i,len(view)))
                 i+=1
@@ -1044,16 +1054,19 @@ class Worker:
         self.event.set()
         return True
 
-    def keyword_edit(self,keyword_string,remove=False):
+    def keyword_edit(self,keyword_string,toggle=False,remove=False):
         job=self.jobs['EDITMETADATA']
         if job.state:
             return False
         job.pos=0
         job.keyword_string=keyword_string
-        if remove:
-            job.mode=REMOVE_KEYWORDS
+        if toggle:
+            job.mode=TOGGLE_KEYWORDS
         else:
-            job.mode=ADD_KEYWORDS
+            if remove:
+                job.mode=REMOVE_KEYWORDS
+            else:
+                job.mode=ADD_KEYWORDS
         job.setevent()
         self.event.set()
         return True

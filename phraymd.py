@@ -691,16 +691,18 @@ class ImageBrowser(gtk.VBox):
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
         self.hpane_ext2=gtk.HPaned()
+
         self.hpane_ext2.add1(self.tagframe)
         self.hpane_ext2.add2(self.mapframe)
         self.hpane_ext2.show()
-        self.hpane.add1(self.hpane_ext)
-        self.hpane.add2(self.iv)
         self.hpane_ext.add1(self.hpane_ext2)
         self.hpane_ext.add2(self.hbox)
         self.hpane_ext.show()
+        self.hpane.add1(self.hpane_ext)
+        self.hpane.add2(self.iv)
         self.hpane.show()
         self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad)
+
         self.pack_start(self.toolbar,False,False)
         self.pack_start(self.hpane)
         self.pack_start(self.status_bar,False)
@@ -758,9 +760,13 @@ class ImageBrowser(gtk.VBox):
 
     def activate_tag_frame(self,widget):
         if widget.get_active():
+#            if self.is_iv_showing:
+#                self.iv.hide()
             self.tagframe.show_all()
             self.hpane_ext2.show()
-            self.resize_browser_pane()
+#            self.resize_browser_pane()
+#            if self.is_iv_showing:
+#                self.iv.show()
         else:
             self.tagframe.hide()
             if not self.map_menu_button.get_active():
@@ -769,9 +775,13 @@ class ImageBrowser(gtk.VBox):
 
     def activate_map_frame(self,widget):
         if widget.get_active():
+#            if self.is_iv_showing:
+#                self.iv.hide()
             self.mapframe.show_all()
             self.hpane_ext2.show()
-            self.resize_browser_pane()
+#            self.resize_browser_pane()
+#            if self.is_iv_showing:
+#                self.iv.show()
         else:
             self.mapframe.hide()
             if not self.tag_menu_button.get_active():
@@ -839,7 +849,7 @@ class ImageBrowser(gtk.VBox):
     def select_keyword_remove(self,widget):
         keyword_string=self.entry_dialog("Remove Tags","Enter Tags")
         if keyword_string:
-            self.tm.keyword_edit(keyword_string,True)
+            self.tm.keyword_edit(keyword_string,False,True)
 
     def select_set_info(self,widget):
         item=imageinfo.Item('stub',None)
@@ -927,7 +937,17 @@ class ImageBrowser(gtk.VBox):
             if event.keyval==65535: #del key
                 fileops.worker.delete(self.tm.view,self.UpdateStatus)
             elif event.keyval==65307: #escape
-                self.hide_image()
+                    if self.is_iv_fullscreen:
+                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
+                        self.view_image(self.iv.item)
+                        self.iv.ImageNormal()
+                        self.vbox.show()
+                        self.hpane_ext.show()
+                        self.toolbar.show()
+                        self.vscroll.show()
+                        self.is_iv_fullscreen=False
+                    else:
+                        self.hide_image()
             elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
                 if self.is_fullscreen:
                     self.window.unfullscreen()
@@ -1307,7 +1327,10 @@ class ImageBrowser(gtk.VBox):
             data=selection_data.data
             paths=data.split('-')
             tags=self.tagframe.get_tags(paths[0])
-            imageinfo.toggle_tags(item,tags)
+            if not item.selected:
+                imageinfo.toggle_tags(item,tags)
+            else:
+                self.tm.keyword_edit(tags,True)
             return
         uris=selection_data.get_uris()
         if uris:
