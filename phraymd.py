@@ -728,17 +728,21 @@ class ImageBrowser(gtk.VBox):
         self.imarea.connect("key-release-event",self.key_press_signal)
 
         target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
-        gtk.target_list_add_uri_targets(target_list,0)
+        target_list=gtk.target_list_add_uri_targets(target_list,0)
+        print 'src target list',target_list
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
                   target_list,
                   gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
 
+        target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
+        target_list=gtk.target_list_add_uri_targets(target_list,0)
+        print 'dest target list',target_list
         self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
-                [('tag-tree-row', gtk.TARGET_SAME_APP, 0)],
+                target_list,
                 gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
 
         self.imarea.connect("drag-data-get",self.drag_get_signal)
-        self.imarea.connect("drag-begin", self.drag_begin_signal)
+        ##self.imarea.connect("drag-begin", self.drag_begin_signal)
         self.imarea.connect("drag-data-received",self.drag_receive_signal)
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
 
@@ -756,6 +760,7 @@ class ImageBrowser(gtk.VBox):
         if widget.get_active():
             self.tagframe.show_all()
             self.hpane_ext2.show()
+            self.resize_browser_pane()
         else:
             self.tagframe.hide()
             if not self.map_menu_button.get_active():
@@ -766,6 +771,7 @@ class ImageBrowser(gtk.VBox):
         if widget.get_active():
             self.mapframe.show_all()
             self.hpane_ext2.show()
+            self.resize_browser_pane()
         else:
             self.mapframe.hide()
             if not self.tag_menu_button.get_active():
@@ -985,11 +991,7 @@ class ImageBrowser(gtk.VBox):
                 self.redraw_view()
         return True
 
-    def view_image(self,item,fullwindow=False):
-        self.iv.show()
-        self.iv.SetItem(item)
-        self.is_iv_showing=True
-        self.update_geometry(True)
+    def resize_browser_pane(self):
         w,h=self.hpane.window.get_size()
         if self.hpane.get_position()<self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position():
             w,h=self.hpane.window.get_size()
@@ -997,6 +999,14 @@ class ImageBrowser(gtk.VBox):
                 self.hpane.set_position(w/2)
             else:
                 self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position())
+
+
+    def view_image(self,item,fullwindow=False):
+        self.iv.show()
+        self.iv.SetItem(item)
+        self.is_iv_showing=True
+        self.update_geometry(True)
+        self.resize_browser_pane()
         if self.iv.item!=None:
             ind=self.item_to_view_index(self.iv.item)
             self.center_view_offset(ind)
@@ -1298,12 +1308,30 @@ class ImageBrowser(gtk.VBox):
             paths=data.split('-')
             tags=self.tagframe.get_tags(paths[0])
             imageinfo.toggle_tags(item,tags)
-
+            return
+        uris=selection_data.get_uris()
+        if uris:
+            for uri in uris:
+                print 'dropped uris',uris
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
         if self.drag_item==None:
             return
         selection_data.set('image-filename', 8, self.drag_item.filename)
+        if not self.drag_item.selected:
+            uri=gnomevfs.get_uri_from_local_path(self.drag_item.filename)
+            selection_data.set_uris([uri])
+        else:
+            uris=[]
+            i=0
+            while i<len(self.tm.view):
+                item=self.tm.view(i)
+                if item.selected:
+                    uri=gnomevfs.get_uri_from_local_path(item.filename)
+                    uris.append(uri)
+                i+=1
+            selection_data.set_uris(uris)
+        print 'dragging selected uris',selection_data.get_uris()
         self.drag_item=None
 
     def recalc_hover_ind(self,x,y):
