@@ -115,13 +115,10 @@ In principle the PHRAYMD can provide read and write access to all metadata. Howe
 subset of the metadata is interesting from a collection management standpoint: metadata that
 describe the images, place them in time (or location) or core photo.
 
-Need easy way to read/write
-
-
 Attributes Kept in Memory for Sort/Filter:
 
 Date Information:
-* Date Taken: "Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal"
+* Date Taken: "Iptc.Application2.DateCreated", "Iptc.Application2.TimeCreated", "Exif.Photo.DateTimeOriginal"
 Descriptive Attributes:
 * Title:"Xmp.dc.title"
 * Description:"Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription"
@@ -151,15 +148,17 @@ Photo Attributes:
 * Saturation:"Exif.Photo.Saturation
 * Sharpness:Exif.Photo.Sharpness
 * SubjectDistanceRange:Exif.Photo.SubjectDistanceRange
-Digital Signature Info:
-* Software","Software",False,conv_str,("Exif.Image.Software",)),
-* IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
-* ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
-* Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
+Digital Signature Info (NB: Phraymd does not touch these)
+* Software:Exif.Image.Software
+* IPTCNAA:Exif.Image.IPTCNAA
+* ImageUniqueID:Exif.Photo.ImageUniqueID
+* Processing Software:Exif.Image.ProcessingSoftware
 
 
 Non metadata attributes
 =======================
+
+(only filename, mtime kept at this point)
 
 Other useful important attributes of images that are properties of the files themselves include:
 
@@ -169,3 +168,5 @@ height
 width
 size
 format (mimetype)
+
+
