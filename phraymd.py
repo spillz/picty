@@ -21,23 +21,21 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import gobject
-import gnomevfs
-import gtk
-
-gobject.threads_init()
-gtk.gdk.threads_init()
 
 import sys
 sys.path.insert(0,'/usr/share') ##private module location on installed version
 
 
 try:
-    import gnome.ui
+    import gobject
     import gnomevfs
+    import gtk
+    import gnome.ui
     import pyexiv2
+    gobject.threads_init()
+    gtk.gdk.threads_init()
 except:
-    print 'ERROR: missing modules gnome.ui, gnomevfs and pyexiv2'
+    print 'ERROR: missing modules gobject, gtk, gnome.ui, gnomevfs and pyexiv2'
     import sys
     sys.exit()
 

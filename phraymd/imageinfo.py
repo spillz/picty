@@ -477,6 +477,18 @@ def selected_filter(l,r,item):
 def changed_filter(l,r,item):
     return item.meta_changed
 
+def tagged_filter(l,r,item):
+    if not item.meta:
+        return False
+    if 'Keywords' not in item.meta:
+        return False
+    if not item.meta['Keywords']:
+        return False
+    if len(item.meta['Keywords'])>0:
+        return True
+
+    return item.meta['Keywords']
+
 def keyword_filter(item,test):
     if not test:
         return True
@@ -645,7 +657,8 @@ TOKENS=[
 ('iso>',(IntCompare('IsoSpeed',gt),None,str)),
 ('iso<',(IntCompare('IsoSpeed',lt),None,str)),
 ('selected',(selected_filter,None,None)),
-('changed',(changed_filter,None,None))
+('changed',(changed_filter,None,None)),
+('tagged',(tagged_filter,None,None))
 ]
 
 
