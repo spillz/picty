@@ -3,8 +3,9 @@
 def split_expr(token,text):
     '''looks for token in the expression text and splits the expression
     around the token and returns [token,textleft,textright] if found
-    otherwise returns [text]. this routine is "quote" aware and won't
-    match on tokens enclosed in quotes'''
+    otherwise returns [text]. this routine is "quote" aware (won't
+    match on tokens enclosed in quotes) and strips white space around
+    l and r values'''
     i=text.find(token)
     j=text.find('"')
     if 0<=j<i:
@@ -12,21 +13,22 @@ def split_expr(token,text):
         if k>=0:
             l=text[k+j+2:].find(token)
             if l>=0:
-                return [token,text[:k+j+l+2],text[k+j+l+2+len(token):]]
-        return [text]
+                return [token,text[:k+j+l+2].strip(),text[k+j+l+2+len(token):].strip()]
+        return [text.strip()]
     if i>=0:
-        return [token,text[:i],text[i+len(token):]]
-    return [text]
+        return [token,text[:i].strip(),text[i+len(token):].strip()]
+    return [text.strip()]
 
 
 def parse_expr(tokens,expr):
     '''converts a text representation of an expression into a parse
-    tree using the grammar defined in token
+    tree using the grammar defined in tokens
     tokens define operations on l and r values
     tokens is a list of tuples in increasing order of precedence
       e.g. [('|',(bool.__or__,bool,bool)),('&',(bool.__and__,bool,bool)),('!',(_not,None,bool))]
     expr is a string: e.g. 'abc|de&fg'
-    result is a nested list: e.g. [bool.__or__,[]]
+    result is a nested list: e.g. [bool.__or__,'abc',[bool.__and__,'de',[_not,'','fg']]]
+    run this program to see a complete example
     '''
     token=tokens[0][0]
     text=expr

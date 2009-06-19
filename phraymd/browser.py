@@ -744,9 +744,9 @@ class ImageBrowser(gtk.VBox):
         return max(0,ind*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)#-self.geo_width/2)
 
     def multi_select(self,ind_from,ind_to,select=True):
+        '''select multiple items in a given array subscript range of the view'''
+        ##todo: handle tag mode?
         self.tm.lock.acquire()
-        print 'multi select',select
-##        select=self.tm.view(ind_from).selected
         if ind_to>ind_from:
             for x in range(ind_from,ind_to+1):
                 item=self.tm.view(x)
@@ -768,6 +768,8 @@ class ImageBrowser(gtk.VBox):
         self.redraw_view()
 
     def select_item(self,ind):
+        '''select an item by array index of the view. in tag mode, toggles
+        whatever tags are checked in the tag pane'''
         if 0<=ind<len(self.tm.view):
             item=self.tm.view(ind)
             if self.mode==self.MODE_TAG:
@@ -785,6 +787,8 @@ class ImageBrowser(gtk.VBox):
             self.redraw_view()
 
     def button_press(self,obj,event):
+        '''callback for mouse button presses (handles selections, view double clicks,
+            context menu right clicks, mouse overlay clicks)'''
         print 'press',event.button,event.type
         self.imarea.grab_focus()
         self.lock.acquire()
@@ -839,6 +843,8 @@ class ImageBrowser(gtk.VBox):
 #            return False
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
+        '''callback triggered to retrieve the selection_data payload
+        (viewer is the destination of the drop)'''
         if selection_data.type=='tag-tree-row':
             ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
             ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
@@ -853,11 +859,13 @@ class ImageBrowser(gtk.VBox):
                 self.tm.keyword_edit(tags,True)
             return
         uris=selection_data.get_uris()
-        if uris:
+        if uris: ##todo: do we  actually want to process dropped uris? don't forget to ignore drops from self
             for uri in uris:
                 print 'dropped uris',uris
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
+        '''callback triggered to set the selection_data payload
+        (viewer is the source of the drop)'''
         if self.drag_item==None:
             return
         selection_data.set('image-filename', 8, self.drag_item.filename)
@@ -878,6 +886,7 @@ class ImageBrowser(gtk.VBox):
         self.drag_item=None
 
     def recalc_hover_ind(self,x,y):
+        '''return the index of the item of the drawable coordinates (x,y)'''
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
         ind=max(0,min(len(self.tm.view)-1,ind))
@@ -886,12 +895,14 @@ class ImageBrowser(gtk.VBox):
         return ind
 
     def mouse_motion_signal(self,obj,event):
+        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
         ind=self.recalc_hover_ind(event.x,event.y)
         if self.hover_ind!=ind:
             self.hover_ind=ind
             self.redraw_view()
 
     def mouse_leave_signal(self,obj,event):
+        '''callback when mouse leaves the viewer area (hides image overlays)'''
         if self.hover_ind>=0:
             self.hover_ind=-1
             self.redraw_view()
@@ -902,6 +913,7 @@ class ImageBrowser(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def update_info_bar(self):
+        '''refresh the info bar (status bar that displays number of images etc)'''
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
     def RefreshView(self):
@@ -913,7 +925,8 @@ class ImageBrowser(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def post_build_view(self):
-        print 'post build',self.tm.view.tag_cloud
+        '''callback function to receive notification from worker that
+        view has finished rebuilding'''
         self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def UpdateView(self):
@@ -949,9 +962,11 @@ class ImageBrowser(gtk.VBox):
                 page_increment=self.geo_height, page_size=self.geo_height)
 
     def ScrollUp(self,step=10):
+        '''call to scroll the view up by step pixels'''
         self.vscroll.set_value(self.vscroll.get_value()-step)
 
     def ScrollDown(self,step=10):
+        '''call to scroll the view down by step pixels'''
         self.vscroll.set_value(self.vscroll.get_value()+step)
 
     def configure_geometry(self):
