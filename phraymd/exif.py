@@ -6,6 +6,7 @@ and provides a dictionary to handle conversion between exiv2 formats and interna
 representation
 '''
 
+import pyexiv2
 ##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
 ##todo: merge Iptc.Application2.Keywords with Xmp.dc.subject
 
@@ -127,25 +128,49 @@ def conv_rational(metaobject,keys,value=None):
             pass
     return None
 
+def coords_as_rational(decimal):
+    print 'converting coords to rational',decimal
+    decimal=abs(decimal)
+    degree=int(decimal)
+    minute=int((decimal-degree)*60)
+    second=int((decimal-degree-minute/60)*3600*100000)
+    print 'coords',degree,minute,second
+    return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,100000))
+    print 'coords',degree,minute,second
+
+def coords_as_decimal(rational):
+    print 'converting coords to decimal',rational
+    if type(rational) in (list,tuple):
+        deci=1.0*rational[0].numerator/rational[0].denominator
+        if len(rational)>1:
+            deci+=1.0*rational[1].numerator/rational[1].denominator/60
+        if len(rational)>2:
+            deci+=1.0*rational[2].numerator/rational[2].denominator/3600
+        return deci
+    if type(rational) == pyexiv2.Rational:
+        return 1.0*rational.numerator/rational.denominator
+    raise TypeError
+
 def conv_latlon(metaobject,keys,value=None):
     if value!=None:
         lat,lon=value
-        rat_lat=(int(abs(lat)*1000000),1000000)
-        rat_lon=(int(abs(lon)*1000000),1000000)
+        rat_lat=coords_as_rational(lat)##(int(abs(lat)*1000000),1000000)
+        rat_lon=coords_as_rational(lon)##(int(abs(lon)*1000000),1000000)
         latref='N' if lat>=0 else 'S'
         lonref='E' if lon>=0 else 'W'
         metaobject[keys[0]]=rat_lat
         metaobject[keys[1]]=latref
         metaobject[keys[2]]=rat_lon
         metaobject[keys[3]]=lonref
+        print 'wrote latlon'
     else:
         try:
             rat_lat=metaobject[keys[0]]
             latref=metaobject[keys[1]]
             rat_lon=metaobject[keys[2]]
             lonref=metaobject[keys[3]]
-            lat=(1.0 if latref=='N' else -1.0)*rat_lat[0]/rat_lat[1]
-            lon=(1.0 if lonref=='E' else -1.0)*rat_lon[0]/rat_lon[1]
+            lat=(1.0 if latref=='N' else -1.0)*coords_as_decimal(rat_lat)
+            lon=(1.0 if lonref=='E' else -1.0)*coords_as_decimal(rat_lon)
             return (lat,lon)
         except:
             return None
