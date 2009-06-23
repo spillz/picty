@@ -592,8 +592,8 @@ class IntCompare:
             return False
 
 def contains_tag(l,r,item):
-    text=r.strip()
     try:
+        text=r.strip()
         if text in item.meta['Keywords']:
             item.relevance+=3
             return True

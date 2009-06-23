@@ -54,7 +54,7 @@ def parse_expr(tokens,expr):
     token=tokens[0][0]
     text=expr
     if token==' ':
-        tree=split_expr(token,text,test_token_space,[t[0] for t in tokens if t[0]!=' '])
+        tree=split_expr(token,text,test_token_space,['|','&'])
     else:
         tree=split_expr(token,text)
     if len(tree)>1:
