@@ -28,14 +28,14 @@ def split_expr(token,text,test_token_cb=None,cb_data=None):
                 continue
         return [otext.strip()]
 
-def test_token_space(token,ltext,text,tokens):
+def test_token_space(token,ltext,text,cb_data):
     '''
     A callback used to determine whether a space char gets treated as an
     or operator or just as removable whitespace
     returns True if an operator, False otherwise.
     ltext is the substring to the left of token, text is the substring to
     the right'''
-    for t in tokens:
+    for t in ('&','|'):
         if ltext.strip().endswith(t) or text.strip().startswith(t):
             return False
     return True
@@ -54,7 +54,7 @@ def parse_expr(tokens,expr):
     token=tokens[0][0]
     text=expr
     if token==' ':
-        tree=split_expr(token,text,test_token_space,['|','&'])
+        tree=split_expr(token,text,test_token_space)
     else:
         tree=split_expr(token,text)
     if len(tree)>1:
@@ -131,6 +131,7 @@ if __name__=='__main__':
         'damien    &  |  sammi',
         )
 
+    print 'TEST EXPRESSIONS'
     for expr in exprs:
         print 'expression',expr
         tree=parse_expr(TOKENS[:],expr)

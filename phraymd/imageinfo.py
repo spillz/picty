@@ -28,6 +28,9 @@ import os.path
 import simple_parser as sp
 import exif
 
+import re
+import datetime
+
 class TagCloud():
     def __init__(self):
         self.tags=dict()
@@ -591,6 +594,49 @@ class IntCompare:
             print self.op(exif.app_key_as_sortable(item.meta,self.field),val)
             return False
 
+date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, ](\d{1,2}))?(?:\:(\d{1,2}))?(?:\:(\d{1,2}))?')
+
+class DateCompare:
+    def __init__(self,field,op=eq,mdate=False):
+        self.field=field
+        self.op=op
+        if mdate:
+            self.__call__=self.__call__2
+    def __call__(self,l,r,item):
+        text=r.strip()
+        try:
+            match=date_re.match(text) ##todo: should only need to do this once per search not for every item
+            if not match:
+                return False
+            date_list=[]
+            for g in match.groups():
+                if g:
+                    date_list.append(int(g))
+                else:
+                    break
+            date_list+=[1]*max(0,3-len(date_list))
+            val=datetime.datetime(*date_list)
+            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+        except:
+            return False
+    def __call__2(self,l,r,item):
+        text=r.strip()
+        try:
+            match=date_re.match(text) ##todo: should only need to do this once per search not for every item
+            if not match:
+                return False
+            date_list=[]
+            for g in match.groups():
+                if g:
+                    date_list.append(int(g))
+                else:
+                    break
+            date_list+=[1]*max(0,3-len(date_list))
+            val=datetime.datetime(*date_list)
+            return self.op(item.mtime,val)
+        except:
+            return False
+
 def contains_tag(l,r,item):
     try:
         text=r.strip()
@@ -656,6 +702,16 @@ TOKENS=[
 ('iso<=',(IntCompare('IsoSpeed',le),None,str)),
 ('iso>',(IntCompare('IsoSpeed',gt),None,str)),
 ('iso<',(IntCompare('IsoSpeed',lt),None,str)),
+('date=',(DateCompare('DateTaken'),None,str)),
+('date>=',(DateCompare('DateTaken',ge),None,str)),
+('date<=',(DateCompare('DateTaken',le),None,str)),
+('date>',(DateCompare('DateTaken',gt),None,str)),
+('date<',(DateCompare('DateTaken',lt),None,str)),
+('mdate=',(DateCompare('DateMod'),None,str)),
+('mdate>=',(DateCompare('DateMod',ge),None,str)),
+('mdate<=',(DateCompare('DateMod',le),None,str)),
+('mdate>',(DateCompare('DateMod',gt),None,str)),
+('mdate<',(DateCompare('DateMod',lt),None,str)),
 ('selected',(selected_filter,None,None)),
 ('changed',(changed_filter,None,None)),
 ('tagged',(tagged_filter,None,None))
