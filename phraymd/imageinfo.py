@@ -605,37 +605,14 @@ class DateCompare:
         else:
             self.__call__=self.call1
     def call1(self,l,r,item):
-        text=r.strip()
         try:
-            match=date_re.match(text) ##todo: should only need to do this once per search not for every item
-            if not match:
-                return False
-            date_list=[]
-            for g in match.groups():
-                if g:
-                    date_list.append(int(g))
-                else:
-                    break
-            date_list+=[1]*max(0,3-len(date_list))
-            val=datetime.datetime(*date_list)
-            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+            return self.op(exif.app_key_as_sortable(item.meta,self.field),r)
         except:
             return False
     def call2(self,l,r,item):
         text=r.strip()
         try:
-            match=date_re.match(text) ##todo: should only need to do this once per search not for every item
-            if not match:
-                return False
-            date_list=[]
-            for g in match.groups():
-                if g:
-                    date_list.append(int(g))
-                else:
-                    break
-            date_list+=[1]*max(0,3-len(date_list))
-            val=datetime.datetime(*date_list)
-            return self.op(datetime.datetime.fromtimestamp(item.mtime),val)
+            return self.op(datetime.datetime.fromtimestamp(item.mtime),r)
         except:
             return False
 
@@ -662,8 +639,23 @@ def str2bool(val,item):
     return keyword_filter(item,val)
 
 
+def str2datetime(val,item=None):
+    match=date_re.match(val) ##todo: should only need to do this once per search not for every item
+    if not match:
+        return False
+    date_list=[]
+    for g in match.groups():
+        if g:
+            date_list.append(int(g))
+        else:
+            break
+    date_list+=[1]*max(0,3-len(date_list))
+    return datetime.datetime(*date_list)
+
+
 converter={
-(str,bool):str2bool
+(str,bool):str2bool,
+(str,datetime.datetime):str2datetime
 }
 
 
@@ -704,16 +696,16 @@ TOKENS=[
 ('iso<=',(IntCompare('IsoSpeed',le),None,str)),
 ('iso>',(IntCompare('IsoSpeed',gt),None,str)),
 ('iso<',(IntCompare('IsoSpeed',lt),None,str)),
-('mdate=',(DateCompare('DateMod',eq,True),None,str)),
-('mdate>=',(DateCompare('DateMod',ge,True),None,str)),
-('mdate<=',(DateCompare('DateMod',le,True),None,str)),
-('mdate>',(DateCompare('DateMod',gt,True),None,str)),
-('mdate<',(DateCompare('DateMod',lt,True),None,str)),
-('date=',(DateCompare('DateTaken'),None,str)),
-('date>=',(DateCompare('DateTaken',ge),None,str)),
-('date<=',(DateCompare('DateTaken',le),None,str)),
-('date>',(DateCompare('DateTaken',gt),None,str)),
-('date<',(DateCompare('DateTaken',lt),None,str)),
+('mdate=',(DateCompare('DateMod',eq,True),None,datetime.datetime)),
+('mdate>=',(DateCompare('DateMod',ge,True),None,datetime.datetime)),
+('mdate<=',(DateCompare('DateMod',le,True),None,datetime.datetime)),
+('mdate>',(DateCompare('DateMod',gt,True),None,datetime.datetime)),
+('mdate<',(DateCompare('DateMod',lt,True),None,datetime.datetime)),
+('date=',(DateCompare('DateTaken'),None,datetime.datetime)),
+('date>=',(DateCompare('DateTaken',ge),None,datetime.datetime)),
+('date<=',(DateCompare('DateTaken',le),None,datetime.datetime)),
+('date>',(DateCompare('DateTaken',gt),None,datetime.datetime)),
+('date<',(DateCompare('DateTaken',lt),None,datetime.datetime)),
 ('selected',(selected_filter,None,None)),
 ('changed',(changed_filter,None,None)),
 ('tagged',(tagged_filter,None,None))
@@ -735,7 +727,7 @@ class Index(list):
         dup+=self
         return dup
     def set_filter(self,expr):
-        self.filter_tree=sp.parse_expr(TOKENS[:],expr)
+        self.filter_tree=sp.parse_expr(TOKENS[:],expr,converter)
     def clear_filter(self,expr):
         self.filter_tree=None
     def add(self,key,item):

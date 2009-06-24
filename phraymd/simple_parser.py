@@ -41,7 +41,7 @@ def test_token_space(token,ltext,text,cb_data):
     return True
 
 
-def parse_expr(tokens,expr):
+def parse_expr(tokens,expr,conv,*args):
     '''converts a text representation of an expression into a parse
     tree using the grammar defined in tokens
     tokens define operations on l and r values
@@ -59,12 +59,23 @@ def parse_expr(tokens,expr):
         tree=split_expr(token,text)
     if len(tree)>1:
         tree[0]=tokens[0][1]
-        tree[1]=parse_expr(tokens[:],tree[1])
-        tree[2]=parse_expr(tokens[:],tree[2])
+        tree[1]=parse_expr(tokens[:],tree[1],conv,*args)
+        tree[2]=parse_expr(tokens[:],tree[2],conv,*args)
+        #convert literals to relevant types
+        if type(tree[1])==str:
+            try:
+                tree[1]=conv[(str,tokens[0][1][1])](tree[1],*args)
+            except:
+                pass
+        if type(tree[2])==str:
+            try:
+                tree[2]=conv[(str,tokens[0][1][2])](tree[2],*args)
+            except:
+                pass
     else:
         if len(tokens)>1:
             token=tokens.pop(0)
-            tree=parse_expr(tokens[:],expr)
+            tree=parse_expr(tokens[:],expr,conv,*args)
         else:
             tree=expr.replace('"','')
     return tree
@@ -76,7 +87,7 @@ def call_tree(rtype,tree,conv,*args):
       the value is the conversion function taking the arguments l,r,args
     args is the set of caller defined arguments passed to the token callables
     '''
-    if type(tree)!=str:
+    if type(tree)==list:
         l=call_tree(tree[0][1],tree[1],conv,*args)
         r=call_tree(tree[0][2],tree[2],conv,*args)
         return tree[0][0](l,r,*args)
