@@ -601,8 +601,10 @@ class DateCompare:
         self.field=field
         self.op=op
         if mdate:
-            self.__call__=self.__call__2
-    def __call__(self,l,r,item):
+            self.__call__=self.call2
+        else:
+            self.__call__=self.call1
+    def call1(self,l,r,item):
         text=r.strip()
         try:
             match=date_re.match(text) ##todo: should only need to do this once per search not for every item
@@ -619,7 +621,7 @@ class DateCompare:
             return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
         except:
             return False
-    def __call__2(self,l,r,item):
+    def call2(self,l,r,item):
         text=r.strip()
         try:
             match=date_re.match(text) ##todo: should only need to do this once per search not for every item
@@ -633,7 +635,7 @@ class DateCompare:
                     break
             date_list+=[1]*max(0,3-len(date_list))
             val=datetime.datetime(*date_list)
-            return self.op(item.mtime,val)
+            return self.op(datetime.datetime.fromtimestamp(item.mtime),val)
         except:
             return False
 
@@ -702,16 +704,16 @@ TOKENS=[
 ('iso<=',(IntCompare('IsoSpeed',le),None,str)),
 ('iso>',(IntCompare('IsoSpeed',gt),None,str)),
 ('iso<',(IntCompare('IsoSpeed',lt),None,str)),
+('mdate=',(DateCompare('DateMod',eq,True),None,str)),
+('mdate>=',(DateCompare('DateMod',ge,True),None,str)),
+('mdate<=',(DateCompare('DateMod',le,True),None,str)),
+('mdate>',(DateCompare('DateMod',gt,True),None,str)),
+('mdate<',(DateCompare('DateMod',lt,True),None,str)),
 ('date=',(DateCompare('DateTaken'),None,str)),
 ('date>=',(DateCompare('DateTaken',ge),None,str)),
 ('date<=',(DateCompare('DateTaken',le),None,str)),
 ('date>',(DateCompare('DateTaken',gt),None,str)),
 ('date<',(DateCompare('DateTaken',lt),None,str)),
-('mdate=',(DateCompare('DateMod'),None,str)),
-('mdate>=',(DateCompare('DateMod',ge),None,str)),
-('mdate<=',(DateCompare('DateMod',le),None,str)),
-('mdate>',(DateCompare('DateMod',gt),None,str)),
-('mdate<',(DateCompare('DateMod',lt),None,str)),
 ('selected',(selected_filter,None,None)),
 ('changed',(changed_filter,None,None)),
 ('tagged',(tagged_filter,None,None))
