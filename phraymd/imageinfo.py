@@ -594,7 +594,7 @@ class IntCompare:
             print self.op(exif.app_key_as_sortable(item.meta,self.field),val)
             return False
 
-date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, ](\d{1,2}))?(?:\:(\d{1,2}))?(?:\:(\d{1,2}))?')
+date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, -](\d{1,2}))?(?:[:-](\d{1,2}))?(?:[:-](\d{1,2}))?')
 
 class DateCompare:
     def __init__(self,field,op=eq,mdate=False):
