@@ -365,24 +365,11 @@ class ImageViewer(gtk.VBox):
         drawable.set_background(black)
         drawable.clear()
         if self.item and self.item.qview:
-            (iw,ih)=self.item.qview_size
+            print 'going full size'
+            (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
-            #if x>=0 and y>=0:
-            if self.item.imagergba:
-                try:
-                    drawable.draw_rgb_32_image(gc,x,y,iw,ih,
-                       gtk.gdk.RGB_DITHER_NONE,
-                       self.item.qview, -1, 0, 0)
-                except:
-                    None
-            else:
-                try:
-                    drawable.draw_rgb_image(gc,x,y,iw,ih,
-                           gtk.gdk.RGB_DITHER_NONE,
-                           self.item.qview, -1, 0, 0)
-                except:
-                    None
+            drawable.draw_pixbuf(gc,self.item.qview,0,0,x,y)
         elif self.item and self.item.thumb:
             (iw,ih)=self.item.thumbsize
             x=(self.geo_width-iw)/2

@@ -25,7 +25,6 @@ License:
 import sys
 sys.path.insert(0,'/usr/share') ##private module location on installed version
 
-
 try:
     import gobject
     import gnomevfs
@@ -44,9 +43,9 @@ from phraymd import browser
 
 settings.init() ##todo: make this call occur upon first import inside the settings module
 
-
-
 class MainWindow:
+    ##todo: might make sense to pull some of the widgets (and ownership of the worker thread)
+    ##out of the browser and into this class
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_default_size(680, 400)

@@ -21,6 +21,7 @@ License:
 
 import gnomevfs
 import gnome.ui
+import StringIO
 import gtk
 import Image
 import ImageFile
@@ -127,18 +128,18 @@ def cache_thumb(item):
 def load_image(item,interrupt_fn):
     try:
 ##        non-parsed version
-        image=Image.open(item.filename)
+##        image=Image.open(item.filename)
 ##        parsed version
-##        f=open(item.filename,'rb')
-##        imdata=f.read(10000)
-##        p = ImageFile.Parser()
-##        while imdata and len(imdata)>0:
-##            p.feed(imdata)
-##            if not interrupt_fn():
-##                return False
-##            imdata=f.read(10000)
-##        f.close()
-##        image = p.close()
+        f=open(item.filename,'rb')
+        imdata=f.read(10000)
+        p = ImageFile.Parser()
+        while imdata and len(imdata)>0:
+            p.feed(imdata)
+            if not interrupt_fn():
+                return False
+            imdata=f.read(10000)
+        f.close()
+        image = p.close()
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -154,7 +155,7 @@ def load_image(item,interrupt_fn):
         except:
             image=None
             return False
-    image.draft(image.mode,(1600,1600))
+##    image.draft(image.mode,(1600,1600))
     if not interrupt_fn():
         print 'interrupted'
         return False
@@ -170,6 +171,8 @@ def load_image(item,interrupt_fn):
                 return False
     item.image=image
     try:
+        print 'bands',item.image.getbands()
+        print item.image.getcolors()
         item.imagergba='A' in item.image.getbands()
     except:
         item.imagergba=False
@@ -177,6 +180,27 @@ def load_image(item,interrupt_fn):
         cache_image(item)
         return True
     return False
+
+
+def image_to_pixbuf(im):
+    bands=im.getbands()
+    rgba = True if 'A' in bands else False
+    pixbuf=None
+    w,h=im.size
+    if 'R' in bands and 'G' in bands and 'B' in bands:
+        pixbuf=gtk.gdk.pixbuf_new_from_data(im.tostring(), gtk.gdk.COLORSPACE_RGB, rgba, 8, w, h, w*(3+rgba))
+    if 'P' in bands:
+        fmt="gif"
+        file1 = StringIO.StringIO()
+        im.save(file1, fmt)
+        contents = file1.getvalue()
+        file1.close()
+        loader = gtk.gdk.PixbufLoader(fmt)
+        loader.write(contents, len(contents))
+        pixbuf = loader.get_pixbuf()
+        loader.close()
+        print 'converted gif'
+    return pixbuf
 
 
 def size_image(item,size,antialias=False):
@@ -198,14 +222,19 @@ def size_image(item,size,antialias=False):
 #        (h,w)=size
     (w,h)=size
     (iw,ih)=image.size
-    if (w*h*iw*ih)==0:
-        return False
-    if 1.0*(w*ih)/(h*iw)>1.0:
-        w=h*iw/ih
+    if w<iw or h<ih:
+        if (w*h*iw*ih)==0:
+            return False
+        if 1.0*(w*ih)/(h*iw)>1.0:
+            w=h*iw/ih
+        else:
+            h=w*ih/iw
+        if (w*h*iw*ih)==0:
+            return False
     else:
-        h=w*ih/iw
-    if (w*h*iw*ih)==0:
-        return False
+        item.qview=image_to_pixbuf(image)
+        return True
+
 #    t=time.time()
 #    image.draft(image.mode,(w,h))
 #    print 'draft time',time.time()-t
@@ -228,9 +257,7 @@ def size_image(item,size,antialias=False):
 ##                return False
 #    print 'rotate time',time.time()-t
     if qimage:
-        item.qview=qimage.tostring()
-        item.qview_size=qimage.size
-        return True
+        item.qview=image_to_pixbuf(qimage)
     return False
 
 
@@ -380,18 +407,19 @@ def make_thumb(item,interrupt_fn=None):
                 for method in settings.transposemethods[orient]:
                     image=image.transpose(method)
             thumbsize=image.size
-            thumb=image.tostring()
-            thumbrgba='A' in image.getbands()
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            width=thumbsize[0]
-            height=thumbsize[1]
-            if orient>1:
-                for method in settings.transposemethods[orient]:
-                    image=image.transpose(method)
-            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
+            thumb_pb=image_to_pixbuf(image)
+##            thumbrgba='A' in image.getbands()
+##            thumb=image.tostring()
+##            try:
+##                orient=item.meta['Orientation']
+##            except:
+##                orient=1
+##            width=thumbsize[0]
+##            height=thumbsize[1]
+##            if orient>1:
+##                for method in settings.transposemethods[orient]:
+##                    image=image.transpose(method)
+##            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
     except:
         print 'creating FAILED thumbnail',item
         item.thumbsize=(0,0)

@@ -653,6 +653,10 @@ def str2datetime(val,item=None):
     return datetime.datetime(*date_list)
 
 
+literal_converter={
+(str,datetime.datetime):str2datetime
+}
+
 converter={
 (str,bool):str2bool,
 (str,datetime.datetime):str2datetime
@@ -727,7 +731,7 @@ class Index(list):
         dup+=self
         return dup
     def set_filter(self,expr):
-        self.filter_tree=sp.parse_expr(TOKENS[:],expr,converter)
+        self.filter_tree=sp.parse_expr(TOKENS[:],expr,literal_converter)
     def clear_filter(self,expr):
         self.filter_tree=None
     def add(self,key,item):
