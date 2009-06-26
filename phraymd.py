@@ -56,21 +56,21 @@ class MainWindow:
         sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU
         sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"phraymd:main")
 
-        self.drawing_area = browser.ImageBrowser()
+        self.browser = browser.ImageBrowser()
 
         vb=gtk.VBox()
-        vb.pack_start(self.drawing_area)
+        vb.pack_start(self.browser)
         self.window.add(vb)
 
         self.window.show()
         vb.show()
-        self.drawing_area.show()
+        self.browser.show()
 
     def on_down(self, widget, data=None):
-        self.drawing_area.ScrollDown()
+        self.browser.ScrollDown()
 
     def on_up(self, widget, data=None):
-        self.drawing_area.ScrollUp()
+        self.browser.ScrollUp()
 
     def delete_event(self, widget, event, data=None):
         return False #allows the window to be destroyed

@@ -242,7 +242,6 @@ class ImageBrowser(gtk.VBox):
         self.imarea.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
         self.imarea.connect("button-press-event",self.button_press)
         self.imarea.connect("button-release-event",self.button_press)
-        self.imarea.grab_focus()
 
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
@@ -271,6 +270,8 @@ class ImageBrowser(gtk.VBox):
         self.imarea.show()
         self.last_width=2*self.geo_pad+self.geo_thumbwidth
         self.vscroll.show()
+        self.imarea.grab_focus()
+
 
     def Destroy(self,event):
         self.tm.quit()
@@ -1034,6 +1035,7 @@ class ImageBrowser(gtk.VBox):
         self.update_geometry(True)
         self.UpdateScrollbar()
         self.update_required_thumbs()
+        self.imarea.grab_focus()
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def expose_signal(self,event,arg):
