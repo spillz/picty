@@ -140,7 +140,7 @@ class RecreateThumbJob(WorkerJob):
                     view.add_item(item)
                 browser.lock.release()
             if item.meta!=None:
-                imagemanip.make_thumb(item)
+                imagemanip.make_thumb(item,None,True) ##force creation of thumbnail (3rd arg = True)
                 imagemanip.load_thumb(item)
                 gobject.idle_add(browser.RefreshView)
         if len(self.queue)==0:

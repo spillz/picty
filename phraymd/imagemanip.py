@@ -171,8 +171,6 @@ def load_image(item,interrupt_fn):
                 return False
     item.image=image
     try:
-        print 'bands',item.image.getbands()
-        print item.image.getcolors()
         item.imagergba='A' in item.image.getbands()
     except:
         item.imagergba=False
@@ -203,59 +201,39 @@ def image_to_pixbuf(im):
     return pixbuf
 
 
-def size_image(item,size,antialias=False):
-#    import time
-#    t=time.time()
-#    image=Image.open(item.filename)
-#    print 'open time',time.time()-t
-#    image=item.image
+def size_image(item,size,antialias=False,zoom='fit'):
     image=item.image
     if not image:
         return False
-#    try:
-#        orient=item.meta['Orientation']
-#    except:
-#        orient=1
-#    if orient<=4:
-#        (w,h)=size
-#    else:
-#        (h,w)=size
-    (w,h)=size
-    (iw,ih)=image.size
-    if w<iw or h<ih:
-        if (w*h*iw*ih)==0:
-            return False
-        if 1.0*(w*ih)/(h*iw)>1.0:
-            w=h*iw/ih
+    if zoom=='fit':
+        (w,h)=size
+        (iw,ih)=image.size
+        if w<iw or h<ih:
+            if (w*h*iw*ih)==0:
+                return False
+            if 1.0*(w*ih)/(h*iw)>1.0:
+                w=h*iw/ih
+            else:
+                h=w*ih/iw
+            if (w*h*iw*ih)==0:
+                return False
         else:
-            h=w*ih/iw
-        if (w*h*iw*ih)==0:
-            return False
+            item.qview=image_to_pixbuf(image)
+            return True
     else:
-        item.qview=image_to_pixbuf(image)
-        return True
+        (iw,ih)=image.size
+        w=zoom*iw ##otrt is it divide
+        h=zoom*ih
 
-#    t=time.time()
-#    image.draft(image.mode,(w,h))
-#    print 'draft time',time.time()-t
     t=time.time()
     try:
         if antialias:
             qimage=image.resize((w,h),Image.ANTIALIAS) ##Image.BILINEAR
         else:
             qimage=image.resize((w,h),Image.BILINEAR) ##Image.BILINEAR
-#            qimage=image.resize((w,h))
     except:
         qimage=None
     print 'resize time',time.time()-t
-#    t=time.time()
-#    if orient>1:
-#        for method in settings.transposemethods[orient]:
-#            qimage=qimage.transpose(method)
-##            if not interrupt_fn():
-##                print 'interrupted'
-##                return False
-#    print 'rotate time',time.time()-t
     if qimage:
         item.qview=image_to_pixbuf(qimage)
     return False
@@ -367,9 +345,16 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 
-def make_thumb(item,interrupt_fn=None):
+def make_thumb(item,interrupt_fn=None,force=False):
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
-        return
+        if not force:
+            return
+        print 'forcing thumbnail creation'
+        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        thumb_uri=thumb_factory.lookup(uri,item.mtime)
+        if thumb_uri:
+            print 'removing failed thumb',thumb_uri
+            os.remove(thumb_uri)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
     t=time.time()

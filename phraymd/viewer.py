@@ -50,6 +50,7 @@ class ImageLoader:
         self.thread=threading.Thread(target=self._background_task)
         self.item=None
         self.sizing=None
+        self.zoom='fit'
         self.memimages=[]
         self.max_memimages=2
         self.vlock=threading.Lock()
@@ -72,14 +73,16 @@ class ImageLoader:
         while self.thread.isAlive():
             time.sleep(0.1)
 
-    def set_item(self,item,sizing=None):
+    def set_item(self,item,sizing=None,zoom='fit'):
         self.vlock.acquire()
         self.item=item
-        self.sizing=sizing
+        self.sizing=sizing ##if sizing is none, zoom is ignored
+        self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel
         self.vlock.release()
         self.event.set()
 
     def _background_task(self):
+        ##todo: this code is horrible! clean it up
         self.vlock.acquire()
         while 1:
             if self.sizing or self.item and not self.item.image:
@@ -102,14 +105,14 @@ class ImageLoader:
             if not item.image:
                 def interrupt_cb():
                     return self.item.filename==item.filename
-                imagemanip.load_image(item,interrupt_cb)
+                imagemanip.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
                 gobject.idle_add(self.viewer.ImageLoaded,item)
                 if not item.image:
                     self.vlock.acquire()
                     continue
             self.vlock.acquire()
             if self.sizing:
-                imagemanip.size_image(item,self.sizing)
+                imagemanip.size_image(item,self.sizing,self.zoom)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
 
@@ -365,7 +368,6 @@ class ImageViewer(gtk.VBox):
         drawable.set_background(black)
         drawable.clear()
         if self.item and self.item.qview:
-            print 'going full size'
             (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
@@ -375,18 +377,4 @@ class ImageViewer(gtk.VBox):
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
-##            if self.item.thumbrgba:
-##                try:
-##                    drawable.draw_rgb_32_image(gc,x,y,iw,ih,
-##                           gtk.gdk.RGB_DITHER_NONE,
-##                           self.item.thumb, -1, 0, 0)
-##                except:
-##                    None
-##            else:
-##                try:
-##                    drawable.draw_rgb_image(gc,x,y,iw,ih,
-##                           gtk.gdk.RGB_DITHER_NONE,
-##                           self.item.thumb, -1, 0, 0)
-##                except:
-##                    None
 

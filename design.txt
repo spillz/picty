@@ -12,7 +12,7 @@ The ImageCollection is a sorted list of Images, where the sort order is
 determined by the tuple (mtime,filename). Images are initially constructed from
 walking a selection of directories
 
-An Index is a sorted and/or filtered subset of the collection. The Index is a list with items that
+An Index (or View) is a sorted and/or filtered subset of the collection. The Index is a list with items that
 are tuples of the  form (IndexVariable, Image) where the IndexVariable can be
 mtime, filename, or any metadata. Indexes are used for the display of data in sorted order
 
@@ -26,11 +26,13 @@ selected/deselected for batch operations.
 
 ImageViewer: A viewer and simple editor for single images.
 
-The Backend is responsible for loading the image collection in a background thread.
-* Initially the ImageLoader will walk the directory tree and find images
+The Worker Backend is responsible for loading the image collection in a background thread.
+* Initially the Worker will walk the directory tree and find images
 * Found images are stored persistently (and loaded before future directory walks)
-* On new sessions, the store is loaded then checked against the tree for changes
-* The ImageTracker then enters a monitoring phase:
+* On new sessions, the store is loaded then checked against the filesystem tree for changes
+* The worker verifies up to date thumbnails exist and create new ones as necessary
+* The Woker then enters a monitoring phase:
+    * listens for requests to load thumbnail images for display
     * listens for changes to the file system for adds, deletes or changes to images,
         and updates the main store and any indexes for those changes.
     * receives indexing and filter requests. An indexing request will force a full
@@ -59,8 +61,8 @@ Notes:
 periodically for a kill state) but continue after the higher priority
 task completes. A task should also be cancellable (e.g. to reset the thumb
 cache request)
-3. tasks that change the imagecollection or index should use a lock during the change
-4. ui threads that access the ImageCollection or Index in a way that depends on it not
+3. tasks that change the Collection or Index should use a lock during the change
+4. ui threads that access the Collection or Index in a way that depends on it not
 changing should also use the lock
 
 Pseudo code for the collection managing worker thread:
@@ -72,7 +74,7 @@ set up inotify monitor for the image folder and all subfolders
 while true:
     if no pending tasks wait
 
-## Highest priority tasks
+    ## Highest priority tasks
     task == quit:
         return
     task == image request:
@@ -87,23 +89,43 @@ while true:
         if done:
             notify requestor
         continue
-## Lower priority tasks
-    task == image collection task:
-        task == verify images:
-            remove deleted or changed images from the ImageCollection
-        task == walk directory:
-            add new images
-            get mtime, filename, filesize
-            load metadata
-            if entire directory walked:
-                set monitor state
-        task == monitor request to add, remove or update images:
-            add or remove images from ImageCollection and Index
-## Lowest priority task
+    ## Lower priority tasks
+    task == verify images:
+        remove deleted or changed images from the ImageCollection
+    task == walk directory:
+        add new images
+        get mtime, filename, filesize
+        load metadata
+        if entire directory walked:
+            set monitor state
+    task == monitor request to add, remove or update images:
+        add or remove images from ImageCollection and Index
+    ## Lowest priority task
     task == thumbnailing tasks:
         continue
-    save imagestore
+save imagestore
 
+
+The view also uses a background thread for loading the full image and sizing it
+for the screen. (This is implemented in the ImageLoader class)
+
+While not kill request:
+    Wait for request
+    on request:
+        Load full size image (if not already present)
+        Size image to requested size and zoom
+        Notify viewer
+
+A refined version
+
+While not kill request:
+    Wait for request
+    on request quick view:
+        Load draft version full size image (if draft or fullsize already present)
+        Size image to requested size
+    on request zoom view:
+        Load full size version of image (if fullsize does not already exist)
+        Size image to requested size
 
 Photo metadata
 ==============
