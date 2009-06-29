@@ -127,8 +127,10 @@ def cache_thumb(item):
 
 def load_image(item,interrupt_fn):
     try:
+        ##todo: load by mimetype (after porting to gio)
 ##        non-parsed version
-##        image=Image.open(item.filename)
+        image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+        print 'opened image',item.filename,image
 ##        parsed version
         f=open(item.filename,'rb')
         imdata=f.read(10000)
