@@ -228,7 +228,7 @@ class ImageBrowser(gtk.VBox):
         self.pack_start(self.hpane)
         self.pack_start(self.status_bar,False)
         self.pack_start(self.info_bar,False)
-        self.connect("destroy", self.Destroy)
+        self.connect("destroy", self.destroy)
         self.imarea.connect("realize",self.realize_signal)
         self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
@@ -236,9 +236,9 @@ class ImageBrowser(gtk.VBox):
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
-        self.scrolladj.connect("value-changed",self.ScrollSignal)
+        self.scrolladj.connect("value-changed",self.scroll_signal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
-        self.imarea.connect("scroll-event",self.ScrollSignalPane)
+        self.imarea.connect("scroll-event",self.scroll_signal_pane)
         self.imarea.add_events(gtk.gdk.BUTTON_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
         self.imarea.connect("button-press-event",self.button_press)
@@ -274,7 +274,7 @@ class ImageBrowser(gtk.VBox):
         self.imarea.grab_focus()
 
 
-    def Destroy(self,event):
+    def destroy(self,event):
         self.tm.quit()
         settings.user_tag_info=self.tagframe.get_user_tags()
         settings.save()
@@ -410,14 +410,14 @@ class ImageBrowser(gtk.VBox):
 
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.tm.view,sel_dir,self.UpdateStatus)
+        fileops.worker.copy(self.tm.view,sel_dir,self.update_status)
 
     def select_move(self,widget):
         sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.tm.view,sel_dir,self.UpdateStatus)
+        fileops.worker.move(self.tm.view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.tm.view,self.UpdateStatus)
+        fileops.worker.delete(self.tm.view,self.update_status)
 
     def set_filter_text(self,widget):
         self.set_sort_key(widget)
@@ -442,9 +442,9 @@ class ImageBrowser(gtk.VBox):
     def reverse_sort_order(self,widget):
         self.tm.view.reverse=not self.tm.view.reverse
         widget.set_active(self.tm.view.reverse)
-        self.RefreshView()
+        self.refresh_view()
 
-    def UpdateStatus(self,progress,message):
+    def update_status(self,progress,message):
         self.status_bar.show()
         if 1.0>progress>=0.0:
             self.status_bar.set_fraction(progress)
@@ -457,7 +457,7 @@ class ImageBrowser(gtk.VBox):
     def key_press_signal(self,obj,event):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
-                fileops.worker.delete(self.tm.view,self.UpdateStatus)
+                fileops.worker.delete(self.tm.view,self.update_status)
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
@@ -479,7 +479,7 @@ class ImageBrowser(gtk.VBox):
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
                 self.tm.view.reverse=not self.tm.view.reverse
-                self.RefreshView()
+                self.refresh_view()
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
@@ -552,7 +552,7 @@ class ImageBrowser(gtk.VBox):
         if self.iv.item!=None:
             ind=self.item_to_view_index(self.iv.item)
             self.center_view_offset(ind)
-        self.UpdateScrollbar()
+        self.update_scrollbar()
         self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.imarea.grab_focus()
@@ -736,7 +736,7 @@ class ImageBrowser(gtk.VBox):
                 self.view_image(self.tm.view(ind))
         elif self.is_iv_showing:
             self.hide_image()
-        self.RefreshView()
+        self.refresh_view()
 
     def item_to_view_index(self,item):
         return self.tm.view.find_item(item)
@@ -831,8 +831,6 @@ class ImageBrowser(gtk.VBox):
             self.pressed_item=None
         self.lock.release()
 
-
-
     def drag_begin_signal(self, widget, drag_context):
         pass
 #        self.drag_item=None
@@ -916,18 +914,18 @@ class ImageBrowser(gtk.VBox):
 
     def redraw_view(self):
         '''redraw the view without recomputing geometry or changing position'''
-#        self.RefreshView()
+#        self.refresh_view()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def update_info_bar(self):
         '''refresh the info bar (status bar that displays number of images etc)'''
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
-    def RefreshView(self):
+    def refresh_view(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
         self.update_geometry()
         self.update_required_thumbs()
-        self.UpdateScrollbar()
+        self.update_scrollbar()
         self.update_info_bar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
@@ -936,19 +934,19 @@ class ImageBrowser(gtk.VBox):
         view has finished rebuilding'''
         self.tagframe.refresh(self.tm.view.tag_cloud)
 
-    def UpdateView(self):
+    def update_view(self):
         '''reset position, update geometry, scrollbars, redraw the thumbnail view'''
         self.geo_view_offset=0
-        self.RefreshView()
+        self.refresh_view()
 
-    def ScrollSignalPane(self,obj,event):
+    def scroll_signal_pane(self,obj,event):
         '''scrolls the view on mouse wheel motion'''
         if event.direction==gtk.gdk.SCROLL_UP:
-            self.ScrollUp(max(1,self.geo_thumbheight+self.geo_pad)/5)
+            self.scroll_up(max(1,self.geo_thumbheight+self.geo_pad)/5)
         if event.direction==gtk.gdk.SCROLL_DOWN:
-            self.ScrollDown(max(1,self.geo_thumbheight+self.geo_pad)/5)
+            self.scroll_down(max(1,self.geo_thumbheight+self.geo_pad)/5)
 
-    def ScrollSignal(self,obj):
+    def scroll_signal(self,obj):
         '''signal response when the scroll position changes'''
         self.geo_view_offset=self.scrolladj.get_value()
 #        self.update_geometry()
@@ -957,7 +955,7 @@ class ImageBrowser(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.vscroll.trigger_tooltip_query()
 
-    def UpdateScrollbar(self):
+    def update_scrollbar(self):
         '''called to resync the scrollbar to changes in view geometry'''
         upper=len(self.tm.view)/self.geo_horiz_count
         if len(self.tm.view)%self.geo_horiz_count!=0:
@@ -968,11 +966,11 @@ class ImageBrowser(gtk.VBox):
                 step_increment=max(1,self.geo_thumbheight+self.geo_pad)/5,
                 page_increment=self.geo_height, page_size=self.geo_height)
 
-    def ScrollUp(self,step=10):
+    def scroll_up(self,step=10):
         '''call to scroll the view up by step pixels'''
         self.vscroll.set_value(self.vscroll.get_value()-step)
 
-    def ScrollDown(self,step=10):
+    def scroll_down(self,step=10):
         '''call to scroll the view down by step pixels'''
         self.vscroll.set_value(self.vscroll.get_value()+step)
 
@@ -1039,7 +1037,7 @@ class ImageBrowser(gtk.VBox):
         self.geo_width=event.width
         self.geo_height=event.height
         self.update_geometry(True)
-        self.UpdateScrollbar()
+        self.update_scrollbar()
         self.update_required_thumbs()
         self.imarea.grab_focus()
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
