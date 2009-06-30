@@ -89,6 +89,7 @@ class ImageBrowser(gtk.VBox):
         self.pressed_item=None
         self.last_selected_ind=-1
         self.last_selected=None
+        self.button_press_block=False
 
         self.shift_state=False
 
@@ -800,20 +801,25 @@ class ImageBrowser(gtk.VBox):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
 #            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                 self.view_image(item)
+                self.button_press_block=True
+                if item==self.pressed_item:
+                    self.select_item(self.pressed_ind)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
-                self.drop_item=item
-                cmd=self.get_hover_command(ind,event.x,event.y)
-                if cmd>=0:
-                    if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
-                        self.hover_cmds[cmd][0](None,self.pressed_item)
-                else:
-                    if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
-                        ind=self.item_to_view_index(self.last_selected)
-                        if ind>=0:
-                            self.multi_select(ind,self.pressed_ind,bool(event.state&gtk.gdk.SHIFT_MASK))
+                if not self.button_press_block:
+                    self.drop_item=item
+                    cmd=self.get_hover_command(ind,event.x,event.y)
+                    if cmd>=0:
+                        if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
+                            self.hover_cmds[cmd][0](None,self.pressed_item)
                     else:
-                        if item==self.pressed_item:
-                            self.select_item(self.pressed_ind)
+                        if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
+                            ind=self.item_to_view_index(self.last_selected)
+                            if ind>=0:
+                                self.multi_select(ind,self.pressed_ind,bool(event.state&gtk.gdk.SHIFT_MASK))
+                        else:
+                            if item==self.pressed_item:
+                                self.select_item(self.pressed_ind)
+                self.button_press_block=False
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.popup_item(item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
