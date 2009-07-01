@@ -191,4 +191,82 @@ width
 size
 format (mimetype)
 
+Thumbnailing
+============
 
+The free desktop standard thumbnailing standard recommends keeping thumbnails in ~/.thumbnails:
+
+Using the gnome ui lib on the gnome desktop handles creation and loading from failed,
+normal and large thumbnail caches in the following directory structure
+
++.thumbnails/
+    +fail/
+      +gnome-thumbnail-factory/
+        +failimage1.png
+        +failimage2.png
+        ...
+    +normal/
+        +normalimage1.png
+        +normalimage2.png
+        ...
+    +large/
+        +largeimage1.png
+        +largeimage2.png
+        ...
+
+The gnome ui lib handles a few details:
+
+    * Image filenames are actually md5 hashes of the full path to the fullsize image
+    (e.g. 'path/to/my/pic.jpg' becomes ''2b83b60c41deed5ed96f2c45cbbcfa32.png')
+
+    * The thumbnail is stored PNG format with the mtime of the original image set as the Exif Data in the png image
+
+    * A thumbnail is valid if the exif date field matches the mtime of the image
+
+    * Failed images are stored as size zero pngs with the exif date field set appropriately
+
+This is fine for small, single user collections (or even small multi-user
+collections). For large collections look-up may be slower on a flat directory
+structure (this may be filesystem dependant). . For multi-user collections it
+would be preferrable to store thumbnails in a common area and allow concurrent access.
+
+Approach 1:
+
++collection-dir/
+  +.thumbnails/
+    +fail/
+    +normal/
+      +img1.jpg
+      +img2.jpg
+  +img1.jpg
+  +img2.jpg
+  +subdir/
+    +.thumbnails/
+      +fail/
+      +normal/
+        +img1.jpg
+        +img2.jpg
+    +img3.jpg
+    +img4.jpg
+
+drawback --> adds a lot cruft to the image folder
+
+
+Approach 2:
+
++collection-dir/
+  +.thumbnails/
+    +fail/
+    +normal/
+      +img1.jpg
+      +img2.jpg
+      +img3.jpg
+      +img4.jpg
+  +img1.jpg
+  +img2.jpg
+  +subdir/
+    +img3.jpg
+    +img4.jpg
+
+drawback --> too many image files in one dir?
+(tweak on this would be allow .thumbnails to be put anywhere on the shared space)

@@ -125,23 +125,24 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def load_image(item,interrupt_fn):
+def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
 ##        non-parsed version
         image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
         print 'opened image',item.filename,image
 ##        parsed version
-        f=open(item.filename,'rb')
-        imdata=f.read(10000)
-        p = ImageFile.Parser()
-        while imdata and len(imdata)>0:
-            p.feed(imdata)
-            if not interrupt_fn():
-                return False
+        if not draft_mode:
+            f=open(item.filename,'rb')
             imdata=f.read(10000)
-        f.close()
-        image = p.close()
+            p = ImageFile.Parser()
+            while imdata and len(imdata)>0:
+                p.feed(imdata)
+                if not interrupt_fn():
+                    return False
+                imdata=f.read(10000)
+            f.close()
+            image = p.close()
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -157,7 +158,8 @@ def load_image(item,interrupt_fn):
         except:
             image=None
             return False
-##    image.draft(image.mode,(1600,1600))
+    if draft_mode:
+        image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
     if not interrupt_fn():
         print 'interrupted'
         return False
@@ -230,6 +232,7 @@ def size_image(item,size,antialias=False,zoom='fit'):
     t=time.time()
     try:
         if antialias:
+            print 'antialiasing'
             qimage=image.resize((w,h),Image.ANTIALIAS) ##Image.BILINEAR
         else:
             qimage=image.resize((w,h),Image.BILINEAR) ##Image.BILINEAR

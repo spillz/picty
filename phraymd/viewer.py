@@ -112,7 +112,7 @@ class ImageLoader:
                     continue
             self.vlock.acquire()
             if self.sizing:
-                imagemanip.size_image(item,self.sizing,self.zoom)
+                imagemanip.size_image(item,self.sizing,False,self.zoom)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
 

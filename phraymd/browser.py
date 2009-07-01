@@ -468,6 +468,9 @@ class ImageBrowser(gtk.VBox):
                         self.toolbar.show()
                         self.vscroll.show()
                         self.is_iv_fullscreen=False
+                        if self.is_fullscreen:
+                            self.window.unfullscreen()
+                            self.is_fullscreen=False
                     else:
                         self.hide_image()
             elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
@@ -484,6 +487,9 @@ class ImageBrowser(gtk.VBox):
                 if self.iv.item:
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
+                        if self.is_fullscreen:
+                            self.window.unfullscreen()
+                            self.is_fullscreen=False
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
                         self.vbox.show()
@@ -499,6 +505,9 @@ class ImageBrowser(gtk.VBox):
                         self.hpane_ext.hide()
                         self.vscroll.hide()
                         self.is_iv_fullscreen=True
+                        if not self.is_fullscreen:
+                            self.window.fullscreen()
+                            self.is_fullscreen=True
                     self.imarea.grab_focus()
             elif event.keyval==65361: #left
                 if self.iv.item:
@@ -571,21 +580,28 @@ class ImageBrowser(gtk.VBox):
         self.imarea.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
-        if self.is_iv_fullscreen:
-            self.iv.ImageNormal()
-            self.vbox.show()
-            self.toolbar.show()
-            self.hpane_ext.show()
-            self.info_bar.show()
-            self.is_iv_fullscreen=False
-        else:
-            self.iv.ImageFullscreen()
-            self.vbox.hide()
-            self.toolbar.hide()
-            self.hpane_ext.hide()
-            self.info_bar.hide()
-            self.is_iv_fullscreen=True
-        self.imarea.grab_focus()
+        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
+            if self.is_iv_fullscreen:
+                if self.is_fullscreen:
+                    self.window.unfullscreen()
+                    self.is_fullscreen=False
+                self.iv.ImageNormal()
+                self.vbox.show()
+                self.toolbar.show()
+                self.hpane_ext.show()
+                self.info_bar.show()
+                self.is_iv_fullscreen=False
+            else:
+                self.iv.ImageFullscreen()
+                self.vbox.hide()
+                self.toolbar.hide()
+                self.hpane_ext.hide()
+                self.info_bar.hide()
+                self.is_iv_fullscreen=True
+                if not self.is_fullscreen:
+                    self.window.fullscreen()
+                    self.is_fullscreen=True
+            self.imarea.grab_focus()
 
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
