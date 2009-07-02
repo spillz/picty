@@ -466,6 +466,7 @@ class ImageBrowser(gtk.VBox):
                         self.vbox.show()
                         self.hpane_ext.show()
                         self.toolbar.show()
+                        self.info_bar.show()
                         self.vscroll.show()
                         self.is_iv_fullscreen=False
                         if self.is_fullscreen:
@@ -494,6 +495,7 @@ class ImageBrowser(gtk.VBox):
                         self.iv.ImageNormal()
                         self.vbox.show()
                         self.hpane_ext.show()
+                        self.info_bar.show()
                         self.toolbar.show()
                         self.vscroll.show()
                         self.is_iv_fullscreen=False
@@ -502,6 +504,7 @@ class ImageBrowser(gtk.VBox):
                         self.iv.ImageFullscreen()
                         self.toolbar.hide()
                         self.vbox.hide()
+                        self.info_bar.hide()
                         self.hpane_ext.hide()
                         self.vscroll.hide()
                         self.is_iv_fullscreen=True
