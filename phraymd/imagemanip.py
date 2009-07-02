@@ -128,11 +128,12 @@ def cache_thumb(item):
 def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
-##        non-parsed version
+#        non-parsed version
         image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
         print 'opened image',item.filename,image
-##        parsed version
-        if not draft_mode:
+#        parsed version
+        if not draft_mode and image.format=='JPEG':
+            #parser doesn't seem to work correctly on anything but JPEGs
             f=open(item.filename,'rb')
             imdata=f.read(10000)
             p = ImageFile.Parser()
@@ -143,6 +144,7 @@ def load_image(item,interrupt_fn,draft_mode=False):
                 imdata=f.read(10000)
             f.close()
             image = p.close()
+            print 'parsed image'
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -201,7 +203,6 @@ def image_to_pixbuf(im):
         loader.write(contents, len(contents))
         pixbuf = loader.get_pixbuf()
         loader.close()
-        print 'converted gif'
     return pixbuf
 
 
@@ -222,6 +223,7 @@ def size_image(item,size,antialias=False,zoom='fit'):
             if (w*h*iw*ih)==0:
                 return False
         else:
+            image.load()
             item.qview=image_to_pixbuf(image)
             return True
     else:
