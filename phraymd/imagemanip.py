@@ -125,7 +125,7 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def load_image(item,interrupt_fn,draft_mode=False):
+def load_image(item,interrupt_fn,draft_mode=True):
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version

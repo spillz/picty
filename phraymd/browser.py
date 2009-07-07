@@ -585,25 +585,26 @@ class ImageBrowser(gtk.VBox):
     def button_press_image_viewer(self,obj,event):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             if self.is_iv_fullscreen:
-                if self.is_fullscreen:
-                    self.window.unfullscreen()
-                    self.is_fullscreen=False
                 self.iv.ImageNormal()
                 self.vbox.show()
                 self.toolbar.show()
                 self.hpane_ext.show()
                 self.info_bar.show()
                 self.is_iv_fullscreen=False
+                if self.is_fullscreen:
+                    self.window.unfullscreen()
+                    self.is_fullscreen=False
             else:
+                if not self.is_fullscreen:
+                    self.window.fullscreen()
+                    self.is_fullscreen=True
+                    time.sleep(0.1)
                 self.iv.ImageFullscreen()
                 self.vbox.hide()
                 self.toolbar.hide()
                 self.hpane_ext.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True
-                if not self.is_fullscreen:
-                    self.window.fullscreen()
-                    self.is_fullscreen=True
             self.imarea.grab_focus()
 
     def get_hover_command(self, ind, x, y):

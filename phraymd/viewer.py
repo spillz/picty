@@ -125,6 +125,10 @@ class ImageViewer(gtk.VBox):
         self.imarea.set_property("can-focus",True)
         self.meta_table=self.CreateMetaTable()
         self.worker=worker
+        self.geo_width=-1
+        self.geo_height=-1
+
+        self.freeze_image_refresh=False
 
         self.change_block=False
 
@@ -147,7 +151,7 @@ class ImageViewer(gtk.VBox):
         self.pack_start(f)
 
         self.imarea.connect("realize",self.realize_signal)
-        self.imarea.connect("configure_event",self.configure_signal)
+        self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
         self.button_save.connect("clicked",self.MetadataSave)
         self.button_revert.connect("clicked",self.MetadataRevert)
@@ -352,9 +356,10 @@ class ImageViewer(gtk.VBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def configure_signal(self,obj,event):
-        self.geo_width=event.width
-        self.geo_height=event.height
-        self.il.update_image_size(self.geo_width,self.geo_height)
+        if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
+            self.geo_width=event.width
+            self.geo_height=event.height
+            self.il.update_image_size(self.geo_width,self.geo_height)
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def expose_signal(self,event,arg):
