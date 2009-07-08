@@ -31,6 +31,8 @@ import exif
 import re
 import datetime
 
+import gobject
+
 class TagCloud():
     def __init__(self):
         self.tags=dict()

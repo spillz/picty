@@ -30,6 +30,7 @@ import subprocess
 import time
 import datetime
 import bisect
+import gobject
 
 import sys
 sys.path.insert(0,'/usr/share') ##private module location on installed version
@@ -62,34 +63,34 @@ import tagui
 import mapui
 
 
-class ImageBrowser(gtk.VBox):
+class ImageBrowser(gtk.HBox):
     '''
     a widget designed to rapidly display a collection of objects
     from an image cache
     '''
     MODE_NORMAL=1
     MODE_TAG=2
-    def __init__(self):
-        gtk.VBox.__init__(self)
+    __gsignals__={
+        'activate-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
+        'context-click-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT))
+        }
+    def __init__(self,hover_cmds=()):
+        gtk.HBox.__init__(self)
+        self.hover_cmds=hover_cmds
         self.configure_geometry()
         self.lock=threading.Lock()
         self.tm=backend.Worker(self)
         self.neededitem=None
-        self.iv=viewer.ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
-        self.is_fullscreen=False
-        self.is_iv_fullscreen=False
-        self.is_iv_showing=False
 
         self.mode=self.MODE_NORMAL
-
-        self.info_bar=gtk.Label('Loading.... please wait')
-        self.info_bar.show()
 
         self.pressed_ind=-1
         self.pressed_item=None
         self.last_selected_ind=-1
         self.last_selected=None
         self.button_press_block=False
+
+        self.focal_item=None
 
         self.shift_state=False
 
@@ -103,90 +104,6 @@ class ImageBrowser(gtk.VBox):
         self.geo_ind_view_first=0
         self.geo_ind_view_last=1
         self.hover_ind=-1
-        self.hover_cmds=[
-                        (self.save_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
-                        (self.revert_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
-                        (self.launch_item,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
-                        (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_left,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_right,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU)),
-                        (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
-                        ]
-
-        self.sort_order=gtk.combo_box_new_text()
-        i=0
-        for s in imageinfo.sort_keys:
-            self.sort_order.append_text(s)
-            if s=='Relevance':
-                self.sort_order_relevance_ind=i
-            i+=1
-        self.sort_order.set_active(0)
-        self.sort_order.set_property("can-focus",False)
-        self.sort_order.connect("changed",self.set_sort_key)
-        self.sort_order.show()
-
-        self.filter_entry=gtk.Entry()
-        self.filter_entry.connect("activate",self.set_filter_text)
-        self.filter_entry.show()
-        self.filter_entry.set_width_chars(40)
-
-        self.selection_menu_button=gtk.Button('_Selection')
-        self.selection_menu_button.connect("clicked",self.selection_popup)
-        self.selection_menu_button.show()
-        self.selection_menu=gtk.Menu()
-        def menu_add(menu,text,callback):
-            item=gtk.MenuItem(text)
-            item.connect("activate",callback)
-            menu.append(item)
-            item.show()
-        menu_add(self.selection_menu,"Select _All",self.select_all)
-        menu_add(self.selection_menu,"Select _None",self.select_none)
-        menu_add(self.selection_menu,"_Invert Selection",self.select_invert)
-        menu_add(self.selection_menu,"Show All _Selected",self.select_show)
-        menu_add(self.selection_menu,"_Copy Selection...",self.select_copy)
-        menu_add(self.selection_menu,"_Move Selection...",self.select_move)
-        menu_add(self.selection_menu,"_Delete Selection...",self.select_delete)
-        menu_add(self.selection_menu,"Add _Tags",self.select_keyword_add)
-        menu_add(self.selection_menu,"_Remove Tags",self.select_keyword_remove)
-        menu_add(self.selection_menu,"Set Descriptive _Info",self.select_set_info)
-        menu_add(self.selection_menu,"_Batch Manipulation",self.select_batch)
-
-##        self.selection_menu_item.set_submenu(self.selection_menu)
-        self.selection_menu.show()
-##        self.selection_menu_item.show()
-
-        self.tag_menu_button=gtk.ToggleButton('_Tags')
-        self.tag_menu_button.connect("clicked",self.activate_tag_frame)
-        self.tag_menu_button.show()
-
-        self.map_menu_button=gtk.ToggleButton('_Map')
-        self.map_menu_button.connect("clicked",self.activate_map_frame)
-        self.map_menu_button.show()
-
-
-        self.toolbar=gtk.Toolbar()
-        self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
-            gtk.ToolButton(gtk.STOCK_SAVE), self.save_all_changes, user_data=None)
-        self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)", None,
-            gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED), self.revert_all_changes, user_data=None)
-        self.toolbar.append_space()
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.selection_menu_button, None,"Perform operations on selections", None,
-            None, None, None)
-        self.toolbar.append_space()
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sort_order, "Sort Order", "Set the image attribute that determines the order images appear in", None, None,
-            None, None)
-        ## TODO: toggle the icon and tooltip depending on whether we are currently showing ascending or descending order
-        self.toolbar.append_item("Reverse Sort Order", "Reverse the order that images appear in", None,
-            gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING), self.reverse_sort_order, user_data=None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.filter_entry, "Filter", "Filter the view to images that contain the search text, press enter to activate", None, None,
-            None, None)
-        self.toolbar.append_item("Clear Filter", "Clear the filter and reset the view to the entire collection", None,
-            gtk.ToolButton(gtk.STOCK_CLEAR), self.clear_filter, user_data=None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.tag_menu_button, None,"Toggle the tag panel", None,
-            None, None, None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.map_menu_button, None,"Toggle the map panel", None,
-            None, None, None)
-        self.toolbar.show()
 
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
@@ -196,39 +113,13 @@ class ImageBrowser(gtk.VBox):
         self.vscroll.set_property("has-tooltip",True)
         self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
-        self.tagframe=tagui.TagFrame(self.tm,self,settings.user_tag_info)
-        self.mapframe=mapui.MapFrame(self.tm)
-
         self.vbox=gtk.VBox()
-        self.status_bar=gtk.ProgressBar()
-        self.status_bar.set_pulse_step(0.01)
         self.vbox.pack_start(self.imarea)
         self.vbox.show()
 
-        self.hbox=gtk.HBox()
-        self.hbox.show()
-        self.hbox.pack_start(self.vbox)
-        self.hbox.pack_start(self.vscroll,False)
-        self.hpane=gtk.HPaned()
-        self.hpane_ext=gtk.HPaned()
-        self.hpane_ext2=gtk.HPaned()
+        self.pack_start(self.vbox)
+        self.pack_start(self.vscroll,False)
 
-        self.hpane_ext2.add1(self.tagframe)
-        self.hpane_ext2.add2(self.mapframe)
-        self.hpane_ext2.show()
-        self.hpane_ext.add1(self.hpane_ext2)
-        self.hpane_ext.add2(self.hbox)
-        self.hpane_ext.show()
-        self.hpane.add1(self.hpane_ext)
-        self.hpane.add2(self.iv)
-        self.hpane.show()
-        self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad)
-
-        self.pack_start(self.toolbar,False,False)
-        self.pack_start(self.hpane)
-        self.pack_start(self.status_bar,False)
-        self.pack_start(self.info_bar,False)
-        self.connect("destroy", self.destroy)
         self.imarea.connect("realize",self.realize_signal)
         self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
@@ -269,259 +160,36 @@ class ImageBrowser(gtk.VBox):
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
 
         self.imarea.show()
-        self.last_width=2*self.geo_pad+self.geo_thumbwidth
         self.vscroll.show()
         self.imarea.grab_focus()
 
-
-    def destroy(self,event):
-        self.tm.quit()
-        settings.user_tag_info=self.tagframe.get_user_tags()
-        settings.save()
-        return False
-
-    def activate_tag_frame(self,widget):
-        if widget.get_active():
-#            if self.is_iv_showing:
-#                self.iv.hide()
-            self.tagframe.show_all()
-            self.hpane_ext2.show()
-#            self.resize_browser_pane()
-#            if self.is_iv_showing:
-#                self.iv.show()
-        else:
-            self.tagframe.hide()
-            if not self.map_menu_button.get_active():
-                self.hpane_ext2.hide()
-        self.imarea.grab_focus()
-
-    def activate_map_frame(self,widget):
-        if widget.get_active():
-            if self.is_iv_showing:
-                self.iv.hide()
-            self.mapframe.show_all()
-            self.hpane_ext2.show()
-#            self.resize_browser_pane()
-#            if self.is_iv_showing:
-#                self.iv.show()
-        else:
-            self.mapframe.hide()
-            if not self.tag_menu_button.get_active():
-                self.hpane_ext2.hide()
-        self.imarea.grab_focus()
-
-    def selection_popup(self,widget):
-        self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
-        #m.attach(gtk.MenuItem())
-
-    def save_all_changes(self,widget):
-        self.tm.save_or_revert_view()
-
-    def revert_all_changes(self,widget):
-        self.tm.save_or_revert_view(False)
-
-    def select_invert(self,widget):
-        self.tm.select_all_items(backend.INVERT_SELECT)
-##        dlg=gtk.MessageDialog(flags=gtk.DIALOG_MODAL,buttons=gtk.BUTTONS_CLOSE)
-##        dlg.text='Not implemented yet'
-##        dlg.run()
-##        dlg.destroy()
-
     def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
-        height=widget.window.get_size()[1]
-        yscroll=y*self.scrolladj.upper/height
-        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count))
-        key=self.sort_order.get_active_text()
-        key_fn=imageinfo.sort_keys_str[key]
-        item=self.tm.view(ind)
-        tooltip.set_text(key+': '+str(key_fn(item)))
+#        height=widget.window.get_size()[1]
+#        yscroll=y*self.scrolladj.upper/height
+#        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count))
+#        key=self.sort_order.get_active_text()
+#        key_fn=imageinfo.sort_keys_str[key]
+#        item=self.tm.view(ind)
+#        tooltip.set_text(key+': '+str(key_fn(item)))
         return True
 
-    def select_show(self,widget):
-        self.filter_entry.set_text("selected")
-        self.filter_entry.activate()
-
-    def entry_dialog(self,title,prompt,default=''):
-        dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,
-                         (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
-        prompt_label=gtk.Label()
-        prompt_label.set_label(prompt)
-        entry=gtk.Entry()
-        entry.set_text(default)
-        hbox=gtk.HBox()
-        hbox.pack_start(prompt_label,False)
-        hbox.pack_start(entry)
-        hbox.show_all()
-        dialog.vbox.pack_start(hbox)
-        entry.set_property("activates-default",True)
-        dialog.set_default_response(gtk.RESPONSE_ACCEPT)
-        response=dialog.run()
-        if response==gtk.RESPONSE_ACCEPT:
-            ret_val=entry.get_text()
-        else:
-            ret_val=None
-        dialog.destroy()
-        return ret_val
-
-    def select_keyword_add(self,widget):
-        keyword_string=self.entry_dialog("Add Tags","Enter tags")
-        if keyword_string:
-            self.tm.keyword_edit(keyword_string)
-
-    def select_keyword_remove(self,widget):
-        keyword_string=self.entry_dialog("Remove Tags","Enter Tags")
-        if keyword_string:
-            self.tm.keyword_edit(keyword_string,False,True)
-
-    def select_set_info(self,widget):
-        item=imageinfo.Item('stub',None)
-        item.meta={}
-        dialog=metadatadialogs.BatchMetaDialog(item)
-        response=dialog.run()
-        dialog.destroy()
-        if response==gtk.RESPONSE_ACCEPT:
-            self.tm.info_edit(item.meta)
-
-    def select_batch(self,widget):
-        dlg=gtk.MessageDialog('gtk.DIALOG_MODAL',buttons=gtk.BUTTONS_CLOSE)
-        dlg.text='Not implemented yet'
-        dlg.run()
-        dlg.destroy()
-
-    def select_all(self,widget):
-        self.tm.select_all_items()
-
-    def select_none(self,widget):
-        self.tm.select_all_items(backend.DESELECT)
-
-    def select_upload(self,widget):
-        print 'upload',widget
-
-    def dir_pick(self,prompt):
-        sel_dir=''
-        fcd=gtk.FileChooserDialog(title=prompt, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-        fcd.set_current_folder(os.environ['HOME'])
-        response=fcd.run()
-        if response == gtk.RESPONSE_OK:
-            sel_dir=fcd.get_filename()
-        fcd.destroy()
-        return sel_dir
-
-    def select_copy(self,widget):
-        sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.tm.view,sel_dir,self.update_status)
-
-    def select_move(self,widget):
-        sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.tm.view,sel_dir,self.update_status)
-
-    def select_delete(self,widget):
-        fileops.worker.delete(self.tm.view,self.update_status)
-
-    def set_filter_text(self,widget):
-        self.set_sort_key(widget)
-
-    def clear_filter(self,widget):
-        self.filter_entry.set_text('')
-        self.set_sort_key(widget)
-
-    def set_sort_key(self,widget):
-       self.imarea.grab_focus()
-       key=self.sort_order.get_active_text()
-       filter_text=self.filter_entry.get_text()
-       print 'sort&filter',key,filter_text
-       self.tm.rebuild_view(key,filter_text)
-
-    def add_filter(self,widget):
-        print 'add_filter',widget
-
-    def show_filters(self,widget):
-        print 'show_filters',widget
-
-    def reverse_sort_order(self,widget):
-        self.tm.view.reverse=not self.tm.view.reverse
-        widget.set_active(self.tm.view.reverse)
-        self.refresh_view()
 
     def update_status(self,progress,message):
-        self.status_bar.show()
-        if 1.0>progress>=0.0:
-            self.status_bar.set_fraction(progress)
-        if progress<0.0:
-            self.status_bar.pulse()
-        if progress>=1.0:
-            self.status_bar.hide()
-        self.status_bar.set_text(message)
+        ##todo: raise a custom signal
+#        self.status_bar.show()
+#        if 1.0>progress>=0.0:
+#            self.status_bar.set_fraction(progress)
+#        if progress<0.0:
+#            self.status_bar.pulse()
+#        if progress>=1.0:
+#            self.status_bar.hide()
+#        self.status_bar.set_text(message)
+        pass
 
     def key_press_signal(self,obj,event):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
                 fileops.worker.delete(self.tm.view,self.update_status)
-            elif event.keyval==65307: #escape
-                    if self.is_iv_fullscreen:
-                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        self.view_image(self.iv.item)
-                        self.iv.ImageNormal()
-                        self.vbox.show()
-                        self.hpane_ext.show()
-                        self.toolbar.show()
-                        self.info_bar.show()
-                        self.vscroll.show()
-                        self.is_iv_fullscreen=False
-                        if self.is_fullscreen:
-                            self.window.unfullscreen()
-                            self.is_fullscreen=False
-                    else:
-                        self.hide_image()
-            elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
-                if self.is_fullscreen:
-                    self.window.unfullscreen()
-                    self.is_fullscreen=False
-                else:
-                    self.window.fullscreen()
-                    self.is_fullscreen=True
-            elif event.keyval==92: #backslash
-                self.tm.view.reverse=not self.tm.view.reverse
-                self.refresh_view()
-            elif event.keyval==65293: #enter
-                if self.iv.item:
-                    if self.is_iv_fullscreen:
-                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        if self.is_fullscreen:
-                            self.window.unfullscreen()
-                            self.is_fullscreen=False
-                        self.view_image(self.iv.item)
-                        self.iv.ImageNormal()
-                        self.vbox.show()
-                        self.hpane_ext.show()
-                        self.info_bar.show()
-                        self.toolbar.show()
-                        self.vscroll.show()
-                        self.is_iv_fullscreen=False
-                    else:
-                        self.view_image(self.iv.item)
-                        self.iv.ImageFullscreen()
-                        self.toolbar.hide()
-                        self.vbox.hide()
-                        self.info_bar.hide()
-                        self.hpane_ext.hide()
-                        self.vscroll.hide()
-                        self.is_iv_fullscreen=True
-                        if not self.is_fullscreen:
-                            self.window.fullscreen()
-                            self.is_fullscreen=True
-                    self.imarea.grab_focus()
-            elif event.keyval==65361: #left
-                if self.iv.item:
-                    ind=self.item_to_view_index(self.iv.item)
-                    if len(self.tm.view)>ind>0:
-                        self.view_image(self.tm.view(ind-1))
-            elif event.keyval==65363: #right
-                if self.iv.item:
-                    ind=self.item_to_view_index(self.iv.item)
-                    if len(self.tm.view)-1>ind>=0:
-                        self.view_image(self.tm.view(ind+1))
             elif event.keyval==65362: #up
                 self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
             elif event.keyval==65364: #dn
@@ -543,7 +211,7 @@ class ImageBrowser(gtk.VBox):
                 self.redraw_view()
             elif event.keyval==65507: #control
                 self.redraw_view()
-        return True
+##        return True
 
     def resize_browser_pane(self):
         w,h=self.hpane.window.get_size()
@@ -555,57 +223,57 @@ class ImageBrowser(gtk.VBox):
                 self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position())
 
 
-    def view_image(self,item,fullwindow=False):
-        self.iv.show()
-        self.iv.SetItem(item)
-        self.is_iv_showing=True
-        self.update_geometry(True)
-        self.resize_browser_pane()
-        if self.iv.item!=None:
-            ind=self.item_to_view_index(self.iv.item)
-            self.center_view_offset(ind)
-        self.update_scrollbar()
-        self.update_required_thumbs()
-        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-        self.imarea.grab_focus()
-
-    def hide_image(self):
-        self.iv.hide()
-        self.iv.ImageNormal()
-        self.vbox.show()
-        self.hbox.show()
-        self.toolbar.show()
-        self.hpane_ext.show()
-        self.info_bar.show()
-        self.vscroll.show()
-        self.is_iv_fullscreen=False
-        self.is_iv_showing=False
-        self.imarea.grab_focus()
-
-    def button_press_image_viewer(self,obj,event):
-        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-            if self.is_iv_fullscreen:
-                self.iv.ImageNormal()
-                self.vbox.show()
-                self.toolbar.show()
-                self.hpane_ext.show()
-                self.info_bar.show()
-                self.is_iv_fullscreen=False
-                if self.is_fullscreen:
-                    self.window.unfullscreen()
-                    self.is_fullscreen=False
-            else:
-                if not self.is_fullscreen:
-                    self.window.fullscreen()
-                    self.is_fullscreen=True
-                    time.sleep(0.1)
-                self.iv.ImageFullscreen()
-                self.vbox.hide()
-                self.toolbar.hide()
-                self.hpane_ext.hide()
-                self.info_bar.hide()
-                self.is_iv_fullscreen=True
-            self.imarea.grab_focus()
+##    def view_image(self,item,fullwindow=False):
+##        self.iv.show()
+##        self.iv.SetItem(item)
+##        self.is_iv_showing=True
+##        self.update_geometry(True)
+##        self.resize_browser_pane()
+##        if self.focal_item!=None:
+##            ind=self.item_to_view_index(self.focal_item)
+##            self.center_view_offset(ind)
+##        self.update_scrollbar()
+##        self.update_required_thumbs()
+##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+##        self.imarea.grab_focus()
+##
+##    def hide_image(self):
+##        self.iv.hide()
+##        self.iv.ImageNormal()
+##        self.vbox.show()
+##        self.hbox.show()
+##        self.toolbar.show()
+##        self.hpane_ext.show()
+##        self.info_bar.show()
+##        self.vscroll.show()
+##        self.is_iv_fullscreen=False
+##        self.is_iv_showing=False
+##        self.imarea.grab_focus()
+##
+##    def button_press_image_viewer(self,obj,event):
+##        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
+##            if self.is_iv_fullscreen:
+##                self.iv.ImageNormal()
+##                self.vbox.show()
+##                self.toolbar.show()
+##                self.hpane_ext.show()
+##                self.info_bar.show()
+##                self.is_iv_fullscreen=False
+##                if self.is_fullscreen:
+##                    self.window.unfullscreen()
+##                    self.is_fullscreen=False
+##            else:
+##                if not self.is_fullscreen:
+##                    self.window.fullscreen()
+##                    self.is_fullscreen=True
+##                    time.sleep(0.1)
+##                self.iv.ImageFullscreen()
+##                self.vbox.hide()
+##                self.toolbar.hide()
+##                self.hpane_ext.hide()
+##                self.info_bar.hide()
+##                self.is_iv_fullscreen=True
+##            self.imarea.grab_focus()
 
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
@@ -622,41 +290,6 @@ class ImageBrowser(gtk.VBox):
             left+=self.hover_cmds[i][1].get_width()+self.geo_pad/4
         return -1
 
-    def popup_item(self,item):
-        def menu_add(menu,text,callback,*args):
-            item=gtk.MenuItem(text)
-            item.connect("activate",callback,*args)
-            menu.append(item)
-            item.show()
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mime=gnomevfs.get_mime_type(uri)
-        launch_menu=gtk.Menu()
-        if mime in settings.custom_launchers:
-            for app in settings.custom_launchers[mime]:
-                menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
-        launch_menu.append(gtk.SeparatorMenuItem())
-        for app in gnomevfs.mime_get_all_applications(mime):
-            menu_add(launch_menu,app[1],self.mime_open,app[2],item)
-        ##menu_add(menu,"Select _None",self.select_none)
-        for app in settings.custom_launchers['default']:
-            menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
-        menu_add(launch_menu,'Edit External Launchers...',self.edit_custom_mime_apps,item)
-
-        menu=gtk.Menu()
-        launch_item=gtk.MenuItem("Open with")
-        launch_item.show()
-        launch_item.set_submenu(launch_menu)
-        menu.append(launch_item)
-        if item.meta_changed:
-            menu_add(menu,'Save Metadata Changes',self.save_item,item)
-            menu_add(menu,'Revert Metadata Changes',self.revert_item,item)
-        menu_add(menu,'Edit Metadata',self.edit_item,item)
-        menu_add(menu,'Rotate Clockwise',self.rotate_item_right,item)
-        menu_add(menu,'Rotate Anti-Clockwise',self.rotate_item_left,item)
-        menu_add(menu,'Delete Image',self.delete_item,item)
-        menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
-        menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
-        menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def edit_custom_mime_apps(self,widget,item):
         pass
@@ -736,14 +369,14 @@ class ImageBrowser(gtk.VBox):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_left(item)
         self.update_required_thumbs()
-        if item==self.iv.item:
+        if item==self.focal_item:
             self.view_image(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_right(item)
         self.update_required_thumbs()
-        if item==self.iv.item:
+        if item==self.focal_item:
             self.view_image(item)
 
     def delete_item(self,widget,item):
@@ -819,8 +452,8 @@ class ImageBrowser(gtk.VBox):
         ind=max(0,min(len(self.tm.view)-1,ind))
         item=self.tm.view(ind)
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-#            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
-                self.view_image(item)
+##            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
+                self.emit("activate-item",ind,item)
                 self.button_press_block=True
                 if item==self.pressed_item:
                     self.select_item(self.pressed_ind)
@@ -841,7 +474,7 @@ class ImageBrowser(gtk.VBox):
                                 self.select_item(self.pressed_ind)
                 self.button_press_block=False
         elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
-            self.popup_item(item)
+            self.emit("context-click-item",ind,item)
         if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
             self.drag_item=item
             self.pressed_ind=ind
@@ -939,7 +572,9 @@ class ImageBrowser(gtk.VBox):
 
     def update_info_bar(self):
         '''refresh the info bar (status bar that displays number of images etc)'''
-        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+        pass
+        ##todo: send a signal about collection updates
+        #self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
     def refresh_view(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
@@ -952,7 +587,9 @@ class ImageBrowser(gtk.VBox):
     def post_build_view(self):
         '''callback function to receive notification from worker that
         view has finished rebuilding'''
-        self.tagframe.refresh(self.tm.view.tag_cloud)
+        pass
+##      send a custom signal
+#        self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def update_view(self):
         '''reset position, update geometry, scrollbars, redraw the thumbnail view'''
@@ -1021,8 +658,8 @@ class ImageBrowser(gtk.VBox):
         self.geo_view_offset_max=max(1,(self.geo_thumbheight+self.geo_pad)+(len(self.tm.view)-1)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
         self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
         if recenter:
-            if self.iv.item!=None:
-                ind=self.item_to_view_index(self.iv.item)
+            if self.focal_item!=None:
+                ind=self.item_to_view_index(self.focal_item)
             else:
                 ind=-1
             if self.geo_ind_view_first<=ind<=self.geo_ind_view_last:
@@ -1114,14 +751,15 @@ class ImageBrowser(gtk.VBox):
                             drawable.draw_rectangle(gc_r, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.geo_pad/8, y+self.geo_pad/8, self.geo_thumbwidth+self.geo_pad*3/4, self.geo_thumbheight+self.geo_pad*3/4)
-            if item==self.iv.item:
-                try:
-                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
-                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
-                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
-                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
-                except:
-                    pass
+#           todo: come up with a scheme for highlighting images
+##            if item==self.focal_item:
+##                try:
+##                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+##                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
+##                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
+##                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
+##                except:
+##                    pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
             if item.thumb:
@@ -1147,13 +785,14 @@ class ImageBrowser(gtk.VBox):
                 l=len(self.hover_cmds)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
-                show=[True for r in range(l)]
-                if self.hover_ind!=i:
-                    for q in (1,2,3,4,5,6):
-                        show[q]=False
-                if not item.meta_changed:
-                    show[0]=False
-                    show[1]=False
+##                show=[True for r in range(l)]
+##                if self.hover_ind!=i:
+##                    for q in (1,2,3,4,5,6):
+##                        show[q]=False
+#               todo: create a callback for each item to see if it should be shown
+##                if not item.meta_changed:
+##                    show[0]=False
+##                    show[1]=False
                 for j in range(l):
                     if show[j]:
                         drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
@@ -1167,3 +806,5 @@ class ImageBrowser(gtk.VBox):
                 else:
                     x=0
         self.lock.release()
+
+gobject.type_register(ImageBrowser)

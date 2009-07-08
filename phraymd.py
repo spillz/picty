@@ -39,13 +39,11 @@ except:
     sys.exit()
 
 from phraymd import settings
-from phraymd import browser
+from phraymd import mainframe
 
 settings.init() ##todo: make this call occur upon first import inside the settings module
 
 class MainWindow:
-    ##todo: might make sense to pull some of the widgets (and ownership of the worker thread)
-    ##out of the browser and into this class
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_default_size(680, 400)
@@ -56,15 +54,15 @@ class MainWindow:
         sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU
         sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"phraymd:main")
 
-        self.browser = browser.ImageBrowser()
+        self.mainframe = mainframe.MainFrame()
 
         vb=gtk.VBox()
-        vb.pack_start(self.browser)
+        vb.pack_start(self.mainframe)
         self.window.add(vb)
 
         self.window.show()
         vb.show()
-        self.browser.show()
+        self.mainframe.show()
 
     def on_down(self, widget, data=None):
         self.browser.ScrollDown()
