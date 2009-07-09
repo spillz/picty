@@ -46,7 +46,7 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,1.0*i/len(self.items),'Deleting '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Deleting '+item.filename)
             try:
                 empty,imdir,relpath=item.filename.partition(settings.image_dirs[0])
                 relpath=relpath.strip('/')
@@ -58,7 +58,7 @@ class Worker:
             except:
                 fileoperrors.append(('del',item))
         if self.cb:
-            gobject.idle_add(self.cb,2.0,'Finished Deleting')
+            gobject.idle_add(self.cb,None,2.0,'Finished Deleting')
         self.active=False
 
     def delete(self,items,cb,selected_only=True):
@@ -86,7 +86,7 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,1.0*i/len(self.items),'Copying '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Copying '+item.filename)
             try:
                 fin=open(item.filename,'rb')
                 fout=open(os.path.join(self.destdir,os.path.split(item.filename)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
@@ -94,7 +94,7 @@ class Worker:
             except:
                 fileoperrors.append(('copy',item,self.destdir))
         if self.cb:
-            gobject.idle_add(self.cb,2.0,'Finished Copying')
+            gobject.idle_add(self.cb,None,2.0,'Finished Copying')
         self.active=False
 
     def copy(self,items,destdir,cb,selected_only=True):
@@ -123,13 +123,13 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,1.0*i/len(self.items),'Moving '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Moving '+item.filename)
             try:
                 os.renames(item.filename,os.path.join(self.destdir,os.path.split(item.filename)[1]))
             except:
                 fileoperrors.append(('move',item,self.destdir))
         if self.cb:
-            gobject.idle_add(self.cb,2.0,'Finished Moving')
+            gobject.idle_add(self.cb,None,2.0,'Finished Moving')
         self.active=False
 
     def move(self,items,destdir,cb,selected_only=True):

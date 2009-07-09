@@ -69,7 +69,21 @@ class MainFrame(gtk.VBox):
     def __init__(self):
         gtk.VBox.__init__(self)
         self.lock=threading.Lock()
-        self.browser=browser.ImageBrowser()
+
+        def show_on_hover(item,hover):
+            return True
+        self.hover_cmds=[
+                        ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
+                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
+                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
+                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU)),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU)),
+                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
+                        ]
+
+        self.browser=browser.ImageBrowser(self.hover_cmds)
         self.tm=self.browser.tm
         self.neededitem=None
         self.iv=viewer.ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
@@ -79,6 +93,11 @@ class MainFrame(gtk.VBox):
 
         self.browser.connect("activate-item",self.activate_item)
         self.browser.connect("context-click-item",self.popup_item)
+        self.browser.connect("status-updated",self.update_status)
+        self.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
+        self.browser.connect("view-changed",self.view_changed)
+        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+
         self.browser.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.browser.add_events(gtk.gdk.KEY_RELEASE_MASK)
         self.browser.connect("key-press-event",self.key_press_signal)
@@ -87,15 +106,6 @@ class MainFrame(gtk.VBox):
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
 
-        self.hover_cmds=[
-                        (self.save_item,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
-                        (self.revert_item,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
-                        (self.launch_item,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
-                        (self.edit_item,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_left,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU)),
-                        (self.rotate_item_right,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU)),
-                        (self.delete_item,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
-                        ]
 
         self.sort_order=gtk.combo_box_new_text()
         i=0
@@ -206,6 +216,7 @@ class MainFrame(gtk.VBox):
 
     def activate_item(self,browser,ind,item):
         print 'activated',ind,item
+        self.view_image(item)
 
     def destroy(self,event):
         self.tm.quit()
@@ -285,6 +296,13 @@ class MainFrame(gtk.VBox):
             ret_val=None
         dialog.destroy()
         return ret_val
+
+    def view_changed(self,browser):
+        '''refresh the info bar (status bar that displays number of images etc)'''
+        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+
+    def view_rebuild_complete(self,browser):
+        self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -367,7 +385,7 @@ class MainFrame(gtk.VBox):
         widget.set_active(self.tm.view.reverse)
         self.browser.refresh_view()
 
-    def update_status(self,progress,message):
+    def update_status(self,widget,progress,message):
         self.status_bar.show()
         if 1.0>progress>=0.0:
             self.status_bar.set_fraction(progress)
@@ -377,6 +395,15 @@ class MainFrame(gtk.VBox):
             self.status_bar.hide()
         self.status_bar.set_text(message)
 
+    def tag_dropped_in_browser(self,browser,item,tag_widget,path):
+        print 'dropped',tag_widget,path
+        tags=self.tagframe.get_tags(path)
+        if not item.selected:
+            imageinfo.toggle_tags(item,tags)
+        else:
+            self.tm.keyword_edit(tags,True)
+
+
     def key_press_signal(self,obj,event):
         ##todo: only some of these belong in the main frame, others in the browser
         print 'key press main frame'
@@ -385,22 +412,17 @@ class MainFrame(gtk.VBox):
                 fileops.worker.delete(self.tm.view,self.update_status) ##todo: should apply to selection
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
-                        self.iv.freeze()
-                        self.hide()
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
-                        self.vbox.show()
+                        self.browser.show()
                         self.hpane_ext.show()
                         self.toolbar.show()
                         self.info_bar.show()
-                        self.vscroll.show()
                         self.is_iv_fullscreen=False
                         if self.is_fullscreen:
                             self.window.unfullscreen()
                             self.is_fullscreen=False
-                        self.iv.thaw()
-                        self.show()
                     else:
                         self.hide_image()
             elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
@@ -417,74 +439,73 @@ class MainFrame(gtk.VBox):
                 if self.iv.item:
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        self.iv.freeze()
-                        self.hide()
                         if self.is_fullscreen:
                             self.window.unfullscreen()
                             self.is_fullscreen=False
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
-                        self.vbox.show()
+                        self.browser.show()
                         self.hpane_ext.show()
                         self.info_bar.show()
                         self.toolbar.show()
-                        self.vscroll.show()
                         self.is_iv_fullscreen=False
-                        self.iv.thaw()
-                        self.show()
                     else:
-                        self.iv.freeze()
-                        self.hide()
                         self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
                         self.toolbar.hide()
-                        self.vbox.hide()
+                        self.browser.hide()
                         self.info_bar.hide()
                         self.hpane_ext.hide()
-                        self.vscroll.hide()
                         self.is_iv_fullscreen=True
                         if not self.is_fullscreen:
                             self.window.fullscreen()
                             self.is_fullscreen=True
-                        self.iv.thaw()
-                        self.show()
-                    self.browser.grab_focus()
+                self.browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
             elif event.keyval==65361: #left
                 if self.iv.item:
-                    ind=self.item_to_view_index(self.iv.item)
+                    ind=self.browser.item_to_view_index(self.iv.item)
                     if len(self.tm.view)>ind>0:
                         self.view_image(self.tm.view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
-                    ind=self.item_to_view_index(self.iv.item)
+                    ind=self.browser.item_to_view_index(self.iv.item)
                     if len(self.tm.view)-1>ind>=0:
                         self.view_image(self.tm.view(ind+1))
         return True
+
+
+    def resize_browser_pane(self):
+        w,h=self.hpane.window.get_size()
+        if self.hpane.get_position()<self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position():
+            w,h=self.hpane.window.get_size()
+            if w<=self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position():
+                self.hpane.set_position(w/2)
+            else:
+                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position())
 
 
     def view_image(self,item,fullwindow=False):
         self.iv.show()
         self.iv.SetItem(item)
         self.is_iv_showing=True
-        self.update_geometry(True)
+        self.browser.update_geometry(True)
         self.resize_browser_pane()
         if self.iv.item!=None:
-            ind=self.item_to_view_index(self.iv.item)
-            self.center_view_offset(ind)
-        self.update_scrollbar()
-        self.update_required_thumbs()
+            ind=self.browser.item_to_view_index(self.iv.item)
+            self.browser.center_view_offset(ind)
+        self.browser.update_scrollbar()
+        self.browser.update_required_thumbs()
         self.browser.refresh_view()
         self.browser.grab_focus()
 
     def hide_image(self):
         self.iv.hide()
         self.iv.ImageNormal()
-        self.vbox.show()
-        self.hbox.show()
+        self.browser.show()
+        #self.hbox.show()
         self.toolbar.show()
         self.hpane_ext.show()
         self.info_bar.show()
-        self.vscroll.show()
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
         self.browser.grab_focus()
@@ -492,36 +513,27 @@ class MainFrame(gtk.VBox):
     def button_press_image_viewer(self,obj,event):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             if self.is_iv_fullscreen:
-                self.iv.freeze()
-                self.hide()
                 self.iv.ImageNormal()
-                self.vbox.show()
+                self.browser.show()
                 self.toolbar.show()
                 self.hpane_ext.show()
                 self.info_bar.show()
                 self.is_iv_fullscreen=False
-                self.show()
-                self.iv.thaw()
                 if self.is_fullscreen:
                     self.window.unfullscreen()
                     self.is_fullscreen=False
             else:
-                self.iv.freeze()
                 if not self.is_fullscreen:
                     self.window.fullscreen()
                     self.is_fullscreen=True
-                    time.sleep(0.1)
-                self.hide()
                 self.iv.ImageFullscreen()
-                self.vbox.hide()
+                self.browser.hide()
                 self.toolbar.hide()
                 self.hpane_ext.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True
-                self.show()
-                self.iv.thaw()
                 print self.window.get_size()
-            self.browser.grab_focus()
+            self.browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
     def popup_item(self,browser,ind,item):
         ##todo: neeed to create a custom signal to hook into
@@ -605,7 +617,7 @@ class MainFrame(gtk.VBox):
         if orient!=orient_backup:
             item.thumb=None
             self.tm.recreate_thumb(item)
-        self.redraw_view()
+        self.browser.redraw_view()
 
     def launch_item(self,widget,item):
         uri=gnomevfs.get_uri_from_local_path(item.filename)

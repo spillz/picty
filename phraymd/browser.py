@@ -70,11 +70,29 @@ class ImageBrowser(gtk.HBox):
     '''
     MODE_NORMAL=1
     MODE_TAG=2
+
+    #indices into the hover_cmds structure (overlay shortcuts in image browser)
+    HOVER_TEXT=0 #text description of the command
+    HOVER_CALLBACK=1 #callback when command is clicked
+    HOVER_SHOW_CALLBACK=2 #callback  to determine whether callback should be displayed
+    HOVER_ALWAYS_SHOW=3 #True if the overlay displays always, False only if mouse cursor is over the image
+    HOVER_ICON=4 #the icon for the command
+
+    ##todo: need signals to notify of collection changes, view changes
+    ##also want to submit all changes to items, view or collection through the worker thread
     __gsignals__={
         'activate-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
-        'context-click-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT))
+        'context-click-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
+        'view-changed':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()),
+        'view-rebuild-complete':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()),
+        'status-updated':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_FLOAT,gobject.TYPE_GSTRING)),
+        'tag-row-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),
+        'uris-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT))
         }
     def __init__(self,hover_cmds=()):
+        '''
+        init takes an optional
+        '''
         gtk.HBox.__init__(self)
         self.hover_cmds=hover_cmds
         self.configure_geometry()
@@ -175,7 +193,7 @@ class ImageBrowser(gtk.HBox):
 
 
     def update_status(self,progress,message):
-        ##todo: raise a custom signal
+        self.emit('status-updated',progress,message)
 #        self.status_bar.show()
 #        if 1.0>progress>=0.0:
 #            self.status_bar.set_fraction(progress)
@@ -187,9 +205,10 @@ class ImageBrowser(gtk.HBox):
         pass
 
     def key_press_signal(self,obj,event):
+        ##todo: perhaps return true for some of these to prevent further emission
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key
-                fileops.worker.delete(self.tm.view,self.update_status)
+                fileops.worker.delete(self.tm.view,self.update_status) ##todo: does this belong here and shouldn't it delete the selection?
             elif event.keyval==65362: #up
                 self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
             elif event.keyval==65364: #dn
@@ -211,16 +230,7 @@ class ImageBrowser(gtk.HBox):
                 self.redraw_view()
             elif event.keyval==65507: #control
                 self.redraw_view()
-##        return True
 
-    def resize_browser_pane(self):
-        w,h=self.hpane.window.get_size()
-        if self.hpane.get_position()<self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position():
-            w,h=self.hpane.window.get_size()
-            if w<=self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position():
-                self.hpane.set_position(w/2)
-            else:
-                self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad+self.hpane_ext.get_position())
 
 
 ##    def view_image(self,item,fullwindow=False):
@@ -283,11 +293,11 @@ class ImageBrowser(gtk.HBox):
         top+=offset/self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad)
         top+=self.geo_pad/4
         for i in range(len(self.hover_cmds)):
-            right=left+self.hover_cmds[i][1].get_width()
-            bottom=top+self.hover_cmds[i][1].get_height()
+            right=left+self.hover_cmds[i][self.HOVER_ICON].get_width()
+            bottom=top+self.hover_cmds[i][self.HOVER_ICON].get_height()
             if left<x<=right and top<y<=bottom:
                 return i
-            left+=self.hover_cmds[i][1].get_width()+self.geo_pad/4
+            left+=self.hover_cmds[i][self.HOVER_ICON].get_width()+self.geo_pad/4
         return -1
 
 
@@ -400,7 +410,6 @@ class ImageBrowser(gtk.HBox):
 
     def multi_select(self,ind_from,ind_to,select=True):
         '''select multiple items in a given array subscript range of the view'''
-        ##todo: handle tag mode?
         self.tm.lock.acquire()
         if ind_to>ind_from:
             for x in range(ind_from,ind_to+1):
@@ -419,7 +428,7 @@ class ImageBrowser(gtk.HBox):
                     self.tm.collection.numselected-=1
                 item.selected=select
         self.tm.lock.release()
-        self.update_info_bar()
+        self.emit('view-changed')
         self.redraw_view()
 
     def select_item(self,ind):
@@ -427,10 +436,7 @@ class ImageBrowser(gtk.HBox):
         whatever tags are checked in the tag pane'''
         if 0<=ind<len(self.tm.view):
             item=self.tm.view(ind)
-            if self.mode==self.MODE_TAG:
-                tags=self.tagframe.get_checked_tags()
-                imageinfo.toggle_tags(item,tags)
-            elif self.mode==self.MODE_NORMAL:
+            if self.mode==self.MODE_NORMAL:
                 if item.selected:
                     self.tm.collection.numselected-=1
                 else:
@@ -438,7 +444,7 @@ class ImageBrowser(gtk.HBox):
                 item.selected=not item.selected
             self.last_selected=item
             self.last_selected_ind=ind
-            self.update_info_bar()
+            self.emit('view-changed')
             self.redraw_view()
 
     def button_press(self,obj,event):
@@ -462,8 +468,10 @@ class ImageBrowser(gtk.HBox):
                     self.drop_item=item
                     cmd=self.get_hover_command(ind,event.x,event.y)
                     if cmd>=0:
+                        cmd=self.hover_cmds[cmd]
                         if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
-                            self.hover_cmds[cmd][0](None,self.pressed_item)
+                            if (cmd[self.HOVER_ALWAYS_SHOW] or self.hover_ind==ind) and cmd[self.HOVER_SHOW_CALLBACK](item,self.hover_ind==ind):
+                                cmd[self.HOVER_CALLBACK](None,self.pressed_item)
                     else:
                         if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                             ind=self.item_to_view_index(self.last_selected)
@@ -503,23 +511,20 @@ class ImageBrowser(gtk.HBox):
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''callback triggered to retrieve the selection_data payload
         (viewer is the destination of the drop)'''
+        ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
+        ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
+        ind=max(0,min(len(self.tm.view)-1,ind))
+        item=self.tm.view(ind)
         if selection_data.type=='tag-tree-row':
-            ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
-            ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
-            ind=max(0,min(len(self.tm.view)-1,ind))
-            item=self.tm.view(ind)
             data=selection_data.data
             paths=data.split('-')
-            tags=self.tagframe.get_tags(paths[0])
-            if not item.selected:
-                imageinfo.toggle_tags(item,tags)
-            else:
-                self.tm.keyword_edit(tags,True)
+            self.emit('tag-row-dropped',item,drag_context.get_source_widget(),paths[0]) ##todo: need to pass source widget in case there is more than one tag tree
             return
         uris=selection_data.get_uris()
         if uris: ##todo: do we  actually want to process dropped uris? don't forget to ignore drops from self
             for uri in uris:
                 print 'dropped uris',uris
+                self.emit('uris-dropped',item,uris)
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
         '''callback triggered to set the selection_data payload
@@ -570,25 +575,25 @@ class ImageBrowser(gtk.HBox):
 #        self.refresh_view()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
-    def update_info_bar(self):
-        '''refresh the info bar (status bar that displays number of images etc)'''
-        pass
-        ##todo: send a signal about collection updates
-        #self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+##    def update_info_bar(self):
+##        '''refresh the info bar (status bar that displays number of images etc)'''
+##        pass
+##        ##todo: send a signal about collection updates
+##        #self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
     def refresh_view(self):
         '''update geometry, scrollbars, redraw the thumbnail view'''
+        self.emit('view-changed')
         self.update_geometry()
         self.update_required_thumbs()
         self.update_scrollbar()
-        self.update_info_bar()
+#        self.update_info_bar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def post_build_view(self):
         '''callback function to receive notification from worker that
         view has finished rebuilding'''
-        pass
-##      send a custom signal
+        self.emit('view-rebuild-complete')
 #        self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def update_view(self):
@@ -782,21 +787,12 @@ class ImageBrowser(gtk.HBox):
                     l.set_markup('<b><big>'+a+'</big></b>\n'+b)
                     drawable.draw_layout(gc,x+self.geo_pad/4,y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4,l,white)
 #                    print imageinfo.text_descr(item)
-                l=len(self.hover_cmds)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
-##                show=[True for r in range(l)]
-##                if self.hover_ind!=i:
-##                    for q in (1,2,3,4,5,6):
-##                        show[q]=False
-#               todo: create a callback for each item to see if it should be shown
-##                if not item.meta_changed:
-##                    show[0]=False
-##                    show[1]=False
-                for j in range(l):
-                    if show[j]:
-                        drawable.draw_pixbuf(gc,self.hover_cmds[j][1],0,0,x+offx,y+offy)
-                    offx+=self.hover_cmds[j][1].get_width()+self.geo_pad/4
+                for cmd in self.hover_cmds:
+                    if (cmd[self.HOVER_ALWAYS_SHOW] or self.hover_ind==i) and cmd[self.HOVER_SHOW_CALLBACK](item,self.hover_ind==i):
+                        drawable.draw_pixbuf(gc,cmd[self.HOVER_ICON],0,0,x+offx,y+offy)
+                    offx+=cmd[self.HOVER_ICON].get_width()+self.geo_pad/4
             i+=1
             x+=self.geo_thumbwidth+self.geo_pad
             if x+self.geo_thumbwidth+self.geo_pad>=self.geo_width:
