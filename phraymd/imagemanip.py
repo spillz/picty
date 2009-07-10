@@ -26,7 +26,6 @@ import gtk
 import Image
 import ImageFile
 import exif
-import pyexiv2
 import datetime
 import bisect
 import settings
@@ -42,6 +41,25 @@ import time
 ##global ram cache for images and thumbs
 memimages=[]
 memthumbs=[]
+
+
+def load_metadata(item):
+    return exif.load_metadata(item)
+
+
+def save_metadata(item):
+    if exif.save_metadata(item):
+        update_thumb_date(item)
+        return True
+    return False
+
+
+def save_metadata_key(item,key,value):
+    if exif.save_metadata_key(item,key,value):
+        update_thumb_date(item)
+        return True
+    return False
+
 
 
 def scale_pixbuf(pixbuf,size):
@@ -228,7 +246,7 @@ def size_image(item,size,antialias=False,zoom='fit'):
             return True
     else:
         (iw,ih)=image.size
-        w=zoom*iw ##otrt is it divide
+        w=zoom*iw ##todo: or is it divide??
         h=zoom*ih
 
     t=time.time()
@@ -244,48 +262,6 @@ def size_image(item,size,antialias=False,zoom='fit'):
     if qimage:
         item.qview=image_to_pixbuf(qimage)
     return False
-
-
-def load_metadata(item):
-    if item.meta==False:
-        return
-    try:
-        rawmeta = pyexiv2.Image(item.filename)
-        rawmeta.readMetadata()
-        item.meta=dict()
-        exif.get_exiv2_meta(item.meta,rawmeta)
-    except:
-        print 'Error reading metadata for',item.filename
-        item.meta=False
-    item.mark_meta_saved()
-    return True
-
-
-def save_metadata(item):
-    if item.meta==False:
-        return False
-    try:
-        rawmeta = pyexiv2.Image(item.filename)
-        rawmeta.readMetadata()
-        exif.set_exiv2_meta(item.meta,rawmeta)
-        rawmeta.writeMetadata()
-        update_thumb_date(item)
-        item.mark_meta_saved()
-    except:
-        print 'Error writing metadata for',item.filename
-        return False
-    return True
-
-
-def save_metadata_key(item,key,value):
-    try:
-        rawmeta = pyexiv2.Image(item.filename)
-        rawmeta.readMetadata()
-        rawmeta[key]=value
-        rawmeta.writeMetadata()
-        update_thumb_date(item)
-    except:
-        print 'Error writing metadata for',item.filename
 
 
 def has_thumb(item):

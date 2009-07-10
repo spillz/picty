@@ -23,7 +23,7 @@ License:
 
 
 import sys
-sys.path.insert(0,'/usr/share') ##private module location on installed version
+sys.path.insert(0,'/usr/share/phraymd') ##private module location on installed version -- todo: call the library phraymdlib
 
 try:
     import gobject

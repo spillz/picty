@@ -31,22 +31,12 @@ import time
 import datetime
 import bisect
 
-import sys
-sys.path.insert(0,'/usr/share') ##private module location on installed version
-
-##non-standard libs
-try:
-    import gobject
-    import gnomevfs ##todo: replace with gio
-    import gtk
-    gobject.threads_init()
-    gtk.gdk.threads_init()
-    import gnome.ui
-    import pyexiv2  ## not actually used in this module, but better to recognize the problem early
-except:
-    print 'ERROR: missing modules gobject, gtk, gnome.ui, gnomevfs and pyexiv2'
-    import sys
-    sys.exit()
+##gtk libs
+import gobject
+import gnomevfs ##todo: replace with gio
+import gtk
+gobject.threads_init()
+gtk.gdk.threads_init()
 
 ## local imports
 import settings
@@ -405,11 +395,9 @@ class MainFrame(gtk.VBox):
 
 
     def key_press_signal(self,obj,event):
-        ##todo: only some of these belong in the main frame, others in the browser
-        print 'key press main frame'
         if event.type==gtk.gdk.KEY_PRESS:
-            if event.keyval==65535: #del key
-                fileops.worker.delete(self.tm.view,self.update_status) ##todo: should apply to selection
+            if event.keyval==65535: #del key, deletes selection
+                fileops.worker.delete(self.tm.view,self.update_status)
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)

@@ -7,11 +7,55 @@ representation
 '''
 
 import pyexiv2
-##todo: write handlers to convert metadata to strings and (for writable metadata) strings to metadata
-##todo: merge Iptc.Application2.Keywords with Xmp.dc.subject
+
+##todo: reimplement for xmp support
+##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
+
+
+
+def load_metadata(item):
+    if item.meta==False:
+        return
+    try:
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        item.meta=dict()
+        get_exiv2_meta(item.meta,rawmeta)
+    except:
+        print 'Error reading metadata for',item.filename
+        item.meta=False
+    item.mark_meta_saved()
+    return True
+
+
+def save_metadata(item):
+    if item.meta==False:
+        return False
+    try:
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        set_exiv2_meta(item.meta,rawmeta)
+        rawmeta.writeMetadata()
+        item.mark_meta_saved()
+    except:
+        print 'Error writing metadata for',item.filename
+        return False
+    return True
+
+
+def save_metadata_key(item,key,value):
+    try:
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
+        rawmeta[key]=value
+        rawmeta.writeMetadata()
+    except:
+        print 'Error writing metadata for',item.filename
+
+
+
 
 ##The conv functions take a key and return a string representation of the metadata OR if value!=None convert the string value to a set of (metadata_key,value) tag pairs
-
 
 def conv_date_taken(metaobject,keys,value=None):
     if value!=None:

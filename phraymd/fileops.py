@@ -19,11 +19,13 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-
+##standard imports
 import os
 import os.path
 import threading
 import gobject
+
+##phraymd imports
 import settings
 
 ## contains a list of errors

@@ -6,6 +6,8 @@ sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
 import os
 import gtk
 import math
+
+##phraymd imports
 import imageinfo
 import settings
 

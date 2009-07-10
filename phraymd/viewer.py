@@ -25,8 +25,6 @@ import threading
 import time
 import datetime
 
-import sys
-sys.path.insert(0,'/usr/share') ##private module location on installed version
 
 import gobject
 import gnomevfs

@@ -21,17 +21,17 @@ License:
 
 ##this file contains the basic data structures for images, collections, views and tags
 
+##standard imports
 import bisect
 import threading
 import datetime
 import os.path
-import simple_parser as sp
-import exif
-
 import re
 import datetime
 
-import gobject
+##phraymd imports
+import simple_parser as sp
+import exif
 
 class TagCloud():
     def __init__(self):

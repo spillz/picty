@@ -35,19 +35,12 @@ import gobject
 import sys
 sys.path.insert(0,'/usr/share') ##private module location on installed version
 
-##non-standard libs
-try:
-    import gobject
-    import gnomevfs ##todo: replace with gio
-    import gtk
-    gobject.threads_init()
-    gtk.gdk.threads_init()
-    import gnome.ui
-    import pyexiv2  ## not actually used in this module, but better to recognize the problem early
-except:
-    print 'ERROR: missing modules gobject, gtk, gnome.ui, gnomevfs and pyexiv2'
-    import sys
-    sys.exit()
+##gtk imports and init
+import gobject
+import gnomevfs ##todo: replace with gio
+import gtk
+gobject.threads_init()
+gtk.gdk.threads_init()
 
 ## local imports
 import settings
@@ -58,9 +51,6 @@ import imagemanip
 import imageinfo
 import fileops
 import exif
-import register_icons
-import tagui
-import mapui
 
 
 class ImageBrowser(gtk.HBox):
@@ -194,14 +184,6 @@ class ImageBrowser(gtk.HBox):
 
     def update_status(self,progress,message):
         self.emit('status-updated',progress,message)
-#        self.status_bar.show()
-#        if 1.0>progress>=0.0:
-#            self.status_bar.set_fraction(progress)
-#        if progress<0.0:
-#            self.status_bar.pulse()
-#        if progress>=1.0:
-#            self.status_bar.hide()
-#        self.status_bar.set_text(message)
         pass
 
     def key_press_signal(self,obj,event):
@@ -232,59 +214,6 @@ class ImageBrowser(gtk.HBox):
                 self.redraw_view()
 
 
-
-##    def view_image(self,item,fullwindow=False):
-##        self.iv.show()
-##        self.iv.SetItem(item)
-##        self.is_iv_showing=True
-##        self.update_geometry(True)
-##        self.resize_browser_pane()
-##        if self.focal_item!=None:
-##            ind=self.item_to_view_index(self.focal_item)
-##            self.center_view_offset(ind)
-##        self.update_scrollbar()
-##        self.update_required_thumbs()
-##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-##        self.imarea.grab_focus()
-##
-##    def hide_image(self):
-##        self.iv.hide()
-##        self.iv.ImageNormal()
-##        self.vbox.show()
-##        self.hbox.show()
-##        self.toolbar.show()
-##        self.hpane_ext.show()
-##        self.info_bar.show()
-##        self.vscroll.show()
-##        self.is_iv_fullscreen=False
-##        self.is_iv_showing=False
-##        self.imarea.grab_focus()
-##
-##    def button_press_image_viewer(self,obj,event):
-##        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-##            if self.is_iv_fullscreen:
-##                self.iv.ImageNormal()
-##                self.vbox.show()
-##                self.toolbar.show()
-##                self.hpane_ext.show()
-##                self.info_bar.show()
-##                self.is_iv_fullscreen=False
-##                if self.is_fullscreen:
-##                    self.window.unfullscreen()
-##                    self.is_fullscreen=False
-##            else:
-##                if not self.is_fullscreen:
-##                    self.window.fullscreen()
-##                    self.is_fullscreen=True
-##                    time.sleep(0.1)
-##                self.iv.ImageFullscreen()
-##                self.vbox.hide()
-##                self.toolbar.hide()
-##                self.hpane_ext.hide()
-##                self.info_bar.hide()
-##                self.is_iv_fullscreen=True
-##            self.imarea.grab_focus()
-
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
         left=(offset%self.geo_horiz_count)*(self.geo_thumbwidth+self.geo_pad)
@@ -299,107 +228,6 @@ class ImageBrowser(gtk.HBox):
                 return i
             left+=self.hover_cmds[i][self.HOVER_ICON].get_width()+self.geo_pad/4
         return -1
-
-
-    def edit_custom_mime_apps(self,widget,item):
-        pass
-
-    def item_make_thumb(self,widget,item):
-        self.tm.recreate_thumb(item)
-
-    def item_reload_metadata(self,widget,item):
-        self.tm.reload_metadata(item)
-
-    def mime_open(self,widget,app_cmd,item):
-        print 'mime_open',app_cmd,item
-        subprocess.Popen(app_cmd+' "'+item.filename+'"',shell=True)
-
-    def custom_mime_open(self,widget,app_cmd_template,item):
-        from string import Template
-        fullpath=item.filename
-        directory=os.path.split(item.filename)[0]
-        fullname=os.path.split(item.filename)[1]
-        name=os.path.splitext(fullname)[0]
-        ext=os.path.splitext(fullname)[1]
-        app_cmd=Template(app_cmd_template).substitute(
-            {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
-        print 'mime_open',app_cmd,item
-        subprocess.Popen(app_cmd,shell=True)
-
-    def save_item(self,widget,item):
-        if item.meta_changed:
-            imagemanip.save_metadata(item)
-
-    def revert_item(self,widget,item):
-        if not item.meta_changed:
-            return
-        try:
-            orient=item.meta['Orientation']
-        except:
-            orient=None
-        try:
-            orient_backup=item.meta_backup['Orientation']
-        except:
-            orient_backup=None
-        item.meta_revert()
-        if orient!=orient_backup:
-            item.thumb=None
-            self.tm.recreate_thumb(item)
-        self.redraw_view()
-
-    def launch_item(self,widget,item):
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mime=gnomevfs.get_mime_type(uri)
-        cmd=None
-        if mime in settings.custom_launchers:
-            for app in settings.custom_launchers[mime]:
-                from string import Template
-                fullpath=item.filename
-                directory=os.path.split(item.filename)[0]
-                fullname=os.path.split(item.filename)[1]
-                name=os.path.splitext(fullname)[0]
-                ext=os.path.splitext(fullname)[1]
-                cmd=Template(app[1]).substitute(
-                    {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
-                break
-        if not cmd:
-            for app in gnomevfs.mime_get_all_applications(mime):
-                cmd=app[2]+' "%s"'%(item.filename,)
-        if cmd:
-            print 'mime_open',cmd
-            subprocess.Popen(cmd,shell=True)
-        else:
-            print 'no known command for ',item.filename,' mimetype',mime
-
-    def edit_item(self,widget,item):
-        self.dlg=metadatadialogs.MetaDialog(item)
-        self.dlg.show()
-
-    def rotate_item_left(self,widget,item):
-        ##TODO: put this task in the background thread (using the recreate thumb job)
-        imagemanip.rotate_left(item)
-        self.update_required_thumbs()
-        if item==self.focal_item:
-            self.view_image(item)
-
-    def rotate_item_right(self,widget,item):
-        ##TODO: put this task in the background thread (using the recreate thumb job)
-        imagemanip.rotate_right(item)
-        self.update_required_thumbs()
-        if item==self.focal_item:
-            self.view_image(item)
-
-    def delete_item(self,widget,item):
-        fileops.worker.delete([item],None,False)
-        ind=self.tm.view.find_item(item)
-        if ind>=0:
-            self.tm.view.del_item(item)
-            if self.is_iv_showing:
-                ind=min(ind,len(self.tm.view)-1)
-                self.view_image(self.tm.view(ind))
-        elif self.is_iv_showing:
-            self.hide_image()
-        self.refresh_view()
 
     def item_to_view_index(self,item):
         return self.tm.view.find_item(item)

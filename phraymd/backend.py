@@ -21,6 +21,7 @@ License:
 
 maemo=False
 
+##standard imports
 import cPickle
 import gobject
 import gnomevfs
@@ -33,17 +34,14 @@ import time
 import exif
 import datetime
 import bisect
+
+##phraymd imports
 import settings
 import imageinfo
 import imagemanip
 import monitor
 
-try:
-    import gnome.ui
-    import gnomevfs
-    import pyexiv2
-except:
-    maemo=True
+import gnomevfs
 
 def del_view_item(view,browser,item):
     browser.lock.acquire()
