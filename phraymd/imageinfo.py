@@ -89,7 +89,7 @@ class TagCloud():
 
 
 class Item(list):
-    '''An item is a class containing an image, pixbuf representations and related metadata'''
+    '''An item is a class describing an image, including filename, pixbuf representations and related metadata'''
     def __init__(self,filename,mtime):
         filename=os.path.normcase(filename) ##todo: remove this - doesn't do anything and might break stuff in future
         list.__init__(self,[filename])

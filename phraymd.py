@@ -47,7 +47,7 @@ class MainWindow:
     def __init__(self):
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_default_size(680, 400)
-        self.window.set_title("PHRAYMD Photo Manager")
+        self.window.set_title("phraymd")
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         sett=gtk.settings_get_default()
