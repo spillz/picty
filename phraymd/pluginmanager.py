@@ -21,14 +21,14 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+
 import pluginbase
 import settings
 
 ##todo: need try/except blocks around most of this stuff
+##todo: have to make the pluginmanager methods threadsafe (plugins member could change in thread while being accessed in another)
 
-'''import user modules containing plugins'''
-from plugins import *
-from userplugins import * ##todo: add user plugin dir to sys.path
+
 
 class PluginManager():
     '''
@@ -38,9 +38,15 @@ class PluginManager():
     def __init__(self):
         self.plugins=dict()
     def instantiate_all_plugins(self):
-        for plugin in Plugin.__subclasses__():
-            self.plugins[plugin.name]=[plugin(),plugin] if settings.plugin_enabled[plugin.name] else [None,plugin]
+        ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
+        print 'Found plugins',pluginbase.Plugin.__subclasses__()
+        for plugin in pluginbase.Plugin.__subclasses__():
+#            try:
+                self.plugins[plugin.name]=[plugin(),plugin] if plugin.name not in settings.plugins_disabled else [None,plugin]
+#            except:
+#                print 'Error initializing plugin',plugin.name
     def enable_plugin(self,name):
+        ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         self.plugins[name][0]=self.plugins[name][1]()
     def disable_plugin(self,name):
         try:
@@ -48,8 +54,19 @@ class PluginManager():
             self.plugins[name][0]=None
         except:
             pass
-    def plugin_callback(interface_name,*args):
+    def callback(self,interface_name,*args):
+        '''
+        for each plugin in self.plugins that defines the interface, runs the callback.
+        Used in the main app for interfaces that always return None
+        '''
         for name,plugin in self.plugins.iteritems():
-            getattr(plugin[0],callback_name)(*args)
+            getattr(plugin[0],interface_name)(*args)
+    def callback_iter(self,interface_name,*args):
+        '''
+        for each plugin in self.plugins that defines the interface, runs the callback
+        and yields the result. Used in the main app for interfaces that return useful results
+        '''
+        for name,plugin in self.plugins.iteritems():
+            yield getattr(plugin[0],callback_name)(*args)
 
-
+mgr=PluginManager()  ##instantiate the manager (there can only be one)

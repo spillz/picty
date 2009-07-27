@@ -8,9 +8,9 @@ import gtk
 import math
 
 ##phraymd imports
-import imageinfo
-import settings
-
+from phraymd import imageinfo
+from phraymd import settings
+from phraymd import pluginbase
 
 try:
     import osmgpsmap
@@ -30,6 +30,26 @@ except:
 
 
 gtk.gdk.threads_init()
+
+class MapPlugin(pluginbase.Plugin):
+    name='MapSidebar'
+    display_name='Map Sidebar'
+    api_version='0.1.0'
+    def __init__(self):
+        print 'LOADING MAP PLUGIN!!'
+    def app_ready(self,mainframe):
+        self.mainframe=mainframe
+        self.worker=mainframe.tm
+        self.mapframe=MapFrame(self.worker)
+        self.mapframe.show_all()
+        self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Maps"))
+        self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+
+    def view_rebuild_complete(self,browser):
+        self.mapframe.update_map_items()
+    ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
+
+
 
 class MapFrame(gtk.VBox):
     def __init__(self,worker):

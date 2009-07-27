@@ -19,27 +19,117 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+
+import sys
+sys.path.insert(0,'/home/damien/src/image-viewer')
+
+import sys
+print 'sidebar',sys.path
+
+import threading
+import gobject
 import gtk
-import imageinfo
-import pluginbase
+from phraymd import pluginbase
+from phraymd import imageinfo
 
 print 'sidebar imported!!!!!!'
+
+
+class TagCloud():
+    def __init__(self):
+        self.tags=dict()
+    def __repr__(self):
+        return self.tags.__repr__()
+    def copy(self):
+        c=TagCloud()
+        c.tags=self.tags.copy()
+        return c
+    def empty(self):
+        self.tags=dict()
+    def tag_add(self,keywords):
+        for k in keywords:
+            if k in self.tags:
+                self.tags[k]+=1
+            else:
+                self.tags[k]=1
+    def tag_remove(self,keywords):
+        for k in keywords:
+            if k in self.tags:
+                self.tags[k]-=1
+            else:
+                print 'warning: removing item',item,'with keyword',k,'not in tag cloud'
+    def add(self,item):
+        if item.meta==None or item.meta==False:
+            return False
+        try:
+            self.tag_add(item.meta['Keywords'])
+        except:
+            return False
+        return True
+    def remove(self,item):
+        if item.meta==None or item.meta==False:
+            return False
+        try:
+            self.tag_remove(item.meta['Keywords'])
+        except:
+            return False
+        return True
+    def update(self,item):
+        try:
+            self.tag_remove(item.meta_backup['Keywords'])
+        except:
+            pass
+        try:
+            self.tag_add(item.meta['Keywords'])
+        except:
+            pass
+    def revert(self,item):
+        try:
+            self.tag_remove(item.meta['Keywords'])
+        except:
+            pass
+        try:
+            self.tag_add(item.meta_backup['Keywords'])
+        except:
+            pass
+
 
 class TagSidebarPlugin(pluginbase.Plugin):
     name='TagSidebar'
     display_name='Tag Sidebar'
     api_version='0.1.0'
-    def __init__(self,mainframe):
+    def __init__(self):
         print 'LOADING SIDEBAR!!'
+    def app_ready(self,mainframe):
         self.mainframe=mainframe
-        self.worker=worker
-        self.user_tag_info=dict()
-        self.tagframe=TagFrame(mainframe,worker,self.user_tag_info)
-        self.tagframe.show()
-        self.mainframe.sidebar.append_page(self.tagframe)
+        self.worker=mainframe.tm
+        self.user_tag_info=[]
+        self.tagframe=TagFrame(self.mainframe,self.user_tag_info)
+        self.tagframe.show_all()
+        self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
         self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
 
+    def t_collection_item_added(self,item):
+        '''item was added to the collection'''
+        self.tagframe.tag_cloud.add(item)
+    def t_collection_item_removed(self,item):
+        '''item was removed from the collection'''
+        self.tagframe.tag_cloud.remove(item)
+    def t_collection_item_metadata_changed(self,item): ##todo: should get before/after metadata
+        '''item metadata has changed'''
+        self.tagframe.tag_cloud.update(item) ##todo: this is broken, update relies on backup metadata being the pre-changed data
+        i=self.worker.view.find_item(item)
+        if i>0:
+            self.user_tag_info_view.update(item)
+    def t_collection_item_added_to_view(self,item):
+        '''item in collection was added to view'''
+        self.tagframe.tag_cloud_view.add(item)
+    def t_collection_item_removed_from_view(self,item):
+        '''item in collection was removed from view'''
+        self.tagframe.tag_cloud_view.remove(item)
+    def t_collection_modify_complete_hint(self):
+        gobject.idle_add(self.tagframe.start_refresh_timer)
     def tag_dropped_in_browser(self,browser,item,tag_widget,path):
         print 'dropped',tag_widget,path
         tags=self.tagframe.get_tags(path)
@@ -47,9 +137,16 @@ class TagSidebarPlugin(pluginbase.Plugin):
             imageinfo.toggle_tags(item,tags)
         else:
             self.worker.keyword_edit(tags,True)
-
+    def t_collection_loaded(self):
+        '''collection has loaded into main frame'''
+        for item in self.worker.collection:
+            self.tagframe.tag_cloud.add(item)
+        gobject.idle_add(self.tagframe.start_refresh_timer)
+    def t_view_emptied(self):
+        '''the view has been flushed'''
+        self.tagframe.tag_cloud_view.empty()
     def view_rebuild_complete(self,browser):
-        self.tagframe.refresh(self.tm.view.tag_cloud)
+        self.tagframe.refresh()
 ##
 
 
@@ -81,11 +178,14 @@ class TagFrame(gtk.VBox):
     M_DISP=3 #display text
     M_CHECK=4 #state of check box
     M_PIXPATH=5 #path to pixbuf
-    def __init__(self,worker,browser,user_tag_info):
+    def __init__(self,mainframe,user_tag_info):
         gtk.VBox.__init__(self)
         self.user_tags={}
-        self.worker=worker
-        self.browser=browser
+        self.tag_cloud=TagCloud() ##these are updated on the worker thread, be careful about accessing on the main thread (should use locks)
+        self.tag_cloud_view=TagCloud()
+        self.mainframe=mainframe
+        self.worker=mainframe.tm
+        self.browser=mainframe.browser
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
         self.tv=gtk.TreeView(self.model)
 #        self.tv.set_reorderable(True)
@@ -131,6 +231,13 @@ class TagFrame(gtk.VBox):
         self.model.append(None,(0,'favorites',None,'<b>Favorites</b>',False,''))
         self.model.append(None,(1,'other',None,'<b>Other</b>',False,''))
         self.set_user_tags(user_tag_info)
+        self.timer=None
+
+    def start_refresh_timer(self):
+        if self.timer!=None:
+            self.timer.cancel()
+        self.timer=threading.Timer(1,self.refresh)
+        self.timer.start()
 
     def context_menu(self,widget,event):
         if event.button==3:
@@ -349,7 +456,7 @@ class TagFrame(gtk.VBox):
                             self.move_row_and_children(it,drop_iter,pos)
             elif selection_data.type=='image-filename':
                 path=data
-                import imageinfo
+                from phraymd import imageinfo
                 item=imageinfo.Item(path,0)
                 ind=self.worker.collection.find(item)
                 if ind<0:
@@ -477,8 +584,8 @@ class TagFrame(gtk.VBox):
             if row[self.M_TYPE]==3:
                 text+='tag="%s" '%row[self.M_KEY]
         if text:
-            self.browser.filter_entry.set_text('view:'+text.strip())
-            self.browser.filter_entry.activate()
+            self.mainframe.filter_entry.set_text('view:'+text.strip())
+            self.mainframe.filter_entry.activate()
 
     def check_row(self,path,state):
         self.model[path][self.M_CHECK]=state
@@ -494,7 +601,9 @@ class TagFrame(gtk.VBox):
         state = not toggle_widget.get_active()
         self.check_row(path,state)
 
-    def refresh(self,tag_cloud):
+    def refresh(self):
+        tag_cloud=self.tag_cloud.copy() ##todo: should be using a lock here
+        tag_cloud_view=self.tag_cloud_view.copy()
         path=self.model.get_iter((1,))
         self.model.remove(path)
         self.model.append(None,(1,'other',None,'<b>Other</b>',False,''))
@@ -513,10 +622,16 @@ class TagFrame(gtk.VBox):
             if k in self.user_tags:
                 path=self.user_tags[k].get_path()
                 if path:
-                    self.model[path][self.M_DISP]=k+' (%i)'%(tag_cloud.tags[k])
+                    try:
+                        self.model[path][self.M_DISP]=k+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k])
+                    except:
+                        self.model[path][self.M_DISP]=k+' (0/%i)'%(tag_cloud.tags[k],)
             else:
                 path=self.model.get_iter((1,))
-                self.model.append(path,(3,k,None,k+' (%i)'%(tag_cloud.tags[k],),False,''))
+                try:
+                    self.model.append(path,(3,k,None,k+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k],),False,''))
+                except:
+                    self.model.append(path,(3,k,None,k+' (0/%i)'%(tag_cloud.tags[k],),False,''))
         self.tv.expand_row((0,),False)
         self.tv.expand_row((1,),False)
 

@@ -47,10 +47,9 @@ import settings
 import viewer
 import backend
 import metadatadialogs
-import imagemanip
+import pluginmanager
 import imageinfo
-import fileops
-import exif
+
 
 
 class ImageBrowser(gtk.HBox):
@@ -81,7 +80,7 @@ class ImageBrowser(gtk.HBox):
         }
     def __init__(self,hover_cmds=()):
         '''
-        init takes an optional
+        init takes an optional list or tuple describing onmouseover shortcuts buttons
         '''
         gtk.HBox.__init__(self)
         self.hover_cmds=hover_cmds
@@ -189,9 +188,7 @@ class ImageBrowser(gtk.HBox):
     def key_press_signal(self,obj,event):
         ##todo: perhaps return true for some of these to prevent further emission
         if event.type==gtk.gdk.KEY_PRESS:
-            if event.keyval==65535: #del key
-                fileops.worker.delete(self.tm.view,self.update_status) ##todo: does this belong here and shouldn't it delete the selection?
-            elif event.keyval==65362: #up
+            if event.keyval==65362: #up
                 self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
             elif event.keyval==65364: #dn
                 self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
@@ -614,7 +611,6 @@ class ImageBrowser(gtk.HBox):
                     l=self.imarea.create_pango_layout('')
                     l.set_markup('<b><big>'+a+'</big></b>\n'+b)
                     drawable.draw_layout(gc,x+self.geo_pad/4,y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4,l,white)
-#                    print imageinfo.text_descr(item)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
                 for cmd in self.hover_cmds:

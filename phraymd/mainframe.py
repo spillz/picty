@@ -43,38 +43,48 @@ import settings
 import viewer
 import backend
 import metadatadialogs
+import register_icons
+import browser
+import pluginmanager
+import pluginimporter
+
+##todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
 import imageinfo
 import fileops
-import exif
-import register_icons
-import tagui
-import mapui
-import browser
+
 
 class MainFrame(gtk.VBox):
     '''
-    this is the main box containing all of the gui widgets
+    this is the main widget box containing all of the gui widgets
     '''
     def __init__(self):
         gtk.VBox.__init__(self)
         self.lock=threading.Lock()
 
+        ##plugin-todo: instantiate plugins
+        self.plugmgr=pluginmanager.mgr
+        self.plugmgr.instantiate_all_plugins()
+
+        ##todo: register the right click menu options (a tuple)
+        ##todo: this has to be registered after instantiation of browser.
         def show_on_hover(item,hover):
             return True
         self.hover_cmds=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)),
-                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU)),
-                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU)),
-                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU)),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU)),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU)),
-                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU))
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU),'Main'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU),'Main'),
+                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU),'Main')
                         ]
+        self.plugmgr.callback('browser_register_shortcut',self.hover_cmds)
 
         self.browser=browser.ImageBrowser(self.hover_cmds)
         self.tm=self.browser.tm
+
         self.neededitem=None
         self.iv=viewer.ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
@@ -84,9 +94,8 @@ class MainFrame(gtk.VBox):
         self.browser.connect("activate-item",self.activate_item)
         self.browser.connect("context-click-item",self.popup_item)
         self.browser.connect("status-updated",self.update_status)
-        self.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.browser.connect("view-changed",self.view_changed)
-        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+##        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
 
         self.browser.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.browser.add_events(gtk.gdk.KEY_RELEASE_MASK)
@@ -95,7 +104,6 @@ class MainFrame(gtk.VBox):
 
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
-
 
         self.sort_order=gtk.combo_box_new_text()
         i=0
@@ -137,14 +145,9 @@ class MainFrame(gtk.VBox):
 
         self.selection_menu.show()
 
-        self.tag_menu_button=gtk.ToggleButton('_Tags')
-        self.tag_menu_button.connect("clicked",self.activate_tag_frame)
-        self.tag_menu_button.show()
-
-        self.map_menu_button=gtk.ToggleButton('_Map')
-        self.map_menu_button.connect("clicked",self.activate_map_frame)
-        self.map_menu_button.show()
-
+        self.sidebar_menu_button=gtk.ToggleButton('Side_Bar')
+        self.sidebar_menu_button.connect("clicked",self.activate_sidebar)
+        self.sidebar_menu_button.show()
 
         self.toolbar=gtk.Toolbar()
         self.toolbar.append_item("Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)", None,
@@ -164,14 +167,9 @@ class MainFrame(gtk.VBox):
             None, None)
         self.toolbar.append_item("Clear Filter", "Clear the filter and reset the view to the entire collection", None,
             gtk.ToolButton(gtk.STOCK_CLEAR), self.clear_filter, user_data=None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.tag_menu_button, None,"Toggle the tag panel", None,
-            None, None, None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.map_menu_button, None,"Toggle the map panel", None,
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sidebar_menu_button, None,"Toggle the Sidebar", None,
             None, None, None)
         self.toolbar.show()
-
-        self.tagframe=tagui.TagFrame(self.tm,self,settings.user_tag_info)
-        self.mapframe=mapui.MapFrame(self.tm)
 
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
@@ -180,13 +178,9 @@ class MainFrame(gtk.VBox):
 
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
-        self.hpane_ext2=gtk.HPaned()
+        self.sidebar=gtk.Notebook()
 
-        self.hpane_ext2.add1(self.tagframe)
-        self.hpane_ext2.add2(self.mapframe)
-        self.hpane_ext2.show()
-
-        self.hpane_ext.add1(self.hpane_ext2)
+        self.hpane_ext.add1(self.sidebar)
         self.hpane_ext.add2(self.browser)
         self.hpane_ext.show()
         self.hpane.add1(self.hpane_ext)
@@ -200,8 +194,8 @@ class MainFrame(gtk.VBox):
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
+        self.plugmgr.callback('app_ready',self)
 
-        ##todo: register the right click menu options (a tuple)
 
 
     def activate_item(self,browser,ind,item):
@@ -210,38 +204,13 @@ class MainFrame(gtk.VBox):
 
     def destroy(self,event):
         self.tm.quit()
-        settings.user_tag_info=self.tagframe.get_user_tags()
-        settings.save()
         return False
 
-    def activate_tag_frame(self,widget):
+    def activate_sidebar(self,widget):
         if widget.get_active():
-#            if self.is_iv_showing:
-#                self.iv.hide()
-            self.tagframe.show_all()
-            self.hpane_ext2.show()
-#            self.resize_browser_pane()
-#            if self.is_iv_showing:
-#                self.iv.show()
+            self.sidebar.show()
         else:
-            self.tagframe.hide()
-            if not self.map_menu_button.get_active():
-                self.hpane_ext2.hide()
-        self.browser.grab_focus()
-
-    def activate_map_frame(self,widget):
-        if widget.get_active():
-            if self.is_iv_showing:
-                self.iv.hide()
-            self.mapframe.show_all()
-            self.hpane_ext2.show()
-#            self.resize_browser_pane()
-#            if self.is_iv_showing:
-#                self.iv.show()
-        else:
-            self.mapframe.hide()
-            if not self.tag_menu_button.get_active():
-                self.hpane_ext2.hide()
+            self.sidebar.hide()
         self.browser.grab_focus()
 
     def selection_popup(self,widget):
@@ -290,9 +259,6 @@ class MainFrame(gtk.VBox):
     def view_changed(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
         self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
-
-    def view_rebuild_complete(self,browser):
-        self.tagframe.refresh(self.tm.view.tag_cloud)
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -384,15 +350,6 @@ class MainFrame(gtk.VBox):
         if progress>=1.0:
             self.status_bar.hide()
         self.status_bar.set_text(message)
-
-    def tag_dropped_in_browser(self,browser,item,tag_widget,path):
-        print 'dropped',tag_widget,path
-        tags=self.tagframe.get_tags(path)
-        if not item.selected:
-            imageinfo.toggle_tags(item,tags)
-        else:
-            self.tm.keyword_edit(tags,True)
-
 
     def key_press_signal(self,obj,event):
         if event.type==gtk.gdk.KEY_PRESS:

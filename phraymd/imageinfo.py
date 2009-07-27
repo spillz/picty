@@ -30,62 +30,9 @@ import re
 import datetime
 
 ##phraymd imports
+import pluginmanager
 import simple_parser as sp
 import exif
-
-class TagCloud():
-    def __init__(self):
-        self.tags=dict()
-    def __repr__(self):
-        return self.tags.__repr__()
-    def empty(self):
-        self.tags=dict()
-    def tag_add(self,keywords):
-        for k in keywords:
-            if k in self.tags:
-                self.tags[k]+=1
-            else:
-                self.tags[k]=1
-    def tag_remove(self,keywords):
-        for k in keywords:
-            if k in self.tags:
-                self.tags[k]-=1
-            else:
-                print 'warning: removing item',item,'with keyword',k,'not in tag cloud'
-    def add(self,item):
-        if item.meta==None or item.meta==False:
-            return False
-        try:
-            self.tag_add(item.meta['Keywords'])
-        except:
-            return False
-        return True
-    def remove(self,item):
-        if item.meta==None or item.meta==False:
-            return False
-        try:
-            self.tag_remove(item.meta['Keywords'])
-        except:
-            return False
-        return True
-    def update(self,item):
-        try:
-            self.tag_remove(item.meta_backup['Keywords'])
-        except:
-            pass
-        try:
-            self.tag_add(item.meta['Keywords'])
-        except:
-            pass
-    def revert(self,item):
-        try:
-            self.tag_remove(item.meta['Keywords'])
-        except:
-            pass
-        try:
-            self.tag_add(item.meta_backup['Keywords'])
-        except:
-            pass
 
 
 class Item(list):
@@ -128,6 +75,7 @@ class Item(list):
             del self.meta[key]
         else:
             self.meta[key]=value
+        pluginmanager.mgr.callback('t_collection_metadata_changed',self)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False
@@ -137,6 +85,7 @@ class Item(list):
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
         self.meta=meta
+        pluginmanager.mgr.callback('t_collection_metadata_changed',self)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False
@@ -276,10 +225,10 @@ class Collection(list):
         for item in items:
             self.add(item)
             self.numselected+=item.selected
-##        self.tag_cloud=TagCloud()
     def add(self,item):
         self.numselected+=item.selected
         bisect.insort(self,item)
+        pluginmanager.mgr.callback('t_collection_item_added',item)
     def find(self,item):
         i=bisect.bisect_left(self,item)
         if i>=len(self) or i<0:
@@ -291,7 +240,9 @@ class Collection(list):
         i=self.find(item)
         if i>=0:
             self.numselected-=item.selected
-            return self.pop(i)
+            self.pop(i)
+            pluginmanager.mgr.callback('t_collection_item_removed',item)
+            return item
         return None
     def __call__(self,ind):
         return self[ind]
@@ -725,7 +676,6 @@ class Index(list):
             self.add(key_cb(item),item)
         self.key_cb=key_cb
         self.filter_tree=None
-        self.tag_cloud=TagCloud()
 ##        self.filters=[(keyword_filter,('in','tom'))] #tests out the filtering mechanism
         self.reverse=False
     def copy(self):
@@ -752,7 +702,7 @@ class Index(list):
             raise KeyError
     def add_item(self,item):
         if self.add(self.key_cb(item),item):
-            self.tag_cloud.add(item)
+            pluginmanager.mgr.callback('t_collection_item_added_to_view',item)
     def find_item(self,item):
         i=bisect.bisect_left(self,[self.key_cb(item),item])
         if i>=len(self) or i<0:
@@ -763,7 +713,7 @@ class Index(list):
     def del_item(self,item):
         ind=self.find_item(item)
         if ind>=0:
-            self.tag_cloud.remove(item)
+            pluginmanager.mgr.callback('t_collection_item_added_to_view',self[ind])
             del self[ind]
             return True
         return False

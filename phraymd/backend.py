@@ -40,6 +40,7 @@ import settings
 import imageinfo
 import imagemanip
 import monitor
+import pluginmanager
 
 import gnomevfs
 
@@ -230,9 +231,9 @@ class LoadCollectionJob(WorkerJob):
         finally:
             f.close()
         self.unsetevent()
+        pluginmanager.mgr.callback('t_collection_loaded')
         jobs['BUILDVIEW'].setevent()
         jobs['WALKDIRECTORY'].setevent()
-
 
 class SaveCollectionJob(WorkerJob):
     def __init__(self):
@@ -326,6 +327,7 @@ class WalkDirectoryJob(WorkerJob):
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             jobs['VERIFYIMAGES'].setevent()
         else:
             print 'pausing directory walk'
@@ -405,6 +407,7 @@ class WalkSubDirectoryJob(WorkerJob):
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
         else:
             print 'pausing subdirectory walk'
 
@@ -456,8 +459,7 @@ class BuildViewJob(WorkerJob):
             else:
                 view.clear_filter(filter_text)
             del view[:] ##todo: create a view method to empty the view
-            if view.tag_cloud:
-                view.tag_cloud.empty()
+            pluginmanager.mgr.callback('t_view_emptied')
             gobject.idle_add(browser.update_view)
         lastrefresh=i
         browser.lock.release()
@@ -481,6 +483,7 @@ class BuildViewJob(WorkerJob):
             gobject.idle_add(browser.refresh_view)
             gobject.idle_add(browser.update_status,2,'View rebuild complete')
             gobject.idle_add(browser.post_build_view)
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
 
 
 class MapImagesJob(WorkerJob):
@@ -660,6 +663,7 @@ class EditMetaDataJob(WorkerJob):
             gobject.idle_add(browser.refresh_view)
             self.pos=0
             self.cancel=False
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             self.unsetevent()
 
 
@@ -766,6 +770,7 @@ class VerifyImagesJob(WorkerJob):
             self.countpos=0
             gobject.idle_add(browser.update_status,2,'Verification complete')
             print 'image verification complete'
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             jobs['MAKETHUMBS'].setevent()
 
 
@@ -858,6 +863,7 @@ class DirectoryUpdateJob(WorkerJob):
                         job.setevent()
 
         if len(self.queue)==0:
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             self.unsetevent()
 
 
@@ -1073,7 +1079,6 @@ class Worker:
         job=self.jobs['BUILDVIEW']
         if job.state:
             job.cancel_job()
-        job.tag_cloud=self.view.tag_cloud
         job.sort_key=sort_key
         job.filter_text=filter_text
         job.setevent()
