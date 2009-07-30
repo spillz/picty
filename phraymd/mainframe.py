@@ -145,7 +145,7 @@ class MainFrame(gtk.VBox):
 
         self.selection_menu.show()
 
-        self.sidebar_menu_button=gtk.ToggleButton('Side_Bar')
+        self.sidebar_menu_button=gtk.ToggleButton('Side_bar')
         self.sidebar_menu_button.connect("clicked",self.activate_sidebar)
         self.sidebar_menu_button.show()
 
@@ -155,6 +155,8 @@ class MainFrame(gtk.VBox):
         self.toolbar.append_item("Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)", None,
             gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED), self.revert_all_changes, user_data=None)
         self.toolbar.append_space()
+        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sidebar_menu_button, None,"Toggle the Sidebar", None,
+            None, None, None)
         self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.selection_menu_button, None,"Perform operations on selections", None,
             None, None, None)
         self.toolbar.append_space()
@@ -167,8 +169,6 @@ class MainFrame(gtk.VBox):
             None, None)
         self.toolbar.append_item("Clear Filter", "Clear the filter and reset the view to the entire collection", None,
             gtk.ToolButton(gtk.STOCK_CLEAR), self.clear_filter, user_data=None)
-        self.toolbar.append_element(gtk.TOOLBAR_CHILD_WIDGET, self.sidebar_menu_button, None,"Toggle the Sidebar", None,
-            None, None, None)
         self.toolbar.show()
 
         self.status_bar=gtk.ProgressBar()
@@ -441,6 +441,7 @@ class MainFrame(gtk.VBox):
         self.browser.update_scrollbar()
         self.browser.update_required_thumbs()
         self.browser.refresh_view()
+        self.browser.focal_item=item
         self.browser.grab_focus()
 
     def hide_image(self):

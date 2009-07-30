@@ -582,14 +582,14 @@ class ImageBrowser(gtk.HBox):
             if item.selected:
                 drawable.draw_rectangle(gc_s, True, x+self.geo_pad/8, y+self.geo_pad/8, self.geo_thumbwidth+self.geo_pad*3/4, self.geo_thumbheight+self.geo_pad*3/4)
 #           todo: come up with a scheme for highlighting images
-##            if item==self.focal_item:
-##                try:
-##                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
-##                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
-##                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
-##                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
-##                except:
-##                    pass
+            if item==self.focal_item:
+                try:
+                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
+                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
+                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
+                except:
+                    pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
             if item.thumb:
