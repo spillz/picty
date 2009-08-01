@@ -915,6 +915,8 @@ class Worker:
         self.exit=False
         self.thread=threading.Thread(target=self._loop)
         self.dirtimer=None ##threading.Timer(2,self.request_dir_update)
+
+    def start(self):
         self.thread.start()
 
     def _loop(self):

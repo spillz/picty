@@ -194,7 +194,8 @@ class MainFrame(gtk.VBox):
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
-        self.plugmgr.callback('app_ready',self)
+        self.plugmgr.app_ready(self)
+        self.tm.start()
 
 
 

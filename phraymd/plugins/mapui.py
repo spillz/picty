@@ -35,19 +35,23 @@ class MapPlugin(pluginbase.Plugin):
     name='MapSidebar'
     display_name='Map Sidebar'
     api_version='0.1.0'
+    version='0.1.0'
     def __init__(self):
-        print 'LOADING MAP PLUGIN!!'
+        print 'INITIALIZED MAP SIDEBAR PLUGIN'
     def app_ready(self,mainframe):
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.mapframe=MapFrame(self.worker)
         self.mapframe.show_all()
-        self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Maps"))
+        self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Map"))
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
 
     def view_rebuild_complete(self,browser):
         self.mapframe.update_map_items()
     ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
+    def plugin_shutdown(self,app_shutdown=False):
+        self.mapframe.destroy()
+        del self.mapframe
 
 
 

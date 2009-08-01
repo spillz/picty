@@ -19,21 +19,11 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-
-import sys
-sys.path.insert(0,'/home/damien/src/image-viewer')
-
-import sys
-print 'sidebar',sys.path
-
 import threading
 import gobject
 import gtk
 from phraymd import pluginbase
 from phraymd import imageinfo
-
-print 'sidebar imported!!!!!!'
-
 
 class TagCloud():
     def __init__(self):
@@ -98,9 +88,10 @@ class TagSidebarPlugin(pluginbase.Plugin):
     name='TagSidebar'
     display_name='Tag Sidebar'
     api_version='0.1.0'
+    version='0.1.0'
     def __init__(self):
-        print 'LOADING SIDEBAR!!'
-    def app_ready(self,mainframe):
+        print 'INITIALIZED TAG SIDEBAR PLUGIN'
+    def app_ready(self,mainframe): ##todo: this should be enable_plugin
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.user_tag_info=[]
@@ -147,6 +138,14 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe.tag_cloud_view.empty()
     def view_rebuild_complete(self,browser):
         self.tagframe.refresh()
+    def plugin_shutdown(self,app_shutdown=False):
+        self.tagframe.destroy()
+        del self.tagframe
+    def load_user_tags(self,filename):
+        pass
+    def save_user_tags(self,filename):
+        pass
+
 ##
 
 

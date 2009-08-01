@@ -37,16 +37,18 @@ class Plugin(object):
     the manager will scan each plugin for their definition at instantiation, and
     add the defined callbacks to a list/dict for faster retrieval.
 
-    Methods prefixed with name t are called from a worker thread.
-    Do not try to interact with gtk widgets on the main thread.
+    Methods prefixed with name t are called from the main worker thread.
+    Do not try to interact with gtk widgets on the worker thread.
     Instead call: gobject.idle_add(callback,args)
 
-    In addition to these callbacks, plugins can into the gtk signals associated
+    In addition to these callbacks, plugins can connect to the gtk signals associated
     with the widgets in the main application.
-    Each plugin receives the core application widges - use with care
+    Each plugin can access all of the application widgets - use with care
     '''
     name='BASE' ##don't localize
     def __init__(self): ##todo: pass browser,viewer,worker,pluginmgr??
+        '''when overriding __init__ keep in mind that the gui is now ready at this point.
+        save gui initialization until app_ready'''
         pass
     '''CALLBACKS'''
     '''collection'''
@@ -80,12 +82,18 @@ class Plugin(object):
         pass
     '''application'''
     def app_ready(self,mainframe):
+        '''the main application gui is ready, start setting up gui elements of the plugin now'''
+        pass
+    def plugin_shutdown(self,app_shutdown=False):
+        '''the main app wants the plugin to shutdown. plugins must comply. If extensive processing
+        is required on shutdown, use the worker thread -- the app will wait on that thread without
+        blocking the gui'''
         pass
     '''browser'''
     def browser_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
-        add a tuple
+        append a tuple containing the shortcut commands
         '''
         pass
     def browser_menu_command(self):
@@ -108,7 +116,7 @@ class Plugin(object):
         pass
     def viewer_item_closed(self,item): ##
         pass
-    '''image loader'''
+    '''image loader''' ##TODO: implement this on the appplication side
     def t_loader_supported_mimetypes(self): ##
         '''return a tuple of supported mimetypes'''
         return None

@@ -713,7 +713,7 @@ class Index(list):
     def del_item(self,item):
         ind=self.find_item(item)
         if ind>=0:
-            pluginmanager.mgr.callback('t_collection_item_added_to_view',self[ind])
+            pluginmanager.mgr.callback('t_collection_item_removed_from_view',self[ind])
             del self[ind]
             return True
         return False
