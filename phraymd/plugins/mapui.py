@@ -1,5 +1,4 @@
 import sys
-print sys.path
 sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
 sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
 
@@ -255,6 +254,5 @@ class MapFrame(gtk.VBox):
     def update_map_items_signal(self,list_pairs):
         '''notification of a list of images'''
         for l in list_pairs:
-            print 'update',l
             lat,lon=imageinfo.get_coords(l[0])
             self.osm.add_image(lat,lon,l[1])

@@ -73,6 +73,62 @@ class WorkerJob:
     priority=0
 
 
+class WorkerJobCollection(dict):
+    def __init__(self):
+        self.collection=[
+            WorkerJob('QUIT'),
+            ThumbnailJob(),
+            BuildViewJob(),
+            MapImagesJob(),
+            SelectionJob(),
+            EditMetaDataJob(),
+            LoadCollectionJob(),
+            RecreateThumbJob(),
+            ReloadMetadataJob(),
+            CollectionUpdateJob(),
+            VerifyImagesJob(),
+            WalkDirectoryJob(),
+            WalkSubDirectoryJob(),
+            SaveViewJob(),
+            DirectoryUpdateJob(),
+            MakeThumbsJob()
+            ]
+        for i in range(len(self.collection)):
+            self[self.collection[i].name]=self.collection[i]
+
+    def register_job(self,job_class,before_job='BUILDVIEW'):
+        ##todo: really shouldn't do this while a job is in progress since jobs frequently access the collection using ishighestpriority
+        job_ind=len(self.collection)
+        for i in range(job_ind):
+            if before_job==self.collection[i].name:
+                job_ind=i
+                break
+        job=job_class()
+        self.collection.insert(job_ind,job)
+        self[job.name]=self.collection[job_ind]
+
+    def deregister_job(self,job_name):
+        ##todo: should wait until no job is running
+        for i in range(len(self.collection)):
+            if self.collection[i].name==job_name:
+                del self.collection[i]
+                break
+        del self[job_name]
+
+    def ishighestpriority(self,job):
+        for j in self.collection[0:job.priority]:
+            if j.state:
+                return False
+        return True
+
+    def gethighest(self):
+        for j in self.collection:
+            if j.state:
+                return j
+        return None
+
+
+
 class ThumbnailJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'THUMBNAIL')
@@ -867,41 +923,6 @@ class DirectoryUpdateJob(WorkerJob):
             self.unsetevent()
 
 
-class WorkerJobCollection(dict):
-    def __init__(self):
-        self.collection=[
-            WorkerJob('QUIT'),
-            ThumbnailJob(),
-            BuildViewJob(),
-            MapImagesJob(),
-            SelectionJob(),
-            EditMetaDataJob(),
-            LoadCollectionJob(),
-            RecreateThumbJob(),
-            ReloadMetadataJob(),
-            CollectionUpdateJob(),
-            VerifyImagesJob(),
-            WalkDirectoryJob(),
-            WalkSubDirectoryJob(),
-            SaveViewJob(),
-            DirectoryUpdateJob(),
-            MakeThumbsJob()
-            ]
-        for i in range(len(self.collection)):
-            self[self.collection[i].name]=self.collection[i]
-
-    def ishighestpriority(self,job):
-        for j in self.collection[0:job.priority]:
-            if j.state:
-                return False
-        return True
-
-    def gethighest(self):
-        for j in self.collection:
-            if j.state:
-                return j
-        return None
-
 
 class Worker:
     def __init__(self,browser):
@@ -1007,6 +1028,10 @@ class Worker:
         self.event.set()
         while self.thread.isAlive():
             time.sleep(0.1)
+
+    def queue_job(self,job):
+        self.jobs[job_name].setevent()
+        self.event.set()
 
     def request_map_images(self,region,callback):
         job=self.jobs['MAPIMAGES']

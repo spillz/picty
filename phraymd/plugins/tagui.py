@@ -24,6 +24,27 @@ import gobject
 import gtk
 from phraymd import pluginbase
 from phraymd import imageinfo
+from phraymd import backend
+
+
+class TagCloudRebuildJob(backend.WorkerJob):
+    def __init__(self):
+        backend.WorkerJob.__init__(self,'TAGCLOUDREBUILD')
+        self.tagframe=None
+
+    def __call__(self,jobs,collection,view,browser,*args):
+        if not self.tagframe:
+            return False
+#        while self.pos<len(collection):
+        self.tagframe.tag_cloud.empty()
+        for item in collection:
+            self.tagframe.tag_cloud.add(item)
+        self.tagframe.tag_cloud_view.empty()
+        for item in view:
+            self.tagframe.tag_cloud_view.add(item)
+        if self.tagframe:
+            gobject.idle_add(self.tagframe.start_refresh_timer)
+
 
 class TagCloud():
     def __init__(self):
@@ -95,11 +116,16 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.user_tag_info=[]
+        self.worker.jobs.register_job(TagCloudRebuildJob)
         self.tagframe=TagFrame(self.mainframe,self.user_tag_info)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
         self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+    def plugin_shutdown(self,app_shutdown=False):
+        self.tagframe.destroy()
+        self.jobs.deregister_job('TAGCLOUDREBUILD')
+        del self.tagframe
 
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
@@ -112,7 +138,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe.tag_cloud.update(item) ##todo: this is broken, update relies on backup metadata being the pre-changed data
         i=self.worker.view.find_item(item)
         if i>0:
-            self.user_tag_info_view.update(item)
+            self.tagframe.tag_cloud_view.update(item)
     def t_collection_item_added_to_view(self,item):
         '''item in collection was added to view'''
         self.tagframe.tag_cloud_view.add(item)
@@ -138,9 +164,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe.tag_cloud_view.empty()
     def view_rebuild_complete(self,browser):
         self.tagframe.refresh()
-    def plugin_shutdown(self,app_shutdown=False):
-        self.tagframe.destroy()
-        del self.tagframe
     def load_user_tags(self,filename):
         pass
     def save_user_tags(self,filename):
@@ -268,7 +291,7 @@ class TagFrame(gtk.VBox):
         self.delete_user_bitmap(iter)
 
     def add_tag(self,widget,parent):
-        k=self.browser.entry_dialog('Add a Tag','Name:')
+        k=self.mainframe.entry_dialog('Add a Tag','Name:')
         if not k:
             return
         try:
@@ -288,7 +311,7 @@ class TagFrame(gtk.VBox):
 
     def rename_tag(self,widget,parent):
         old_key=self.model[iter][self.M_KEY]
-        k=self.browser.entry_dialog('Rename Tag','New Name:',old_key)
+        k=self.mainframe.entry_dialog('Rename Tag','New Name:',old_key)
         if not k or k==old_key:
             return
         try:
@@ -300,7 +323,7 @@ class TagFrame(gtk.VBox):
             pass
 
     def add_category(self,widget,parent):
-        k=self.browser.entry_dialog('Add a Category','Name:')
+        k=self.mainframe.entry_dialog('Add a Category','Name:')
         if not k:
             return
         try:
@@ -316,7 +339,7 @@ class TagFrame(gtk.VBox):
 
     def rename_category(self,widget,iter):
         old_key=self.model[iter][self.M_KEY]
-        k=self.browser.entry_dialog('Rename Category','New Name:',old_key)
+        k=self.mainframe.entry_dialog('Rename Category','New Name:',old_key)
         if not k or k==old_key:
             return
         try:
@@ -355,6 +378,7 @@ class TagFrame(gtk.VBox):
             keyword_string+='"%s" '%(t,)
         if keyword_string:
             self.worker.keyword_edit(keyword_string)
+        self.browser.grab_focus()
 
     def iter_all_children(self,iter_node):
         '''iterate all rows from iter_node and their children'''

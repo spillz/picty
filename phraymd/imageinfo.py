@@ -85,7 +85,7 @@ class Item(list):
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
         self.meta=meta
-        pluginmanager.mgr.callback('t_collection_metadata_changed',self)
+        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False

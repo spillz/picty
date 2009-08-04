@@ -376,18 +376,8 @@ def make_thumb(item,interrupt_fn=None,force=False):
                     image=image.transpose(method)
             thumbsize=image.size
             thumb_pb=image_to_pixbuf(image)
-##            thumbrgba='A' in image.getbands()
-##            thumb=image.tostring()
-##            try:
-##                orient=item.meta['Orientation']
-##            except:
-##                orient=1
-##            width=thumbsize[0]
-##            height=thumbsize[1]
-##            if orient>1:
-##                for method in settings.transposemethods[orient]:
-##                    image=image.transpose(method)
-##            thumb_pb=gtk.gdk.pixbuf_new_from_data(data=thumb, colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
+            if thumb_pb==None:
+                raise TypeError
     except:
         print 'creating FAILED thumbnail',item
         item.thumbsize=(0,0)
