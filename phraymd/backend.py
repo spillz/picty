@@ -148,7 +148,7 @@ class ThumbnailJob(WorkerJob):
             if item.thumb:
                 continue
             if not imagemanip.load_thumb(item):
-                if not imagemanip.has_thumb(item):
+                if not item.cannot_thumb and not imagemanip.has_thumb(item):
                     cu_job.setevent()
                     cu_job.queue.append(item)
                     continue
