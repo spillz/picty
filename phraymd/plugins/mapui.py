@@ -22,8 +22,6 @@ try:
     ('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
     ('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
     ('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'))
-
-
 except:
     map_source=tuple()
 
@@ -41,6 +39,15 @@ class MapPlugin(pluginbase.Plugin):
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.mapframe=MapFrame(self.worker)
+        places={'Home':(0.0,0.0,1)}
+        try:
+            f=open(os.path.join(settings.data_dir,'map-places'),'rb')
+            version=cPickle.load(f)
+            places=cPickle.load(f)
+            f.close()
+        except:
+            print 'Map Plugin: No map-places file found'
+        self.mapframe.set_places(places)
         self.mapframe.show_all()
         self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Map"))
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
@@ -49,6 +56,13 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe.update_map_items()
     ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
     def plugin_shutdown(self,app_shutdown=False):
+        try:
+            f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
+            cPickle.dump(self.version,f,-1)
+            cPickle.dump(self.mapframe.places(),f,-1)
+            f.close()
+        except:
+            print 'Map Plugin: Error saving map places'
         self.mapframe.destroy()
         del self.mapframe
 
@@ -66,10 +80,7 @@ class MapFrame(gtk.VBox):
         self.osm=None
 
         self.latlon_entry = gtk.Entry()
-        self.places={}
         self.places_combo = gtk.combo_box_entry_new_text()
-        for p in self.places:
-            self.places_combo.append_text(p)
         self.places_combo.connect("changed",self.set_place_signal)
 
         self.source_combo=gtk.combo_box_new_text()
@@ -90,8 +101,7 @@ class MapFrame(gtk.VBox):
         delete_place_button = gtk.Button(stock=gtk.STOCK_REMOVE)
         delete_place_button.connect('clicked', self.delete_place_signal)
 
-        if not self.places:
-            self.places={'Home':(0.0,0.0,1)}
+        self.places={'Home':(0.0,0.0,1)}
 #        cache_button = gtk.Button('Cache')
 #        cache_button.connect('clicked', self.cache_clicked, self.osm)
 
@@ -114,6 +124,14 @@ class MapFrame(gtk.VBox):
 
         self.update_map_items()
 
+    def set_places(self,places):
+        self.places=places
+        for p in self.places:
+            self.places_combo.append_text(p)
+
+    def get_places(self):
+        return self.places
+
     def set_source_signal(self,widget):
             if self.osm:
 #                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
@@ -126,7 +144,7 @@ class MapFrame(gtk.VBox):
                 place=None
 ##                place=(0.0,0.0,1)
             self.osm = osmgpsmap.GpsMap(
-                tile_cache=os.path.expanduser('~/Maps/'+map_source[widget.get_active()][2]),
+                tile_cache=os.path.join(settings.cache_dir,'maps/')+map_source[widget.get_active()][2],
                 tile_cache_is_full_path=True,
                 repo_uri=map_source[widget.get_active()][1],
             )

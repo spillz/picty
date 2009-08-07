@@ -45,7 +45,7 @@ def get_user_dir(env_var,alt_path):
 
 settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
 data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
-#cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/phraymd') ##todo: not using cache yet. parts of the collection are definitely cache
+cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
 
 ##todo: now we're using freedesktop, convert the users old files to the new standard
 
