@@ -33,6 +33,28 @@ import imageinfo
 import os.path
 import os
 
+##todo: move to imagemanip to eliminate the Image dependency
+##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
+'''
+  1        2       3      4         5            6           7          8
+
+888888  888888      88  88      8888888888  88                  88  8888888888
+88          88      88  88      88  88      88  88          88  88      88  88
+8888      8888    8888  8888    88          8888888888  8888888888          88
+88          88      88  88
+88          88  888888  888888
+'''
+
+transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
+            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
+            (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
+            (Image.ROTATE_90,))
+
+rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
+
+rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
+
+
 thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
 thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 
@@ -103,10 +125,9 @@ def rotate_left(item):
     if orient<1 or orient>8:
         print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
         orient=1
-    item.set_meta_key('Orientation',settings.rotate_left_tx[orient])
+    item.set_meta_key('Orientation',rotate_left_tx[orient])
     item.image=None
     item.qview=None
-    print 'rotate left',item,'from',orient,'to',settings.rotate_left_tx[orient]
     rotate_thumb(item,False)
 
 
@@ -119,7 +140,7 @@ def rotate_right(item):
     if orient<1 or orient>8:
         print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
         orient=1
-    item.set_meta_key('Orientation',settings.rotate_right_tx[orient])
+    item.set_meta_key('Orientation',rotate_right_tx[orient])
     item.image=None
     item.qview=None
     rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
@@ -188,7 +209,7 @@ def load_image(item,interrupt_fn,draft_mode=True):
     except:
         orient=1
     if orient>1:
-        for method in settings.transposemethods[orient]:
+        for method in transposemethods[orient]:
             image=image.transpose(method)
             if not interrupt_fn():
                 print 'interrupted'
@@ -372,7 +393,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
             except:
                 orient=1
             if orient>1:
-                for method in settings.transposemethods[orient]:
+                for method in transposemethods[orient]:
                     image=image.transpose(method)
             thumbsize=image.size
             thumb_pb=image_to_pixbuf(image)

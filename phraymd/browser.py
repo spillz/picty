@@ -50,7 +50,7 @@ import metadatadialogs
 import pluginmanager
 import imageinfo
 
-
+import imagemanip
 
 class ImageBrowser(gtk.HBox):
     '''
@@ -592,6 +592,8 @@ class ImageBrowser(gtk.HBox):
                     pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
+#            if item.meta and not item.thumb and not item.cannot_thumb:
+#                imagemanip.load_thumb(item)
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                 adjy=self.geo_pad/2+(128-thumbheight)/2

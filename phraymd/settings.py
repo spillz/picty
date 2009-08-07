@@ -6,28 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.2.4'
-
-##todo: move to imagemanip to eliminate the Image dependency
-##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
-'''
-  1        2       3      4         5            6           7          8
-
-888888  888888      88  88      8888888888  88                  88  8888888888
-88          88      88  88      88  88      88  88          88  88      88  88
-8888      8888    8888  8888    88          8888888888  8888888888          88
-88          88      88  88
-88          88  888888  888888
-'''
-
-transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
-            (Image.ROTATE_180,Image.FLIP_LEFT_RIGHT),(Image.ROTATE_90,Image.FLIP_LEFT_RIGHT),
-            (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
-            (Image.ROTATE_90,))
-
-rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
-
-rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
+version='0.3.0' #version is saved to settings and configuration files
 
 plugins_disabled=[]
 
@@ -55,14 +34,28 @@ dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
 
 imagetypes=['jpg','jpeg','png']
 
-image_dirs=[]
+def get_user_dir(env_var,alt_path):
+    try:
+        path=os.path.join(os.environ[env_var],'phraymd')
+    except KeyError:
+        path=os.path.join(os.environ['HOME'],alt_path)
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
+
+settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
+data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
+#cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/phraymd') ##todo: not using cache yet. parts of the collection are definitely cache
+
+##todo: now we're using freedesktop, convert the users old files to the new standard
+
+conf_file=os.path.join(settings_dir,'app-settings')
+collection_file=os.path.join(data_dir,'collection') ##todo: support multiple collections
+image_dirs=[] ##todo: yuck! - store collection directories in the collection class (they are at least saved in the collection file now)
 store_thumbs=True
-conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
-collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 
-places={}
-
-user_tag_info=[]
+legacy_conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
+legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 
 def save():
     global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
@@ -72,12 +65,9 @@ def save():
         return False
     try:
         cPickle.dump(version,f,-1)
-        cPickle.dump(image_dirs,f,-1)
         cPickle.dump(store_thumbs,f,-1)
         cPickle.dump(precache_count,f,-1)
-        cPickle.dump(user_tag_info,f,-1)
         cPickle.dump(custom_launchers,f,-1)
-        cPickle.dump(places,f,-1)
     finally:
         f.close()
 
@@ -86,18 +76,26 @@ def load():
     try:
         f=open(conf_file,'rb')
     except:
-        return False
+        try:
+            print 'loading legacy config file'
+            f=open(legacy_conf_file,'rb')
+        except:
+            return False
     try:
         file_version=cPickle.load(f)
         print 'loaded settings file with version',file_version
-        image_dirs=cPickle.load(f)
+        if file_version<'0.3.0':
+            image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
-        if file_version>='0.2.3':
-            user_tag_info=cPickle.load(f)
+        if file_version>='0.3.0':
             custom_launchers=cPickle.load(f)
-        if file_version>='0.2.4':
-            places=cPickle.load(f)
+        else:
+            if file_version>='0.2.3':
+                user_tag_info=cPickle.load(f)
+                custom_launchers=cPickle.load(f)
+            if file_version>='0.2.4':
+                places=cPickle.load(f)
     except:
         pass
     finally:
@@ -118,7 +116,7 @@ def user_add_dir():
 def init():
     global image_dirs
     load()
-    if len(image_dirs)==0:
+    if not os.path.exists(collection_file) and not os.path.exists(legacy_collection_file):
         user_add_dir()
         if len(image_dirs)==0:
             import sys
@@ -126,4 +124,3 @@ def init():
             sys.exit()
     save()
     print 'Starting image browser on',image_dirs
-

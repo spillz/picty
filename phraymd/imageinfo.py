@@ -219,9 +219,10 @@ def item_in_region(item,lat0,lon0,lat1,lon1):
 
 class Collection(list):
     '''defines a sorted collection of Items'''
-    def __init__(self,items):
+    def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection
         list.__init__(self)
         self.numselected=0
+        self.image_dirs=image_dirs
         for item in items:
             self.add(item)
             self.numselected+=item.selected
@@ -249,6 +250,7 @@ class Collection(list):
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         del odict['numselected']
+        del odict['image_dirs']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes

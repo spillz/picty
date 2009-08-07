@@ -75,6 +75,17 @@ class MainWindow:
 
     def destroy(self, widget, data=None):
         print "destroy signal occurred"
+        import os,os.path
+        if os.path.exists(settings.legacy_conf_file): ##todo: get rid of this some time in the future -- should only need legacy support for a little while.
+            try:
+                os.remove(settings.legacy_conf_file)
+            except:
+                pass
+        if os.path.exists(settings.legacy_collection_file):
+            try:
+                os.remove(settings.legacy_collection_file)
+            except:
+                pass
         gtk.main_quit()
 
     def main(self):

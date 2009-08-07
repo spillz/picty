@@ -47,10 +47,34 @@ class Plugin(object):
     '''
     name='BASE' ##don't localize
     def __init__(self): ##todo: pass browser,viewer,worker,pluginmgr??
-        '''when overriding __init__ keep in mind that the gui is now ready at this point.
-        save gui initialization until app_ready'''
+        '''when overriding __init__ keep in mind that the gui is NOT ready at this point.
+        save gui initialization until plugin_init'''
         pass
     '''CALLBACKS'''
+    '''application'''
+    def plugin_init(self,mainframe,app_init):
+        '''
+        do your plugin initialization here
+        if app_init is true, the main application gui is ready,
+        but the worker thread has yet to start. (this is because the app has just started)
+        if app_init is false, the app is already running
+        '''
+        pass
+    def plugin_job_registered(self,plugin_class):
+        '''
+        A plugin has been registered
+        '''
+        pass
+    def plugin_job_deregistered(self,plugin_class):
+        '''
+        A plugin has been deregistered
+        '''
+        pass
+    def plugin_shutdown(self,app_shutdown):
+        '''the main app wants the plugin to shutdown. plugins must comply. If extensive processing
+        is required on shutdown, use the worker thread -- the app will wait on that thread without
+        blocking the gui'''
+        pass
     '''collection'''
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
@@ -79,15 +103,6 @@ class Plugin(object):
         pass
     def t_collection_loaded(self):
         '''collection has loaded into main frame'''
-        pass
-    '''application'''
-    def app_ready(self,mainframe):
-        '''the main application gui is ready, start setting up gui elements of the plugin now'''
-        pass
-    def plugin_shutdown(self,app_shutdown=False):
-        '''the main app wants the plugin to shutdown. plugins must comply. If extensive processing
-        is required on shutdown, use the worker thread -- the app will wait on that thread without
-        blocking the gui'''
         pass
     '''browser'''
     def browser_register_shortcut(self,shortcut_commands):

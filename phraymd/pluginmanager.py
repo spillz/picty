@@ -40,7 +40,6 @@ class PluginManager():
         self.mainframe=None
     def instantiate_all_plugins(self):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
-        print 'Found plugins',pluginbase.Plugin.__subclasses__()
         for plugin in pluginbase.Plugin.__subclasses__():
 #            try:
                 self.plugins[plugin.name]=[plugin(),plugin] if plugin.name not in settings.plugins_disabled else [None,plugin]
@@ -49,16 +48,17 @@ class PluginManager():
     def enable_plugin(self,name):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         self.plugins[name][0]=self.plugins[name][1]()
-    def app_ready(self,mainframe):
-        self.mainframe=mainframe
-        self.callback('app_ready',mainframe)
+        self.plugins[name][0].init_plugin(self.mainframe,False)
     def disable_plugin(self,name):
         try:
             plugin=self.plugins[name][0]
             self.plugins[name][0]=None
-            plugin.plugin_shutdown()
+            plugin.plugin_shutdown(False)
         except:
             pass
+    def init_plugins(self,mainframe,app_init=True):
+        self.mainframe=mainframe
+        self.callback('plugin_init',mainframe,app_init)
     def callback_plugin(self,plugin_name,interface_name,*args):
         '''
         for each plugin in self.plugins that defines the interface, runs the callback.

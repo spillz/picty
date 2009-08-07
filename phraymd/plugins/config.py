@@ -12,10 +12,12 @@ class ConfigPlugin(pluginbase.Plugin):
     version='0.1.0'
     def __init__(self):
         print 'INITIALIZING CONFIGURATION PLUGIN'
-    def app_ready(self,mainframe):
+    def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.config=ConfigPanel()
         self.mainframe.sidebar.append_page(self.config,gtk.Label("Configure"))
+    def plugin_shutdown(self,app_shutdown):
+        pass
 
 
 class ConfigPanel(gtk.ScrolledWindow):

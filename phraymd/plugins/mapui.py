@@ -37,7 +37,7 @@ class MapPlugin(pluginbase.Plugin):
     version='0.1.0'
     def __init__(self):
         print 'INITIALIZED MAP SIDEBAR PLUGIN'
-    def app_ready(self,mainframe):
+    def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.mapframe=MapFrame(self.worker)
@@ -66,8 +66,9 @@ class MapFrame(gtk.VBox):
         self.osm=None
 
         self.latlon_entry = gtk.Entry()
+        self.places={}
         self.places_combo = gtk.combo_box_entry_new_text()
-        for p in settings.places:
+        for p in self.places:
             self.places_combo.append_text(p)
         self.places_combo.connect("changed",self.set_place_signal)
 
@@ -89,8 +90,8 @@ class MapFrame(gtk.VBox):
         delete_place_button = gtk.Button(stock=gtk.STOCK_REMOVE)
         delete_place_button.connect('clicked', self.delete_place_signal)
 
-        if not settings.places:
-            settings.places={'Home':(0.0,0.0,1)}
+        if not self.places:
+            self.places={'Home':(0.0,0.0,1)}
 #        cache_button = gtk.Button('Cache')
 #        cache_button.connect('clicked', self.cache_clicked, self.osm)
 
@@ -143,9 +144,9 @@ class MapFrame(gtk.VBox):
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
-        if place not in settings.places:
+        if place not in self.places:
             self.places_combo.append_text(place)
-        settings.places[place]=(self.osm.get_property('latitude'),
+        self.places[place]=(self.osm.get_property('latitude'),
             self.osm.get_property('longitude'),self.osm.get_property('zoom'))
 
     def delete_place_signal(self,widget):
@@ -153,14 +154,14 @@ class MapFrame(gtk.VBox):
         place=self.places_combo.get_active_text()
         if i>=0:
             self.places_combo.remove_text(i)
-        if place in settings.places:
-            del settings.places[place]
+        if place in self.places:
+            del self.places[place]
         self.places_combo.child.set_text('')
 
     def set_place_signal(self,combo):
         place=combo.get_active_text()
-        if place in settings.places:
-            self.osm.set_mapcenter(*settings.places[place])
+        if place in self.places:
+            self.osm.set_mapcenter(*self.places[place])
         self.update_latlon_entry(False)
         self.update_map_items()
 
@@ -199,8 +200,8 @@ class MapFrame(gtk.VBox):
         self.update_map_items()
 
     def home_clicked(self, button):
-        if 'Home' in settings.places:
-            self.osm.set_mapcenter(*settings.places['Home'])
+        if 'Home' in self.places:
+            self.osm.set_mapcenter(*self.places['Home'])
         self.update_latlon_entry()
         self.update_map_items()
 

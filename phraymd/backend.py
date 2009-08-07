@@ -52,6 +52,7 @@ def del_view_item(view,browser,item):
 
 class WorkerJob:
     'Base class for jobs'
+    priority=0
     def __init__(self,name=''):
         self.priority=WorkerJob.priority
         self.state=False
@@ -70,7 +71,6 @@ class WorkerJob:
     def __call__(self,jobs,collection,view,browser):
         'subclasses should override this'
         return None
-    priority=0
 
 
 class WorkerJobCollection(dict):
@@ -78,6 +78,7 @@ class WorkerJobCollection(dict):
         self.collection=[
             WorkerJob('QUIT'),
             ThumbnailJob(),
+            RegisterJobJob(),
             BuildViewJob(),
             MapImagesJob(),
             SelectionJob(),
@@ -109,11 +110,14 @@ class WorkerJobCollection(dict):
 
     def deregister_job(self,job_name):
         ##todo: should wait until no job is running
+        job_class=None
         for i in range(len(self.collection)):
             if self.collection[i].name==job_name:
+                job_class=self.collection[i].__class__
                 del self.collection[i]
                 break
         del self[job_name]
+        return job_class
 
     def ishighestpriority(self,job):
         for j in self.collection[0:job.priority]:
@@ -157,6 +161,28 @@ class ThumbnailJob(WorkerJob):
                 gobject.idle_add(browser.redraw_view)
         if len(self.queue_onscreen)==0:
             gobject.idle_add(browser.redraw_view)
+            self.unsetevent()
+
+
+class RegisterJobJob(WorkerJob):
+    def __init__(self):
+        WorkerJob.__init__(self,'REGISTERJOB')
+        self.register_queue=[]
+        self.deregister_queue=[]
+
+    def __call__(self,jobs,collection,view,browser):
+        while jobs.ishighestpriority(self) and len(self.deregister_queue)+len(self.register_queue)>0:
+            if len(self.deregister_queue)>0:
+                j=self.deregister_queue.pop(0)
+                job_class=jobs.deregister_job(j)
+                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_deregistered',job_class)
+            if len(self.register_queue)>0:
+                j=self.register_queue.pop(0)
+                jobs.register_job(j)
+                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_registered',j)
+            print 'register job'
+        print 'register job done'
+        if len(self.deregister_queue)+len(self.register_queue)==0:
             self.unsetevent()
 
 
@@ -231,6 +257,7 @@ class LoadCollectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'LOADCOLLECTION')
         self.pos=0
+        self.monitor=None
 
     def __call__2(self,jobs,collection,view,browser):
         del collection[:]
@@ -239,8 +266,13 @@ class LoadCollectionJob(WorkerJob):
         i=self.pos
         if i==0:
             try:
-                f=open(settings.collection_file,'rb')
+                try:
+                    f=open(settings.collection_file,'rb')
+                except:
+                    f=open(settings.legacy_collection_file,'rb')
                 version=cPickle.load(f)
+                if version>='0.3.0':
+                    settings.image_dirs=cPickle.load(f)
                 self.count=cPickle.load(f)
             except:
                 self.unsetevent()
@@ -266,7 +298,11 @@ class LoadCollectionJob(WorkerJob):
         del view[:]
         browser.lock.release()
         try:
-            f=open(settings.collection_file,'rb')
+            try:
+                f=open(settings.collection_file,'rb')
+            except:
+                print 'loading lecacy collection file',settings.legacy_collection_file
+                f=open(settings.legacy_collection_file,'rb')
         except:
             self.unsetevent()
             jobs['WALKDIRECTORY'].setevent()
@@ -275,9 +311,18 @@ class LoadCollectionJob(WorkerJob):
             return
         try:
             version=cPickle.load(f)
-            browser.lock.acquire()
-            collection[:]=cPickle.load(f)
-            browser.lock.release()
+            if version>='0.3.0':
+                settings.image_dirs=cPickle.load(f)
+            print 'LOADING COLLECTION',settings.image_dirs
+            if os.path.exists(settings.image_dirs[0]):
+                self.monitor.start(settings.image_dirs[0])
+                print 'monitor started'
+                browser.lock.acquire()
+                collection[:]=cPickle.load(f)
+                browser.lock.release()
+            else:
+                ##todo: it is possible the collection is missing because it wasn't mounted, we don't want to go changing the collection
+                raise ValueError
         except:
             print 'error loading collection data'
             browser.lock.acquire()
@@ -304,6 +349,7 @@ class SaveCollectionJob(WorkerJob):
             self.unsetevent()
             return False
         cPickle.dump(settings.version,f,-1)
+        cPickle.dump(settings.image_dirs,f,-1)
         cPickle.dump(collection,f,-1)
         f.close()
         self.unsetevent()
@@ -941,11 +987,9 @@ class Worker:
         self.thread.start()
 
     def _loop(self):
-        print 'starting monitor'
         self.monitor=monitor.Monitor(self.directory_change_notify)
-        self.monitor.start(settings.image_dirs[0])
-        print 'monitor started'
         self.jobs['LOADCOLLECTION'].setevent()
+        self.jobs['LOADCOLLECTION'].monitor=self.monitor
         while 1:
 #            print self.jobs.gethighest()
             if not self.jobs.gethighest():
@@ -1039,6 +1083,18 @@ class Worker:
         job.cancel=True
         job.region=region
         job.update_callback=callback
+        job.setevent()
+        self.event.set()
+
+    def register_job(self,job_class):
+        job=self.jobs['REGISTERJOB']
+        job.register_queue.append(job_class)
+        job.setevent()
+        self.event.set()
+
+    def deregister_job(self,job_name):
+        job=self.jobs['REGISTERJOB']
+        job.deregister_queue.append(job_name)
         job.setevent()
         self.event.set()
 

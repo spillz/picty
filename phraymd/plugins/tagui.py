@@ -112,21 +112,35 @@ class TagSidebarPlugin(pluginbase.Plugin):
     version='0.1.0'
     def __init__(self):
         print 'INITIALIZED TAG SIDEBAR PLUGIN'
-    def app_ready(self,mainframe): ##todo: this should be enable_plugin
+    def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
-        self.user_tag_info=[]
-        self.worker.jobs.register_job(TagCloudRebuildJob)
-        self.tagframe=TagFrame(self.mainframe,self.user_tag_info)
+        try:
+            f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
+            user_tag_layout_version=cPickle.load(f)
+            user_tag_layout=cPickle.load(f)
+            f.close()
+            ##todo: could flush unused bitmaps out of the png_path
+        except:
+            print 'No tag layout data found'
+        self.worker.register_job(TagCloudRebuildJob)
+        user_tag_info=[]
+        self.tagframe=TagFrame(self.mainframe,user_tag_info)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
         self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
+        try:
+            f=open(os.path.join(settings.data_dir,'tag-layout'),'wb') ##todo: datadir must exist??
+            cPickle.dump(self.version)
+            cPickle.dump(tagframe.get_user_tags())
+            f.close()
+        except:
+            print 'Failed to save tag layout'
         self.tagframe.destroy()
-        self.jobs.deregister_job('TAGCLOUDREBUILD')
+        self.worker.deregister_job('TAGCLOUDREBUILD')
         del self.tagframe
-
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
         self.tagframe.tag_cloud.add(item)
@@ -576,7 +590,7 @@ class TagFrame(gtk.VBox):
         import os
         import os.path
         self.model[tree_path][self.M_PIXBUF]=None
-        png_path=os.path.join(os.environ['HOME'],'.phraymd/tag_png')
+        png_path=os.path.join(settings.data_dir,'tag-png')
         fullname=os.path.join(png_path,self.model[tree_path][self.M_KEY])
         try:
             os.remove(fullname)
@@ -588,7 +602,7 @@ class TagFrame(gtk.VBox):
         if not self.model[tree_path][self.M_KEY]:
             return False
         self.model[tree_path][self.M_PIXBUF]=pixbuf
-        png_path=os.path.join(os.environ['HOME'],'.phraymd/tag_png')
+        png_path=os.path.join(settings.data_dir,'tag-png')
         if not os.path.exists(png_path):
             os.makedirs(png_path)
         if not os.path.isdir(png_path):
