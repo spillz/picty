@@ -20,11 +20,16 @@ License:
 '''
 
 import threading
+import cPickle
+
+import os.path
 import gobject
 import gtk
+
 from phraymd import pluginbase
 from phraymd import imageinfo
 from phraymd import backend
+from phraymd import settings
 
 
 class TagCloudRebuildJob(backend.WorkerJob):
@@ -115,6 +120,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
+        user_tag_layout=[]
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
             user_tag_layout_version=cPickle.load(f)
@@ -124,17 +130,17 @@ class TagSidebarPlugin(pluginbase.Plugin):
         except:
             print 'No tag layout data found'
         self.worker.register_job(TagCloudRebuildJob)
-        user_tag_info=[]
-        self.tagframe=TagFrame(self.mainframe,user_tag_info)
+        self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
         self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
+        print 'saving tag layout'
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'wb') ##todo: datadir must exist??
-            cPickle.dump(self.version)
-            cPickle.dump(tagframe.get_user_tags())
+            cPickle.dump(self.version,f,-1)
+            cPickle.dump(self.tagframe.get_user_tags(),f,-1)
             f.close()
         except:
             print 'Failed to save tag layout'

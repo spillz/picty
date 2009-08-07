@@ -205,6 +205,7 @@ class MainFrame(gtk.VBox):
 
     def destroy(self,event):
         self.tm.quit()
+        pluginmanager.mgr.callback('plugin_shutdown',True)
         return False
 
     def activate_sidebar(self,widget):
