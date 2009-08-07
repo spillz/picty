@@ -342,7 +342,7 @@ def get_orient2(item):
 
 def get_keyword(item):
     try:
-        return item.meta['Keywords']
+        return ', '.join(item.meta['Keywords'])
     except:
         return None
 
@@ -376,8 +376,9 @@ def text_descr(item):
         exposure+=' iso%s'%(val,)
     if exposure:
         details+='\n'+exposure
-    val=str(get_keyword(item))
+    val=get_keyword(item)
     if val:
+        val=str(val)
         if len(val)<30:
             details=details+'\nTags: '+val
         else:
