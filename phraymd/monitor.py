@@ -10,6 +10,7 @@ class Monitor(ProcessEvent):
         ProcessEvent.__init__(self)
         self.cb=cb
         self.notifier = ThreadedNotifier(wm, self)
+        self.wdd=None
         self.notifier.start()
     def process_IN_MODIFY(self, event):
         path=os.path.join(event.path, event.name)
@@ -44,5 +45,6 @@ class Monitor(ProcessEvent):
     def start(self,dir):
         self.wdd = wm.add_watch(dir, mask, rec=True, auto_add=True)
     def stop(self,dir):
-        wm.rm_watch(self.wdd[dir], rec=True)
-        self.notifier.stop()
+        if self.wdd and dir in self.wdd:
+            wm.rm_watch(self.wdd[dir], rec=True)
+        self.notifier.stop() ##todo: should be checking if there are any other watches still active?
