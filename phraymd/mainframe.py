@@ -340,8 +340,8 @@ class MainFrame(gtk.VBox):
 
     def reverse_sort_order(self,widget):
         self.tm.view.reverse=not self.tm.view.reverse
-        widget.set_active(self.tm.view.reverse)
         self.browser.refresh_view()
+        widget.set_active(self.tm.view.reverse)
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
