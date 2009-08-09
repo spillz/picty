@@ -5,6 +5,7 @@ sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
 import os
 import gtk
 import math
+import cPickle
 
 ##phraymd imports
 from phraymd import imageinfo
@@ -41,6 +42,7 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe=MapFrame(self.worker)
         places={'Home':(0.0,0.0,1)}
         try:
+            print 'Map Plugin: loading map-places file'
             f=open(os.path.join(settings.data_dir,'map-places'),'rb')
             version=cPickle.load(f)
             places=cPickle.load(f)
@@ -56,10 +58,16 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe.update_map_items()
     ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
     def plugin_shutdown(self,app_shutdown=False):
+        print 'Map Plugin: saving map places'
+        f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
+        cPickle.dump(self.version,f,-1)
+        cPickle.dump(self.mapframe.get_places(),f,-1)
+        f.close()
         try:
+            print 'Map Plugin: saving map places'
             f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
             cPickle.dump(self.version,f,-1)
-            cPickle.dump(self.mapframe.places(),f,-1)
+            cPickle.dump(self.mapframe.get_places(),f,-1)
             f.close()
         except:
             print 'Map Plugin: Error saving map places'
@@ -82,13 +90,13 @@ class MapFrame(gtk.VBox):
         self.latlon_entry = gtk.Entry()
         self.places_combo = gtk.combo_box_entry_new_text()
         self.places_combo.connect("changed",self.set_place_signal)
+        self.places={}
 
         self.source_combo=gtk.combo_box_new_text()
         for s in map_source:
             self.source_combo.append_text(s[0])
         self.source_combo.connect("changed",self.set_source_signal)
         self.source_combo.set_active(1)
-
 
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
         zoom_in_button.connect('clicked', self.zoom_in_clicked)
@@ -101,7 +109,6 @@ class MapFrame(gtk.VBox):
         delete_place_button = gtk.Button(stock=gtk.STOCK_REMOVE)
         delete_place_button.connect('clicked', self.delete_place_signal)
 
-        self.places={'Home':(0.0,0.0,1)}
 #        cache_button = gtk.Button('Cache')
 #        cache_button.connect('clicked', self.cache_clicked, self.osm)
 
@@ -121,11 +128,11 @@ class MapFrame(gtk.VBox):
         hbox_place.pack_start(delete_place_button,False)
 
         self.pack_start(hbox_place, False)
-
         self.update_map_items()
 
     def set_places(self,places):
         self.places=places
+        self.places_combo.get_model().clear()
         for p in self.places:
             self.places_combo.append_text(p)
 
@@ -162,7 +169,9 @@ class MapFrame(gtk.VBox):
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
+        print 'adding new place',place,'to',self.places
         if place not in self.places:
+            print 'adding new place to combo'
             self.places_combo.append_text(place)
         self.places[place]=(self.osm.get_property('latitude'),
             self.osm.get_property('longitude'),self.osm.get_property('zoom'))
@@ -180,8 +189,8 @@ class MapFrame(gtk.VBox):
         place=combo.get_active_text()
         if place in self.places:
             self.osm.set_mapcenter(*self.places[place])
-        self.update_latlon_entry(False)
-        self.update_map_items()
+            self.update_latlon_entry(False)
+            self.update_map_items()
 
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':

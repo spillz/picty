@@ -128,7 +128,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
             f.close()
             ##todo: could flush unused bitmaps out of the png_path
         except:
-            print 'No tag layout data found'
+            print 'Tag Plugin: No tag layout data found'
         self.worker.register_job(TagCloudRebuildJob)
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
@@ -136,14 +136,14 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
-        print 'saving tag layout'
+        print 'Tag Plugin: Saving tag layout'
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'wb') ##todo: datadir must exist??
             cPickle.dump(self.version,f,-1)
             cPickle.dump(self.tagframe.get_user_tags(),f,-1)
             f.close()
         except:
-            print 'Failed to save tag layout'
+            print 'Tag Plugin: Failed to save tag layout'
         self.tagframe.destroy()
         self.worker.deregister_job('TAGCLOUDREBUILD')
         del self.tagframe
@@ -168,7 +168,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_collection_modify_complete_hint(self):
         gobject.idle_add(self.tagframe.start_refresh_timer)
     def tag_dropped_in_browser(self,browser,item,tag_widget,path):
-        print 'dropped',tag_widget,path
+        print 'Tag Plugin: dropped',tag_widget,path
         tags=self.tagframe.get_tags(path)
         if not item.selected:
             imageinfo.toggle_tags(item,tags)
