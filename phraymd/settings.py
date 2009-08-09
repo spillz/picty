@@ -113,6 +113,21 @@ def user_add_dir():
     fcd.destroy()
     return image_dirs
 
+def write_empty_collection():
+    try:
+        f=open(collection_file,'wb')
+    except:
+        print 'failed to open collection for write'
+        return False
+    cPickle.dump(version,f,-1)
+    cPickle.dump(image_dirs,f,-1)
+    import imageinfo
+    collection=imageinfo.Collection([])
+    cPickle.dump(collection,f,-1)
+    f.close()
+    return True
+
+
 def init():
     global image_dirs
     load()
@@ -121,6 +136,10 @@ def init():
         if len(image_dirs)==0:
             import sys
             print 'no image directory selected... quitting'
+            sys.exit()
+        if not write_empty_collection():
+            import sys
+            print 'error creating collection file... quitting'
             sys.exit()
     save()
     print 'Starting image browser on',image_dirs
