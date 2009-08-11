@@ -677,7 +677,12 @@ class SelectionJob(WorkerJob):
 ADD_KEYWORDS=1
 REMOVE_KEYWORDS=2
 TOGGLE_KEYWORDS=3
-CHANGE_META=4
+RENAME_KEYWORDS=4
+CHANGE_META=5
+
+EDIT_COLLECTION=1
+EDIT_VIEW=2
+EDIT_SELECTION=3
 
 class EditMetaDataJob(WorkerJob):
     def __init__(self):
@@ -685,17 +690,19 @@ class EditMetaDataJob(WorkerJob):
         self.pos=0
         self.cancel=False
         self.mode=0
+        self.scope=EDIT_SELECTION
         self.keyword_string=''
         self.meta=None
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
+        items=collection if self.scope==EDIT_COLLECTION else view
         if self.mode==ADD_KEYWORDS:
             tags=exif.tag_split(self.keyword_string)
             tags_lower=[t.lower() for t in tags]
-            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
-                item=view(i)
-                if item.selected and item.meta!=None and item.meta!=False:
+            while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
+                item=items(i)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     meta=item.meta.copy()
                     try:
                         tags_kw=meta['Keywords']
@@ -712,23 +719,49 @@ class EditMetaDataJob(WorkerJob):
                         meta['Keywords']=new_tags
                     item.set_meta(meta)
                 if i%100==0:
-                    gobject.idle_add(browser.update_status,1.0*i/len(view),'Selecting images - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
+                i+=1
+        if self.mode==RENAME_KEYWORDS:
+            tags=exif.tag_split(self.keyword_string)
+            find_tag=tags[0].lower()
+            repl_tag=tags[1]
+            while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
+                item=items(i)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
+                    meta=item.meta.copy()
+                    try:
+                        tags_kw=meta['Keywords']
+                    except:
+                        tags_kw=[]
+                    tags_kw_lower=[t.lower() for t in tags_kw]
+                    new_tags=list(tags_kw)
+                    for j in range(len(tags_kw_lower)):
+                        if find_tag==tags_kw_lower[j]:
+                            new_tags[j]=repl_tag
+                    if new_tags!=list(tags_kw):
+                        if len(new_tags)==0 and 'Keywords' in meta:
+                            del meta['Keywords']
+                        else:
+                            meta['Keywords']=new_tags
+                        item.set_meta(meta)
+                if i%100==0:
+                    gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==TOGGLE_KEYWORDS:
             tags=exif.tag_split(self.keyword_string)
-            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
-                item=view(i)
-                if item.selected and item.meta!=None and item.meta!=False:
+            while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
+                item=items(i)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     imageinfo.toggle_tags(item,tags)
                 if i%100==0:
-                    gobject.idle_add(browser.update_status,1.0*i/len(view),'Selecting images - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==REMOVE_KEYWORDS:
             tags=exif.tag_split(self.keyword_string)
             tags_lower=[t.lower() for t in tags]
-            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
-                item=view(i)
-                if item.selected and item.meta!=None and item.meta!=False:
+            while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
+                item=items(i)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     meta=item.meta.copy()
                     try:
                         tags_kw=list(meta['Keywords'])
@@ -745,23 +778,23 @@ class EditMetaDataJob(WorkerJob):
                     except:
                         pass
                 if i%100==0:
-                    gobject.idle_add(browser.update_status,1.0*i/len(view),'Removing keywords - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.update_status,1.0*i/len(items),'Removing keywords - %i of %i'%(i,len(items)))
                 i+=1
 
         if self.mode==CHANGE_META:
-            while i<len(view) and jobs.ishighestpriority(self) and not self.cancel:
-                item=view(i)
-                if item.selected and item.meta!=None and item.meta!=False:
+            while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
+                item=items(i)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     for k,v in self.meta.iteritems():
                         item.set_meta_key(k,v)
                 if i%100==0:
-                    gobject.idle_add(browser.update_status,1.0*i/len(view),'Setting keywords - %i of %i'%(i,len(view)))
+                    gobject.idle_add(browser.update_status,1.0*i/len(items),'Setting keywords - %i of %i'%(i,len(items)))
                 i+=1
 
-        if i<len(view) and not self.cancel:
+        if i<len(items) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(browser.update_status,2.0,'Metadata edit complete - %i of %i'%(i,len(view)))
+            gobject.idle_add(browser.update_status,2.0,'Metadata edit complete - %i of %i'%(i,len(items)))
             gobject.idle_add(browser.refresh_view)
             self.pos=0
             self.cancel=False
@@ -991,11 +1024,9 @@ class Worker:
         self.jobs['LOADCOLLECTION'].setevent()
         self.jobs['LOADCOLLECTION'].monitor=self.monitor
         while 1:
-#            print self.jobs.gethighest()
             if not self.jobs.gethighest():
                 self.event.clear()
                 self.event.wait()
-#            print 'JOB REQUEST:',self.jobs.gethighest()
             if self.jobs['QUIT']:
                 self.monitor.stop(settings.image_dirs[0])
                 if self.dirtimer!=None:
@@ -1141,19 +1172,21 @@ class Worker:
         self.event.set()
         return True
 
-    def keyword_edit(self,keyword_string,toggle=False,remove=False):
+    def keyword_edit(self,keyword_string,toggle=False,remove=False,replace=False,scope=EDIT_SELECTION):
         job=self.jobs['EDITMETADATA']
         if job.state:
             return False
         job.pos=0
         job.keyword_string=keyword_string
+        job.scope=scope
         if toggle:
             job.mode=TOGGLE_KEYWORDS
+        elif remove:
+            job.mode=REMOVE_KEYWORDS
+        elif replace:
+            job.mode=RENAME_KEYWORDS
         else:
-            if remove:
-                job.mode=REMOVE_KEYWORDS
-            else:
-                job.mode=ADD_KEYWORDS
+            job.mode=ADD_KEYWORDS
         job.setevent()
         self.event.set()
         return True

@@ -29,8 +29,6 @@ import os.path
 
 from plugins import tagui
 
-print 'NAME:',__name__
-
 try:
     plugins=['phraymd.plugins.'+path[:-3] for path in os.listdir(os.path.join(os.path.dirname(__file__),'plugins')) if path.endswith('.py') and not path.startswith('_')]
 except:

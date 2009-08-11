@@ -304,7 +304,7 @@ class TagFrame(gtk.VBox):
                     if self.model[row_path][self.M_TYPE]==2:
                         menu_add(menu,"_Delete Category",self.remove_category)
                         menu_add(menu,"Re_name Category",self.rename_category)
-                menu_add(menu,"Remove _Image",self.remove_bitmap)
+                menu_add(menu,"Remove _Icon",self.remove_bitmap)
                 menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def remove_bitmap(self,widget,iter):
@@ -329,7 +329,7 @@ class TagFrame(gtk.VBox):
         except:
             pass
 
-    def rename_tag(self,widget,parent):
+    def rename_tag(self,widget,iter):
         old_key=self.model[iter][self.M_KEY]
         k=self.mainframe.entry_dialog('Rename Tag','New Name:',old_key)
         if not k or k==old_key:
@@ -339,6 +339,11 @@ class TagFrame(gtk.VBox):
             self.model[iter][self.M_DISP]=k
             self.user_tags[k]=self.user_tags[old_key]
             del self.user_tags[old_key]
+            rename_tag_in_images=True##todo: prompt for replacement of tag in images with a dialog
+            print 'renaming tag',rename_tag_in_images
+            print dir(self.worker)
+            if rename_tag_in_images:
+                self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION)
         except:
             pass
 
@@ -354,6 +359,7 @@ class TagFrame(gtk.VBox):
     def remove_category(self,widget,iter):
         try:
             self.model.remove(iter)
+            ##todo: what to do with tags?
         except:
             pass
 

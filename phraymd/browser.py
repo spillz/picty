@@ -149,14 +149,12 @@ class ImageBrowser(gtk.HBox):
 
         target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
         target_list=gtk.target_list_add_uri_targets(target_list,0)
-        print 'src target list',target_list
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
                   target_list,
                   gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
 
         target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
         target_list=gtk.target_list_add_uri_targets(target_list,0)
-        print 'dest target list',target_list
         self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
                 target_list,
                 gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
