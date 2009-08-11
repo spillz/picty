@@ -83,9 +83,9 @@ class TagCloud():
             return False
         return True
     def remove(self,item):
-        if item.meta==None or item.meta==False:
-            return False
         try:
+            if item.meta==None or item.meta==False:
+                return False
             self.tag_remove(item.meta['Keywords'])
         except:
             return False
