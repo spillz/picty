@@ -502,7 +502,6 @@ class MainFrame(gtk.VBox):
         ##menu_add(menu,"Select _None",self.select_none)
         for app in settings.custom_launchers['default']:
             menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
-        menu_add(launch_menu,'Edit External Launchers...',self.edit_custom_mime_apps,item)
 
         menu=gtk.Menu()
         launch_item=gtk.MenuItem("Open with")
@@ -519,10 +518,6 @@ class MainFrame(gtk.VBox):
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
         menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
-
-
-    def edit_custom_mime_apps(self,widget,item):
-        pass
 
     def item_make_thumb(self,widget,item):
         self.tm.recreate_thumb(item)
