@@ -22,10 +22,10 @@ else:
 #custom launchers understand the following variable substituions:
 #$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
 custom_launchers={
-'image/jpeg':(('GIMP','gimp "$FULLPATH"'),),
-'image/png':(('GIMP','gimp "$FULLPATH"'),),
-'image/x-pentax-pef':(('UFRaw','ufraw "$FULLPATH"'),),
-'default':(('Nautilus','nautilus "$DIR"'),),
+'image/jpeg':[('GIMP','gimp "$FULLPATH"'),],
+'image/png':[('GIMP','gimp "$FULLPATH"'),],
+'image/x-pentax-pef':[('UFRaw','ufraw "$FULLPATH"'),],
+'default':[('Nautilus','nautilus "$DIR"'),],
 }
 
 edit_command_line='gimp'
@@ -46,8 +46,6 @@ def get_user_dir(env_var,alt_path):
 settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
 data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
 cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
-
-##todo: now we're using freedesktop, convert the users old files to the new standard
 
 conf_file=os.path.join(settings_dir,'app-settings')
 collection_file=os.path.join(data_dir,'collection') ##todo: support multiple collections
@@ -90,10 +88,14 @@ def load():
         precache_count=cPickle.load(f)
         if file_version>='0.3.0':
             custom_launchers=cPickle.load(f)
+            for c in custom_launchers:
+                custom_launchers[c]=list(custom_launchers[c])
         else:
             if file_version>='0.2.3':
                 user_tag_info=cPickle.load(f)
                 custom_launchers=cPickle.load(f)
+                for c in custom_launchers:
+                    custom_launchers[c]=list(custom_launchers[c])
             if file_version>='0.2.4':
                 places=cPickle.load(f)
     except:

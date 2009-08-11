@@ -47,6 +47,7 @@ class ConfigPanel(gtk.ScrolledWindow):
         plugins_frame=gtk.Frame('Plugins')
         plugins_frame.add(PluginBox())
         tools_frame=gtk.Frame('Tools')
+        tools_frame.add(ToolsBox())
         main_box.pack_start(collection_settings_frame)
         main_box.pack_start(collections_frame)
         main_box.pack_start(plugins_frame)
@@ -57,6 +58,68 @@ class ConfigPanel(gtk.ScrolledWindow):
         pass
     def load_settings(self):
         pass
+
+class ToolsBox(gtk.VBox):
+    def __init__(self):
+        gtk.VBox.__init__(self)
+        ##tool name, mimetype, command
+        self.model=gtk.ListStore(gobject.TYPE_STRING,gobject.TYPE_STRING,gobject.TYPE_STRING)
+        self.init_view()
+        view=gtk.TreeView(self.model)
+        self.pack_start(view)
+        name=gtk.CellRendererText()
+        name.set_property("editable",True)
+        #name.set_property('mode',gtk.CELL_RENDERER_MODE_EDITABLE) ##implicit in editable property?
+        name.connect("edited",self.name_edited_signal)
+        view.append_column(gtk.TreeViewColumn('Name',name,text=0))
+        mime=gtk.CellRendererText()
+        mime.set_property("editable",True)
+        mime.connect("edited",self.mime_edited_signal)
+        view.append_column(gtk.TreeViewColumn('Mimetype',mime,text=1))
+        command=gtk.CellRendererText()
+        command.set_property("editable",True)
+        command.connect("edited",self.command_edited_signal)
+        view.append_column(gtk.TreeViewColumn('Command',command,text=2))
+
+    def init_view(self):
+        self.model.clear()
+        for mime,tools in settings.custom_launchers.iteritems():
+            for tool in tools:
+                self.model.append((tool[0],mime,tool[1]))
+
+    def name_edited_signal(self, cellrenderertext, path, new_text):
+        print 'name edited',new_text
+        name,mime,cmd=self.model[path]
+        for i in range(len(settings.custom_launchers[mime])):
+            n,c=settings.custom_launchers[mime][i]
+            if n==name and c==cmd:
+                settings.custom_launchers[mime][i]=(new_text,c)
+                break
+        self.model[path][0]=new_text
+
+    def mime_edited_signal(self, cellrenderertext, path, new_text):
+        name,mime,cmd=self.model[path]
+        for i in range(len(settings.custom_launchers[mime])):
+            n,c=settings.custom_launchers[mime][i]
+            if n==name and c==cmd:
+                del settings.custom_launchers[mime][i]
+                if len(settings.custom_launchers[mime])==0:
+                    del settings.custom_launchers[mime]
+                break
+        if new_text not in settings.custom_launchers:
+            settings.custom_launchers[new_text]=[(n,c)]
+        else:
+            settings.custom_launchers[new_text].append((n,c))
+        self.model[path][1]=new_text
+
+    def command_edited_signal(self, cellrenderertext, path, new_text):
+        name,mime,cmd=self.model[path]
+        for i in range(len(settings.custom_launchers[mime])):
+            n,c=settings.custom_launchers[mime][i]
+            if n==name and c==cmd:
+                settings.custom_launchers[mime][i]=(n,new_text)
+                break
+        self.model[path][2]=new_text
 
 class PluginBox(gtk.VBox):
     def __init__(self):
