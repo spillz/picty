@@ -34,7 +34,7 @@ try:
 except:
     plugins=[]
 try:
-    userplugins=['userplugins.'+path[:-3] for path in os.listdir(os.path.join(os.environ['HOME'],'.phraymd')) if path.endswith('.py') and not path.startswith('_')]
+    userplugins=['userplugins.'+path[:-3] for path in os.listdir(os.path.join(settings.settings_dir,'plugins')) if path.endswith('.py') and not path.startswith('_')]
 except:
     userplugins=[]
 

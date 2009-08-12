@@ -195,16 +195,61 @@ class MainFrame(gtk.VBox):
 
         self.connect("destroy", self.destroy)
         self.plugmgr.init_plugins(self)
+        print 'set layout',settings.layout
+        if len(settings.layout)>0:
+            self.set_layout(settings.layout)
         self.tm.start()
 
+    def set_layout(self,layout):
+        print 'setting layout',layout
+        sort_model=self.sort_order.get_model()
+        i=0
+        for row in sort_model:
+            print 'ROW',row,row[0]
+            if layout['sort order']==row[0]:
+                self.sort_order.set_active(i)
+                break
+            i+=1
+        self.tm.view.reverse=layout['sort direction']
 
+#        if layout['viewer active']:
+#            item=self.tm.collection.find(imageinfo.Item(layout['viewed item'],0))
+#            if item:
+#                self.view_image(item)
+#                self.hpane.set_position(layout['viewer width'])
+
+        if layout['sidebar active']:
+            self.sidebar.show()
+            for i in range(self.sidebar.get_n_pages()):
+                if layout['sidebar tab']==self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(i)):
+                    self.sidebar.set_current_page(i)
+                    self.hpane_ext.set_position(layout['sidebar width'])
+                    break
+
+    def get_layout(self):
+        layout=dict()
+        ##layout['window size']=self.window.get_size()
+        ##layout['window maximized']=self.window.get_size()
+        layout['sort order']=self.sort_order.get_active_text()
+        layout['sort direction']=self.tm.view.reverse
+#        layout['viewer active']=self.is_iv_showing
+#        if self.is_iv_showing:
+#            layout['viewer width']=self.hpane.get_position()
+#            layout['viewed item']=self.iv.item.filename
+        layout['sidebar active']=self.sidebar.get_property("visible")
+        layout['sidebar width']=self.hpane_ext.get_position()
+        layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
+        return layout
 
     def activate_item(self,browser,ind,item):
         print 'activated',ind,item
         self.view_image(item)
 
     def destroy(self,event):
+        print 'quitting'
+        settings.layout=self.get_layout()
         settings.save()
+        print 'layout',settings.layout
         self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         return False

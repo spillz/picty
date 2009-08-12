@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.3.0' #version is saved to settings and configuration files
+version='0.3.1' #version is saved to settings and configuration files
 
 plugins_disabled=[]
 
@@ -19,7 +19,8 @@ else:
     max_memimages=3
     precache_count=500 ##not currently used
 
-#custom launchers understand the following variable substituions:
+#custom launchers (tools) available from right click menu in browser
+#tools understand the following variable substituions:
 #$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
 custom_launchers={
 'image/jpeg':[('GIMP','gimp "$FULLPATH"'),],
@@ -27,6 +28,8 @@ custom_launchers={
 'image/x-pentax-pef':[('UFRaw','ufraw "$FULLPATH"'),],
 'default':[('Nautilus','nautilus "$DIR"'),],
 }
+
+layout={}  #the layout of the user interface
 
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
@@ -65,13 +68,14 @@ def save():
         cPickle.dump(version,f,-1)
         cPickle.dump(store_thumbs,f,-1)
         cPickle.dump(precache_count,f,-1)
+        cPickle.dump(layout,f,-1)
         cPickle.dump(custom_launchers,f,-1)
         print 'LAUNCHERS',custom_launchers
     finally:
         f.close()
 
 def load():
-    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
+    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places, layout
     try:
         f=open(conf_file,'rb')
     except:
@@ -87,6 +91,8 @@ def load():
             image_dirs=cPickle.load(f)
         store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
+        if file_version>='0.3.1':
+            layout=cPickle.load(f)
         if file_version>='0.3.0':
             custom_launchers=cPickle.load(f)
             for c in custom_launchers:
