@@ -205,6 +205,7 @@ class MainFrame(gtk.VBox):
 
     def destroy(self,event):
         self.tm.quit()
+        settings.save()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         return False
 

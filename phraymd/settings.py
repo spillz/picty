@@ -66,6 +66,7 @@ def save():
         cPickle.dump(store_thumbs,f,-1)
         cPickle.dump(precache_count,f,-1)
         cPickle.dump(custom_launchers,f,-1)
+        print 'LAUNCHERS',custom_launchers
     finally:
         f.close()
 
@@ -90,6 +91,7 @@ def load():
             custom_launchers=cPickle.load(f)
             for c in custom_launchers:
                 custom_launchers[c]=list(custom_launchers[c])
+            print 'LAUNCHERS',custom_launchers
         else:
             if file_version>='0.2.3':
                 user_tag_info=cPickle.load(f)
