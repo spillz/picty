@@ -204,8 +204,8 @@ class MainFrame(gtk.VBox):
         self.view_image(item)
 
     def destroy(self,event):
-        self.tm.quit()
         settings.save()
+        self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         return False
 
