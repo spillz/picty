@@ -65,21 +65,32 @@ class ToolsBox(gtk.VBox):
         ##tool name, mimetype, command
         self.model=gtk.ListStore(gobject.TYPE_STRING,gobject.TYPE_STRING,gobject.TYPE_STRING)
         self.init_view()
-        view=gtk.TreeView(self.model)
-        self.pack_start(view)
+        self.view=gtk.TreeView(self.model)
+        self.pack_start(self.view)
+
+        hbox=gtk.HBox()
+        add_button = gtk.Button(stock=gtk.STOCK_ADD)
+        add_button.connect('clicked', self.add_signal)
+        delete_button = gtk.Button(stock=gtk.STOCK_REMOVE)
+        delete_button.connect('clicked', self.delete_signal)
+        hbox.pack_start(add_button,False)
+        hbox.pack_start(delete_button,False)
+        self.pack_start(hbox, False)
+
         name=gtk.CellRendererText()
         name.set_property("editable",True)
         #name.set_property('mode',gtk.CELL_RENDERER_MODE_EDITABLE) ##implicit in editable property?
         name.connect("edited",self.name_edited_signal)
-        view.append_column(gtk.TreeViewColumn('Name',name,text=0))
+        self.view.append_column(gtk.TreeViewColumn('Name',name,text=0))
         mime=gtk.CellRendererText()
         mime.set_property("editable",True)
         mime.connect("edited",self.mime_edited_signal)
-        view.append_column(gtk.TreeViewColumn('Mimetype',mime,text=1))
+        self.view.append_column(gtk.TreeViewColumn('Mimetype',mime,text=1))
         command=gtk.CellRendererText()
         command.set_property("editable",True)
         command.connect("edited",self.command_edited_signal)
-        view.append_column(gtk.TreeViewColumn('Command',command,text=2))
+        self.view.append_column(gtk.TreeViewColumn('Command',command,text=2))
+        self.default_name='New Command'
 
     def init_view(self):
         self.model.clear()
@@ -88,8 +99,16 @@ class ToolsBox(gtk.VBox):
                 self.model.append((tool[0],mime,tool[1]))
 
     def name_edited_signal(self, cellrenderertext, path, new_text):
-        print 'name edited',new_text
         name,mime,cmd=self.model[path]
+        if new_text==self.default_name:
+            return
+        if name==self.default_name:
+            if mime in settings.custom_launchers:
+                settings.custom_launchers[mime].append((new_text,cmd))
+            else:
+                settings.custom_launchers[mime]=[(new_text,cmd)]
+            self.model[path][0]=new_text
+            return
         for i in range(len(settings.custom_launchers[mime])):
             n,c=settings.custom_launchers[mime][i]
             if n==name and c==cmd:
@@ -99,6 +118,9 @@ class ToolsBox(gtk.VBox):
 
     def mime_edited_signal(self, cellrenderertext, path, new_text):
         name,mime,cmd=self.model[path]
+        if name==self.default_name:
+            self.model[path][1]=new_text
+            return
         for i in range(len(settings.custom_launchers[mime])):
             n,c=settings.custom_launchers[mime][i]
             if n==name and c==cmd:
@@ -114,12 +136,39 @@ class ToolsBox(gtk.VBox):
 
     def command_edited_signal(self, cellrenderertext, path, new_text):
         name,mime,cmd=self.model[path]
+        if name==self.default_name:
+            self.model[path][2]=new_text
+            return
         for i in range(len(settings.custom_launchers[mime])):
             n,c=settings.custom_launchers[mime][i]
             if n==name and c==cmd:
                 settings.custom_launchers[mime][i]=(n,new_text)
                 break
         self.model[path][2]=new_text
+
+    def add_signal(self, widget):
+        self.model.append((self.default_name,'default',''))
+
+    def delete_signal(self, widget):
+        sel=self.view.get_selection()
+        if not sel:
+            return
+        model,iter=sel.get_selected()
+        if iter==None:
+            return
+        name,mime,cmd=self.model[iter]
+        if name==self.default_name:
+            self.model.remove(iter)
+            return
+        for i in range(len(settings.custom_launchers[mime])):
+            n,c=settings.custom_launchers[mime][i]
+            if n==name and c==cmd:
+                del settings.custom_launchers[mime][i]
+                if len(settings.custom_launchers[mime])==0:
+                    del settings.custom_launchers[mime]
+                break
+        self.model.remove(iter)
+
 
 class PluginBox(gtk.VBox):
     def __init__(self):
