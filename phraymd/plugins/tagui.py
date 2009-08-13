@@ -317,7 +317,8 @@ class TagFrame(gtk.VBox):
                     if self.model[row_path][self.M_TYPE]==2:
                         menu_add(menu,"_Delete Category",self.remove_category)
                         menu_add(menu,"Re_name Category",self.rename_category)
-                menu_add(menu,"Remove _Icon",self.remove_bitmap)
+                    if self.model[row_path][self.M_PIXBUF]!=None:
+                        menu_add(menu,"Remove _Icon",self.remove_bitmap)
                 menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def remove_bitmap(self,widget,iter):
@@ -517,6 +518,9 @@ class TagFrame(gtk.VBox):
                                 pos+=1
                             self.move_row_and_children(it,drop_iter,pos)
             elif selection_data.type=='image-filename':
+                model_path=list(self.model.get_path(drop_iter))
+                if len(model_path)<=1 or model_path[0]==1:
+                    return
                 path=data
                 from phraymd import imageinfo
                 item=imageinfo.Item(path,0)
@@ -531,9 +535,9 @@ class TagFrame(gtk.VBox):
                     tw=thumb_pb.get_width()
                     th=thumb_pb.get_height()
                     if width/height>tw/th:
-                        width=height*tw/th
-                    else:
                         height=width*th/tw
+                    else:
+                        width=height*tw/th
                     thumb_pb=thumb_pb.scale_simple(width*1.5,height*1.5,gtk.gdk.INTERP_BILINEAR)
                     self.set_and_save_user_bitmap(drop_iter,thumb_pb)
                 ## get the thumbnail and set the drop_iter row pixbuf and pixpath accordingly
