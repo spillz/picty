@@ -220,6 +220,7 @@ class MainFrame(gtk.VBox):
 
         if layout['sidebar active']:
             self.sidebar.show()
+            self.sidebar_menu_button.set_active(True)
             for i in range(self.sidebar.get_n_pages()):
                 if layout['sidebar tab']==self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(i)):
                     self.sidebar.set_current_page(i)
