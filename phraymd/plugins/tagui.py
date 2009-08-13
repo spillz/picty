@@ -110,6 +110,19 @@ class TagCloud():
             pass
 
 
+##    M_TYPE=0 #type of row: 0=Favorite, 1=Other, 2=Category, 3=Tag
+##    M_KEY=1 #name of the tag or category
+##    M_PIXBUF=2 #pixbuf image displayed next to tag
+##    M_DISP=3 #display text
+##    M_CHECK=4 #state of check box
+##    M_PIXPATH=5 #path to pixbuf
+
+user_tag_layout_default=[
+((0,0),2,'People','<b>People</b>',None),
+((0,1),2,'Places','<b>Places</b>',None),
+((0,2),2,'Events','<b>Events</b>',None)
+]
+
 class TagSidebarPlugin(pluginbase.Plugin):
     name='TagSidebar'
     display_name='Tag Sidebar'
@@ -120,7 +133,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
-        user_tag_layout=[]
+        user_tag_layout=user_tag_layout_default
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
             user_tag_layout_version=cPickle.load(f)
@@ -542,7 +555,7 @@ class TagFrame(gtk.VBox):
         '''
         sets the user defined tags
         usertaginfo is a list with each element a sublist containing:
-            [tree_path,tag_name,display_text,icon_path]
+            [tree_path,type,tag_name,display_text,icon_path]
             NB: model contains [tag_name,pixbuf,display_text,check_state,icon_path]
         '''
         self.user_tags={}
