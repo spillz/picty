@@ -313,7 +313,8 @@ class TagFrame(gtk.VBox):
                         menu_add(menu,"_Delete Tag",self.remove_tag)
                         menu_add(menu,"Re_name Tag",self.rename_tag)
                         menu_add(menu,"_Apply to Selected Images",self.apply_tag_to_browser_selection)
-                        menu_add(menu,"Re_move from Selected Images",self.remove_tag_from_browser_selection)
+                        menu_add(menu,"Remov_e from Selected Images",self.remove_tag_from_browser_selection)
+                        menu_add(menu,"Show _Matches in Current View",self.tag_activate_view)
                     if self.model[row_path][self.M_TYPE]==2:
                         menu_add(menu,"_Delete Category",self.remove_category)
                         menu_add(menu,"Re_name Category",self.rename_category)
@@ -644,14 +645,24 @@ class TagFrame(gtk.VBox):
             ##todo: log an error or warn user
             pass
 
+    def tag_activate_view(self, widget, iter):
+        text=''
+        for row in self.iter_row_children(iter):
+            if row[self.M_TYPE]==3:
+                text+='tag="%s" '%row[self.M_KEY]
+        if text:
+            self.mainframe.filter_entry.set_text('lastview&'+text.strip())
+            self.mainframe.filter_entry.activate()
+
     def tag_activate(self,treeview, path, view_column):
         text=''
         for row in self.iter_row_children(self.model.get_iter(path)):
             if row[self.M_TYPE]==3:
                 text+='tag="%s" '%row[self.M_KEY]
         if text:
-            self.mainframe.filter_entry.set_text('view:'+text.strip())
+            self.mainframe.filter_entry.set_text(text.strip())
             self.mainframe.filter_entry.activate()
+
 
     def check_row(self,path,state):
         self.model[path][self.M_CHECK]=state

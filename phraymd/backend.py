@@ -551,7 +551,7 @@ class BuildViewJob(WorkerJob):
             view.key_cb=imageinfo.sort_keys[self.sort_key]
             view.filters=None
             filter_text=self.filter_text.strip()
-            if filter_text.startswith('view:'):
+            if filter_text.startswith('lastview&'):
                 filter_text=filter_text[5:]
                 self.superset=view.copy()
             else:
