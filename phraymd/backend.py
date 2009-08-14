@@ -295,7 +295,7 @@ class LoadCollectionJob(WorkerJob):
         browser.lock.acquire()
         del collection[:]
         collection.numselected=0
-        del view[:]
+        del view[:] ##todo: send plugin notification?
         browser.lock.release()
         try:
             try:
@@ -954,10 +954,7 @@ class DirectoryUpdateJob(WorkerJob):
                         it=collection[j]
                         collection.numselected-=collection[j].selected
                         del collection[j]
-                        j=view.find_item(it)
-                        print 'delete item view index',j,it
-                        if j>=0:
-                            del view[j]
+                        view.del_item(it)
                     browser.lock.release()
                     gobject.idle_add(browser.refresh_view)
             if action in ('MOVED_TO','MODIFY','CREATE'):
@@ -970,9 +967,7 @@ class DirectoryUpdateJob(WorkerJob):
                         if os.path.getmtime(fullpath)!=collection[i].mtime:
                             item=collection[i]
                             browser.lock.acquire()
-                            j=view.find_item(item)
-                            if j>=0:
-                                del view[j]
+                            view.del_item(it)
                             browser.lock.release()
                             item.mtime=os.path.getmtime(fullpath)
                             imagemanip.load_metadata(item)
