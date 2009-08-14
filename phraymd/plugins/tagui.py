@@ -308,7 +308,6 @@ class TagFrame(gtk.VBox):
                 if self.model[row_path][self.M_TYPE] in (0,2):
                     menu_add(menu,"New _Category",self.add_category)
                     menu_add(menu,"New _Tag",self.add_tag)
-                    menu_add(menu,"Show _Matches in Current View",self.tag_activate_view)
                 if len(row_path)>1:
                     if self.model[row_path][self.M_TYPE]==3:
                         menu_add(menu,"_Delete Tag",self.remove_tag)
@@ -326,6 +325,7 @@ class TagFrame(gtk.VBox):
                     if self.model[row_path][self.M_TYPE]==3:
                         menu_add(menu,"_Delete Tag",self.remove_tag) ##todo: for uncategorized tags, the prompt is redundant
                         menu_add(menu,"Re_name Tag",self.rename_tag)
+                        menu_add(menu,"Show _Matches in Current View",self.tag_activate_view)
             if len(menu.get_children())>0:
                 menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
