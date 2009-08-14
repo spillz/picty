@@ -28,6 +28,24 @@ import settings
 import exif
 
 
+def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
+    button_list=[]
+    i=0
+    for x in buttons:
+        button_list.append(x)
+        button_list.append(i)
+        i+=1
+    dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,tuple(button_list))
+    prompt_label=gtk.Label()
+    prompt_label.set_label(prompt)
+    dialog.vbox.pack_start(prompt_label)
+    dialog.vbox.show_all()
+    dialog.set_default_response(default)
+    response=dialog.run()
+    dialog.destroy()
+    return response
+
+
 class BatchMetaDialog(gtk.Dialog):
     def __init__(self,item):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL,

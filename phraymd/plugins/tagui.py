@@ -30,7 +30,7 @@ from phraymd import pluginbase
 from phraymd import imageinfo
 from phraymd import backend
 from phraymd import settings
-
+from phraymd import metadatadialogs
 
 class TagCloudRebuildJob(backend.WorkerJob):
     def __init__(self):
@@ -283,8 +283,8 @@ class TagFrame(gtk.VBox):
         button_box.show_all()
         self.pack_start(button_box,False)
 
-        self.model.append(None,(0,'favorites',None,'<b>Favorites</b>',False,''))
-        self.model.append(None,(1,'other',None,'<b>Other</b>',False,''))
+        self.model.append(None,(0,'favorites',None,'<b>Categorized</b>',False,''))
+        self.model.append(None,(1,'other',None,'<b>Uncategorized</b>',False,''))
         self.set_user_tags(user_tag_info)
         self.timer=None
 
@@ -308,6 +308,7 @@ class TagFrame(gtk.VBox):
                 if self.model[row_path][self.M_TYPE] in (0,2):
                     menu_add(menu,"New _Category",self.add_category)
                     menu_add(menu,"New _Tag",self.add_tag)
+                    menu_add(menu,"Show _Matches in Current View",self.tag_activate_view)
                 if len(row_path)>1:
                     if self.model[row_path][self.M_TYPE]==3:
                         menu_add(menu,"_Delete Tag",self.remove_tag)
@@ -320,6 +321,12 @@ class TagFrame(gtk.VBox):
                         menu_add(menu,"Re_name Category",self.rename_category)
                     if self.model[row_path][self.M_PIXBUF]!=None:
                         menu_add(menu,"Remove _Icon",self.remove_bitmap)
+            if row_path[0]==1:
+                if len(row_path)>1:
+                    if self.model[row_path][self.M_TYPE]==3:
+                        menu_add(menu,"_Delete Tag",self.remove_tag) ##todo: for uncategorized tags, the prompt is redundant
+                        menu_add(menu,"Re_name Tag",self.rename_tag)
+            if len(menu.get_children())>0:
                 menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def remove_bitmap(self,widget,iter):
@@ -339,8 +346,13 @@ class TagFrame(gtk.VBox):
     def remove_tag(self,widget,iter):
         try:
             k=self.model[iter][self.M_KEY]
+            rename_response=metadatadialogs.prompt_dialog("Delete Tag","Would you like to remove the tag %s from all images in your collection?"%(k))
+            if rename_response==2:
+                return
             self.model.remove(iter)
             del self.user_tags[k]
+            if rename_response==0:
+                self.worker.keyword_edit('"%s"'%(k,),False,True,False,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
         except:
             pass
 
@@ -349,16 +361,17 @@ class TagFrame(gtk.VBox):
         k=self.mainframe.entry_dialog('Rename Tag','New Name:',old_key)
         if not k or k==old_key:
             return
+        rename_response=metadatadialogs.prompt_dialog("Rename Tag","Would you like to replace the tag %s with %s\n for all images in your collection"%(old_key,k))
+        if rename_response==2:
+            return
         try:
             self.model[iter][self.M_KEY]=k
             self.model[iter][self.M_DISP]=k
             self.user_tags[k]=self.user_tags[old_key]
             del self.user_tags[old_key]
             rename_tag_in_images=True##todo: prompt for replacement of tag in images with a dialog
-            print 'renaming tag',rename_tag_in_images
-            print dir(self.worker)
-            if rename_tag_in_images:
-                self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION)
+            if rename_response==0:
+                self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
         except:
             pass
 
@@ -566,7 +579,7 @@ class TagFrame(gtk.VBox):
         self.user_tags={}
         path=self.model.get_iter((0,))
         self.model.remove(path)
-        self.model.insert(None,0,(0,'favorites',None,'<b>Favorites</b>',False,''))
+        self.model.insert(None,0,(0,'favorites',None,'<b>Categorized</b>',False,''))
 ##        try:
         for row in usertaginfo:
             path=row[0]
@@ -683,7 +696,7 @@ class TagFrame(gtk.VBox):
         tag_cloud_view=self.tag_cloud_view.copy()
         path=self.model.get_iter((1,))
         self.model.remove(path)
-        self.model.append(None,(1,'other',None,'<b>Other</b>',False,''))
+        self.model.append(None,(1,'other',None,'<b>Uncategorized</b>',False,''))
         for k in self.user_tags:
             path=self.user_tags[k].get_path()
             row=self.model[path]

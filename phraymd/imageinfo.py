@@ -711,7 +711,7 @@ class Index(list):
         if i>=len(self) or i<0:
             return -1
         if self[i][1]==item:
-            return i
+            return i if not self.reverse else len(self)-1-i
         return -1
     def del_item(self,item):
         ind=self.find_item(item)
