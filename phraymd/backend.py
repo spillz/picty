@@ -552,7 +552,7 @@ class BuildViewJob(WorkerJob):
             view.filters=None
             filter_text=self.filter_text.strip()
             if filter_text.startswith('lastview&'):
-                filter_text=filter_text[5:]
+                filter_text=filter_text[9:]
                 self.superset=view.copy()
             else:
                 self.superset=collection
@@ -1040,6 +1040,7 @@ class Worker:
                 job(self.jobs,self.collection,self.view,self.browser)
 
     def deferred_dir_update(self):
+        print 'deferred dir event'
         job=self.jobs['DIRECTORYUPDATE']
         job.deflock.acquire()
         for j in job.deferred:
@@ -1080,23 +1081,11 @@ class Worker:
         job.deflock.acquire()
         if self.dirtimer!=None:
             self.dirtimer.cancel()
-        self.dirtimer=threading.Timer(1,self.deferred_dir_update)
+        self.dirtimer=threading.Timer(3,self.deferred_dir_update)
         self.dirtimer.start()
         job.deferred.append((path,action))
         job.deflock.release()
-##
-##        if action in ('MODIFY','CREATE'):
-##            job.deflock.acquire()
-##            if self.dirtimer!=None:
-##                self.dirtimer.cancel()
-##            self.dirtimer=threading.Timer(1,self.deferred_dir_update)
-##            self.dirtimer.start()
-##            job.deferred.append((path,action))
-##            job.deflock.release()
-##        else:
-##            job.queue.append((path,action))
-##            job.setevent()
-##            self.event.set()
+        print 'file event',action,' on',path
 
     def quit(self):
         self.jobs['QUIT'].setevent()

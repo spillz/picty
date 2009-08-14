@@ -713,11 +713,17 @@ class Index(list):
         if self[i][1]==item:
             return i if not self.reverse else len(self)-1-i
         return -1
+    def del_ind(self,ind):
+        ##todo: check ind is in the required range
+        if self.reverse:
+            del self[len(self)-1-ind]
+        else:
+            del self[ind]
+        pluginmanager.mgr.callback('t_collection_item_removed_from_view',self[ind])
     def del_item(self,item):
         ind=self.find_item(item)
         if ind>=0:
-            pluginmanager.mgr.callback('t_collection_item_removed_from_view',self[ind])
-            del self[ind]
+            self.del_ind(ind)
             return True
         return False
     def __call__(self,index):
