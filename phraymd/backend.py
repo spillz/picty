@@ -951,10 +951,10 @@ class DirectoryUpdateJob(WorkerJob):
                     j=collection.find([fullpath])
                     print 'delete item coll index',j
                     if j>=0:
-                        it=collection[j]
+                        item=collection[j]
                         collection.numselected-=collection[j].selected
                         del collection[j]
-                        view.del_item(it)
+                        view.del_item(item)
                     browser.lock.release()
                     gobject.idle_add(browser.refresh_view)
             if action in ('MOVED_TO','MODIFY','CREATE'):
@@ -967,7 +967,7 @@ class DirectoryUpdateJob(WorkerJob):
                         if os.path.getmtime(fullpath)!=collection[i].mtime:
                             item=collection[i]
                             browser.lock.acquire()
-                            view.del_item(it)
+                            view.del_item(item)
                             browser.lock.release()
                             item.mtime=os.path.getmtime(fullpath)
                             imagemanip.load_metadata(item)
