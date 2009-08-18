@@ -50,13 +50,25 @@ settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
 data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
 cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
 
+collections_dir=os.path.join(data_dir,'collections')
+if not os.path.exists(collections_dir):
+    os.makedirs(collections_dir)
+
 conf_file=os.path.join(settings_dir,'app-settings')
-collection_file=os.path.join(data_dir,'collection') ##todo: support multiple collections
+collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
+legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
+legacy_collection_file2=os.path.join(data_dir,'collection')
+if not os.path.exists(collection_file):
+    if os.path.exists(legacy_collection_file2):
+        os.renames(legacy_collection_file2,collection_file)
+    elif os.path.exists(legacy_collection_file):
+        os.renames(legacy_collection_file,collection_file)
+
 image_dirs=[] ##todo: yuck! - store collection directories in the collection class (they are at least saved in the collection file now)
 store_thumbs=True
 
 legacy_conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
-legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
+
 
 def save():
     global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
@@ -73,6 +85,7 @@ def save():
         print 'LAUNCHERS',custom_launchers
     finally:
         f.close()
+
 
 def load():
     global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places, layout
@@ -111,21 +124,22 @@ def load():
     finally:
         f.close()
 
+
 def user_add_dir():
-    global image_dirs
+    image_dirs=[]
     fcd=gtk.FileChooserDialog(title='Choose Photo Directory', parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
     fcd.set_current_folder(os.environ['HOME'])
     response=fcd.run()
     if response == gtk.RESPONSE_OK:
         image_dirs.append(fcd.get_filename())
-    print 'im dirs',image_dirs
     fcd.destroy()
     return image_dirs
 
-def write_empty_collection():
+
+def write_empty_collection(name,image_dirs):
     try:
-        f=open(collection_file,'wb')
+        f=open(os.path.join(collections_dir,name),'wb')
     except:
         print 'failed to open collection for write'
         return False
@@ -141,15 +155,19 @@ def write_empty_collection():
 def init():
     global image_dirs
     load()
-    if not os.path.exists(collection_file) and not os.path.exists(legacy_collection_file):
-        user_add_dir()
+    if not os.path.exists(collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
+        image_dirs=user_add_dir()
         if len(image_dirs)==0:
             import sys
             print 'no image directory selected... quitting'
             sys.exit()
-        if not write_empty_collection():
+        if not write_empty_collection('collection',settings.image_dirs):
             import sys
             print 'error creating collection file... quitting'
             sys.exit()
     save()
     print 'Starting image browser on',image_dirs
+
+
+def get_collection_files():
+    return os.listdir(collections_dir)

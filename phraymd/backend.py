@@ -83,6 +83,7 @@ class WorkerJobCollection(dict):
             MapImagesJob(),
             SelectionJob(),
             EditMetaDataJob(),
+            SaveCollectionJob(),
             LoadCollectionJob(),
             RecreateThumbJob(),
             ReloadMetadataJob(),
@@ -205,6 +206,7 @@ class CollectionUpdateJob(WorkerJob):
         if len(self.queue)==0:
             self.unsetevent()
 
+
 class RecreateThumbJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'RECREATETHUMB')
@@ -227,6 +229,7 @@ class RecreateThumbJob(WorkerJob):
         if len(self.queue)==0:
             gobject.idle_add(browser.update_status,2.0,'Recreating thumbnails done')
             self.unsetevent()
+
 
 class ReloadMetadataJob(WorkerJob):
     def __init__(self):
@@ -252,62 +255,41 @@ class ReloadMetadataJob(WorkerJob):
             self.unsetevent()
 
 
-
 class LoadCollectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'LOADCOLLECTION')
         self.pos=0
         self.monitor=None
 
-    def __call__2(self,jobs,collection,view,browser):
-        del collection[:]
-        collect.numselected=0
-        del view[:]
-        i=self.pos
-        if i==0:
-            try:
-                try:
-                    f=open(settings.collection_file,'rb')
-                except:
-                    f=open(settings.legacy_collection_file,'rb')
-                version=cPickle.load(f)
-                if version>='0.3.0':
-                    settings.image_dirs=cPickle.load(f)
-                self.count=cPickle.load(f)
-            except:
-                self.unsetevent()
-                jobs['WALKDIRECTORY'].setevent()
-        try:
-            while i<self.count and jobs.ishighestpriority(self):
-                collection.append(cPickle.load(f)) #note the append rather than add call (i.e. not wasting cycles sorting an already sorted list)
-                i+=1
-        except:
-            print 'error loading collection data'
-            collection=imageinfo.Collection([])
-        finally:
-            f.close()
-        if i==self.count:
-            self.pos=i
-            self.unsetevent()
-            jobs['WALKDIRECTORY'].setevent()
-
     def __call__(self,jobs,collection,view,browser):
-        browser.lock.acquire()
-        del collection[:]
-        collection.numselected=0
-        del view[:] ##todo: send plugin notification?
-        browser.lock.release()
+        if len(settings.image_dirs)>0:
+            print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
+            self.monitor.stop(settings.image_dirs[0])
+#            if self.dirtimer!=None:
+#                self.dirtimer.cancel()
+            savejob=SaveCollectionJob()
+            savejob(jobs,collection,view,browser)
+            browser.lock.acquire()
+            del collection[:]
+            collection.numselected=0
+            del view[:] ##todo: send plugin notification?
+            browser.lock.release()
         try:
             try:
                 f=open(settings.collection_file,'rb')
             except:
-                print 'loading lecacy collection file',settings.legacy_collection_file
-                f=open(settings.legacy_collection_file,'rb')
+                try:
+                    f=open(settings.legacy_collection_file2,'rb')
+                    print 'loading lecacy collection file',settings.legacy_collection_file2
+                except:
+                    f=open(settings.legacy_collection_file,'rb')
+                    print 'loading lecacy collection file',settings.legacy_collection_file
         except:
             self.unsetevent()
             jobs['WALKDIRECTORY'].setevent()
             del collection[:]
             collection.numselected=0
+            settings.image_dirs=[]
             return
         try:
             version=cPickle.load(f)
@@ -329,12 +311,16 @@ class LoadCollectionJob(WorkerJob):
             del collection[:]
             collection.numselected=0
             browser.lock.release()
+            settings.image_dirs=[]
+            return
         finally:
             f.close()
         self.unsetevent()
+        ##todo: detect whether collection is offline
         pluginmanager.mgr.callback('t_collection_loaded')
         jobs['BUILDVIEW'].setevent()
         jobs['WALKDIRECTORY'].setevent()
+
 
 class SaveCollectionJob(WorkerJob):
     def __init__(self):
@@ -469,7 +455,6 @@ class WalkSubDirectoryJob(WorkerJob):
                     dirs.pop(i)
                 else:
                     i+=1
-
             gobject.idle_add(browser.update_status,-1,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
@@ -960,7 +945,7 @@ class DirectoryUpdateJob(WorkerJob):
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
-                    if not mimetype.startswith('image'):
+                    if not mimetype.startswith('image'): ##todo: move this to the else clause below
                         continue
                     i=collection.find([fullpath])
                     if i>=0:
@@ -1082,6 +1067,18 @@ class Worker:
         job.deflock.release()
         print 'file event',action,' on',path
 
+    def save_collection(self,filename):
+        self.jobs['SAVECOLLECTION'].setevent()
+        self.event.set()
+
+    def load_collection(self,filename):
+        self.jobs['LOADCOLLECTION'].setevent()
+        self.event.set()
+
+    def scan_and_verify(self):
+        self.jobs['WALKDIRECTORY'].setevent()
+        self.event.set()
+
     def quit(self):
         self.jobs['QUIT'].setevent()
         self.event.set()
@@ -1131,7 +1128,6 @@ class Worker:
         job.queue.append(item)
         job.setevent()
         self.event.set()
-
 
     def select_all_items(self,mode=SELECT,view=True):
         job=self.jobs['SELECTION']

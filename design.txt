@@ -38,17 +38,11 @@ The Worker Backend is responsible for loading the image collection in a backgrou
     * receives indexing and filter requests. An indexing request will force a full
         metadata load, metadata should be stored persistently for quick retrieval.
 
-The ImageThumbnailer loads thumbs for the ImageBrowser in a background thread.
-The thread waits for a list of thumbnail requests and then iteratively pops off
-items from the list to load thumbs into memory (if they haven't been already).
-The ImageThumbnailer returns to a wait state once the list is completed.
-
 The ImageLoader loads fullsize images and associated metadata for the
 ImageViewer. Operation is similar to the operation of the ImageThumbnailer.
 
 Note that thumbs, metadata and fullsize image data are associated with Image
-items rather than the ImageViewer or ImageBrowser. This allows this data to
-be loaded on demand and cached.
+items rather than the ImageViewer or ImageBrowser separating data from the interface.
 
 Backend Processing Logic
 ===========================
@@ -219,7 +213,7 @@ The gnome ui lib handles a few details:
     * Image filenames are actually md5 hashes of the full path to the fullsize image
     (e.g. 'path/to/my/pic.jpg' becomes ''2b83b60c41deed5ed96f2c45cbbcfa32.png')
 
-    * The thumbnail is stored PNG format with the mtime of the original image set as the Exif Data in the png image
+    * The thumbnail is stored in PNG format with the mtime of the original image set as the Exif Data in the png image
 
     * A thumbnail is valid if the exif date field matches the mtime of the image
 
@@ -227,7 +221,7 @@ The gnome ui lib handles a few details:
 
 This is fine for small, single user collections (or even small multi-user
 collections). For large collections look-up may be slower on a flat directory
-structure (this may be filesystem dependant). . For multi-user collections it
+structure (this may be filesystem dependant). For multi-user collections it
 would be preferrable to store thumbnails in a common area and allow concurrent access.
 
 Approach 1:
@@ -264,9 +258,41 @@ Approach 2:
       +img4.jpg
   +img1.jpg
   +img2.jpg
-  +subdir/
+  +subdir
     +img3.jpg
     +img4.jpg
 
 drawback --> too many image files in one dir?
 (tweak on this would be allow .thumbnails to be put anywhere on the shared space)
+
+Collections
+===========
+
+No reason not to store multcollection files. Allow the user to switch
+between them at run time. Presumably the user could run multiple instances
+of phraymd. With a different collection open in each one.
+
+To support offline collections, need to add an "offline" attribute to the collection object. The offline
+attribute gets set if the image folder is missing.
+
+Collection config:
+* use thumbnail cache or pull from images
+* thumbnail cache location (location of thumbnails)
+
+When the collection is offline:
+* cannot open it if the thumbs are not stored on the local system
+* should not attempt to scan, verify or update the collection
+* do not start an image monitor
+* can allow metadata editing
+* cannot support the save action and other actions that depend on the physical availability of the file
+
+If the collection is reconnected at runtime:
+* force scan, verify, update, thumbnailing
+* start directory monitor
+
+Switching collections:
+    Stop the monitor
+    Save the collection
+    Empty the collection of images
+    Open the new collection file
+    ...
