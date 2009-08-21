@@ -45,6 +45,9 @@ class Monitor(ProcessEvent):
     def start(self,dir):
         self.wdd = wm.add_watch(dir, mask, rec=True, auto_add=True)
     def stop(self,dir):
-        if self.wdd and dir in self.wdd:
-            wm.rm_watch(self.wdd[dir], rec=True)
-        self.notifier.stop() ##todo: should be checking if there are any other watches still active?
+        try:
+            if self.wdd and dir in self.wdd:
+                wm.rm_watch(self.wdd[dir], rec=True)
+            self.notifier.stop() ##todo: should be checking if there are any other watches still active?
+        except:
+            pass

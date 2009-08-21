@@ -260,11 +260,12 @@ class LoadCollectionJob(WorkerJob):
         WorkerJob.__init__(self,'LOADCOLLECTION')
         self.pos=0
         self.monitor=None
+        self.collection_file=''
 
     def __call__(self,jobs,collection,view,browser):
-        if len(settings.image_dirs)>0:
+        if settings.active_collection!=None:
             print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
-            self.monitor.stop(settings.image_dirs[0])
+            self.monitor.stop(collection.image_dirs[0])
 #            if self.dirtimer!=None:
 #                self.dirtimer.cancel()
             savejob=SaveCollectionJob()
@@ -274,44 +275,49 @@ class LoadCollectionJob(WorkerJob):
             collection.numselected=0
             del view[:] ##todo: send plugin notification?
             browser.lock.release()
+            settings.active_collection=None
+            collection.filename=None
         try:
-            try:
-                f=open(settings.collection_file,'rb')
-            except:
-                try:
-                    f=open(settings.legacy_collection_file2,'rb')
-                    print 'loading lecacy collection file',settings.legacy_collection_file2
-                except:
-                    f=open(settings.legacy_collection_file,'rb')
-                    print 'loading lecacy collection file',settings.legacy_collection_file
+            print 'ABOUT TO LOAD',self.collection_file
+            if not self.collection_file:
+                self.collection_file=settings.active_collection_file
+            print 'ABOUT TO LOAD2',self.collection_file
+            f=open(self.collection_file,'rb')
         except:
             self.unsetevent()
             jobs['WALKDIRECTORY'].setevent()
             del collection[:]
             collection.numselected=0
-            settings.image_dirs=[]
+            collection.filename=''
+            settings.active_collection=None
+            settings.action_collection_file=''
+            self.collection_file=''
             return
-        try:
-            version=cPickle.load(f)
-            if version>='0.3.0':
-                settings.image_dirs=cPickle.load(f)
-            print 'LOADING COLLECTION',settings.image_dirs
-            if os.path.exists(settings.image_dirs[0]):
-                self.monitor.start(settings.image_dirs[0])
-                print 'monitor started'
-                browser.lock.acquire()
-                collection[:]=cPickle.load(f)
-                browser.lock.release()
-            else:
-                ##todo: it is possible the collection is missing because it wasn't mounted, we don't want to go changing the collection
-                raise ValueError
+        version=cPickle.load(f)
+        if version>='0.3.0':
+            collection.image_dirs=cPickle.load(f)
+        browser.lock.acquire()
+        collection[:]=cPickle.load(f)
+        collection.filename=self.collection_file
+        settings.active_collection=collection
+        settings.active_collection_file=self.collection_file
+        browser.lock.release()
+        if os.path.exists(collection.image_dirs[0]):
+            self.monitor.start(collection.image_dirs[0])
+            print 'monitor started'
+        else:
+            ##todo: it is possible the collection is missing because it wasn't mounted, we don't want to go changing the collection
+            raise ValueError
         except:
             print 'error loading collection data'
             browser.lock.acquire()
             del collection[:]
             collection.numselected=0
             browser.lock.release()
-            settings.image_dirs=[]
+            settings.active_collection=None
+            collection.filename=None
+            self.collection_file=''
+            settings.action_collection_file=''
             return
         finally:
             f.close()
@@ -320,6 +326,7 @@ class LoadCollectionJob(WorkerJob):
         pluginmanager.mgr.callback('t_collection_loaded')
         jobs['BUILDVIEW'].setevent()
         jobs['WALKDIRECTORY'].setevent()
+        self.collection_file=''
 
 
 class SaveCollectionJob(WorkerJob):
@@ -329,13 +336,14 @@ class SaveCollectionJob(WorkerJob):
     def __call__(self,jobs,collection,view,browser):
         print 'saving'
         try:
-            f=open(settings.collection_file,'wb')
+            print settings.collections_dir,collection.filename
+            f=open(collection.filename,'wb')
         except:
             print 'failed to open collection for write'
             self.unsetevent()
             return False
         cPickle.dump(settings.version,f,-1)
-        cPickle.dump(settings.image_dirs,f,-1)
+        cPickle.dump(collection.image_dirs,f,-1)
         cPickle.dump(collection,f,-1)
         f.close()
         self.unsetevent()
@@ -353,7 +361,7 @@ class WalkDirectoryJob(WorkerJob):
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
-                scan_dir=settings.image_dirs[0]
+                scan_dir=collection.image_dirs[0]
                 self.collection_walker=os.walk(scan_dir)
         except StopIteration:
             self.notify_items=[]
@@ -1008,7 +1016,7 @@ class Worker:
                 self.event.clear()
                 self.event.wait()
             if self.jobs['QUIT']:
-                self.monitor.stop(settings.image_dirs[0])
+                self.monitor.stop(self.collection.image_dirs[0])
                 if self.dirtimer!=None:
                     self.dirtimer.cancel()
                 savejob=SaveCollectionJob()
@@ -1032,7 +1040,7 @@ class Worker:
         self.event.set()
 
     def directory_change_notify(self,path,action,isdir):
-        homedir=os.path.normpath(settings.image_dirs[0])
+        homedir=os.path.normpath(settings.active_collection.image_dirs[0])
         path=os.path.normcase(path)
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
@@ -1072,7 +1080,9 @@ class Worker:
         self.event.set()
 
     def load_collection(self,filename):
-        self.jobs['LOADCOLLECTION'].setevent()
+        loadjob=self.jobs['LOADCOLLECTION']
+        loadjob.collection_file=filename
+        loadjob.setevent()
         self.event.set()
 
     def scan_and_verify(self):

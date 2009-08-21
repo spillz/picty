@@ -210,7 +210,7 @@ class CollectionsBox(gtk.VBox):
     def init_view(self):
         self.model.clear()
         for col_file in settings.get_collection_files():
-            if os.path.join(settings.collections_dir,col_file)==settings.collection_file:
+            if os.path.join(settings.collections_dir,col_file)==settings.active_collection_file:
                 self.model.append((col_file,800))
             else:
                 self.model.append((col_file,400))
@@ -247,7 +247,7 @@ class CollectionsBox(gtk.VBox):
         for row in model:
             if row[1]==800:
                 row[1]=400
-        self.plugin.mainframe.tm.load_collection(model[iter][0])
+        self.plugin.mainframe.tm.load_collection(os.path.join(settings.collections_dir,model[iter][0]))
         model[iter][1]=800
 
     def add_signal(self, widget):

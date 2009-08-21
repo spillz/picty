@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.3.1' #version is saved to settings and configuration files
+version='0.3.2' #version is saved to settings and configuration files
 
 plugins_disabled=[]
 
@@ -54,41 +54,42 @@ collections_dir=os.path.join(data_dir,'collections')
 if not os.path.exists(collections_dir):
     os.makedirs(collections_dir)
 
-conf_file=os.path.join(settings_dir,'app-settings')
-collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
+active_collection=None
+active_collection_file=''
+default_collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
 legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 legacy_collection_file2=os.path.join(data_dir,'collection')
-if not os.path.exists(collection_file):
+if not os.path.exists(default_collection_file):
     if os.path.exists(legacy_collection_file2):
-        os.renames(legacy_collection_file2,collection_file)
+        os.renames(legacy_collection_file2,default_collection_file)
     elif os.path.exists(legacy_collection_file):
-        os.renames(legacy_collection_file,collection_file)
+        os.renames(legacy_collection_file,default_collection_file)
 
-image_dirs=[] ##todo: yuck! - store collection directories in the collection class (they are at least saved in the collection file now)
-store_thumbs=True
-
+conf_file=os.path.join(settings_dir,'app-settings')
 legacy_conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
+
+legacy_image_dirs=[]
 
 
 def save():
-    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places
+    global version, precache_count, custom_launchers, user_tag_info, places, active_collection_file
     try:
         f=open(conf_file,'wb')
     except:
         return False
     try:
         cPickle.dump(version,f,-1)
-        cPickle.dump(store_thumbs,f,-1)
+        cPickle.dump(active_collection_file,f,-1)
         cPickle.dump(precache_count,f,-1)
         cPickle.dump(layout,f,-1)
         cPickle.dump(custom_launchers,f,-1)
-        print 'LAUNCHERS',custom_launchers
+        cPickle.dump(plugins_disabled,f,-1)
     finally:
         f.close()
 
 
 def load():
-    global version, image_dirs, store_thumbs, precache_count, custom_launchers, user_tag_info, places, layout
+    global version, precache_count, custom_launchers, user_tag_info, places, layout, active_collection_file, legacy_image_dirs
     try:
         f=open(conf_file,'rb')
     except:
@@ -99,10 +100,12 @@ def load():
             return False
     try:
         file_version=cPickle.load(f)
-        print 'loaded settings file with version',file_version
+        if file_version>='0.3.2':
+            active_collection_file=cPickle.load(f)
         if file_version<'0.3.0':
-            image_dirs=cPickle.load(f)
-        store_thumbs=cPickle.load(f)
+            legacy_image_dirs=cPickle.load(f)
+        if file_version<='0.3.1':
+            store_thumbs=cPickle.load(f)
         precache_count=cPickle.load(f)
         if file_version>='0.3.1':
             layout=cPickle.load(f)
@@ -110,7 +113,6 @@ def load():
             custom_launchers=cPickle.load(f)
             for c in custom_launchers:
                 custom_launchers[c]=list(custom_launchers[c])
-            print 'LAUNCHERS',custom_launchers
         else:
             if file_version>='0.2.3':
                 user_tag_info=cPickle.load(f)
@@ -119,6 +121,8 @@ def load():
                     custom_launchers[c]=list(custom_launchers[c])
             if file_version>='0.2.4':
                 places=cPickle.load(f)
+        if file_version>='0.3.2':
+            plugins_disabled=cPickle.load(f)
     except:
         pass
     finally:
@@ -153,20 +157,24 @@ def write_empty_collection(name,image_dirs):
 
 
 def init():
-    global image_dirs
+    global image_dirs, active_collection_file
     load()
-    if not os.path.exists(collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
+    if not os.path.exists(active_collection_file):
+        try:
+            active_collection_file=os.path.join(collections_dir,get_collection_files()[0])
+        except:
+            pass
+    if not os.path.exists(active_collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
         image_dirs=user_add_dir()
         if len(image_dirs)==0:
             import sys
             print 'no image directory selected... quitting'
             sys.exit()
-        if not write_empty_collection('collection',settings.image_dirs):
+        if not write_empty_collection('collection',image_dirs):
             import sys
             print 'error creating collection file... quitting'
             sys.exit()
     save()
-    print 'Starting image browser on',image_dirs
 
 
 def get_collection_files():

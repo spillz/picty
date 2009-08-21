@@ -223,6 +223,7 @@ class Collection(list):
         list.__init__(self)
         self.numselected=0
         self.image_dirs=image_dirs
+        self.filename=None
         for item in items:
             self.add(item)
             self.numselected+=item.selected
@@ -251,9 +252,13 @@ class Collection(list):
         odict = self.__dict__.copy() # copy the dict since we change it
         del odict['numselected']
         del odict['image_dirs']
+        del odict['filename']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
+        self.numselected=0
+        self.image_dirs=[]
+        self.filename=None
 
 
 def get_mtime(item):
