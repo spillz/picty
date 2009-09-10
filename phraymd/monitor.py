@@ -3,10 +3,10 @@ from pyinotify import *
 
 wm=WatchManager()
 
-if 'EventsCodes' in dir():
-    mask = EventsCodes.IN_DELETE | EventsCodes.IN_CREATE |EventsCodes.IN_DONT_FOLLOW |EventsCodes.IN_MODIFY|EventsCodes.IN_MOVED_FROM|EventsCodes.IN_MOVED_TO  # watched events
-else:
+if 'IN_DELETE' in dir():
     mask = IN_DELETE | IN_CREATE |IN_DONT_FOLLOW |IN_MODIFY|IN_MOVED_FROM|IN_MOVED_TO  # watched events
+else:
+    mask = EventsCodes.IN_DELETE | EventsCodes.IN_CREATE |EventsCodes.IN_DONT_FOLLOW |EventsCodes.IN_MODIFY|EventsCodes.IN_MOVED_FROM|EventsCodes.IN_MOVED_TO  # watched events
 
 class Monitor(ProcessEvent):
     def __init__(self,cb):
