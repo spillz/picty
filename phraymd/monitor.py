@@ -1,9 +1,12 @@
 import os
-from pyinotify import WatchManager, Notifier, ThreadedNotifier, EventsCodes, ProcessEvent
+from pyinotify import *
 
 wm=WatchManager()
 
-mask = EventsCodes.IN_DELETE | EventsCodes.IN_CREATE |EventsCodes.IN_DONT_FOLLOW |EventsCodes.IN_MODIFY|EventsCodes.IN_MOVED_FROM|EventsCodes.IN_MOVED_TO  # watched events
+if 'EventsCodes' in dir():
+    mask = EventsCodes.IN_DELETE | EventsCodes.IN_CREATE |EventsCodes.IN_DONT_FOLLOW |EventsCodes.IN_MODIFY|EventsCodes.IN_MOVED_FROM|EventsCodes.IN_MOVED_TO  # watched events
+else:
+    mask = IN_DELETE | IN_CREATE |IN_DONT_FOLLOW |IN_MODIFY|IN_MOVED_FROM|IN_MOVED_TO  # watched events
 
 class Monitor(ProcessEvent):
     def __init__(self,cb):
