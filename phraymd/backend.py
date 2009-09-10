@@ -266,66 +266,32 @@ class LoadCollectionJob(WorkerJob):
         if settings.active_collection!=None:
             print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
             self.monitor.stop(collection.image_dirs[0])
-#            if self.dirtimer!=None:
-#                self.dirtimer.cancel()
             savejob=SaveCollectionJob()
             savejob(jobs,collection,view,browser)
             browser.lock.acquire()
-            del collection[:]
-            collection.numselected=0
+            collection.empty()
             del view[:] ##todo: send plugin notification?
             browser.lock.release()
             settings.active_collection=None
             collection.filename=None
-        try:
-            print 'ABOUT TO LOAD',self.collection_file
-            if not self.collection_file:
-                self.collection_file=settings.active_collection_file
-            print 'ABOUT TO LOAD2',self.collection_file
-            f=open(self.collection_file,'rb')
-        except:
-            self.unsetevent()
-            jobs['WALKDIRECTORY'].setevent()
-            del collection[:]
-            collection.numselected=0
-            collection.filename=''
-            settings.active_collection=None
-            settings.action_collection_file=''
-            self.collection_file=''
-            return
-        version=cPickle.load(f)
-        if version>='0.3.0':
-            collection.image_dirs=cPickle.load(f)
+        print 'ABOUT TO LOAD',self.collection_file
+        if not self.collection_file:
+            self.collection_file=settings.active_collection_file
+        print 'ABOUT TO LOAD2',self.collection_file
         browser.lock.acquire()
-        collection[:]=cPickle.load(f)
-        collection.filename=self.collection_file
-        settings.active_collection=collection
-        settings.active_collection_file=self.collection_file
-        browser.lock.release()
-        if os.path.exists(collection.image_dirs[0]):
-            self.monitor.start(collection.image_dirs[0])
-            print 'monitor started'
+        if collection.load(self.collection_file):
+            settings.active_collection=collection
+            settings.active_collection_file=self.collection_file
+            if os.path.exists(collection.image_dirs[0]):
+                self.monitor.start(collection.image_dirs[0])
+                jobs['BUILDVIEW'].setevent()
+                jobs['WALKDIRECTORY'].setevent()
+            pluginmanager.mgr.callback('t_collection_loaded') ##todo: plugins need to know if collection on/offline?
         else:
-            ##todo: it is possible the collection is missing because it wasn't mounted, we don't want to go changing the collection
-            raise ValueError
-        except:
-            print 'error loading collection data'
-            browser.lock.acquire()
-            del collection[:]
-            collection.numselected=0
-            browser.lock.release()
             settings.active_collection=None
-            collection.filename=None
-            self.collection_file=''
             settings.action_collection_file=''
-            return
-        finally:
-            f.close()
+        browser.lock.release()
         self.unsetevent()
-        ##todo: detect whether collection is offline
-        pluginmanager.mgr.callback('t_collection_loaded')
-        jobs['BUILDVIEW'].setevent()
-        jobs['WALKDIRECTORY'].setevent()
         self.collection_file=''
 
 
@@ -335,17 +301,7 @@ class SaveCollectionJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         print 'saving'
-        try:
-            print settings.collections_dir,collection.filename
-            f=open(collection.filename,'wb')
-        except:
-            print 'failed to open collection for write'
-            self.unsetevent()
-            return False
-        cPickle.dump(settings.version,f,-1)
-        cPickle.dump(collection.image_dirs,f,-1)
-        cPickle.dump(collection,f,-1)
-        f.close()
+        collection.save()
         self.unsetevent()
 
 
@@ -1016,7 +972,8 @@ class Worker:
                 self.event.clear()
                 self.event.wait()
             if self.jobs['QUIT']:
-                self.monitor.stop(self.collection.image_dirs[0])
+                if len(self.collection.image_dirs)>0:
+                    self.monitor.stop(self.collection.image_dirs[0])
                 if self.dirtimer!=None:
                     self.dirtimer.cancel()
                 savejob=SaveCollectionJob()
@@ -1080,6 +1037,7 @@ class Worker:
         self.event.set()
 
     def load_collection(self,filename):
+        print 'got request to load collection'
         loadjob=self.jobs['LOADCOLLECTION']
         loadjob.collection_file=filename
         loadjob.setevent()

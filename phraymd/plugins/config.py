@@ -5,6 +5,7 @@ import os
 from phraymd import settings
 from phraymd import pluginbase
 from phraymd import pluginmanager
+from phraymd import imageinfo
 
 class ConfigPlugin(pluginbase.Plugin):
     name='ConfigPlugin'
@@ -256,7 +257,7 @@ class CollectionsBox(gtk.VBox):
             return
         coll_dir=settings.user_add_dir()
         if len(coll_dir)>0:
-            if settings.write_empty_collection(name,coll_dir):
+            if imageinfo.create_empty_file(name,coll_dir):
                 self.model.append((name,400))
 
     def delete_signal(self, widget):
@@ -269,8 +270,11 @@ class CollectionsBox(gtk.VBox):
         name=self.model[iter][0]
         if name==settings.active_collection:
             return
-        os.remove(os.path.join(settings.collections_dir,name))
-        self.model.remove([iter])
+        try:
+            os.remove(os.path.join(settings.collections_dir,name))
+        except:
+            return
+        self.model.remove(iter)
 
 
 class PluginBox(gtk.VBox):
