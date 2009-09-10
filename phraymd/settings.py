@@ -156,7 +156,7 @@ def init():
             print 'no image directory selected... quitting'
             sys.exit()
         import imageinfo
-        if not imageinfo.Collection.create_empty_file(os.path.join(collections_dir,'collection'),image_dirs):
+        if not imageinfo.create_empty_file(os.path.join(collections_dir,'collection'),image_dirs):
             import sys
             print 'error creating collection file... quitting'
             sys.exit()
