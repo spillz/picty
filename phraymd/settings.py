@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.3.2' #version is saved to settings and configuration files
+version='0.3.2' #version is saved to data and configuration files
 
 plugins_disabled=[]
 

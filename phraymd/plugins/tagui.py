@@ -266,13 +266,14 @@ class TagFrame(gtk.VBox):
         self.tv.connect("drag-data-get",self.drag_get_signal)
         self.tv.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.tv.connect("button-release-event",self.context_menu)
+
         scrolled_window = gtk.ScrolledWindow()
-        scrolled_window.add_with_viewport(self.tv)
+        scrolled_window.add(self.tv)
         scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
         self.pack_start(scrolled_window)
 
         button_box = gtk.HButtonBox()
-        tag_sel_button= gtk.Button('_Apply Tags')
+        tag_sel_button= gtk.Button('_Apply Checked Tags')
         tag_sel_button.connect("clicked",self.tag_selected_signal)
         tag_sel_button.set_tooltip_text('Applies checked tags above to the selected images in the view')
         button_box.pack_start(tag_sel_button)
@@ -492,6 +493,18 @@ class TagFrame(gtk.VBox):
             iter=self.model.iter_parent(iter)
         copy(iter_node,dest_iter,rownum)
         self.model.remove(iter_node)
+
+    def sort_category(self,iter):
+        '''sort alphabetically by name the child rows of iter'''
+        i=0
+        names=[]
+        for it in self.iter_children(iter):
+            names.append((self.model[iter][self.M_DISP],i))
+            i+=1
+        sort(names)
+        for i in range(len(names)):
+            '''sort items'''
+            pass
 
     def get_checked_tags(self):
         return [it[self.M_KEY] for it in self.iter_all() if it[self.M_TYPE]==3 and it[self.M_CHECK]]
