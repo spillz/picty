@@ -520,10 +520,10 @@ class BuildViewJob(WorkerJob):
                 browser.lock.acquire()
                 view.add_item(item)
                 browser.lock.release()
-            if i-lastrefresh>100:
-                lastrefresh=i
-                gobject.idle_add(browser.refresh_view)
-                gobject.idle_add(browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
+                if i-lastrefresh>200:
+                    lastrefresh=i
+                    gobject.idle_add(browser.refresh_view)
+                    gobject.idle_add(browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset) and not self.cancel:
             self.pos=i
