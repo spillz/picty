@@ -499,8 +499,10 @@ class ImageBrowser(gtk.HBox):
         self.update_view_index_range()
 
     def update_required_thumbs(self):
-        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,self.geo_ind_view_last)
+        self.lock.acquire()
+        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,min(self.geo_ind_view_last,len(self.tm.view)))
         self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
+        self.lock.release()
 
     def calc_screen_offset(self):
         '''computes how much to offset the first item in the view from the top of the screen (this should be negative)'''
