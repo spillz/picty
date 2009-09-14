@@ -458,5 +458,6 @@ def load_thumb(item):
     if thumb!=None:
         item.thumbsize=(thumb.get_width(),thumb.get_height())
         item.thumb=thumb
+        cache_thumb(item)
         return True
 #        item.thumbrgba='A' in image.getbands()
