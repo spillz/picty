@@ -523,4 +523,5 @@ class Index(list):
             return [i[1] for i in self[len(self)-last:len(self)-first]]
         else:
             return [i[1] for i in self[first:last]]
-
+    def get_selected_items(self):
+        return [i[1] for i in self if i[1].selected]

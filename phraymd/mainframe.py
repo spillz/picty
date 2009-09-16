@@ -365,6 +365,12 @@ class MainFrame(gtk.VBox):
     def select_delete(self,widget):
         fileops.worker.delete(self.tm.view,self.update_status)
 
+    def select_reload_metadata(self,widget):
+        self.tm.reload_selected_metadata()
+
+    def select_recreate_thumb(self,widget):
+        self.tm.recreate_selected_thumbs()
+
     def set_filter_text(self,widget):
         self.set_sort_key(widget)
 
@@ -564,7 +570,36 @@ class MainFrame(gtk.VBox):
         menu_add(menu,'Delete Image',self.delete_item,item)
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
-        menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+        if not item.selected:
+            menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+            return
+
+        smenu=gtk.Menu()
+
+        menu_add(smenu,"Select _All",self.select_all)
+        menu_add(smenu,"Select _None",self.select_none)
+        menu_add(smenu,"_Invert Selection",self.select_invert)
+        menu_add(smenu,"Show All _Selected",self.select_show)
+        menu_add(smenu,"_Copy Selection...",self.select_copy)
+        menu_add(smenu,"_Move Selection...",self.select_move)
+        menu_add(smenu,"_Delete Selection...",self.select_delete)
+        menu_add(smenu,"Add _Tags",self.select_keyword_add)
+        menu_add(smenu,"_Remove Tags",self.select_keyword_remove)
+        menu_add(smenu,"Set Descriptive _Info",self.select_set_info)
+        menu_add(smenu,"_Batch Manipulation",self.select_batch)
+        menu_add(smenu,"Re_load Metadata",self.select_reload_metadata)
+        menu_add(smenu,"Recreate Thumb_nail",self.select_recreate_thumb)
+
+        smenu_item=gtk.MenuItem("Selected")
+        smenu_item.show()
+        smenu_item.set_submenu(smenu)
+        menu_item=gtk.MenuItem("This Image")
+        menu_item.show()
+        menu_item.set_submenu(menu)
+        rootmenu=gtk.Menu()
+        rootmenu.append(smenu_item)
+        rootmenu.append(menu_item)
+        rootmenu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def item_make_thumb(self,widget,item):
         self.tm.recreate_thumb(item)

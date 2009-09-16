@@ -241,9 +241,10 @@ class ReloadMetadataJob(WorkerJob):
             gobject.idle_add(browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
             item=self.queue.pop(0)
             browser.lock.acquire()
-            item.meta=None
             if view.del_item(item):
+                item.meta=None
                 imagemanip.load_metadata(item)
+                print 'loaded metadata',item
                 view.add_item(item)
             browser.lock.release()
 #            if item.meta!=None:
@@ -1093,7 +1094,23 @@ class Worker:
 
     def reload_metadata(self,item):
         job=self.jobs['RELOADMETADATA']
+        if job.state:
+            return False
         job.queue.append(item)
+        job.setevent()
+        self.event.set()
+
+    def recreate_selected_thumbs(self):
+        job=self.jobs['RECREATETHUMB']
+        if job.state:
+            return False
+        job.queue[:]=self.view.get_selected_items()
+        job.setevent()
+        self.event.set()
+
+    def reload_selected_metadata(self):
+        job=self.jobs['RELOADMETADATA']
+        job.queue[:]=self.view.get_selected_items()
         job.setevent()
         self.event.set()
 
