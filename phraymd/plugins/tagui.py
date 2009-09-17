@@ -689,7 +689,6 @@ class TagFrame(gtk.VBox):
             self.mainframe.filter_entry.set_text(text.strip())
             self.mainframe.filter_entry.activate()
 
-
     def check_row(self,path,state):
         self.model[path][self.M_CHECK]=state
         iter=self.model.get_iter(path)

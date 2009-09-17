@@ -135,14 +135,14 @@ def conv_keywords(metaobject,keys,value=None):
     try:
         val=metaobject["Iptc.Application2.Keywords"]
         if type(val)==str:
-            return (val,)
-        return tuple(val)
+            return [val]
+        return list(val)
     except:
         try:
             #parse 'abc "def ghi" fdg' as three tags -- need quote parsing
             val=metaobject["Exif.Photo.UserComment"]
-            vals=tag_split(value)
-            return val
+            vals=tag_split(val)
+            return vals
         except:
             return None
 

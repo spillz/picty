@@ -109,6 +109,15 @@ class Item(list):
         self.image=None
         self.selected=False
         self.relevance=0
+        #todo: eventually delete this -- for legacy support to prevent loading loading keyword metadata as a tuple
+        try:
+            self.meta['Keywords']=list(self.meta['Keywords'])
+        except:
+            pass
+        try:
+            self.meta_backup['Keywords']=list(self.meta_backup['Keywords'])
+        except:
+            pass
 
 def toggle_tags(item,tags):
     try:
