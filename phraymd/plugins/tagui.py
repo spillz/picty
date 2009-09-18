@@ -365,16 +365,16 @@ class TagFrame(gtk.VBox):
         rename_response=metadatadialogs.prompt_dialog("Rename Tag",'Would you like to replace the tag "%s" with "%s" for all images in your collection'%(old_key,k))
         if rename_response==2:
             return
+        self.model[iter][self.M_KEY]=k
+        self.model[iter][self.M_DISP]=k
         try:
-            self.model[iter][self.M_KEY]=k
-            self.model[iter][self.M_DISP]=k
             self.user_tags[k]=self.user_tags[old_key]
             del self.user_tags[old_key]
-            rename_tag_in_images=True##todo: prompt for replacement of tag in images with a dialog
-            if rename_response==0:
-                self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
         except:
             pass
+        rename_tag_in_images=True##todo: prompt for replacement of tag in images with a dialog
+        if rename_response==0:
+            self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
 
     def add_category(self,widget,parent):
         k=self.mainframe.entry_dialog('Add a Category','Name:')
