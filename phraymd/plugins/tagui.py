@@ -345,12 +345,12 @@ class TagFrame(gtk.VBox):
             pass
 
     def remove_tag(self,widget,iter):
+        k=self.model[iter][self.M_KEY]
+        rename_response=metadatadialogs.prompt_dialog("Delete Tag",'Would you like to remove the tag "%s" from all images in your collection?'%(k,))
+        if rename_response==2:
+            return
+        self.model.remove(iter)
         try:
-            k=self.model[iter][self.M_KEY]
-            rename_response=metadatadialogs.prompt_dialog('Delete Tag","Would you like to remove the tag "%s" from all images in your collection?'%(k))
-            if rename_response==2:
-                return
-            self.model.remove(iter)
             del self.user_tags[k]
             if rename_response==0:
                 self.worker.keyword_edit('"%s"'%(k,),False,True,False,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
