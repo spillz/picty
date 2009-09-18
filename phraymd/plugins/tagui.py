@@ -347,7 +347,7 @@ class TagFrame(gtk.VBox):
     def remove_tag(self,widget,iter):
         try:
             k=self.model[iter][self.M_KEY]
-            rename_response=metadatadialogs.prompt_dialog("Delete Tag","Would you like to remove the tag %s from all images in your collection?"%(k))
+            rename_response=metadatadialogs.prompt_dialog('Delete Tag","Would you like to remove the tag "%s" from all images in your collection?'%(k))
             if rename_response==2:
                 return
             self.model.remove(iter)
@@ -362,7 +362,7 @@ class TagFrame(gtk.VBox):
         k=self.mainframe.entry_dialog('Rename Tag','New Name:',old_key)
         if not k or k==old_key:
             return
-        rename_response=metadatadialogs.prompt_dialog("Rename Tag","Would you like to replace the tag %s with %s\n for all images in your collection"%(old_key,k))
+        rename_response=metadatadialogs.prompt_dialog("Rename Tag",'Would you like to replace the tag "%s" with "%s" for all images in your collection'%(old_key,k))
         if rename_response==2:
             return
         try:
