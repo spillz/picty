@@ -218,7 +218,7 @@ class MapFrame(gtk.VBox):
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':
             path=selection_data.data
-            import imageinfo
+            from phraymd import imageinfo
             item=imageinfo.Item(path,0)
             ind=self.worker.collection.find(item)
             if ind<0:
