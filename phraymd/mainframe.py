@@ -155,14 +155,28 @@ class MainFrame(gtk.VBox):
 #        self.sidebar_menu_button.show()
 
         self.toolbar=gtk.Toolbar()
-        def insert_item(toolbar,widget,callback,i,label=None,tooltip=None):
-            toolbar.insert(widget,i)
+        def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
+            toolbar.add(widget)
             if callback:
                 widget.connect("clicked", callback)
             if tooltip:
                 widget.set_tooltip_text(tooltip)
             if label:
                 widget.set_label(label)
+            if expand:
+                widget.set_expand(True)
+        def add_widget(toolbar,widget,callback,label=None,tooltip=None,expand=False):
+            item=gtk.ToolItem()
+            item.add(widget)
+            toolbar.add(item)
+            if callback:
+                widget.connect("clicked", callback)
+            if tooltip:
+                widget.set_tooltip_text(tooltip)
+            if label:
+                item.set_label(label)
+            if expand:
+                item.set_expand(True)
         def set_item(widget,callback,label,tooltip):
             if callback:
                 widget.connect("clicked", callback)
@@ -185,45 +199,48 @@ class MainFrame(gtk.VBox):
             toolbar.add(item)
             if expand:
                 item.set_expand(True)
-        add_frame(self.toolbar,"Changes",(
-            (gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)"),
-            (gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
-            ))
-        self.sidebar_toggle=gtk.ToggleToolButton(gtk.STOCK_LEAVE_FULLSCREEN)
-        add_frame(self.toolbar,"Sidebar",(
-            (self.sidebar_toggle,self.activate_sidebar,None,"Toggle the Sidebar"),
-            ))
-        self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
-        add_frame(self.toolbar,"Sort the View",(
-            (self.sort_order,None,None, "Set the image attribute that determines the order images appear in"),
-            (self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
-            ))
-        if entry_no_icons:
-            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True),
-            (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection",False))
+        frame_mode=False
+        if frame_mode:
+            self.sidebar_toggle=gtk.ToggleToolButton(gtk.STOCK_LEAVE_FULLSCREEN)
+            add_frame(self.toolbar,"Sidebar",(
+                (self.sidebar_toggle,self.activate_sidebar,None,"Toggle the Sidebar"),
+                ))
+            add_frame(self.toolbar,"Changes",(
+                (gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)"),
+                (gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
+                ))
+            self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
+            add_frame(self.toolbar,"Sort the View",(
+                (self.sort_order,None,None, "Set the image attribute that determines the order images appear in"),
+                (self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
+                ))
+            if entry_no_icons:
+                items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True),
+                (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection",False))
+            else:
+                items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),)
+            add_frame(self.toolbar,"Filter the View",items,True)
         else:
-            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),)
-        add_frame(self.toolbar,"Filter the View",items,True)
+            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
+            self.sidebar_toggle=gtk.ToggleToolButton(gtk.STOCK_LEAVE_FULLSCREEN)
+            add_item(self.toolbar,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
+            self.toolbar.add(gtk.SeparatorToolItem())
+            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
+            add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
+            add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
+            self.toolbar.add(gtk.SeparatorToolItem())
+            add_widget(self.toolbar,gtk.Label("Sort: "),None,None,None)
+            add_widget(self.toolbar,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
+            self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
+            add_item(self.toolbar,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
+            self.toolbar.add(gtk.SeparatorToolItem())
+            add_widget(self.toolbar,gtk.Label("Find: "),None,None,None)
+            if entry_no_icons:
+                add_widget(self.toolbar,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
+                add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
+            else:
+                add_widget(self.toolbar,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
 
-#
-#        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,4)
-#        item=gtk.ToolItem()
-#        item.add(self.sort_order)
-#        insert_item(self.toolbar,item,None,5,None, "Set the image attribute that determines the order images appear in")
-#        insert_item(self.toolbar,gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING),self.reverse_sort_order,6,"Reverse Sort Order", "Reverse the order that images appear in")
-#        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,7)
-#        item=gtk.ToolItem()
-#        item.add(self.filter_entry)
-#        clearbutton=gtk.ToolButton(gtk.STOCK_CLEAR)
-#        clearbutton.set_tooltip_text("Clear the filter and reset the view to the entire collection")
-#        item=gtk.ToolItem()
-#        frame=gtk.Frame("Filter the View")
-#        box=gtk.HBox()
-#        box.pack_start(self.filter_entry)
-#        box.pack_start(clearbutton)
-#        frame.add(box)
-#        item.add(frame)
-#        insert_item(self.toolbar,item,None,8,None,"Filter the view")
         self.toolbar.show_all()
 
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,0,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
