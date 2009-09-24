@@ -120,7 +120,12 @@ class MainFrame(gtk.VBox):
         self.filter_entry=gtk.Entry()
         self.filter_entry.connect("activate",self.set_filter_text)
         self.filter_entry.show()
-        self.filter_entry.set_width_chars(40)
+        try:
+            self.filter_entry.set_icon_from_stock(gtk.STOCK_CLEAR)
+            self.filter_entry.connect("icon-press",self.clear_filter)
+        except:
+            entry_no_icons=True
+        #self.filter_entry.set_width_chars(40)
 
         self.selection_menu_button=gtk.Button('_Selection')
         self.selection_menu_button.connect("clicked",self.selection_popup)
@@ -166,15 +171,20 @@ class MainFrame(gtk.VBox):
             if label:
                 widget.set_label(label)
             return widget
-        def add_frame(toolbar,label,items):
+        def add_frame(toolbar,label,items,expand=False):
             item=gtk.ToolItem()
             frame=gtk.Frame(label)
             box=gtk.HBox()
             item.add(frame)
             frame.add(box)
             for i in items:
-                box.pack_start(set_item(*i))
+                if len(i)==5:
+                    box.pack_start(set_item(*i[:4]),i[4])
+                else:
+                    box.pack_start(set_item(*i))
             toolbar.add(item)
+            if expand:
+                item.set_expand(True)
         add_frame(self.toolbar,"Changes",(
             (gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)"),
             (gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
@@ -188,10 +198,12 @@ class MainFrame(gtk.VBox):
             (self.sort_order,None,None, "Set the image attribute that determines the order images appear in"),
             (self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
             ))
-        add_frame(self.toolbar,"Filter the View",(
-            (self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),
-            (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection")
-            ))
+        if entry_no_icons:
+            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression",True),
+            (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection",False))
+        else:
+            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),)
+        add_frame(self.toolbar,"Filter the View",items,True)
 
 #
 #        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,4)
