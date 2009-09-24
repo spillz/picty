@@ -199,7 +199,7 @@ class MainFrame(gtk.VBox):
             (self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
             ))
         if entry_no_icons:
-            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression",True),
+            items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True),
             (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection",False))
         else:
             items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),)
@@ -620,7 +620,7 @@ class MainFrame(gtk.VBox):
             item=gtk.MenuItem(text)
             item.connect("activate",callback,*args)
             menu.append(item)
-            item.show()
+#            item.show()
         uri=gnomevfs.get_uri_from_local_path(item.filename)
         mime=gnomevfs.get_mime_type(uri)
         launch_menu=gtk.Menu()
@@ -649,14 +649,16 @@ class MainFrame(gtk.VBox):
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
         if not item.selected:
+            menu.append(gtk.SeparatorMenuItem())
+            menu_add(menu,"Select _All",self.select_all)
+            menu_add(menu,"Select _None",self.select_none)
+            menu_add(menu,"_Invert Selection",self.select_invert)
+            menu.show_all()
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
             return
 
         smenu=gtk.Menu()
 
-        menu_add(smenu,"Select _All",self.select_all)
-        menu_add(smenu,"Select _None",self.select_none)
-        menu_add(smenu,"_Invert Selection",self.select_invert)
         menu_add(smenu,"Show All _Selected",self.select_show)
         menu_add(smenu,"_Copy Selection...",self.select_copy)
         menu_add(smenu,"_Move Selection...",self.select_move)
@@ -664,9 +666,9 @@ class MainFrame(gtk.VBox):
         menu_add(smenu,"Add _Tags",self.select_keyword_add)
         menu_add(smenu,"_Remove Tags",self.select_keyword_remove)
         menu_add(smenu,"Set Descriptive _Info",self.select_set_info)
-        menu_add(smenu,"_Batch Manipulation",self.select_batch)
         menu_add(smenu,"Re_load Metadata",self.select_reload_metadata)
-        menu_add(smenu,"Recreate Thumb_nail",self.select_recreate_thumb)
+        menu_add(smenu,"Recreate Thumb_nails",self.select_recreate_thumb)
+        #menu_add(smenu,"_Batch Manipulation",self.select_batch)
 
         smenu_item=gtk.MenuItem("Selected")
         smenu_item.show()
@@ -677,6 +679,11 @@ class MainFrame(gtk.VBox):
         rootmenu=gtk.Menu()
         rootmenu.append(smenu_item)
         rootmenu.append(menu_item)
+        rootmenu.append(gtk.SeparatorMenuItem())
+        menu_add(rootmenu,"Select _All",self.select_all)
+        menu_add(rootmenu,"Select _None",self.select_none)
+        menu_add(rootmenu,"_Invert Selection",self.select_invert)
+        rootmenu.show_all()
         rootmenu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def item_make_thumb(self,widget,item):
