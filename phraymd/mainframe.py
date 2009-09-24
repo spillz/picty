@@ -190,7 +190,7 @@ class MainFrame(gtk.VBox):
             ))
         add_frame(self.toolbar,"Filter the View",(
             (self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),
-            (gtk.ToggleToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection")
+            (gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,"Clear Filter", "Reset the filter and display all images in collection")
             ))
 
 #
