@@ -7,6 +7,7 @@ if they are available, otherwise it loads them from files.'''
 ICON_INFO = [
   ('phraymd-rotate-left', 'phraymd-rotate-left.png'),
   ('phraymd-rotate-right', 'phraymd-rotate-right.png'),
+  ('phraymd-sidebar', 'phraymd-sidebar.png'),
   ]
 
 icon_path=os.path.join(os.path.split(__file__)[0],'icons/')

@@ -221,11 +221,11 @@ class MainFrame(gtk.VBox):
                 items=((self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression"),)
             add_frame(self.toolbar,"Filter the View",items,True)
         else:
-            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
-            self.sidebar_toggle=gtk.ToggleToolButton(gtk.STOCK_LEAVE_FULLSCREEN)
+#            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
+            self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
             add_item(self.toolbar,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
             self.toolbar.add(gtk.SeparatorToolItem())
-            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
+#            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
             add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
             add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
             self.toolbar.add(gtk.SeparatorToolItem())
@@ -234,7 +234,7 @@ class MainFrame(gtk.VBox):
             self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
             add_item(self.toolbar,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
             self.toolbar.add(gtk.SeparatorToolItem())
-            add_widget(self.toolbar,gtk.Label("Find: "),None,None,None)
+            add_widget(self.toolbar,gtk.Label("Search: "),None,None,None)
             if entry_no_icons:
                 add_widget(self.toolbar,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
                 add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
