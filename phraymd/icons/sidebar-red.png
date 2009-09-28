@@ -11,7 +11,7 @@
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    inkscape:export-ydpi="240"
    inkscape:export-xdpi="240"
-   inkscape:export-filename="/home/damien/src/image-viewer/phraymd/icons/phraymd-sidebar.png"
+   inkscape:export-filename="/home/patrick/Desktop/ccsm.png"
    width="48px"
    height="48px"
    id="svg11300"
@@ -360,9 +360,9 @@
      borderopacity="0.25490196"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="32"
-     inkscape:cx="12.235089"
-     inkscape:cy="28.375975"
+     inkscape:zoom="11.998937"
+     inkscape:cx="23.944459"
+     inkscape:cy="22.414843"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:grid-bbox="true"
@@ -464,7 +464,7 @@
        id="g2721"
        transform="translate(-11.172678,-40.076333)" />
     <rect
-       style="fill:#0da300;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#9b0013;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect2555"
        width="17.25"
        height="28.25"
@@ -472,7 +472,7 @@
        y="12.625"
        ry="2.7437184" />
     <rect
-       style="fill:#15e600;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#e6000d;fill-opacity:1;stroke:none;stroke-width:3.70000005;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect2557"
        width="15.12868"
        height="26.040291"
@@ -480,20 +480,12 @@
        y="13.623662"
        ry="1.6966078" />
     <rect
-       style="fill:#b2ffaa;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#ffaaaf;fill-opacity:1;stroke:none;stroke-width:3.70000005;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect3329"
        width="13.184136"
        height="24.272524"
        x="6.9972124"
        y="14.473763"
        ry="1.004716" />
-    <rect
-       style="fill:#9b0013;fill-opacity:1;stroke:none;stroke-width:3.70000005;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       id="rect3380"
-       width="0.16668144"
-       height="0.33336288"
-       x="45.420689"
-       y="32.915329"
-       ry="0.083340719" />
   </g>
 </svg>
