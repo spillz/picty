@@ -83,7 +83,7 @@ class ImageLoader:
         ##todo: this code is horrible! clean it up
         self.vlock.acquire()
         while 1:
-            if self.sizing or self.item and not self.item.image:
+            if (self.sizing or self.item) and self.item.image==None:
                 self.event.set()
             else:
                 self.event.clear()
@@ -336,6 +336,8 @@ class ImageViewer(gtk.VBox):
 
     def ImageSized(self,item):
         if not self.imarea.window:
+            return
+        if item.image==False:
             return
         if item.filename==self.item.filename:
             self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)

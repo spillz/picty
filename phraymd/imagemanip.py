@@ -197,7 +197,7 @@ def load_image(item,interrupt_fn,draft_mode=True):
             p.feed(imdata)
             image = p.close()
         except:
-            image=None
+            item.image=False
             return False
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
