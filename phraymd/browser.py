@@ -408,7 +408,7 @@ class ImageBrowser(gtk.HBox):
         '''update geometry, scrollbars, redraw the thumbnail view'''
         self.emit('view-changed')
         self.update_geometry()
-        self.update_required_thumbs()
+        ##self.update_required_thumbs()
         self.update_scrollbar()
 #        self.update_info_bar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
@@ -436,7 +436,7 @@ class ImageBrowser(gtk.HBox):
         self.geo_view_offset=self.scrolladj.get_value()
 #        self.update_geometry()
         self.update_view_index_range()
-        self.update_required_thumbs()
+        ##self.update_required_thumbs()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         self.vscroll.trigger_tooltip_query()
 
@@ -525,7 +525,7 @@ class ImageBrowser(gtk.HBox):
         self.geo_height=event.height
         self.update_geometry(True)
         self.update_scrollbar()
-        self.update_required_thumbs()
+        ##self.update_required_thumbs()
         self.imarea.grab_focus()
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
@@ -535,6 +535,7 @@ class ImageBrowser(gtk.HBox):
 
     def realize_signal(self,event):
         '''renders the view - received when the drawing area needs to be shown'''
+        request_thumbs=False
         self.lock.acquire()
         drawable = self.imarea.window
         gc = drawable.new_gc()
@@ -592,8 +593,10 @@ class ImageBrowser(gtk.HBox):
                     pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
-#            if item.meta and not item.thumb and not item.cannot_thumb:
-#                imagemanip.load_thumb(item)
+            #print item,item.meta,item.thumb,item.cannot_thumb
+            if not item.thumb and not item.cannot_thumb:
+                if not imagemanip.load_thumb(item):
+                    request_thumbs=True
             if item.thumb:
                 (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
                 adjy=self.geo_pad/2+(128-thumbheight)/2
@@ -628,5 +631,7 @@ class ImageBrowser(gtk.HBox):
                 else:
                     x=0
         self.lock.release()
+        if request_thumbs:
+            self.update_required_thumbs()
 
 gobject.type_register(ImageBrowser)
