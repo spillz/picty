@@ -360,9 +360,9 @@
      borderopacity="0.25490196"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="32"
-     inkscape:cx="12.235089"
-     inkscape:cy="28.375975"
+     inkscape:zoom="1"
+     inkscape:cx="7.0509801"
+     inkscape:cy="9.453668"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:grid-bbox="true"
@@ -370,8 +370,8 @@
      inkscape:showpageshadow="false"
      inkscape:window-width="768"
      inkscape:window-height="709"
-     inkscape:window-x="123"
-     inkscape:window-y="46"
+     inkscape:window-x="-5"
+     inkscape:window-y="24"
      showguides="true"
      inkscape:guide-bbox="true" />
   <metadata
@@ -464,29 +464,29 @@
        id="g2721"
        transform="translate(-11.172678,-40.076333)" />
     <rect
-       style="fill:#0da300;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#a30022;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect2555"
        width="17.25"
-       height="28.25"
+       height="28.34375"
        x="5"
-       y="12.625"
-       ry="2.7437184" />
+       y="12.53125"
+       ry="0.10328202" />
     <rect
-       style="fill:#15e600;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#e60030;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect2557"
        width="15.12868"
-       height="26.040291"
+       height="26.126707"
        x="6.0474648"
-       y="13.623662"
-       ry="1.6966078" />
+       y="13.533226"
+       ry="0" />
     <rect
-       style="fill:#b2ffaa;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#ffcad6;fill-opacity:1;stroke:none;stroke-width:3.70000004999999987;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect3329"
        width="13.184136"
-       height="24.272524"
+       height="24.353075"
        x="6.9972124"
-       y="14.473763"
-       ry="1.004716" />
+       y="14.386148"
+       ry="0" />
     <rect
        style="fill:#9b0013;fill-opacity:1;stroke:none;stroke-width:3.70000005;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect3380"
