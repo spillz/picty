@@ -27,14 +27,14 @@ sys.path.insert(0,'/usr/share/phraymd') ##private module location on installed v
 
 try:
     import gobject
-    import gnomevfs
+    import gio
     import gtk
     import gnome.ui
     import pyexiv2
     gobject.threads_init()
     gtk.gdk.threads_init()
 except:
-    print 'ERROR: missing modules gobject, gtk, gnome.ui, gnomevfs and pyexiv2'
+    print 'ERROR: missing modules gobject, gtk, gio, gnomevfs and pyexiv2'
     import sys
     sys.exit()
 

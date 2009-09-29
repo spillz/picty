@@ -37,7 +37,7 @@ sys.path.insert(0,'/usr/share') ##private module location on installed version
 
 ##gtk imports and init
 import gobject
-import gnomevfs ##todo: replace with gio
+import gio
 import gtk
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -356,7 +356,7 @@ class ImageBrowser(gtk.HBox):
             return
         selection_data.set('image-filename', 8, self.drag_item.filename)
         if not self.drag_item.selected:
-            uri=gnomevfs.get_uri_from_local_path(self.drag_item.filename)
+            uri=gio.File(self.drag_item.filename).get_uri()
             selection_data.set_uris([uri])
         else:
             uris=[]
@@ -364,7 +364,7 @@ class ImageBrowser(gtk.HBox):
             while i<len(self.tm.view):
                 item=self.tm.view(i)
                 if item.selected:
-                    uri=gnomevfs.get_uri_from_local_path(item.filename)
+                    uri=gio.File(item.filename).get_uri()
                     uris.append(uri)
                 i+=1
             selection_data.set_uris(uris)

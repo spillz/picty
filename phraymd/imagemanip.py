@@ -19,7 +19,7 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import gnomevfs
+import gio
 import gnome.ui
 import StringIO
 import gtk
@@ -289,7 +289,7 @@ def has_thumb(item):
     if item.thumburi and os.path.exists(item.thumburi):
         return True
     if not settings.maemo:
-        uri = gnomevfs.get_uri_from_local_path(item.filename)
+        uri = gio.File(item.filename).get_uri()
         item.thumburi=thumb_factory.lookup(uri,item.mtime)
         if item.thumburi:
             return True
@@ -311,7 +311,7 @@ def delete_thumb(item):
 def update_thumb_date(item,interrupt_fn=None):
     item.mtime=os.path.getmtime(item.filename)
     if item.thumb and item.thumburi:
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        uri = gio.File(item.filename).get_uri()
         thumb_factory.save_thumbnail(item.thumb,uri,item.mtime)
         item.thumburi=thumb_factory.lookup(uri,item.mtime)
         return True
@@ -335,7 +335,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             thumb_pb=gtk.gdk.pixbuf_new_from_data(data=image.tostring(), colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
             width=thumb_pb.get_width()
             height=thumb_pb.get_height()
-            uri=gnomevfs.get_uri_from_local_path(item.filename)
+            uri = gio.File(item.filename).get_uri()
             thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
             item.thumburi=thumb_factory.lookup(uri,item.mtime)
             if item.thumb:
@@ -354,7 +354,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
         if not force:
             return
         print 'forcing thumbnail creation'
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
+        uri = gio.File(item.filename).get_uri()
         thumb_uri=thumb_factory.lookup(uri,item.mtime)
         if thumb_uri:
             print 'removing failed thumb',thumb_uri
@@ -363,8 +363,10 @@ def make_thumb(item,interrupt_fn=None,force=False):
     ## would not need to make the thumb in that case
     t=time.time()
     try:
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mimetype=gnomevfs.get_mime_type(uri)
+        ifile=gio.File(item.filename)
+        uri = ifile.get_uri()
+        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+        mimetype=info.get_content_type()
         thumb_pb=None
 #        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
         if not thumb_pb:
@@ -410,7 +412,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
     height=thumb_pb.get_height()
 #    if height<128 and width<128:
 #        return False
-    uri=gnomevfs.get_uri_from_local_path(item.filename)
+    uri=gio.File(item.filename).get_uri()
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
     if item.thumb:
@@ -430,7 +432,7 @@ def load_thumb(item):
             image = Image.open(item.filename)
             image.thumbnail((128,128))
         else:
-            uri = gnomevfs.get_uri_from_local_path(item.filename)
+            uri=gio.File(item.filename).get_uri()
             if not item.thumburi:
                 item.thumburi=thumb_factory.lookup(uri,item.mtime)
             if item.thumburi:

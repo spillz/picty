@@ -24,7 +24,7 @@ maemo=False
 ##standard imports
 import cPickle
 import gobject
-import gnomevfs
+import gio
 import gtk
 import Image
 import ImageFile
@@ -41,8 +41,6 @@ import imageinfo
 import imagemanip
 import monitor
 import pluginmanager
-
-import gnomevfs
 
 def del_view_item(view,browser,item):
     browser.lock.acquire()
@@ -346,7 +344,9 @@ class WalkDirectoryJob(WorkerJob):
                 if r<=0:
                     continue
                 fullpath=os.path.normcase(os.path.join(root, p))
-                mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                ifile=gio.File(fullpath)
+                info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+                mimetype=info.get_content_type()
                 if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
                     continue
@@ -426,7 +426,9 @@ class WalkSubDirectoryJob(WorkerJob):
                 if r<=0:
                     continue
                 fullpath=os.path.normcase(os.path.join(root, p))
-                mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                ifile=gio.File(fullpath)
+                info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+                mimetype=info.get_content_type()
                 if not mimetype.lower().startswith('image'):
                     print 'invalid mimetype',fullpath,mimetype
                     continue
@@ -909,7 +911,9 @@ class DirectoryUpdateJob(WorkerJob):
                     gobject.idle_add(browser.refresh_view)
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
-                    mimetype=gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(fullpath))
+                    ifile=gio.File(fullpath)
+                    info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+                    mimetype=info.get_content_type()
                     if not mimetype.startswith('image'): ##todo: move this to the else clause below
                         continue
                     i=collection.find([fullpath])

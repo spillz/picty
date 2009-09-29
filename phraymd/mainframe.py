@@ -33,7 +33,7 @@ import bisect
 
 ##gtk libs
 import gobject
-import gnomevfs ##todo: replace with gio
+import gio
 import gtk
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -638,16 +638,16 @@ class MainFrame(gtk.VBox):
             item.connect("activate",callback,*args)
             menu.append(item)
 #            item.show()
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mime=gnomevfs.get_mime_type(uri)
+        ifile=gio.File(item.filename)
+        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+        itype=info.get_content_type()
         launch_menu=gtk.Menu()
-        if mime in settings.custom_launchers:
-            for app in settings.custom_launchers[mime]:
+        if itype in settings.custom_launchers:
+            for app in settings.custom_launchers[itype]:
                 menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
         launch_menu.append(gtk.SeparatorMenuItem())
-        for app in gnomevfs.mime_get_all_applications(mime):
-            menu_add(launch_menu,app[1],self.mime_open,app[2],item)
-        ##menu_add(menu,"Select _None",self.select_none)
+        for app in gio.app_info_get_all_for_type(itype):
+            menu_add(launch_menu,app.get_name(),self.mime_open,app,ifile.get_uri())
         for app in settings.custom_launchers['default']:
             menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
 
@@ -709,9 +709,9 @@ class MainFrame(gtk.VBox):
     def item_reload_metadata(self,widget,item):
         self.tm.reload_metadata(item)
 
-    def mime_open(self,widget,app_cmd,item):
-        print 'mime_open',app_cmd,item
-        subprocess.Popen(app_cmd+' "'+item.filename+'"',shell=True)
+    def mime_open(self,widget,app_cmd,uri):
+        print 'mime_open',app_cmd,uri
+        app_cmd.launch_uris([uri])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template

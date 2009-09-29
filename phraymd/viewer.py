@@ -27,7 +27,7 @@ import datetime
 
 
 import gobject
-import gnomevfs
+import gio
 import gtk
 
 gobject.threads_init()
