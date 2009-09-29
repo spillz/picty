@@ -451,15 +451,13 @@ def load_thumb(item):
                     item.thumburi=thumburi
     except:
         image=None
-    thumb=None
-    if image:
-        try:
-            thumb=image
-        except:
-            pass
-    if thumb!=None:
-        item.thumbsize=(thumb.get_width(),thumb.get_height())
-        item.thumb=thumb
+    if image!=None:
+        item.thumbsize=(image.get_width(),image.get_height())
+        item.thumb=image
         cache_thumb(item)
         return True
+    else:
+        item.thumburi=None
+        item.thumb=None
+        return False
 #        item.thumbrgba='A' in image.getbands()
