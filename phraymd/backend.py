@@ -130,11 +130,19 @@ class WorkerJobCollection(dict):
                 return j
         return None
 
+    def unset_all(self):
+        for j in self.collection:
+            j.unsetevent()
+
 
 
 class ThumbnailJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'THUMBNAIL')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.queue_onscreen=[]
         self.queue_fore=[]
         self.queue_back=[]
@@ -166,6 +174,10 @@ class ThumbnailJob(WorkerJob):
 class RegisterJobJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'REGISTERJOB')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.register_queue=[]
         self.deregister_queue=[]
 
@@ -188,6 +200,10 @@ class RegisterJobJob(WorkerJob):
 class CollectionUpdateJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'COLLECTIONUPDATE')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.queue=[]
 
     def __call__(self,jobs,collection,view,browser):
@@ -208,6 +224,10 @@ class CollectionUpdateJob(WorkerJob):
 class RecreateThumbJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'RECREATETHUMB')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.queue=[]
 
     def __call__(self,jobs,collection,view,browser):
@@ -232,7 +252,12 @@ class RecreateThumbJob(WorkerJob):
 class ReloadMetadataJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'RELOADMETADATA')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.queue=[]
+
 
     def __call__(self,jobs,collection,view,browser):
         while len(self.queue)>0 and jobs.ishighestpriority(self):
@@ -257,13 +282,19 @@ class ReloadMetadataJob(WorkerJob):
 class LoadCollectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'LOADCOLLECTION')
-        self.pos=0
         self.monitor=None
         self.collection_file=''
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
+        self.pos=0
 
     def __call__(self,jobs,collection,view,browser):
+        jobs.unset_all()
         if settings.active_collection!=None:
             print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
+            gobject.idle_add(browser.update_status,0.0,'Saving Collection: %s'%(collection.filename,))
             self.monitor.stop(collection.image_dirs[0])
             savejob=SaveCollectionJob()
             savejob(jobs,collection,view,browser)
@@ -273,11 +304,11 @@ class LoadCollectionJob(WorkerJob):
             browser.lock.release()
             settings.active_collection=None
             collection.filename=None
-        print 'ABOUT TO LOAD',self.collection_file
         if not self.collection_file:
             self.collection_file=settings.active_collection_file
-        print 'ABOUT TO LOAD2',self.collection_file
-        browser.lock.acquire()
+        print 'LOADING COLLECTION',self.collection_file
+        gobject.idle_add(browser.update_status,0.5,'Loading Collection: %s'%(self.collection_file,))
+#        browser.lock.acquire()
         if collection.load(self.collection_file):
             settings.active_collection=collection
             settings.active_collection_file=self.collection_file
@@ -286,10 +317,12 @@ class LoadCollectionJob(WorkerJob):
                 jobs['BUILDVIEW'].setevent()
                 jobs['WALKDIRECTORY'].setevent()
             pluginmanager.mgr.callback('t_collection_loaded') ##todo: plugins need to know if collection on/offline?
+            print 'LOADED COLLECTION WITH',len(collection),'IMAGES'
         else:
             settings.active_collection=None
             settings.action_collection_file=''
-        browser.lock.release()
+            print 'LOAD FAILED'
+#        browser.lock.release()
         self.unsetevent()
         self.collection_file=''
 
@@ -308,6 +341,10 @@ class WalkDirectoryJob(WorkerJob):
     '''this walks the collection directory adding new items the collection (but not the view)'''
     def __init__(self):
         WorkerJob.__init__(self,'WALKDIRECTORY')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.collection_walker=None
         self.notify_items=[]
         self.done=False
@@ -318,6 +355,7 @@ class WalkDirectoryJob(WorkerJob):
             if not self.collection_walker:
                 scan_dir=collection.image_dirs[0]
                 self.collection_walker=os.walk(scan_dir)
+                self.done=False
         except StopIteration:
             self.notify_items=[]
             self.collection_walker=None
@@ -348,7 +386,7 @@ class WalkDirectoryJob(WorkerJob):
                 info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
                 mimetype=info.get_content_type()
                 if not mimetype.lower().startswith('image'):
-                    print 'invalid mimetype',fullpath,mimetype
+#                    print 'invalid mimetype',fullpath,mimetype
                     continue
                 mtime=os.path.getmtime(fullpath)
                 st=os.stat(fullpath)
@@ -379,6 +417,7 @@ class WalkDirectoryJob(WorkerJob):
                 gobject.idle_add(browser.refresh_view)
             self.notify_items=[]
             self.collection_walker=None
+            self.done=False
             self.unsetevent()
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             jobs['VERIFYIMAGES'].setevent()
@@ -390,6 +429,10 @@ class WalkSubDirectoryJob(WorkerJob):
     '''this walks a sub-folder in the collection directory adding new items to both view and collection'''
     def __init__(self):
         WorkerJob.__init__(self,'WALKSUBDIRECTORY')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.collection_walker=None
         self.notify_items=[]
         self.done=False
@@ -487,6 +530,10 @@ def parse_filter_text(text):
 class BuildViewJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'BUILDVIEW')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.pos=0
         self.cancel=False
         self.sort_key='Date Last Modified'
@@ -543,6 +590,10 @@ class BuildViewJob(WorkerJob):
 class MapImagesJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'MAPIMAGES')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.pos=0
         self.cancel=False
         self.limit_to_view=True
@@ -594,6 +645,10 @@ INVERT_SELECT=2
 class SelectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'SELECTION')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.pos=0
         self.cancel=False
         self.limit_to_view=True
@@ -639,6 +694,10 @@ EDIT_SELECTION=3
 class EditMetaDataJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'EDITMETADATA')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.pos=0
         self.cancel=False
         self.mode=0
@@ -757,6 +816,10 @@ class EditMetaDataJob(WorkerJob):
 class SaveViewJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'SAVEVIEW')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.pos=0
         self.cancel=False
         self.selected_only=False
@@ -811,6 +874,10 @@ class SaveViewJob(WorkerJob):
 class VerifyImagesJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'VERIFYIMAGES')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.countpos=0
 
     def __call__(self,jobs,collection,view,browser):
@@ -864,6 +931,10 @@ class VerifyImagesJob(WorkerJob):
 class MakeThumbsJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'MAKETHUMBS')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.countpos=0
 
     def __call__(self,jobs,collection,view,browser):
@@ -887,6 +958,10 @@ class MakeThumbsJob(WorkerJob):
 class DirectoryUpdateJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'DIRECTORYUPDATE')
+        self.unsetevent()
+
+    def unsetevent(self):
+        WorkerJob.unsetevent(self)
         self.queue=[]
         self.deferred=[]
         self.deflock=threading.Lock()
