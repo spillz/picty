@@ -350,12 +350,10 @@ class TagFrame(gtk.VBox):
         if rename_response==2:
             return
         self.model.remove(iter)
-        try:
+        if k in self.user_tags:
             del self.user_tags[k]
-            if rename_response==0:
-                self.worker.keyword_edit('"%s"'%(k,),False,True,False,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
-        except:
-            pass
+        if rename_response==0:
+            self.worker.keyword_edit('"%s"'%(k,),False,True,False,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
 
     def rename_tag(self,widget,iter):
         old_key=self.model[iter][self.M_KEY]
@@ -372,7 +370,6 @@ class TagFrame(gtk.VBox):
             del self.user_tags[old_key]
         except:
             pass
-        rename_tag_in_images=True##todo: prompt for replacement of tag in images with a dialog
         if rename_response==0:
             self.worker.keyword_edit('"%s" "%s"'%(old_key,k),False,False,True,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
 
