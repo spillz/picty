@@ -294,7 +294,7 @@ class LoadCollectionJob(WorkerJob):
         jobs.unset_all()
         if settings.active_collection!=None:
             print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
-            gobject.idle_add(browser.update_status,0.0,'Saving Collection: %s'%(collection.filename,))
+            gobject.idle_add(browser.update_status,0.33,'Saving Collection: %s'%(collection.filename,))
             self.monitor.stop(collection.image_dirs[0])
             savejob=SaveCollectionJob()
             savejob(jobs,collection,view,browser)
@@ -307,7 +307,7 @@ class LoadCollectionJob(WorkerJob):
         if not self.collection_file:
             self.collection_file=settings.active_collection_file
         print 'LOADING COLLECTION',self.collection_file
-        gobject.idle_add(browser.update_status,0.5,'Loading Collection: %s'%(self.collection_file,))
+        gobject.idle_add(browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
 #        browser.lock.acquire()
         if collection.load(self.collection_file):
             settings.active_collection=collection
@@ -1002,7 +1002,7 @@ class DirectoryUpdateJob(WorkerJob):
                             imagemanip.load_metadata(item)
                             imagemanip.make_thumb(item)
                             browser.lock.acquire()
-                            view.add_item(item)
+                            view.add_item(item,False)
                             browser.lock.release()
                             gobject.idle_add(browser.refresh_view)
                     else:
@@ -1010,7 +1010,7 @@ class DirectoryUpdateJob(WorkerJob):
                         imagemanip.load_metadata(item)
                         browser.lock.acquire()
                         collection.add(item)
-                        view.add_item(item)
+                        view.add_item(item,False)
                         browser.lock.release()
                         if not imagemanip.has_thumb(item):
                             imagemanip.make_thumb(item)

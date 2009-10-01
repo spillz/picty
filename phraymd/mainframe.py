@@ -747,8 +747,10 @@ class MainFrame(gtk.VBox):
         self.browser.redraw_view()
 
     def launch_item(self,widget,item):
-        uri=gnomevfs.get_uri_from_local_path(item.filename)
-        mime=gnomevfs.get_mime_type(uri)
+        ifile=gio.File(item.filename)
+        uri=ifile.get_uri()
+        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+        mime=info.get_content_type()
         cmd=None
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
@@ -760,13 +762,13 @@ class MainFrame(gtk.VBox):
                 ext=os.path.splitext(fullname)[1]
                 cmd=Template(app[1]).substitute(
                     {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
-                break
-        if not cmd:
-            for app in gnomevfs.mime_get_all_applications(mime):
-                cmd=app[2]+' "%s"'%(item.filename,)
-        if cmd:
-            print 'mime_open',cmd
-            subprocess.Popen(cmd,shell=True)
+                if cmd:
+                    print 'mime_open',cmd
+                    subprocess.Popen(cmd,shell=True)
+                    return
+        app=gio.app_info_get_default_for_type(mime)
+        if app:
+            app.launch_uri(item.filename)
         else:
             print 'no known command for ',item.filename,' mimetype',mime
 

@@ -147,7 +147,7 @@ def text_descr(item):
 #    else:
 #        details+='Mod: '+str(get_mtime(item))
     val=get_focal(item)
-    exposure=''
+    exposure=u''
     if val:
         exposure+='%imm '%(int(val),)
     val=get_aperture(item)
@@ -162,6 +162,7 @@ def text_descr(item):
     if exposure:
         details+='\n'+exposure
     val=get_keyword(item)
+    #print 'KEYWORDS:',len(val),val,type(val)
     if val:
         val=str(val)
         if len(val)<30:
@@ -472,8 +473,8 @@ class Index(list):
         self.filter_tree=sp.parse_expr(TOKENS[:],expr,literal_converter)
     def clear_filter(self,expr):
         self.filter_tree=None
-    def add(self,key,item):
-        if self.filter_tree:
+    def add(self,key,item,apply_filter=True):
+        if apply_filter and self.filter_tree:
             if not sp.call_tree(bool,self.filter_tree,converter,item):
                 return False
         bisect.insort(self,[key,item])
@@ -486,8 +487,8 @@ class Index(list):
                 list.pop(self,ind)
                 return
             raise KeyError
-    def add_item(self,item):
-        if self.add(self.key_cb(item),item):
+    def add_item(self,item,apply_filter=True):
+        if self.add(self.key_cb(item),item,apply_filter):
             pluginmanager.mgr.callback('t_collection_item_added_to_view',item)
     def find_item(self,item):
         i=bisect.bisect_left(self,[self.key_cb(item),item])

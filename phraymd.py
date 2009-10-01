@@ -34,7 +34,7 @@ try:
     gobject.threads_init()
     gtk.gdk.threads_init()
 except:
-    print 'ERROR: missing modules gobject, gtk, gio, gnomevfs and pyexiv2'
+    print 'ERROR: missing modules gobject, gtk, gio, and pyexiv2'
     import sys
     sys.exit()
 

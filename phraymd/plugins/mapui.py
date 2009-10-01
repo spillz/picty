@@ -228,7 +228,7 @@ class MapFrame(gtk.VBox):
                 coords=osm.get_co_ordinates(x, y)
                 lat=coords[0]/math.pi*180
                 lon=coords[1]/math.pi*180
-                import imagemanip
+                from phraymd import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
                 self.osm.add_image(lat,lon,pb)
                 imageinfo.set_coords(item,lat,lon)
