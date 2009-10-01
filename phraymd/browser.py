@@ -37,7 +37,6 @@ sys.path.insert(0,'/usr/share') ##private module location on installed version
 
 ##gtk imports and init
 import gobject
-import gio
 import gtk
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -49,6 +48,7 @@ import backend
 import metadatadialogs
 import pluginmanager
 import imageinfo
+import io
 
 import imagemanip
 
@@ -356,7 +356,7 @@ class ImageBrowser(gtk.HBox):
             return
         selection_data.set('image-filename', 8, self.drag_item.filename)
         if not self.drag_item.selected:
-            uri=gio.File(self.drag_item.filename).get_uri()
+            uri=io.get_uri(self.drag_item.filename)
             selection_data.set_uris([uri])
         else:
             uris=[]
@@ -364,7 +364,7 @@ class ImageBrowser(gtk.HBox):
             while i<len(self.tm.view):
                 item=self.tm.view(i)
                 if item.selected:
-                    uri=gio.File(item.filename).get_uri()
+                    uri=io.get_uri(item.filename)
                     uris.append(uri)
                 i+=1
             selection_data.set_uris(uris)

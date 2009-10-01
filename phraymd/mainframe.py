@@ -33,7 +33,6 @@ import bisect
 
 ##gtk libs
 import gobject
-import gio
 import gtk
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -47,6 +46,7 @@ import register_icons
 import browser
 import pluginmanager
 import pluginimporter
+import io
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
@@ -287,18 +287,16 @@ class MainFrame(gtk.VBox):
         print 'set layout',settings.layout
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
+        self.tm.view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.start()
 
     def set_layout(self,layout):
         print 'setting layout',layout
         sort_model=self.sort_order.get_model()
-        i=0
-        for row in sort_model:
-            print 'ROW',row,row[0]
-            if layout['sort order']==row[0]:
-                self.sort_order.set_active(i)
+        for i in range(len(sort_model)):
+            if layout['sort order']==sort_model[i][0]:
+                self.sort_order.set_active(i)#sort_model.get_iter((i,)))
                 break
-            i+=1
         self.tm.view.reverse=layout['sort direction']
         if self.tm.view.reverse:
             self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
@@ -638,16 +636,14 @@ class MainFrame(gtk.VBox):
             item.connect("activate",callback,*args)
             menu.append(item)
 #            item.show()
-        ifile=gio.File(item.filename)
-        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
-        itype=info.get_content_type()
+        itype=io.get_mime_type(item.filename)
         launch_menu=gtk.Menu()
         if itype in settings.custom_launchers:
             for app in settings.custom_launchers[itype]:
                 menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
         launch_menu.append(gtk.SeparatorMenuItem())
-        for app in gio.app_info_get_all_for_type(itype):
-            menu_add(launch_menu,app.get_name(),self.mime_open,app,ifile.get_uri())
+        for app in io.app_info_get_all_for_type(itype):
+            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(item.filename))
         for app in settings.custom_launchers['default']:
             menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
 
@@ -747,10 +743,8 @@ class MainFrame(gtk.VBox):
         self.browser.redraw_view()
 
     def launch_item(self,widget,item):
-        ifile=gio.File(item.filename)
-        uri=ifile.get_uri()
-        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
-        mime=info.get_content_type()
+        uri=io.get_uri(item.filename)
+        mime=io.get_mime_type(item.filename)
         cmd=None
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
@@ -766,9 +760,9 @@ class MainFrame(gtk.VBox):
                     print 'mime_open',cmd
                     subprocess.Popen(cmd,shell=True)
                     return
-        app=gio.app_info_get_default_for_type(mime)
+        app=io.app_info_get_default_for_type(mime)
         if app:
-            app.launch_uri(item.filename)
+            app.launch_uris([item.filename])
         else:
             print 'no known command for ',item.filename,' mimetype',mime
 

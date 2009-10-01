@@ -27,7 +27,6 @@ sys.path.insert(0,'/usr/share/phraymd') ##private module location on installed v
 
 try:
     import gobject
-    import gio
     import gtk
     import gnome.ui
     import pyexiv2

@@ -27,7 +27,6 @@ import datetime
 
 
 import gobject
-import gio
 import gtk
 
 gobject.threads_init()
