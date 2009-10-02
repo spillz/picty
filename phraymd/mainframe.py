@@ -58,7 +58,7 @@ class MainFrame(gtk.VBox):
     '''
     this is the main widget box containing all of the gui widgets
     '''
-    def __init__(self):
+    def __init__(self,window):
         gtk.VBox.__init__(self)
         self.lock=threading.Lock()
 
@@ -258,6 +258,13 @@ class MainFrame(gtk.VBox):
 ##        insert_item(self.toolbar,item,None,8,None,"Filter the view to images that contain the search text, press enter to activate")
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,9,"Clear Filter","Clear the filter and reset the view to the entire collection")
 
+        accel_group = gtk.AccelGroup()
+        window.add_accel_group(accel_group)
+        self.filter_entry.add_accelerator("grab-focus", accel_group, ord('F'), gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
+        self.sort_order.add_accelerator("popup", accel_group, ord('O'), gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
+        accel_group.connect_group(ord('B'), gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE,self.sidebar_accel_callback)
+
+        self.accel_group=accel_group
 
 
         self.status_bar=gtk.ProgressBar()
@@ -289,6 +296,11 @@ class MainFrame(gtk.VBox):
             self.set_layout(settings.layout)
         self.tm.view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.start()
+
+    def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
+        print 'sidebar callback'
+        self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
+
 
     def set_layout(self,layout):
         print 'setting layout',layout

@@ -53,7 +53,7 @@ class MainWindow:
         sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU
         sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"phraymd:main")
 
-        self.mainframe = mainframe.MainFrame()
+        self.mainframe = mainframe.MainFrame(self.window)
 
         vb=gtk.VBox()
         vb.pack_start(self.mainframe)
