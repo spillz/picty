@@ -1,5 +1,4 @@
 try:
-    raise ImportError
     print 'Using gio'
     import gio
 
