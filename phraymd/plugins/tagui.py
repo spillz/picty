@@ -71,7 +71,10 @@ class TagCloud():
     def tag_remove(self,keywords):
         for k in keywords:
             if k in self.tags:
-                self.tags[k]-=1
+                if self.tags[k]>1:
+                    self.tags[k]-=1
+                else:
+                    del self.tags[k]
             else:
                 print 'warning: removing item',item,'with keyword',k,'not in tag cloud'
     def add(self,item):
@@ -90,9 +93,9 @@ class TagCloud():
         except:
             return False
         return True
-    def update(self,item):
+    def update(self,item,old_meta):
         try:
-            self.tag_remove(item.meta_backup['Keywords'])
+            self.tag_remove(old_meta['Keywords'])
         except:
             pass
         try:
@@ -166,12 +169,12 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_collection_item_removed(self,item):
         '''item was removed from the collection'''
         self.tagframe.tag_cloud.remove(item)
-    def t_collection_item_metadata_changed(self,item): ##todo: should get before/after metadata
+    def t_collection_item_metadata_changed(self,item,meta_before): ##todo: should get before/after metadata
         '''item metadata has changed'''
-        self.tagframe.tag_cloud.update(item) ##todo: this is broken, update relies on backup metadata being the pre-changed data
+        self.tagframe.tag_cloud.update(item,meta_before) ##todo: this is broken, update relies on backup metadata being the pre-changed data
         i=self.worker.view.find_item(item)
         if i>0:
-            self.tagframe.tag_cloud_view.update(item)
+            self.tagframe.tag_cloud_view.update(item,meta_before)
     def t_collection_item_added_to_view(self,item):
         '''item in collection was added to view'''
         self.tagframe.tag_cloud_view.add(item)

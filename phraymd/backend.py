@@ -730,9 +730,9 @@ class EditMetaDataJob(WorkerJob):
                     gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==RENAME_KEYWORDS:
-            tags=exif.tag_split(self.keyword_string)
+            tags=exif.tag_split(self.keyword_string) ##tags should contain a pair of keywords (find, replace)
             find_tag=tags[0].lower()
-            repl_tag=tags[1]
+            repl_tag=tags[1] ##todo: can get weird results/errors if tags contains bad data
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:

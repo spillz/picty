@@ -66,6 +66,7 @@ class Item(list):
     def set_meta_key(self,key,value):
         if self.meta==False or self.meta==None:
             return None
+        old=self.meta
         if not self.meta_changed:
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
@@ -73,7 +74,7 @@ class Item(list):
             del self.meta[key]
         else:
             self.meta[key]=value
-        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self)
+        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False
@@ -82,8 +83,9 @@ class Item(list):
         if not self.meta_changed:
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
+        old=self.meta
         self.meta=meta
-        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self)
+        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False

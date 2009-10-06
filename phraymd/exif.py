@@ -138,9 +138,10 @@ def conv_keywords(metaobject,keys,value=None):
             return [val]
         return list(val)
     except:
+        return None ##the fallback to UserComment is disabled for now
         try:
             #parse 'abc "def ghi" fdg' as three tags -- need quote parsing
-            val=metaobject["Exif.Photo.UserComment"]
+            val=metaobject["Exif.Photo.UserComment"] ##TODO: This object is not a string, but a bytestream! Need to do conversion + encoding detection - YUK!
             vals=tag_split(val)
             return vals
         except:

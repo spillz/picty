@@ -82,7 +82,7 @@ class Plugin(object):
     def t_collection_item_removed(self,item):
         '''item was removed from the collection'''
         pass
-    def t_collection_item_metadata_changed(self,item):
+    def t_collection_item_metadata_changed(self,item,old_metadata):
         '''item metadata has changed'''
         pass
     def t_collection_item_changed(self,item): ##
