@@ -1039,25 +1039,40 @@ class Worker:
         self.thread.start()
 
     def _loop(self):
-        self.monitor=monitor.Monitor(self.directory_change_notify)
-        self.jobs['LOADCOLLECTION'].setevent()
-        self.jobs['LOADCOLLECTION'].monitor=self.monitor
+        try:
+            self.monitor=monitor.Monitor(self.directory_change_notify)
+            self.jobs['LOADCOLLECTION'].setevent()
+            self.jobs['LOADCOLLECTION'].monitor=self.monitor
+        except: ##TODO: start using logging and make the log accessible from the gui (even calling gedit)
+            print "Error Initializing Worker Thread"
+            print sys.exc_info()[0]
         while 1:
-            if not self.jobs.gethighest():
-                self.event.clear()
-                self.event.wait()
-            if self.jobs['QUIT']:
-                if len(self.collection.image_dirs)>0:
-                    self.monitor.stop(self.collection.image_dirs[0])
-                if self.dirtimer!=None:
-                    self.dirtimer.cancel()
-                savejob=SaveCollectionJob()
-                savejob(self.jobs,self.collection,self.view,self.browser)
-                print 'end worker loop'
-                return
-            job=self.jobs.gethighest()
-            if job:
-                job(self.jobs,self.collection,self.view,self.browser)
+            try:
+                if not self.jobs.gethighest():
+                    self.event.clear()
+                    self.event.wait()
+                if self.jobs['QUIT']:
+                    try:
+                        if len(self.collection.image_dirs)>0:
+                            self.monitor.stop(self.collection.image_dirs[0])
+                        if self.dirtimer!=None:
+                            self.dirtimer.cancel()
+                        savejob=SaveCollectionJob()
+                        savejob(self.jobs,self.collection,self.view,self.browser)
+                    except:
+                        print "Error on Exit From Worker Thread"
+                        print sys.exc_info()[0]
+                    return
+                job=self.jobs.gethighest()
+                if job:
+                    job(self.jobs,self.collection,self.view,self.browser)
+            except:
+                print "Error on Worker Thread"
+                print sys.exc_info()[0]
+                job=self.job.gethighest()
+                if job:
+                    print "Abandoning Highest Priority Task and Resuming Worker Loop"
+                    job.unsetevent()
 
     def deferred_dir_update(self):
         print 'deferred dir event'
