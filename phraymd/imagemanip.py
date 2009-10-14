@@ -34,7 +34,7 @@ import os
 import settings
 import imageinfo
 import io
-
+import pluginmanager
 
 ##todo: move to imagemanip to eliminate the Image dependency
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
@@ -68,8 +68,19 @@ memimages=[]
 memthumbs=[]
 
 
-def load_metadata(item):
-    return exif.load_metadata(item)
+def load_metadata(item,notify_plugins=True):
+    if notify_plugins:
+        if item.meta:
+            meta=item.meta.copy()
+        else:
+            meta=item.meta
+        result=exif.load_metadata(item)
+        if result:
+            if item.meta!=meta:
+                pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
+        return result
+    else:
+        return exif.load_metadata(item)
 
 
 def save_metadata(item):
@@ -353,6 +364,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 def make_thumb(item,interrupt_fn=None,force=False):
+    print 'MAKING THUMB',item.thumburi
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         if not force:
             return
@@ -411,15 +423,12 @@ def make_thumb(item,interrupt_fn=None,force=False):
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
-#    if height<128 and width<128:
-#        return False
     uri = io.get_uri(item.filename)
-    thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
-    if item.thumb:
+    item.cannot_thumb=False
+    if item.thumb: ##reload if it has already been loaded
         item.thumbsize=(width,height)
         item.thumb=thumb_pb
-#        item.thumbrgba=thumbrgba ##todo: remove thumbrgba
         cache_thumb(item)
     return True
 

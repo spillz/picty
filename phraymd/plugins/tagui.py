@@ -192,6 +192,8 @@ class TagSidebarPlugin(pluginbase.Plugin):
             self.worker.keyword_edit(tags,True)
     def t_collection_loaded(self):
         '''collection has loaded into main frame'''
+        self.tagframe.tag_cloud.empty()
+        self.tagframe.tag_cloud_view.empty()
         for item in self.worker.collection:
             self.tagframe.tag_cloud.add(item)
         gobject.idle_add(self.tagframe.start_refresh_timer)
