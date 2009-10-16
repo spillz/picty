@@ -682,7 +682,15 @@ class MainFrame(gtk.VBox):
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
             return
 
+        launch_menu=gtk.Menu()
+        for app in io.app_info_get_all_for_type(itype):
+            menu_add(launch_menu,app.get_name(),self.mime_open,app,None)
+
         smenu=gtk.Menu()
+        launch_item=gtk.MenuItem("Open with")
+        launch_item.show()
+        launch_item.set_submenu(launch_menu)
+        smenu.append(launch_item)
 
         menu_add(smenu,"Show All _Selected",self.select_show)
         menu_add(smenu,"_Copy Selection...",self.select_copy)
@@ -719,7 +727,10 @@ class MainFrame(gtk.VBox):
 
     def mime_open(self,widget,app_cmd,uri):
         print 'mime_open',app_cmd,uri
-        app_cmd.launch_uris([uri])
+        if uri:
+            app_cmd.launch_uris([uri])
+        else:
+            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.tm.view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template

@@ -29,6 +29,7 @@ import Image
 import ImageFile
 import threading
 import os
+import sys
 import time
 import exif
 import datetime
@@ -41,6 +42,7 @@ import imagemanip
 import monitor
 import pluginmanager
 import io
+from logger import log
 
 def del_view_item(view,browser,item):
     browser.lock.acquire()
@@ -104,6 +106,7 @@ class WorkerJobCollection(dict):
                 job_ind=i
                 break
         job=job_class()
+        log.info('registered plugin job '+job.name)
         self.collection.insert(job_ind,job)
         self[job.name]=self.collection[job_ind]
 
@@ -116,6 +119,7 @@ class WorkerJobCollection(dict):
                 del self.collection[i]
                 break
         del self[job_name]
+        log.info('deregistered plugin job '+job_name)
         return job_class
 
     def ishighestpriority(self,job):
@@ -191,8 +195,6 @@ class RegisterJobJob(WorkerJob):
                 j=self.register_queue.pop(0)
                 jobs.register_job(j)
                 gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_registered',j)
-            print 'register job'
-        print 'register job done'
         if len(self.deregister_queue)+len(self.register_queue)==0:
             self.unsetevent()
 
@@ -267,13 +269,9 @@ class ReloadMetadataJob(WorkerJob):
             if view.del_item(item):
                 item.meta=None
                 imagemanip.load_metadata(item)
-                print 'loaded metadata',item
+                log.info('reloaded metadata for '+item)
                 view.add_item(item)
             browser.lock.release()
-#            if item.meta!=None:
-#                imagemanip.make_thumb(item)
-#                imagemanip.load_thumb(item)
-#                gobject.idle_add(browser.refresh_view)
         if len(self.queue)==0:
             gobject.idle_add(browser.update_status,2.0,'Reloading metadata')
             self.unsetevent()
@@ -293,7 +291,7 @@ class LoadCollectionJob(WorkerJob):
     def __call__(self,jobs,collection,view,browser):
         jobs.unset_all()
         if settings.active_collection!=None:
-            print 'SAVING CURRENTLY OPEN COLLECTION AND DISCONNECTING MONITOR BEOFRE LOADING'
+            log.info('Saving collection '+collection.filename)
             gobject.idle_add(browser.update_status,0.33,'Saving Collection: %s'%(collection.filename,))
             self.monitor.stop(collection.image_dirs[0])
             savejob=SaveCollectionJob()
@@ -306,9 +304,8 @@ class LoadCollectionJob(WorkerJob):
             collection.filename=None
         if not self.collection_file:
             self.collection_file=settings.active_collection_file
-        print 'LOADING COLLECTION',self.collection_file
+        log.info('Loading collection '+self.collection_file)
         gobject.idle_add(browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
-#        browser.lock.acquire()
         if collection.load(self.collection_file):
             settings.active_collection=collection
             settings.active_collection_file=self.collection_file
@@ -317,12 +314,11 @@ class LoadCollectionJob(WorkerJob):
                 jobs['BUILDVIEW'].setevent()
                 jobs['WALKDIRECTORY'].setevent()
             pluginmanager.mgr.callback('t_collection_loaded') ##todo: plugins need to know if collection on/offline?
-            print 'LOADED COLLECTION WITH',len(collection),'IMAGES'
+            log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             settings.active_collection=None
             settings.action_collection_file=''
-            print 'LOAD FAILED'
-#        browser.lock.release()
+            log.error('Load collection failed')
         self.unsetevent()
         self.collection_file=''
 
@@ -332,7 +328,7 @@ class SaveCollectionJob(WorkerJob):
         WorkerJob.__init__(self,'SAVECOLLECTION')
 
     def __call__(self,jobs,collection,view,browser):
-        print 'saving'
+        log.info('Saving '+collection.filename)
         collection.save()
         self.unsetevent()
 
@@ -360,9 +356,9 @@ class WalkDirectoryJob(WorkerJob):
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()
-            print 'aborted directory walk'
+            log.error('Aborted directory walk on '+collection.image_dirs[0])
             return
-        print 'starting directory walk'
+        log.debug('starting directory walk on '+collection.image_dirs[0])
         while jobs.ishighestpriority(self):
             try:
                 root,dirs,files=self.collection_walker.next()
@@ -384,12 +380,12 @@ class WalkDirectoryJob(WorkerJob):
                 fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image'):
-#                    print 'invalid mimetype',fullpath,mimetype
+                    log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
                 mtime=os.path.getmtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
-                    print '*** WALK DIR: ITEM IS A DIRECTORY!!!***'
+                    log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:
@@ -404,7 +400,7 @@ class WalkDirectoryJob(WorkerJob):
                 gobject.idle_add(browser.refresh_view)
                 self.notify_items=[]
         if self.done:
-            print 'walk directory done'
+            log.debug('Directory walk complete for '+collection.image_dirs[0])
             gobject.idle_add(browser.refresh_view)
             gobject.idle_add(browser.update_status,2,'Search complete')
             if self.notify_items:
@@ -420,7 +416,7 @@ class WalkDirectoryJob(WorkerJob):
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             jobs['VERIFYIMAGES'].setevent()
         else:
-            print 'pausing directory walk'
+            log.debug('Directory walk pausing '+collection.image_dirs[0])
 
 
 class WalkSubDirectoryJob(WorkerJob):
@@ -443,12 +439,12 @@ class WalkSubDirectoryJob(WorkerJob):
                 scan_dir=self.sub_dir
                 self.collection_walker=os.walk(scan_dir)
         except StopIteration:
-            print 'aborted subdirectory walk'
+            log.error('Aborted directory walk on '+self.sub_dir)
             self.notify_items=[]
             self.collection_walker=None
             self.unsetevent()
             return
-        print 'starting subdirectory walk'
+        log.debug('starting directory walk on '+self.sub_dir)
         while jobs.ishighestpriority(self):
             try:
                 root,dirs,files=self.collection_walker.next()
@@ -469,12 +465,12 @@ class WalkSubDirectoryJob(WorkerJob):
                 fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image'):
-                    print 'invalid mimetype',fullpath,mimetype
+                    log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
                 mtime=os.path.getmtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
-                    print '*** WALK DIR: ITEM IS A DIRECTORY!!!***'
+                    log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:
@@ -488,7 +484,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     browser.lock.release()
                     gobject.idle_add(browser.refresh_view)
         if self.done:
-            print 'walk subdirectory done'
+            log.debug('Directory walk complete for '+self.sub_dir)
             gobject.idle_add(browser.refresh_view)
             gobject.idle_add(browser.update_status,2,'Search complete')
             if self.notify_items:
@@ -502,7 +498,7 @@ class WalkSubDirectoryJob(WorkerJob):
             self.unsetevent()
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
         else:
-            print 'pausing subdirectory walk'
+            log.debug('Directory walk pausing '+self.sub_dir)
 
 
 def parse_filter_text(text):
@@ -603,7 +599,6 @@ class MapImagesJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
-        print 'map job',i
         if self.limit_to_view:
             listitems=view
         else:
@@ -613,6 +608,7 @@ class MapImagesJob(WorkerJob):
             if imageinfo.item_in_region(item,*self.region):
                 imagemanip.load_thumb(item)
                 if item.thumb:
+                    log.debug('Map plugin: found item '+item+' with coordinates onscreen')
                     pb=imagemanip.scale_pixbuf(item.thumb,40)
                     self.pblist.append((item,pb))
                     self.im_count+=1
@@ -631,7 +627,6 @@ class MapImagesJob(WorkerJob):
                 self.unsetevent()
             self.restart=False
             self.im_count=0
-        print 'map job end',i
 
 
 
@@ -920,7 +915,7 @@ class VerifyImagesJob(WorkerJob):
             self.unsetevent()
             self.countpos=0
             gobject.idle_add(browser.update_status,2,'Verification complete')
-            print 'image verification complete'
+            log.info('Image verification complete')
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             jobs['MAKETHUMBS'].setevent()
 
@@ -969,11 +964,10 @@ class DirectoryUpdateJob(WorkerJob):
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
             if action in ('DELETE','MOVED_FROM'):
-                print 'deleting',fullpath
+                log.info('deleting '+fullpath)
                 if not os.path.exists(fullpath):
                     browser.lock.acquire()
                     j=collection.find([fullpath])
-                    print 'delete item coll index',j
                     if j>=0:
                         item=collection[j]
                         collection.numselected-=collection[j].selected
@@ -1044,8 +1038,7 @@ class Worker:
             self.jobs['LOADCOLLECTION'].setevent()
             self.jobs['LOADCOLLECTION'].monitor=self.monitor
         except: ##TODO: start using logging and make the log accessible from the gui (even calling gedit)
-            print "Error Initializing Worker Thread"
-            print sys.exc_info()[0]
+            log.error("Error Initializing Worker Thread\n"+str(sys.exc_info()[0]))
         while 1:
             try:
                 if not self.jobs.gethighest():
@@ -1060,22 +1053,23 @@ class Worker:
                         savejob=SaveCollectionJob()
                         savejob(self.jobs,self.collection,self.view,self.browser)
                     except:
-                        print "Error on Exit From Worker Thread"
-                        print sys.exc_info()[0]
+                        log.error("Error on Exit From Worker Thread\n"+str(sys.exc_info()[0])+"\n"+str(sys.exc_info()[1]))
                     return
                 job=self.jobs.gethighest()
                 if job:
                     job(self.jobs,self.collection,self.view,self.browser)
             except:
-                print "Error on Worker Thread"
-                print sys.exc_info()[0]
-                job=self.job.gethighest()
+                print 'ERROR',dir(sys.exc_info()[2])
+                import traceback
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                log.error("Error on Worker Thread\n"+tb_text)
+                job=self.jobs.gethighest()
                 if job:
-                    print "Abandoning Highest Priority Task and Resuming Worker Loop"
+                    log.info("Abandoning Highest Priority Task "+job.name+" and Resuming Worker Loop")
                     job.unsetevent()
 
     def deferred_dir_update(self):
-        print 'deferred dir event'
+        log.info('Deferred directory monitor event')
         job=self.jobs['DIRECTORYUPDATE']
         job.deflock.acquire()
         for j in job.deferred:
@@ -1091,17 +1085,17 @@ class Worker:
         path=os.path.normcase(path)
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
-            print 'change_notify invalid',path,action
+            log.warning('change_notify invalid '+path+' '+action)
             return
         ppath=path
         while ppath!=homedir:
             ppath,name=os.path.split(ppath)
             ppath=os.path.normpath(ppath)
             if name.startswith('.') or name=='':
-                print 'change_notify invalid',path,action
+                log.warning('change_notify invalid '+path+' '+action)
                 return
         if isdir:
-            print 'dir action',path,action
+            log.debug('directory changed '+path+' '+action)
             if action in ('MOVED_FROM','DELETE'):
                 #queue a verify job since we won't get individual image removal notifications
                 self.jobs['VERIFYIMAGES'].countpos=0
@@ -1120,14 +1114,13 @@ class Worker:
         self.dirtimer.start()
         job.deferred.append((path,action))
         job.deflock.release()
-        print 'file event',action,' on',path
+        log.debug('file event '+action+' on '+path)
 
     def save_collection(self,filename):
         self.jobs['SAVECOLLECTION'].setevent()
         self.event.set()
 
     def load_collection(self,filename):
-        print 'got request to load collection'
         loadjob=self.jobs['LOADCOLLECTION']
         loadjob.collection_file=filename
         loadjob.setevent()

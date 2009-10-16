@@ -19,6 +19,7 @@ try:
 
 except:
     import gnomevfs
+    import subprocess
     print 'Using gnomevfs'
 
     def get_uri(path):
@@ -33,7 +34,7 @@ except:
         def launch():
             subprocess.Popen(self.app_data[2])
         def launch_uris(self,uris):
-            subprocess.Popen(self.app_data[2]+' '+' '.join(['"'+u+'"' for u in uris]),shell=True)
+            subprocess.Popen(self.app_data[2]+' '+' '.join(['"'+gnomevfs.get_local_path_from_uri(u)+'"' for u in uris]),shell=True)
         def get_name(self):
             return self.app_data[1]
 
