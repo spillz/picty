@@ -1053,7 +1053,8 @@ class Worker:
                         savejob=SaveCollectionJob()
                         savejob(self.jobs,self.collection,self.view,self.browser)
                     except:
-                        log.error("Error on Exit From Worker Thread\n"+str(sys.exc_info()[0])+"\n"+str(sys.exc_info()[1]))
+                        tb_text=traceback.format_exc(sys.exc_info()[2])
+                        log.error("Error on Exit From Worker Thread\n"+tb_text)
                     return
                 job=self.jobs.gethighest()
                 if job:
