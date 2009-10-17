@@ -97,7 +97,6 @@ class Collection(list):
             f=open(self.filename,'wb')
         except:
             print 'failed to open collection',self.filename,'for write'
-            self.unsetevent()
             return False
         cPickle.dump(settings.version,f,-1)
         cPickle.dump(self.image_dirs,f,-1)
