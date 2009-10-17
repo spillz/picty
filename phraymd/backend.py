@@ -1053,6 +1053,7 @@ class Worker:
                         savejob=SaveCollectionJob()
                         savejob(self.jobs,self.collection,self.view,self.browser)
                     except:
+                        import traceback
                         tb_text=traceback.format_exc(sys.exc_info()[2])
                         log.error("Error on Exit From Worker Thread\n"+tb_text)
                     return
@@ -1061,7 +1062,6 @@ class Worker:
                     job(self.jobs,self.collection,self.view,self.browser)
             except:
                 print 'ERROR',dir(sys.exc_info()[2])
-                import traceback
                 tb_text=traceback.format_exc(sys.exc_info()[2])
                 log.error("Error on Worker Thread\n"+tb_text)
                 job=self.jobs.gethighest()
