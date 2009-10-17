@@ -352,10 +352,11 @@ class MainFrame(gtk.VBox):
         self.view_image(item)
 
     def destroy(self,event):
-        print 'quitting'
-        settings.layout=self.get_layout()
-        settings.save()
-        print 'layout',settings.layout
+        try:
+            settings.layout=self.get_layout()
+            settings.save()
+        except:
+            print 'Error saving settings'
         self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         return False

@@ -424,6 +424,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
     uri = io.get_uri(item.filename)
+    thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
     item.cannot_thumb=False
     if item.thumb: ##reload if it has already been loaded
