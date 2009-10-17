@@ -160,6 +160,7 @@ def init():
             import sys
             print 'error creating collection file... quitting'
             sys.exit()
+        active_collection_file=os.path.join(collections_dir,'collection')
     save()
 
 
