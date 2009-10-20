@@ -178,7 +178,7 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def load_image(item,interrupt_fn,draft_mode=True):
+def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
@@ -197,7 +197,7 @@ def load_image(item,interrupt_fn,draft_mode=True):
                 imdata=f.read(10000)
             f.close()
             image = p.close()
-            print 'parsed image'
+            print 'parsed image with PIL'
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -210,6 +210,7 @@ def load_image(item,interrupt_fn,draft_mode=True):
             p = ImageFile.Parser()
             p.feed(imdata)
             image = p.close()
+            print 'parsed image with DCRAW'
         except:
             item.image=False
             return False

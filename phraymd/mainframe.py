@@ -82,11 +82,23 @@ class MainFrame(gtk.VBox):
                         ]
         self.plugmgr.callback('browser_register_shortcut',self.hover_cmds)
 
+        self.viewer_hover_cmds=[
+                        ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU),'Main'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU),'Main'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU),'Main'),
+                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU),'Main')
+                        ]
+        self.plugmgr.callback('viewer_register_shortcut',self,self.viewer_hover_cmds)
+
         self.browser=browser.ImageBrowser(self.hover_cmds)
         self.tm=self.browser.tm
 
         self.neededitem=None
-        self.iv=viewer.ImageViewer(self.tm,self.button_press_image_viewer,self.key_press_signal)
+        self.iv=viewer.ImageViewer(self.tm,self.viewer_hover_cmds,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
@@ -797,14 +809,14 @@ class MainFrame(gtk.VBox):
     def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_left(item)
-        self.update_required_thumbs()
+        self.browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         imagemanip.rotate_right(item)
-        self.update_required_thumbs()
+        self.browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 

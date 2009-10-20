@@ -25,17 +25,16 @@ import threading
 import time
 import datetime
 
-
 import gobject
 import gtk
 
 gobject.threads_init()
 gtk.gdk.threads_init()
 
-
 import settings
 import imagemanip
 import imageinfo
+import pluginmanager
 import exif
 
 class ImageLoader:
@@ -109,225 +108,81 @@ class ImageLoader:
                     continue
             self.vlock.acquire()
             if self.sizing:
-                imagemanip.size_image(item,self.sizing,False,self.zoom)
+                if not pluginmanager.mgr.callback_first('t_viewer_sizing',self.sizing,self.zoom,item):
+                    imagemanip.size_image(item,self.sizing,False,self.zoom)
+                    pluginmanager.mgr.callback_first('t_viewer_sized',self.sizing,self.zoom,item)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
 
 
 class ImageViewer(gtk.VBox):
-    def __init__(self,worker,click_callback=None,key_press_callback=None):
+    #indices into the hover_cmds structure (overlay shortcuts in image browser)
+    HOVER_TEXT=0 #text description of the command
+    HOVER_CALLBACK=1 #callback when command is clicked
+    HOVER_SHOW_CALLBACK=2 #callback  to determine whether callback should be displayed
+    HOVER_ALWAYS_SHOW=3 #True if the overlay displays always, False only if mouse cursor is over the image
+    HOVER_ICON=4 #the icon for the command
+    def __init__(self,worker,hover_cmds,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.il=ImageLoader(self)
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
-        self.meta_table=self.CreateMetaTable()
         self.worker=worker
         self.geo_width=-1
         self.geo_height=-1
+        self.hover_cmds=hover_cmds
+        self.mouse_hover=False
 
         self.freeze_image_refresh=False
-
         self.change_block=False
 
-        self.meta_box=gtk.VBox()
-        self.button_save=gtk.Button("Save",gtk.STOCK_SAVE)
-        self.button_revert=gtk.Button("Revert",gtk.STOCK_REVERT_TO_SAVED)
-        self.button_save.set_sensitive(False)
-        self.button_revert.set_sensitive(False)
-        buttons=gtk.HBox()
-        buttons.pack_start(self.button_revert,True,False)
-        buttons.pack_start(self.button_save,True,False)
-        self.meta_box.pack_start(self.meta_table,True)
-#        self.meta_box.pack_start(buttons,False)
-        self.meta_box.show_all()
-
-        f=gtk.VPaned()
-        f.add1(self.meta_box)
-        f.add2(self.imarea)
-        f.set_position(0)
-        self.pack_start(f)
+        self.pack_start(self.imarea)
 
         self.imarea.connect("realize",self.realize_signal)
         self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
-        self.button_save.connect("clicked",self.MetadataSave)
-        self.button_revert.connect("clicked",self.MetadataRevert)
         self.connect("destroy", self.Destroy)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        self.imarea.add_events(gtk.gdk.BUTTON_PRESS_MASK)
+        self.imarea.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
+        self.imarea.connect("button-press-event",self.button_press)
+        self.imarea.connect("button-release-event",self.button_press)
 
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-        if not click_callback:
-            self.imarea.connect("button-press-event",self.ButtonPress)
-        else:
-            self.imarea.connect("button-press-event",click_callback)
+
+        self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
+        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
+        self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
+        self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
+
+
+        if click_callback:
+            self.imarea.connect_after("button-press-event",click_callback)
         if key_press_callback:
             self.imarea.connect("key-press-event",key_press_callback)
             self.imarea.connect("key-release-event",key_press_callback)
 
-        self.imarea.set_size_request(300,200)
+        self.imarea.set_size_request(128,96)
         self.imarea.show()
-        f.show()
         self.item=None
         self.ImageNormal()
 
-    def AddMetaRow(self,table,data_items,key,label,data,row,writable=False):
-        child1=gtk.Label(label)
-        align=gtk.Alignment(0,0.5,0,0)
-        align.add(child1)
-        table.attach(align, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
-               xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        child2=gtk.Label(data)
-        align=gtk.Alignment(0,0.5,0,0)
-        align.add(child2)
-#        if writable:
-#            child2=gtk.Entry()
-#            child2.set_text(data)
-#            child2.connect("changed",self.MetadataChanged,key)
-#        else:
-#            child2=gtk.Label(data)
-        table.attach(align, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
-               xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
-        data_items[key]=(child1,child2)
-
-    def CreateMetaTable(self):
-        rows=2
-        rows+=len(exif.apptags)
-        stable=gtk.ScrolledWindow()
-        stable.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
-        table = gtk.Table(rows=rows, columns=2, homogeneous=False)
-        stable.data_items=dict()
-        self.AddMetaRow(table, stable.data_items,'FullPath','Full Path','',0)
-        self.AddMetaRow(table, stable.data_items,'UnixLastModified','Last Modified','',1)
-        r=2
-        for t in exif.apptags:
-            k=t[0]
-            v=t[1]
-            w=t[2]
-            try:
-                self.AddMetaRow(table,stable.data_items,k,v,'',r,w)
-            except:
-                None
-            r+=1
-        table.show_all()
-        stable.add_with_viewport(table)
-        stable.set_focus_chain(tuple())
-        return stable
-
-    def UpdateMetaTable(self,item):
-        self.change_block=True
-        try:
-            enable=item.meta_changed
-            self.button_save.set_sensitive(enable)
-            self.button_revert.set_sensitive(enable)
-        except:
-            self.button_save.set_sensitive(False)
-            self.button_revert.set_sensitive(False)
-        self.meta_table.data_items['FullPath'][1].set_text(item.filename)
-        d=datetime.datetime.fromtimestamp(item.mtime)
-        self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
-        for t in exif.apptags:
-            k=t[0]
-            v=t[1]
-            w=t[2]
-            value=''
-            if not item.meta:
-                self.meta_table.data_items[k][1].set_text('')
-            else:
-                try:
-                    value=item.meta[k]
-                    value=exif.app_key_to_string(k,value)
-                except:
-                    value=''
-                try:
-                    self.meta_table.data_items[k][1].set_text(value)
-                except:
-                    print 'error updating meta table'
-                    print 'values',value,type(value)
-        self.change_block=False
-
-    def MetadataChanged(self,widget,key):
-        if self.change_block:
-            return
-        enable=self.item.set_meta_key(key,widget.get_text())
-        self.button_save.set_sensitive(enable)
-        self.button_revert.set_sensitive(enable)
-        print key,widget.get_text()
-
-    def MetadataSave(self,widget):
-        item=self.item
-        if item.meta_changed:
-            imagemanip.save_metadata(item)
-        self.button_save.set_sensitive(False)
-        self.button_revert.set_sensitive(False)
-        self.UpdateMetaTable(item)
-
-    def MetadataRevert(self,widget):
-        item=self.item
-        if not item.meta_changed:
-            return
-        try:
-            orient=item.meta['Orientation']
-        except:
-            orient=None
-        try:
-            orient_backup=item.meta_backup['Orientation']
-        except:
-            orient_backup=None
-        item.meta_revert()
-        ##todo: need to recreate thumb if orientation changed
-        if orient!=orient_backup:
-            item.thumb=None
-            self.worker.recreate_thumb(item)
-            self.SetItem(item)
-        self.button_save.set_sensitive(False)
-        self.button_revert.set_sensitive(False)
-        self.UpdateMetaTable(item)
-
-    def CreateMetadataFrame(self):
-        item=self.item
-        rows=2
-        d=datetime.datetime.fromtimestamp(item.mtime)
-        if item.meta:
-            rows+=len(exif.apptags)
-        stable=gtk.ScrolledWindow()
-        stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
-        table = gtk.Table(rows=rows, columns=2, homogeneous=False)
-        self.AddMetaRow(table,'Full Path',item.filename,0)
-        self.AddMetaRow(table,'Last Modified',d.isoformat(' '),1)
-        r=2
-        for t in exif.apptags:
-            k=t[0]
-            v=t[1]
-            w=t[2]
-            try:
-                self.AddMetaRow(table,v,str(item.meta[k]),r)
-            except:
-                None
-            r+=1
-        table.show_all()
-        stable.add_with_viewport(table)
-        return stable
-
     def ImageFullscreen(self):
-        try:
-            self.meta_box.hide()
-        except:
-            None
+#        try:
+#            self.meta_box.hide()
+#        except:
+#            None
         self.fullscreen=True
 
     def ImageNormal(self):
-        try:
-            self.meta_box.show()
-        except:
-            None
+#        try:
+#            self.meta_box.show()
+#        except:
+#            None
         self.fullscreen=False
-
-    def ButtonPress(self,obj,event):
-        self.ImageNormal()
-        self.hide()
 
     def Destroy(self,event):
         self.il.quit()
@@ -349,10 +204,53 @@ class ImageViewer(gtk.VBox):
     def SetItem(self,item):
         self.item=item
         self.il.set_item(item,(self.geo_width,self.geo_height))
-        self.UpdateMetaTable(item)
+#        self.UpdateMetaTable(item)
         if not self.imarea.window:
             return
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+
+    def mouse_motion_signal(self,obj,event):
+        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
+        if self.item!=None:
+            if not self.mouse_hover:
+                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+            self.mouse_hover=True
+
+    def mouse_leave_signal(self,obj,event):
+        '''callback when mouse leaves the viewer area (hides image overlays)'''
+        if self.item!=None:
+            if self.mouse_hover:
+                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        self.mouse_hover=False
+
+    def button_press(self,widget,event):
+        if self.item!=None and self.item.qview and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
+            cmd=self.get_hover_command(event.x,event.y)
+            if cmd>=0:
+                cmd=self.hover_cmds[cmd]
+                if (cmd[self.HOVER_ALWAYS_SHOW] or self.mouse_hover) and cmd[self.HOVER_SHOW_CALLBACK](self.item,self.mouse_hover):
+                    cmd[self.HOVER_CALLBACK](self,self.item)
+
+
+    def get_hover_command(self, x, y):
+        if not self.item.qview:
+            return -1
+        left=4
+        top=4
+#        (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
+#        left=4+(self.geo_width-iw)/2
+#        top=4+(self.geo_height-ih)/2
+        for i in range(len(self.hover_cmds)):
+            right=left+self.hover_cmds[i][self.HOVER_ICON].get_width()
+            bottom=top+self.hover_cmds[i][self.HOVER_ICON].get_height()
+            if left<x<=right and top<y<=bottom:
+                return i
+            left+=self.hover_cmds[i][self.HOVER_ICON].get_width()+4
+        return -1
+
+    def refresh_view(self):
+        #forces an image to be resized with a call to the worker thread
+        self.il.update_image_size(self.geo_width,self.geo_height)
 
     def configure_signal(self,obj,event):
         if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
@@ -371,14 +269,27 @@ class ImageViewer(gtk.VBox):
         black = colormap.alloc('black')
         drawable.set_background(black)
         drawable.clear()
+        drew_image=False
+        if pluginmanager.mgr.callback_first('viewer_render_start',drawable,gc,self.item):
+            return
         if self.item and self.item.qview:
             (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc,self.item.qview,0,0,x,y)
+            drew_image=True
         elif self.item and self.item.thumb:
             (iw,ih)=self.item.thumbsize
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
+            drew_image=True
+        if drew_image:
+            offx=4
+            offy=4
+            for cmd in self.hover_cmds:
+                if (cmd[self.HOVER_ALWAYS_SHOW] or self.mouse_hover) and cmd[self.HOVER_SHOW_CALLBACK](self.item,self.mouse_hover):
+                    drawable.draw_pixbuf(gc,cmd[self.HOVER_ICON],0,0,offx,offy)
+                offx+=cmd[self.HOVER_ICON].get_width()+4
+        pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 

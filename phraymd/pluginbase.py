@@ -115,8 +115,35 @@ class Plugin(object):
         '''called by the framework to register shortcut on context (right click) menu'''
         pass
     '''viewer'''
-    def viewer_register_shortcut(self): ##
-        '''called by the framework to register shortcut on mouse over commands'''
+    def t_viewer_sizing(self,size,zoom,item):
+        '''
+        viewer worker thread is about to scale the fullsize image for display in viewer. return True to prevent
+        note that size is the size of the window not necessarily the size of the scaled image
+        '''
+        pass
+    def t_viewer_sized(self,size,zoom,item):
+        '''
+        viewer worker thread has sized the image in item (only called if all t_viewer_sizing calls return None or False)
+        note that size is the size of the window not necessarily the size of the scaled image
+        '''
+        pass
+    def viewer_register_shortcut(self,mainframe,shortcut_commands):
+        '''
+        called by the framework to register shortcut on mouse over commands
+        append a tuple containing the shortcut commands
+        '''
+        pass
+    def viewer_render_start(self,drawable,gc,item):
+        '''
+        the viewer has just cleared the view and the plugin can now draw on the drawable using the gc
+        return False to prevent the viewer from drawing normally
+        '''
+        pass
+    def viewer_render_end(self,drawable,gc,item):
+        '''
+        the viewer has just finished rendering the image in the viewer.
+        The plugin can do additonal drawing on the drawable using the gc
+        '''
         pass
     def viewer_menu_command(self): ##
         '''return a tuple of commands'''
@@ -130,6 +157,9 @@ class Plugin(object):
     def viewer_item_closing(self,item): ##
         pass
     def viewer_item_closed(self,item): ##
+        pass
+    def viewer_relinquish_control(self): ##
+        '''user has navigated away from the image -- plugin should cancel any outstanding operations'''
         pass
     '''image loader''' ##TODO: implement this on the appplication side
     def t_loader_supported_mimetypes(self): ##
