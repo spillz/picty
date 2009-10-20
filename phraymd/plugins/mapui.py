@@ -21,6 +21,11 @@ License:
 
 '''
 
+##nasty hack needed because osmgpsmap is in the wrong place
+import sys
+sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
+sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
+
 import os
 import gtk
 import math
