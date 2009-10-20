@@ -45,6 +45,7 @@ class RotatePlugin(pluginbase.Plugin):
         self.angle_adjust=gtk.Adjustment(0,-180,180,0.01,0.1,0.1)
         self.angle_adjust.connect("value-changed",self.rotate_adjust)
         self.slider=gtk.HScale(self.angle_adjust)
+        self.slider.set_draw_value(False)
         self.angle_entry=gtk.SpinButton(self.angle_adjust,0.0,2)
         self.ok_button=gtk.Button("_Rotate")
         self.ok_button.connect("clicked",self.rotate_do_callback)

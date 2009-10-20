@@ -152,6 +152,8 @@ class CropPlugin(pluginbase.Plugin):
         x,y,w,h=self.crop_dimensions
         w-=x
         h-=y
+        x+=(self.viewer.imarea.window.get_size()[0]-self.item.qview.get_width())/2
+        y+=(self.viewer.imarea.window.get_size()[1]-self.item.qview.get_height())/2
         fill_gc=drawable.new_gc()
         fill_gc.set_function(gtk.gdk.OR)
         colormap=drawable.get_colormap()
