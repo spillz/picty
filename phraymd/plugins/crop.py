@@ -34,7 +34,7 @@ class CropPlugin(pluginbase.Plugin):
     version='0.1.0'
     def __init__(self):
         self.crop_mode=False
-        self.crop_dimensions=(20,20,80,80)
+        self.crop_dimensions=(0,0,0,0)
         self.dragging=False
     def plugin_init(self,mainframe,app_init):
         #register a button in the viewer to enter crop mode
@@ -57,7 +57,7 @@ class CropPlugin(pluginbase.Plugin):
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
         if self.crop_mode:
-            self.crop_cancel_callback(None)
+            self.reset(app_shutdown)
     def viewer_register_shortcut(self,mainframe,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
@@ -90,7 +90,7 @@ class CropPlugin(pluginbase.Plugin):
     def crop_cancel_callback(self,widget):
         #relinquish control of the viewer
         self.reset()
-    def reset(self):
+    def reset(self,shutdown=False):
         self.crop_dimensions=(0,0,0,0)
         self.crop_mode=False
         self.item=None
@@ -98,7 +98,8 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.imarea.disconnect(self.press_handle)
         self.viewer.imarea.disconnect(self.release_handle)
         self.viewer.imarea.disconnect(self.motion_handle)
-        self.viewer.refresh_view()
+        if not shutdown:
+            self.viewer.refresh_view()
     def crop_aspect(self,widget):
         #slider has been shifted, crop the image accordingly (on the background thread?)
         if not self.crop_mode:

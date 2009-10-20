@@ -57,6 +57,10 @@ class RotatePlugin(pluginbase.Plugin):
         self.rotate_bar.pack_start(self.cancel_button,False)
         self.rotate_bar.pack_start(self.ok_button,False)
         self.rotate_bar.show_all()
+    def plugin_shutdown(self,app_shutdown=False):
+        #deregister the button in the viewer
+        if self.rotate_mode:
+            self.reset(app_shutdown)
     def viewer_register_shortcut(self,mainframe,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
@@ -76,17 +80,18 @@ class RotatePlugin(pluginbase.Plugin):
     def rotate_do_callback(self,widget):
         #user has clicked ok, do the rotation of the physical image (on bg thread) and set the change flag
         #relinquish control of the viewer
-        self.rotate_mode=False
         self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.ANTIALIAS,True)
-        self.viewer.remove(self.rotate_bar)
-        self.viewer.refresh_view()
-        self.item=None
+        self.reset()
     def rotate_cancel_callback(self,widget):
         #relinquish control of the viewer
+        if self.rotate_mode:
+            self.reset()
+    def reset(self,shutdown=False):
         self.rotate_mode=False
         self.item=None
         self.viewer.remove(self.rotate_bar)
-        self.viewer.refresh_view()
+        if not shutdown:
+            self.viewer.refresh_view()
     def rotate_adjust(self,adjustment):
         #slider has been shifted, rotate the image accordingly (on the background thread?)
         if not self.rotate_mode:
@@ -94,9 +99,6 @@ class RotatePlugin(pluginbase.Plugin):
         self.viewer.refresh_view()
     def viewer_relinquish_control(self):
         #user has cancelled the view of the current item, plugin must cancel open operations
-        pass
-    def plugin_shutdown(self,app_shutdown=False):
-        #deregister the button in the viewer
         pass
     def t_viewer_sizing(self,size,zoom,item):
         if not self.rotate_mode:
