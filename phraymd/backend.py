@@ -608,7 +608,7 @@ class MapImagesJob(WorkerJob):
             if imageinfo.item_in_region(item,*self.region):
                 imagemanip.load_thumb(item)
                 if item.thumb:
-                    log.debug('Map plugin: found item '+item+' with coordinates onscreen')
+                    log.debug('Map plugin: found item '+str(item)+' with coordinates onscreen')
                     pb=imagemanip.scale_pixbuf(item.thumb,40)
                     self.pblist.append((item,pb))
                     self.im_count+=1
