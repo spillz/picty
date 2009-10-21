@@ -156,8 +156,8 @@ class ImageViewer(gtk.VBox):
         self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
         self.connect("destroy", self.Destroy)
-        self.imarea.add_events(gtk.gdk.SCROLL_MASK)
-        self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        #self.imarea.add_events(gtk.gdk.SCROLL_MASK)
+        #self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_RELEASE_MASK)
         self.imarea.connect("button-press-event",self.button_press)
@@ -168,9 +168,10 @@ class ImageViewer(gtk.VBox):
 
 
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
-        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
+        self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
+        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
-        self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
+        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
 
 
         if click_callback:
@@ -257,7 +258,14 @@ class ImageViewer(gtk.VBox):
             self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         return True
 
-    def mouse_motion_signal(self,obj,event):
+#    def mouse_motion_signal(self,obj,event):
+#        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
+#        if self.item!=None:
+#            if not self.mouse_hover:
+#                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+#            self.mouse_hover=True
+
+    def mouse_enter_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
         if self.item!=None:
             if not self.mouse_hover:
@@ -274,8 +282,9 @@ class ImageViewer(gtk.VBox):
         self.mouse_hover=False
 
     def button_press(self,widget,event):
-        if self.item!=None and self.item.qview and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
+        if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
             cmd=self.get_hover_command(event.x,event.y)
+            print 'command',cmd,'mouse hover',self.mouse_hover
             if cmd>=0:
                 cmd=self.hover_cmds[cmd]
                 if (cmd[self.HOVER_ALWAYS_SHOW] or self.mouse_hover) and cmd[self.HOVER_SHOW_CALLBACK](self.item,self.mouse_hover):
@@ -283,7 +292,7 @@ class ImageViewer(gtk.VBox):
 
 
     def get_hover_command(self, x, y):
-        if not self.item.qview:
+        if not self.item.qview or self.plugin_controller:
             return -1
         left=4
         top=4
