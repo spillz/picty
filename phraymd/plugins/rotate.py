@@ -75,6 +75,8 @@ class RotatePlugin(pluginbase.Plugin):
     def rotate_button_callback(self,viewer,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        if not self.viewer.plugin_request_control(self):
+            return
         self.rotate_mode=True
         self.viewer.pack_start(self.rotate_bar,False)
         self.item=item
@@ -91,6 +93,7 @@ class RotatePlugin(pluginbase.Plugin):
         self.rotate_mode=False
         self.item=None
         self.viewer.remove(self.rotate_bar)
+        self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
     def rotate_adjust(self,adjustment):
@@ -98,10 +101,12 @@ class RotatePlugin(pluginbase.Plugin):
         if not self.rotate_mode:
             return
         self.viewer.refresh_view()
-    def viewer_relinquish_control(self):
+    def viewer_release(self,force=False):
         #user has cancelled the view of the current item, plugin must cancel open operations
-        pass
+        self.reset(True)
+        return True
     def t_viewer_sizing(self,size,zoom,item):
+        print 'ROTATE SIZING CB'
         if not self.rotate_mode:
             return
         if size!=self.cur_size or not self.unrotated_screen_image:
@@ -113,7 +118,6 @@ class RotatePlugin(pluginbase.Plugin):
             image=self.unrotated_screen_image.rotate(-self.angle_adjust.get_value(),Image.NEAREST,expand=True)
             image.thumbnail(size)
             item.qview=imagemanip.image_to_pixbuf(image)
-
         self.cur_size=size
         self.cur_zoom=zoom
         return True

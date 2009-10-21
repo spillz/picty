@@ -158,7 +158,7 @@ class Plugin(object):
         pass
     def viewer_item_closed(self,item): ##
         pass
-    def viewer_relinquish_control(self): ##
+    def viewer_release(self,force=False): ##
         '''user has navigated away from the image -- plugin should cancel any outstanding operations'''
         pass
     '''image loader''' ##TODO: implement this on the appplication side

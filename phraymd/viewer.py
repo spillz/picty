@@ -53,6 +53,7 @@ class ImageLoader:
         self.viewer=viewer
         self.event=threading.Event()
         self.exit=False
+        self.plugin=None
         self.thread.start()
 
     def update_image_size(self,width,height):
@@ -77,11 +78,22 @@ class ImageLoader:
         self.vlock.release()
         self.event.set()
 
+    def set_plugin(self,plugin):
+        self.vlock.acquire()
+        self.plugin=plugin
+        self.vlock.release()
+
+    def release_plugin(self,plugin):
+        self.vlock.acquire()
+        if plugin==self.plugin:
+            self.plugin=None
+        self.vlock.release()
+
     def _background_task(self):
         ##todo: this code is horrible! clean it up
         self.vlock.acquire()
         while 1:
-            if (self.sizing or self.item) and self.item.image==None:
+            if (self.sizing or self.item) and 'image' in dir(self.item) and self.item.image==None:
                 self.event.set()
             else:
                 self.event.clear()
@@ -108,9 +120,10 @@ class ImageLoader:
                     continue
             self.vlock.acquire()
             if self.sizing:
-                if not pluginmanager.mgr.callback_first('t_viewer_sizing',self.sizing,self.zoom,item):
+                if not self.plugin or not self.plugin.t_viewer_sizing(self.sizing,self.zoom,item):
                     imagemanip.size_image(item,self.sizing,False,self.zoom)
-                    pluginmanager.mgr.callback_first('t_viewer_sized',self.sizing,self.zoom,item)
+                    if self.plugin:
+                        self.plugin.t_viewer_sized(self.sizing,self.zoom,item)
                 gobject.idle_add(self.viewer.ImageSized,item)
                 self.sizing=None
 
@@ -130,6 +143,7 @@ class ImageViewer(gtk.VBox):
         self.worker=worker
         self.geo_width=-1
         self.geo_height=-1
+        self.plugin_controller=None
         self.hover_cmds=hover_cmds
         self.mouse_hover=False
 
@@ -170,21 +184,53 @@ class ImageViewer(gtk.VBox):
         self.item=None
         self.ImageNormal()
 
+    def plugin_request_control(self,plugin,force=False):
+        '''
+        normally called by plugin to request exclusive access to image rendering and loading events
+        '''
+        if self.plugin_controller:
+            if not self.plugin_controller.viewer_release() and not force:
+                return False
+        print 'activating plugin',plugin
+        self.plugin_controller=plugin
+        self.il.set_plugin(plugin)
+        self.refresh_view()
+        return True
+
+    def request_plugin_release(self,force=False):
+        '''
+        normally called by framework when user tries to navigate away from image
+        plugin will receive request to release drawing control and should normally
+        obey the request by calling plugin_release
+        '''
+        if not self.plugin_controller:
+            return True
+        if not self.plugin_controller.viewer_release() and not force:
+            return False
+#        self.plugin_controller=None
+#        self.il.release_plugin()
+#        self.refresh_view()
+        return True
+
+    def plugin_release(self,plugin):
+        '''
+        called by plugin to relinquish control of the drawing and image loading/sizing events
+        '''
+        if plugin!=self.plugin_controller:
+            return False
+        self.plugin_controller=None
+        self.il.release_plugin(plugin)
+#        self.refresh_view()
+        return True
+
     def ImageFullscreen(self):
-#        try:
-#            self.meta_box.hide()
-#        except:
-#            None
         self.fullscreen=True
 
     def ImageNormal(self):
-#        try:
-#            self.meta_box.show()
-#        except:
-#            None
         self.fullscreen=False
 
     def Destroy(self,event):
+        self.request_plugin_release(True)
         self.il.quit()
         return False
 
@@ -202,12 +248,14 @@ class ImageViewer(gtk.VBox):
         pass
 
     def SetItem(self,item):
+        if not self.request_plugin_release():
+            return False
         self.item=item
         self.il.set_item(item,(self.geo_width,self.geo_height))
 #        self.UpdateMetaTable(item)
-        if not self.imarea.window:
-            return
-        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        if self.imarea.window:
+            self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        return True
 
     def mouse_motion_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
@@ -252,6 +300,11 @@ class ImageViewer(gtk.VBox):
         #forces an image to be resized with a call to the worker thread
         self.il.update_image_size(self.geo_width,self.geo_height)
 
+    def redraw_view(self):
+        #forces an image to be resized with a call to the worker thread
+        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+
+
     def configure_signal(self,obj,event):
         if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
             self.geo_width=event.width
@@ -284,7 +337,7 @@ class ImageViewer(gtk.VBox):
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
-        if drew_image:
+        if drew_image and not self.plugin_controller:
             offx=4
             offy=4
             for cmd in self.hover_cmds:

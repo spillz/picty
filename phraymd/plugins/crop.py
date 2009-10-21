@@ -71,6 +71,8 @@ class CropPlugin(pluginbase.Plugin):
     def crop_button_callback(self,viewer,item):
         #the user has entered crop mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        if not self.viewer.plugin_request_control(self):
+            return
         self.crop_mode=True
         self.viewer.pack_start(self.crop_bar,False)
         self.item=item
@@ -89,7 +91,7 @@ class CropPlugin(pluginbase.Plugin):
         self.reset()
     def crop_cancel_callback(self,widget):
         #relinquish control of the viewer
-        self.reset()
+        self.reset(True)
     def reset(self,shutdown=False):
         self.crop_dimensions=(0,0,0,0)
         self.crop_mode=False
@@ -98,8 +100,14 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.imarea.disconnect(self.press_handle)
         self.viewer.imarea.disconnect(self.release_handle)
         self.viewer.imarea.disconnect(self.motion_handle)
+        self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
+    def viewer_release(self,force=False):
+        #user has cancelled the view of the current item, plugin must cancel open operations
+        self.reset()
+        return True
+
     def crop_aspect(self,widget):
         #slider has been shifted, crop the image accordingly (on the background thread?)
         if not self.crop_mode:
@@ -120,7 +128,7 @@ class CropPlugin(pluginbase.Plugin):
             self.dragging=True
             x,y=self.viewer_to_image(event.x,event.y)
             self.crop_dimensions=(x,y,x,y)
-            self.viewer.refresh_view()
+            self.viewer.redraw_view()
 
     def button_release(self,widget,event):
         if not self.crop_mode:
@@ -129,7 +137,7 @@ class CropPlugin(pluginbase.Plugin):
             self.dragging=False
             x,y=self.viewer_to_image(event.x,event.y)
             self.crop_dimensions=(self.crop_dimensions[0],self.crop_dimensions[1],x,y)
-            self.viewer.refresh_view()
+            self.viewer.redraw_view()
 
     def mouse_motion_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
@@ -138,7 +146,7 @@ class CropPlugin(pluginbase.Plugin):
         if self.dragging:
             x,y=self.viewer_to_image(event.x,event.y)
             self.crop_dimensions=(self.crop_dimensions[0],self.crop_dimensions[1],x,y)
-            self.viewer.refresh_view()
+            self.viewer.redraw_view()
 
     def viewer_relinquish_control(self):
         #user has cancelled the view of the current item, plugin must cancel open operations
