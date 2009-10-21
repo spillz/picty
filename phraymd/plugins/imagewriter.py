@@ -1,6 +1,6 @@
 '''
 
-    phraymd - Image Rotation Plugin
+    phraymd - Image Writer Plugin
     Copyright (C) 2009  Damien Moore
 
 License:
