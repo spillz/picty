@@ -266,6 +266,8 @@ class ImageViewer(gtk.VBox):
 
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
+        if event.mode!=gtk.gdk.CROSSING_NORMAL:
+            return
         if self.item!=None:
             if self.mouse_hover:
                 self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
