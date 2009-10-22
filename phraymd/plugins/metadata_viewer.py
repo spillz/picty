@@ -73,12 +73,12 @@ class MetaDataViewer(pluginbase.Plugin):
             ('metadata',self.metadata_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
             )
     def metadata_button_callback(self,viewer,item):
-        self.viewer.pack_start(self.meta_box)
+        self.viewer.vpane.add2(self.meta_box)
         self.update_meta_table(item)
         self.item=item
 
     def metadata_cancel_callback(self,widget):
-        self.viewer.remove(self.meta_box)
+        self.viewer.vpane.remove(self.meta_box)
         self.item=None
 
     ##TODO: NEED TO IMPLEMENT A PLUGIN METHOD FOR HANDLING ITEM CHANGE EVENT IN THE VIEWER SO TABLE CAN BE UPDATED

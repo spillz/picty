@@ -150,7 +150,10 @@ class ImageViewer(gtk.VBox):
         self.freeze_image_refresh=False
         self.change_block=False
 
-        self.pack_start(self.imarea)
+        self.vpane=gtk.VPaned()
+        self.vpane.add1(self.imarea) ##plugins can add widgets wiith add2
+        self.pack_start(self.vpane)
+        self.vpane.show()
 
         self.imarea.connect("realize",self.realize_signal)
         self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
