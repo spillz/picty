@@ -43,6 +43,44 @@ def save_metadata(item):
     return True
 
 
+def copy_metadata(src_item,destination_file):
+    '''
+    copy metadata from a source item to a destination file
+    due to bugs in pyexiv2|exiv2, only the metadata in the
+    module list 'apptags' are written
+    '''
+    print 'copy metadata'
+    if src_item.meta==False:
+        return False
+    try:
+        print 'reading src_item metadata'
+        rawmeta_src = pyexiv2.Image(src_item.filename)
+        rawmeta_src.readMetadata()
+    except:
+        print 'Error reading metadata for',src_item.filename
+        return False
+    try:
+        rawmeta_dest = pyexiv2.Image(destination_file)
+        rawmeta_dest.readMetadata()
+        for k in rawmeta_src.exifKeys():
+            try:
+                if k in appkeys:
+                    rawmeta_dest[k]=rawmeta_src[k]
+            except:
+                pass
+        for k in rawmeta_src.iptcKeys():
+            try:
+                if k in appkeys:
+                    rawmeta_dest[k]=rawmeta_src[k]
+            except:
+                pass
+        set_exiv2_meta(src_item.meta,rawmeta_dest)
+        rawmeta_dest.writeMetadata()
+    except:
+        print 'Error changing metadata in destination file',destination_file
+    return True
+
+
 def save_metadata_key(item,key,value):
     try:
         rawmeta = pyexiv2.Image(item.filename)
@@ -184,7 +222,6 @@ def coords_as_rational(decimal):
     print 'coords',degree,minute,second
 
 def coords_as_decimal(rational):
-    print 'converting coords to decimal',rational
     if type(rational) in (list,tuple):
         deci=1.0*rational[0].numerator/rational[0].denominator
         if len(rational)>1:
@@ -268,7 +305,7 @@ apptags=(
 ("Artist","Artist",True,conv_str,None,None,None,("Iptc.Application2.Credit","Exif.Image.Artist")),
 ("Copyright","Copyright",True,conv_str,None,None,None,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
-("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject")),
+("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",)),
 ("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
 ("Model","Model",False,conv_str,None,None,None,("Exif.Image.Model",)),
 ("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",)),
@@ -303,6 +340,8 @@ writetags=[(x[0],x[1]) for x in apptags if x[3]]
 writetags.append(('Orientation','Orientation'))
 
 apptags_dict=dict([(x[0],x[1:]) for x in apptags])
+appkeys=[y for x in apptags for y in x[7]]
+print appkeys
 
 def get_exiv2_meta(app_meta,exiv2_meta):
     for appkey,data in apptags_dict.iteritems():

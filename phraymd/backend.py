@@ -269,7 +269,7 @@ class ReloadMetadataJob(WorkerJob):
             if view.del_item(item):
                 item.meta=None
                 imagemanip.load_metadata(item)
-                log.info('reloaded metadata for '+item)
+                log.info('reloaded metadata for '+item.filename)
                 view.add_item(item)
             browser.lock.release()
         if len(self.queue)==0:
