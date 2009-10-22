@@ -67,7 +67,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
     def reset(self,shutdown=False):
         self.writer_mode=False
         self.item=None
-        self.viewer.remove(self.write_bar)
+        self.viewer.image_box.remove(self.write_bar)
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
@@ -88,7 +88,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
             return
         self.writer_mode=True
         self.filename_entry.set_text(item.filename)
-        self.viewer.pack_start(self.write_bar,False)
+        self.viewer.image_box.pack_start(self.write_bar,False)
         self.item=item
     def write_do_callback(self,widget):
         filename=self.filename_entry.get_text()

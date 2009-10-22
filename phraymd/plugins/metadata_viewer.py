@@ -34,7 +34,7 @@ class MetaDataViewer(pluginbase.Plugin):
     api_version='0.1.0'
     version='0.1.0'
     def __init__(self):
-        pass
+        self.item=None
     def plugin_init(self,mainframe,app_init):
         #register a button in the viewer to enter metadata mode
         self.cancel_button=gtk.Button("_Close")
@@ -59,9 +59,9 @@ class MetaDataViewer(pluginbase.Plugin):
 
 
     def plugin_shutdown(self,app_shutdown=False):
-        #deregister the button in the viewer
-        if self.metadata_mode:
-            self.reset(app_shutdown)
+        self.viewer.vpane.remove(self.meta_box)
+        self.item=None
+
     def viewer_register_shortcut(self,mainframe,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
@@ -72,6 +72,13 @@ class MetaDataViewer(pluginbase.Plugin):
         shortcut_commands.append(
             ('metadata',self.metadata_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
             )
+
+    def viewer_item_opening(self,item):
+        if self.item!=None and self.item!=item:
+            self.item=item
+            self.update_meta_table(item)
+        return True
+
     def metadata_button_callback(self,viewer,item):
         self.viewer.vpane.add2(self.meta_box)
         self.update_meta_table(item)

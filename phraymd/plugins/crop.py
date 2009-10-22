@@ -37,7 +37,6 @@ class CropPlugin(pluginbase.Plugin):
         self.crop_dimensions=(0,0,0,0)
         self.dragging=False
     def plugin_init(self,mainframe,app_init):
-        #register a button in the viewer to enter crop mode
         self.viewer=mainframe.iv
 
         self.aspect_label=gtk.Label("Aspect Ratio")
@@ -70,18 +69,16 @@ class CropPlugin(pluginbase.Plugin):
             )
     def crop_button_callback(self,viewer,item):
         #the user has entered crop mode
-        #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        #hand the plugin exclusive control of the viewer
         if not self.viewer.plugin_request_control(self):
             return
         self.crop_mode=True
-        self.viewer.pack_start(self.crop_bar,False)
+        self.viewer.image_box.pack_start(self.crop_bar,False)
         self.item=item
         self.press_handle=self.viewer.imarea.connect_after("button-press-event",self.button_press)
         self.release_handle=self.viewer.imarea.connect_after("button-release-event",self.button_release)
         self.motion_handle=self.viewer.imarea.connect_after("motion-notify-event",self.mouse_motion_signal)
     def crop_do_callback(self,widget):
-        #user has clicked ok, do the rotation of the physical image (on bg thread) and set the change flag
-        #relinquish control of the viewer
         self.crop_mode=False
         wnum=self.item.image.size[0]
         wdenom=self.item.qview.get_width()
@@ -90,13 +87,12 @@ class CropPlugin(pluginbase.Plugin):
         self.item.image=self.item.image.crop(image_crop_dimensions)
         self.reset()
     def crop_cancel_callback(self,widget):
-        #relinquish control of the viewer
         self.reset(True)
     def reset(self,shutdown=False):
         self.crop_dimensions=(0,0,0,0)
         self.crop_mode=False
         self.item=None
-        self.viewer.remove(self.crop_bar)
+        self.viewer.image_box.remove(self.crop_bar)
         self.viewer.imarea.disconnect(self.press_handle)
         self.viewer.imarea.disconnect(self.release_handle)
         self.viewer.imarea.disconnect(self.motion_handle)
@@ -104,7 +100,6 @@ class CropPlugin(pluginbase.Plugin):
         if not shutdown:
             self.viewer.refresh_view()
     def viewer_release(self,force=False):
-        #user has cancelled the view of the current item, plugin must cancel open operations
         self.reset()
         return True
 

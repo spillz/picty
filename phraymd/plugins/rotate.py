@@ -78,39 +78,32 @@ class RotatePlugin(pluginbase.Plugin):
         if not self.viewer.plugin_request_control(self):
             return
         self.rotate_mode=True
-        self.viewer.pack_start(self.rotate_bar,False)
+        self.viewer.image_box.pack_start(self.rotate_bar,False)
         self.item=item
     def rotate_do_callback(self,widget):
-        #user has clicked ok, do the rotation of the physical image (on bg thread) and set the change flag
-        #relinquish control of the viewer
         self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.ANTIALIAS,True)
         self.reset()
     def rotate_cancel_callback(self,widget):
-        #relinquish control of the viewer
         if self.rotate_mode:
             self.reset()
     def reset(self,shutdown=False):
         self.rotate_mode=False
         self.item=None
-        self.viewer.remove(self.rotate_bar)
+        self.viewer.image_box.remove(self.rotate_bar)
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
     def rotate_adjust(self,adjustment):
-        #slider has been shifted, rotate the image accordingly (on the background thread?)
         if not self.rotate_mode:
             return
         self.viewer.refresh_view()
     def viewer_release(self,force=False):
-        #user has cancelled the view of the current item, plugin must cancel open operations
         self.reset(True)
         return True
     def t_viewer_sizing(self,size,zoom,item):
-        print 'ROTATE SIZING CB'
         if not self.rotate_mode:
             return
         if size!=self.cur_size or not self.unrotated_screen_image:
-            print 'SIZING IMAGE'
             self.unrotated_screen_image=item.image.copy()
             self.unrotated_screen_image.thumbnail(size)
         if self.angle_adjust.get_value()!=0.0:

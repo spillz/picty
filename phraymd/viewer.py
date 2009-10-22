@@ -150,8 +150,12 @@ class ImageViewer(gtk.VBox):
         self.freeze_image_refresh=False
         self.change_block=False
 
+        self.image_box=gtk.VBox() ##plugins can add widgets to the box
+        self.image_box.pack_start(self.imarea)
+        self.image_box.show()
+
         self.vpane=gtk.VPaned()
-        self.vpane.add1(self.imarea) ##plugins can add widgets wiith add2
+        self.vpane.add1(self.image_box) ##plugins can add widgets wiith add2
         self.pack_start(self.vpane)
         self.vpane.show()
 
@@ -253,6 +257,8 @@ class ImageViewer(gtk.VBox):
 
     def SetItem(self,item):
         if not self.request_plugin_release():
+            return False
+        if not pluginmanager.mgr.callback_all_until_false('viewer_item_opening',item):
             return False
         self.item=item
         self.il.set_item(item,(self.geo_width,self.geo_height))

@@ -72,6 +72,13 @@ class PluginManager():
         '''
         for name,plugin in self.plugins.iteritems():
             getattr(plugin[0],interface_name)(*args)
+    def callback_all_until_false(self,interface_name,*args):
+        a=True
+        for name,plugin in self.plugins.iteritems():
+            a=a and getattr(plugin[0],interface_name)(*args)
+            if not a:
+                break
+        return a
     def callback_first(self,interface_name,*args):
         '''
         for each plugin in self.plugins that defines the interface, runs the callback.
