@@ -89,6 +89,7 @@ class RotatePlugin(pluginbase.Plugin):
     def reset(self,shutdown=False):
         self.rotate_mode=False
         self.item=None
+        self.unrotated_screen_image=None
         self.viewer.image_box.remove(self.rotate_bar)
         self.viewer.plugin_release(self)
         if not shutdown:
