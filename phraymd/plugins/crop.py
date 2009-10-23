@@ -65,7 +65,7 @@ class CropPlugin(pluginbase.Plugin):
         def show_on_hover(item,hover):
             return True
         shortcut_commands.append(
-            ('Crop',self.crop_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_CUT, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
+            ('Crop',self.crop_button_callback,show_on_hover,False,mainframe.render_icon('phraymd-image-crop', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
             )
     def crop_button_callback(self,viewer,item):
         #the user has entered crop mode

@@ -8,6 +8,9 @@ ICON_INFO = [
   ('phraymd-rotate-left', 'phraymd-rotate-left.png'),
   ('phraymd-rotate-right', 'phraymd-rotate-right.png'),
   ('phraymd-sidebar', 'phraymd-sidebar.png'),
+  ('phraymd-image-crop', 'phraymd-image-crop.png'),
+  ('phraymd-image-rotate', 'phraymd-image-rotate.png'),
+  ('phraymd-image-write', 'phraymd-image-write.png'),
   ]
 
 icon_path=os.path.join(os.path.split(__file__)[0],'icons/')

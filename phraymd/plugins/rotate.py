@@ -70,7 +70,7 @@ class RotatePlugin(pluginbase.Plugin):
         def show_on_hover(item,hover):
             return True
         shortcut_commands.append(
-            ('Rotate',self.rotate_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_OK, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
+            ('Rotate',self.rotate_button_callback,show_on_hover,False,mainframe.render_icon('phraymd-image-rotate', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
             )
     def rotate_button_callback(self,viewer,item):
         #the user has entered rotate mode

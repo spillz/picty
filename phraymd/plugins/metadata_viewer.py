@@ -70,7 +70,7 @@ class MetaDataViewer(pluginbase.Plugin):
         def show_on_hover(item,hover):
             return True
         shortcut_commands.append(
-            ('metadata',self.metadata_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
+            ('metadata',self.metadata_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
             )
 
     def viewer_item_opening(self,item):

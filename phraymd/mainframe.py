@@ -84,13 +84,13 @@ class MainFrame(gtk.VBox):
 
         self.viewer_hover_cmds=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_SMALL_TOOLBAR),'Main'),
-                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
+                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
                         ]
         self.plugmgr.callback('viewer_register_shortcut',self,self.viewer_hover_cmds)
 

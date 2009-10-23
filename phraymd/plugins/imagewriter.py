@@ -79,7 +79,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         def show_on_hover(item,hover):
             return True
         shortcut_commands.append(
-            ('Image Writer',self.writer_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_HARDDISK, gtk.ICON_SIZE_SMALL_TOOLBAR),'Main')
+            ('Image Writer',self.writer_button_callback,show_on_hover,False,mainframe.render_icon('phraymd-image-write', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
             )
     def writer_button_callback(self,viewer,item):
         #the user has entered rotate mode
