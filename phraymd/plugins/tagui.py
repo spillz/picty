@@ -169,9 +169,9 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_collection_item_removed(self,item):
         '''item was removed from the collection'''
         self.tagframe.tag_cloud.remove(item)
-    def t_collection_item_metadata_changed(self,item,meta_before): ##todo: should get before/after metadata
+    def t_collection_item_metadata_changed(self,item,meta_before):
         '''item metadata has changed'''
-        self.tagframe.tag_cloud.update(item,meta_before) ##todo: this is broken, update relies on backup metadata being the pre-changed data
+        self.tagframe.tag_cloud.update(item,meta_before)
         i=self.worker.view.find_item(item)
         if i>0:
             self.tagframe.tag_cloud_view.update(item,meta_before)

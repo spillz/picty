@@ -66,7 +66,7 @@ class Item(list):
     def set_meta_key(self,key,value):
         if self.meta==False or self.meta==None:
             return None
-        old=self.meta
+        old=self.meta.copy()
         if not self.meta_changed:
             self.meta_backup=self.meta.copy()
             self.meta_changed=True

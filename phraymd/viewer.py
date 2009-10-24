@@ -293,7 +293,6 @@ class ImageViewer(gtk.VBox):
     def button_press(self,widget,event):
         if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
             cmd=self.get_hover_command(event.x,event.y)
-            print 'command',cmd,'mouse hover',self.mouse_hover
             if cmd>=0:
                 cmd=self.hover_cmds.tools[cmd]
                 if cmd.is_active(self.item,self.mouse_hover):
