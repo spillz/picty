@@ -71,16 +71,12 @@ class ImageWriterPlugin(pluginbase.Plugin):
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
-    def viewer_register_shortcut(self,mainframe,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        def show_on_hover(item,hover):
-            return True
-        shortcut_commands.append(
-            ('Image Writer',self.writer_button_callback,show_on_hover,False,mainframe.render_icon('phraymd-image-write', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
-            )
+        shortcut_commands.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_commands.default_active_callback,'phraymd-image-write',priority=30)
     def writer_button_callback(self,viewer,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer

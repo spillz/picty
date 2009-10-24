@@ -60,12 +60,6 @@ class ImageBrowser(gtk.HBox):
     MODE_NORMAL=1
     MODE_TAG=2
 
-    #indices into the hover_cmds structure (overlay shortcuts in image browser)
-    HOVER_TEXT=0 #text description of the command
-    HOVER_CALLBACK=1 #callback when command is clicked
-    HOVER_SHOW_CALLBACK=2 #callback  to determine whether callback should be displayed
-    HOVER_ALWAYS_SHOW=3 #True if the overlay displays always, False only if mouse cursor is over the image
-    HOVER_ICON=4 #the icon for the command
 
     ##todo: need signals to notify of collection changes, view changes
     ##also want to submit all changes to items, view or collection through the worker thread
@@ -216,13 +210,7 @@ class ImageBrowser(gtk.HBox):
         top=self.geo_ind_view_first*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count-int(self.geo_view_offset)
         top+=offset/self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad)
         top+=self.geo_pad/4
-        for i in range(len(self.hover_cmds)):
-            right=left+self.hover_cmds[i][self.HOVER_ICON].get_width()
-            bottom=top+self.hover_cmds[i][self.HOVER_ICON].get_height()
-            if left<x<=right and top<y<=bottom:
-                return i
-            left+=self.hover_cmds[i][self.HOVER_ICON].get_width()+self.geo_pad/4
-        return -1
+        return self.hover_cmds.get_command(x,y,left,top,self.geo_pad/4)
 
     def item_to_view_index(self,item):
         return self.tm.view.find_item(item)
@@ -291,10 +279,10 @@ class ImageBrowser(gtk.HBox):
                     self.drop_item=item
                     cmd=self.get_hover_command(ind,event.x,event.y)
                     if cmd>=0:
-                        cmd=self.hover_cmds[cmd]
+                        cmd=self.hover_cmds.tools[cmd]
                         if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
-                            if (cmd[self.HOVER_ALWAYS_SHOW] or self.hover_ind==ind) and cmd[self.HOVER_SHOW_CALLBACK](item,self.hover_ind==ind):
-                                cmd[self.HOVER_CALLBACK](None,self.pressed_item)
+                            if cmd.is_active(item,self.hover_ind==ind):
+                                cmd.action(self.pressed_item)
                     else:
                         if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                             ind=self.item_to_view_index(self.last_selected)
@@ -618,10 +606,7 @@ class ImageBrowser(gtk.HBox):
                     drawable.draw_layout(gc,x+self.geo_pad/4,y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4,l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
-                for cmd in self.hover_cmds:
-                    if (cmd[self.HOVER_ALWAYS_SHOW] or self.hover_ind==i) and cmd[self.HOVER_SHOW_CALLBACK](item,self.hover_ind==i):
-                        drawable.draw_pixbuf(gc,cmd[self.HOVER_ICON],0,0,x+offx,y+offy)
-                    offx+=cmd[self.HOVER_ICON].get_width()+self.geo_pad/4
+                self.hover_cmds.simple_render(item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/4)
             i+=1
             x+=self.geo_thumbwidth+self.geo_pad
             if x+self.geo_thumbwidth+self.geo_pad>=self.geo_width:

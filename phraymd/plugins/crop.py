@@ -57,16 +57,12 @@ class CropPlugin(pluginbase.Plugin):
         #deregister the button in the viewer
         if self.crop_mode:
             self.reset(app_shutdown)
-    def viewer_register_shortcut(self,mainframe,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        def show_on_hover(item,hover):
-            return True
-        shortcut_commands.append(
-            ('Crop',self.crop_button_callback,show_on_hover,False,mainframe.render_icon('phraymd-image-crop', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
-            )
+        shortcut_commands.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_commands.default_active_callback,'phraymd-image-crop',40)
     def crop_button_callback(self,viewer,item):
         #the user has entered crop mode
         #hand the plugin exclusive control of the viewer

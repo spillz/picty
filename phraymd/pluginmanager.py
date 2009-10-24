@@ -53,6 +53,8 @@ class PluginManager():
         try:
             plugin=self.plugins[name][0]
             self.plugins[name][0]=None
+            import overlaytools
+            overlaytools.deregister_all_tools_for_plugin(plugin)
             plugin.plugin_shutdown(False)
         except:
             pass
@@ -73,6 +75,10 @@ class PluginManager():
         for name,plugin in self.plugins.iteritems():
             getattr(plugin[0],interface_name)(*args)
     def callback_all_until_false(self,interface_name,*args):
+        '''
+        for each plugin in self.plugins that defines the interface, runs the callback.
+        Will stop callbacks after the first instance that returns False
+        '''
         a=True
         for name,plugin in self.plugins.iteritems():
             a=a and getattr(plugin[0],interface_name)(*args)

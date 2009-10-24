@@ -1,6 +1,6 @@
 '''
 
-    phraymd
+    phraymd - Map and Geotagging Plugin
     Copyright (C) 2009  Damien Moore
     Portions Copyright (C) 2009 John Stowers (python example code from OsmGpsMap)
 

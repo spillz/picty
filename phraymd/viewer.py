@@ -295,26 +295,15 @@ class ImageViewer(gtk.VBox):
             cmd=self.get_hover_command(event.x,event.y)
             print 'command',cmd,'mouse hover',self.mouse_hover
             if cmd>=0:
-                cmd=self.hover_cmds[cmd]
-                if (cmd[self.HOVER_ALWAYS_SHOW] or self.mouse_hover) and cmd[self.HOVER_SHOW_CALLBACK](self.item,self.mouse_hover):
-                    cmd[self.HOVER_CALLBACK](self,self.item)
+                cmd=self.hover_cmds.tools[cmd]
+                if cmd.is_active(self.item,self.mouse_hover):
+                    cmd.action(self.item)
 
 
     def get_hover_command(self, x, y):
         if not self.item.qview or self.plugin_controller:
             return -1
-        left=4
-        top=4
-#        (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
-#        left=4+(self.geo_width-iw)/2
-#        top=4+(self.geo_height-ih)/2
-        for i in range(len(self.hover_cmds)):
-            right=left+self.hover_cmds[i][self.HOVER_ICON].get_width()
-            bottom=top+self.hover_cmds[i][self.HOVER_ICON].get_height()
-            if left<x<=right and top<y<=bottom:
-                return i
-            left+=self.hover_cmds[i][self.HOVER_ICON].get_width()+4
-        return -1
+        return self.hover_comands.get_command(x,y,4,4,4)
 
     def refresh_view(self):
         #forces an image to be resized with a call to the worker thread
@@ -358,11 +347,6 @@ class ImageViewer(gtk.VBox):
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
         if drew_image and not self.plugin_controller:
-            offx=4
-            offy=4
-            for cmd in self.hover_cmds:
-                if (cmd[self.HOVER_ALWAYS_SHOW] or self.mouse_hover) and cmd[self.HOVER_SHOW_CALLBACK](self.item,self.mouse_hover):
-                    drawable.draw_pixbuf(gc,cmd[self.HOVER_ICON],0,0,offx,offy)
-                offx+=cmd[self.HOVER_ICON].get_width()+4
+            self.hover_cmds.simple_render(self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 

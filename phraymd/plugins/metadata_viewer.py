@@ -62,16 +62,12 @@ class MetaDataViewer(pluginbase.Plugin):
         self.viewer.vpane.remove(self.meta_box)
         self.item=None
 
-    def viewer_register_shortcut(self,mainframe,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        def show_on_hover(item,hover):
-            return True
-        shortcut_commands.append(
-            ('metadata',self.metadata_button_callback,show_on_hover,False,mainframe.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
-            )
+        shortcut_commands.register_tool_for_plugin(self,'Metadata Viewer',self.metadata_button_callback,shortcut_commands.default_active_callback,gtk.STOCK_INFO,priority=45)
 
     def viewer_item_opening(self,item):
         if self.item!=None and self.item!=item:

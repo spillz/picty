@@ -47,6 +47,7 @@ import browser
 import pluginmanager
 import pluginimporter
 import io
+import overlaytools
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
@@ -69,30 +70,36 @@ class MainFrame(gtk.VBox):
         ##todo: register the right click menu options (a tuple)
         ##todo: this has to be registered after instantiation of browser.
         def show_on_hover(item,hover):
-            return True
-        self.hover_cmds=[
+            return hover
+        self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
+        tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU),'Main'),
-                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_MENU),'Main'),
-                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_MENU),'Main'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_MENU),'Main'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_MENU),'Main'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_MENU),'Main'),
-                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU),'Main')
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main'),
+                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main'),
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main')
                         ]
+        for tool in tools:
+            self.hover_cmds.register_tool(*tool)
         self.plugmgr.callback('browser_register_shortcut',self.hover_cmds)
 
-        self.viewer_hover_cmds=[
+        self.viewer_hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_LARGE_TOOLBAR)
+        viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,True,self.render_icon(gtk.STOCK_SAVE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Revert',self.revert_item,lambda item,hover:item.meta_changed,False,self.render_icon(gtk.STOCK_REVERT_TO_SAVED, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Launch',self.launch_item,show_on_hover,False,self.render_icon(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,False,self.render_icon(gtk.STOCK_EDIT, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,False,self.render_icon('phraymd-rotate-left', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,False,self.render_icon('phraymd-rotate-right', gtk.ICON_SIZE_LARGE_TOOLBAR),'Main'),
-                        ('Delete',self.delete_item,show_on_hover,False,self.render_icon(gtk.STOCK_DELETE, gtk.ICON_SIZE_LARGE_TOOLBAR),'Main')
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main'),
+                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main'),
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main')
                         ]
-        self.plugmgr.callback('viewer_register_shortcut',self,self.viewer_hover_cmds)
+        for tool in viewer_tools:
+            self.viewer_hover_cmds.register_tool(*tool)
+        self.plugmgr.callback('viewer_register_shortcut',self.viewer_hover_cmds)
 
         self.browser=browser.ImageBrowser(self.hover_cmds)
         self.tm=self.browser.tm
