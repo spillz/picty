@@ -68,13 +68,14 @@ class RotatePlugin(pluginbase.Plugin):
         append a tuple containing the shortcut commands
         '''
         shortcut_commands.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_commands.default_active_callback,'phraymd-image-rotate',43)
-    def rotate_button_callback(self,viewer,item):
+    def rotate_button_callback(self,cmd,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
         if not self.viewer.plugin_request_control(self):
             return
         self.rotate_mode=True
         self.viewer.image_box.pack_start(self.rotate_bar,False)
+        self.viewer.image_box.reorder_child(self.rotate_bar,0)
         self.item=item
     def rotate_do_callback(self,widget):
         self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.ANTIALIAS,True)

@@ -63,13 +63,14 @@ class CropPlugin(pluginbase.Plugin):
         append a tuple containing the shortcut commands
         '''
         shortcut_commands.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_commands.default_active_callback,'phraymd-image-crop',40)
-    def crop_button_callback(self,viewer,item):
+    def crop_button_callback(self,cmd,item):
         #the user has entered crop mode
         #hand the plugin exclusive control of the viewer
         if not self.viewer.plugin_request_control(self):
             return
         self.crop_mode=True
         self.viewer.image_box.pack_start(self.crop_bar,False)
+        self.viewer.image_box.reorder_child(self.crop_bar,0)
         self.item=item
         self.press_handle=self.viewer.imarea.connect_after("button-press-event",self.button_press)
         self.release_handle=self.viewer.imarea.connect_after("button-release-event",self.button_release)

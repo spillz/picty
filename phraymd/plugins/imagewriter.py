@@ -77,7 +77,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         append a tuple containing the shortcut commands
         '''
         shortcut_commands.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_commands.default_active_callback,'phraymd-image-write',priority=30)
-    def writer_button_callback(self,viewer,item):
+    def writer_button_callback(self,cmd,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
         if not self.viewer.plugin_request_control(self):
@@ -85,6 +85,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         self.writer_mode=True
         self.filename_entry.set_text(item.filename)
         self.viewer.image_box.pack_start(self.write_bar,False)
+        self.viewer.image_box.reorder_child(self.write_bar,0)
         self.item=item
     def write_do_callback(self,widget):
         filename=self.filename_entry.get_text()
