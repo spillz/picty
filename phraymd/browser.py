@@ -282,7 +282,7 @@ class ImageBrowser(gtk.HBox):
                         cmd=self.hover_cmds.tools[cmd]
                         if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                             if cmd.is_active(item,self.hover_ind==ind):
-                                cmd.action(self.pressed_item)
+                                cmd.action(cmd,self.pressed_item)
                     else:
                         if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                             ind=self.item_to_view_index(self.last_selected)

@@ -297,13 +297,13 @@ class ImageViewer(gtk.VBox):
             if cmd>=0:
                 cmd=self.hover_cmds.tools[cmd]
                 if cmd.is_active(self.item,self.mouse_hover):
-                    cmd.action(self.item)
+                    cmd.action(cmd,self.item)
 
 
     def get_hover_command(self, x, y):
         if not self.item.qview or self.plugin_controller:
             return -1
-        return self.hover_comands.get_command(x,y,4,4,4)
+        return self.hover_cmds.get_command(x,y,4,4,4)
 
     def refresh_view(self):
         #forces an image to be resized with a call to the worker thread
