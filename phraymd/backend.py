@@ -352,6 +352,7 @@ class WalkDirectoryJob(WorkerJob):
                 scan_dir=collection.image_dirs[0]
                 self.collection_walker=os.walk(scan_dir)
                 self.done=False
+                pluginmanager.mgr.callback('t_collection_modify_start_hint')
         except StopIteration:
             self.notify_items=[]
             self.collection_walker=None
@@ -438,6 +439,7 @@ class WalkSubDirectoryJob(WorkerJob):
             if not self.collection_walker:
                 scan_dir=self.sub_dir
                 self.collection_walker=os.walk(scan_dir)
+                pluginmanager.mgr.callback('t_collection_modify_start_hint')
         except StopIteration:
             log.error('Aborted directory walk on '+self.sub_dir)
             self.notify_items=[]
@@ -554,6 +556,7 @@ class BuildViewJob(WorkerJob):
                 view.clear_filter(filter_text)
             del view[:] ##todo: create a view method to empty the view
             pluginmanager.mgr.callback('t_view_emptied')
+            pluginmanager.mgr.callback('t_collection_modify_start_hint')
             gobject.idle_add(browser.update_view)
         lastrefresh=i
         browser.lock.release()
@@ -699,6 +702,8 @@ class EditMetaDataJob(WorkerJob):
 
     def __call__(self,jobs,collection,view,browser):
         i=self.pos
+        if i==0:
+            pluginmanager.mgr.callback('t_collection_modify_start_hint')
         items=collection if self.scope==EDIT_COLLECTION else view
         if self.mode==ADD_KEYWORDS:
             tags=exif.tag_split(self.keyword_string)
@@ -873,6 +878,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=0
 
     def __call__(self,jobs,collection,view,browser):
+        pluginmanager.mgr.callback('t_collection_modify_start_hint')
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
@@ -961,6 +967,7 @@ class DirectoryUpdateJob(WorkerJob):
     def __call__(self,jobs,collection,view,browser):
         #todo: make sure job.queue has been initialized
         #todo: acquire and release collection lock
+        pluginmanager.mgr.callback('t_collection_modify_start_hint')
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
             if action in ('DELETE','MOVED_FROM'):

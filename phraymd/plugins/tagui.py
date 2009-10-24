@@ -136,6 +136,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
+        self.block_refresh=False
         user_tag_layout=user_tag_layout_default
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
@@ -166,23 +167,34 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
         self.tagframe.tag_cloud.add(item)
+        self.thread_refresh()
     def t_collection_item_removed(self,item):
         '''item was removed from the collection'''
         self.tagframe.tag_cloud.remove(item)
+        self.thread_refresh()
     def t_collection_item_metadata_changed(self,item,meta_before):
         '''item metadata has changed'''
         self.tagframe.tag_cloud.update(item,meta_before)
         i=self.worker.view.find_item(item)
         if i>0:
             self.tagframe.tag_cloud_view.update(item,meta_before)
+        self.thread_refresh()
     def t_collection_item_added_to_view(self,item):
         '''item in collection was added to view'''
         self.tagframe.tag_cloud_view.add(item)
+        self.thread_refresh()
     def t_collection_item_removed_from_view(self,item):
         '''item in collection was removed from view'''
         self.tagframe.tag_cloud_view.remove(item)
+        self.thread_refresh()
+    def t_collection_modify_start_hint(self):
+        self.block_refresh=True
     def t_collection_modify_complete_hint(self):
-        gobject.idle_add(self.tagframe.start_refresh_timer)
+        self.block_refresh=False
+        self.thread_refresh()
+    def thread_refresh(self):
+        if not self.block_refresh:
+            gobject.idle_add(self.tagframe.start_refresh_timer)
     def tag_dropped_in_browser(self,browser,item,tag_widget,path):
         print 'Tag Plugin: dropped',tag_widget,path
         tags=self.tagframe.get_tags(path)
@@ -196,7 +208,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe.tag_cloud_view.empty()
         for item in self.worker.collection:
             self.tagframe.tag_cloud.add(item)
-        gobject.idle_add(self.tagframe.start_refresh_timer)
+        self.thread_refresh()
     def t_view_emptied(self):
         '''the view has been flushed'''
         self.tagframe.tag_cloud_view.empty()

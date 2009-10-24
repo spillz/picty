@@ -94,9 +94,13 @@ class Plugin(object):
     def t_collection_item_removed_from_view(self,item):
         '''item in collection was removed from view'''
         pass
+    def t_collection_modify_start_hint(self):
+        '''the collection_item* methods have started editing the batch of images.
+        use this to hint to gui plugins that it should wait for the complete_hint before refreshing'''
+        pass
     def t_collection_modify_complete_hint(self):
         '''the collection_item* methods have completed on the batch of images.
-        use this to notify the gui rather than notifying the gui for every image change'''
+        use this to hint to gui plugins that it is time to refresh'''
         pass
     def t_view_emptied(self):
         '''the view has been flushed'''
