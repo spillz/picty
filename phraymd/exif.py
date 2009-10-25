@@ -341,7 +341,6 @@ writetags.append(('Orientation','Orientation'))
 
 apptags_dict=dict([(x[0],x[1:]) for x in apptags])
 appkeys=[y for x in apptags for y in x[7]]
-print appkeys
 
 def get_exiv2_meta(app_meta,exiv2_meta):
     for appkey,data in apptags_dict.iteritems():

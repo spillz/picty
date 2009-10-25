@@ -228,6 +228,7 @@ class ImageViewer(gtk.VBox):
             return False
         self.plugin_controller=None
         self.il.release_plugin(plugin)
+        self.imarea.grab_focus()
 #        self.refresh_view()
         return True
 

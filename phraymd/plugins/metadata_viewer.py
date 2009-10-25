@@ -59,7 +59,8 @@ class MetaDataViewer(pluginbase.Plugin):
 
 
     def plugin_shutdown(self,app_shutdown=False):
-        self.viewer.vpane.remove(self.meta_box)
+        if self.item!=None:
+            self.viewer.vpane.remove(self.meta_box)
         self.item=None
 
     def viewer_register_shortcut(self,shortcut_commands):
@@ -79,10 +80,12 @@ class MetaDataViewer(pluginbase.Plugin):
         self.viewer.vpane.add2(self.meta_box)
         self.update_meta_table(item)
         self.item=item
+        self.viewer.imarea.grab_focus()
 
     def metadata_cancel_callback(self,widget):
         self.viewer.vpane.remove(self.meta_box)
         self.item=None
+        self.viewer.imarea.grab_focus()
 
     ##TODO: NEED TO IMPLEMENT A PLUGIN METHOD FOR HANDLING ITEM CHANGE EVENT IN THE VIEWER SO TABLE CAN BE UPDATED
 
