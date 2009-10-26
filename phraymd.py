@@ -38,9 +38,10 @@ except:
     sys.exit()
 
 from phraymd import settings
-from phraymd import mainframe
 
 settings.init() ##todo: make this call occur upon first import inside the settings module
+
+from phraymd import mainframe
 
 class MainWindow:
     def __init__(self):

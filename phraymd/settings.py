@@ -89,7 +89,7 @@ def save():
 
 
 def load():
-    global version, precache_count, custom_launchers, user_tag_info, places, layout, active_collection_file, legacy_image_dirs
+    global version, precache_count, custom_launchers, user_tag_info, places, layout, active_collection_file, legacy_image_dirs, plugins_disabled
     try:
         f=open(conf_file,'rb')
     except:

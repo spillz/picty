@@ -320,14 +320,14 @@ class PluginBox(gtk.VBox):
     def get_plugins(self):
         self.model.clear()
         for p,v in pluginmanager.mgr.plugins.iteritems():
-            self.model.append((v[0].name,v[0].display_name,v[0].version,p not in settings.plugins_disabled,v[1]!=ConfigPlugin))
+            self.model.append((v[1].name,v[1].display_name,v[1].version,p not in settings.plugins_disabled,v[1]!=ConfigPlugin))
 
     def enable_toggle_signal(self,widget,path):
         plugin=self.model[path][0]
         if plugin in settings.plugins_disabled:
             del settings.plugins_disabled[settings.plugins_disabled.index(plugin)]
             pluginmanager.mgr.enable_plugin(plugin)
-            pluginmanager.mgr.callback_plugin(plugin,'app_ready',pluginmanager.mgr.mainframe)
+#            pluginmanager.mgr.callback_plugin(plugin,'plugin_init',pluginmanager.mgr.mainframe,False)
             self.model[path][3]=True
         else:
             settings.plugins_disabled.append(plugin)

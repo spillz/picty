@@ -50,7 +50,7 @@ class OverlayTool:
         self.action=action_callback
         self.is_active=active_callback
         self.icon=icon
-        self.owner='Main'
+        self.owner=owner
         self.priority=priority
 
 
@@ -87,7 +87,9 @@ class OverlayGroup:
         '''
         removes all tools whose owners are plugin
         '''
+        print 'deregister tools',plugin.name,len(self.tools),[(t.name,t.owner) for t in self.tools]
         self.tools=[t for t in self.tools if t.owner!=plugin.name]
+        print 'deregister tools post',len(self.tools),[(t.name,t.owner) for t in self.tools]
     def simple_render(self,item,hover_data,drawable,gc,x,y,xpad):
         '''
         renders the tools horizontally across the already rendered image in the drawable

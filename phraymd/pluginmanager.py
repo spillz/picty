@@ -40,6 +40,7 @@ class PluginManager():
         self.mainframe=None
     def instantiate_all_plugins(self):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
+        print 'instantiating plugins except for',settings.plugins_disabled
         for plugin in pluginbase.Plugin.__subclasses__():
 #            try:
                 self.plugins[plugin.name]=[plugin(),plugin] if plugin.name not in settings.plugins_disabled else [None,plugin]
@@ -48,7 +49,8 @@ class PluginManager():
     def enable_plugin(self,name):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         self.plugins[name][0]=self.plugins[name][1]()
-        self.plugins[name][0].init_plugin(self.mainframe,False)
+        self.plugins[name][0].plugin_init(self.mainframe,False)
+        self.plugins[name][0].viewer_register_shortcut(self.mainframe.iv.hover_cmds)
     def disable_plugin(self,name):
         try:
             plugin=self.plugins[name][0]
@@ -66,14 +68,17 @@ class PluginManager():
         for each plugin in self.plugins that defines the interface, runs the callback.
         Used in the main app for interfaces that always return None
         '''
-        getattr(self.plugins[plugin_name][0],interface_name)(*args)
+        plugin=self.plugins[plugin_name][0]
+        if plugin:
+            getattr(plugin,interface_name)(*args)
     def callback(self,interface_name,*args):
         '''
         for each plugin in self.plugins that defines the interface, runs the callback.
         Used in the main app for interfaces that always return None
         '''
         for name,plugin in self.plugins.iteritems():
-            getattr(plugin[0],interface_name)(*args)
+            if plugin[0]:
+                getattr(plugin[0],interface_name)(*args)
     def callback_all_until_false(self,interface_name,*args):
         '''
         for each plugin in self.plugins that defines the interface, runs the callback.
@@ -81,7 +86,7 @@ class PluginManager():
         '''
         a=True
         for name,plugin in self.plugins.iteritems():
-            a=a and getattr(plugin[0],interface_name)(*args)
+            a=a and (plugin[0]==None or getattr(plugin[0],interface_name)(*args))
             if not a:
                 break
         return a
@@ -91,7 +96,7 @@ class PluginManager():
         Used in the main app for interfaces that always return None
         '''
         for name,plugin in self.plugins.iteritems():
-            if getattr(plugin[0],interface_name)(*args):
+            if plugin[0] and getattr(plugin[0],interface_name)(*args):
                 return True
         return False
     def callback_iter(self,interface_name,*args):
@@ -100,6 +105,6 @@ class PluginManager():
         and yields the result. Used in the main app for interfaces that return useful results
         '''
         for name,plugin in self.plugins.iteritems():
-            yield getattr(plugin[0],callback_name)(*args)
+            yield plugin[0] and getattr(plugin[0],callback_name)(*args)
 
 mgr=PluginManager()  ##instantiate the manager (there can only be one)
