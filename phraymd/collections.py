@@ -32,6 +32,33 @@ import pluginmanager
 import settings
 
 
+class SimpleCollection(list):
+    '''defines a sorted collection of Items'''
+    def __init__(self,items=[]): ##todo: store base path for the collection
+        list.__init__(self)
+        for item in items:
+            self.add(item)
+    def add(self,item):
+        bisect.insort(self,item)
+    def find(self,item):
+        i=bisect.bisect_left(self,item)
+        if i>=len(self) or i<0:
+            return -1
+        if self[i]==item:
+            return i
+        return -1
+    def delete(self,item):
+        i=self.find(item)
+        if i>=0:
+            self.pop(i)
+            return item
+        return None
+    def __call__(self,ind):
+        return self[ind]
+    def empty(self):
+        del self[:]
+
+
 class Collection(list):
     '''defines a sorted collection of Items'''
     def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection

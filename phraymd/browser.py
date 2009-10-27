@@ -356,7 +356,6 @@ class ImageBrowser(gtk.HBox):
                     uris.append(uri)
                 i+=1
             selection_data.set_uris(uris)
-        print 'dragging selected uris',selection_data.get_uris()
         self.drag_item=None
 
     def recalc_hover_ind(self,x,y):

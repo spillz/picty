@@ -6,6 +6,10 @@ try:
         ifile=gio.File(path)
         return ifile.get_uri()
 
+    def get_path_from_uri(uri):
+        ifile=gio.File(uri)
+        return ifile.get_path()
+
     def get_mime_type(path):
         ifile=gio.File(path)
         info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
@@ -24,6 +28,9 @@ except:
 
     def get_uri(path):
         return gnomevfs.get_uri_from_local_path(path)
+
+    def get_path_from_uri(uri):
+        return gnomevfs.get_local_path_from_uri(uri)
 
     def get_mime_type(path):
         return gnomevfs.get_mime_type(gnomevfs.get_uri_from_local_path(path))
