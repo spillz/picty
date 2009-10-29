@@ -507,7 +507,7 @@ class ImageBrowser(gtk.HBox):
         self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
 
     def configure_signal(self,obj,event):
-        '''received when the window size of the drawing area changes'''
+        '''callback received when the window size of the drawing area changes'''
         self.geo_width=event.width
         self.geo_height=event.height
         self.update_geometry(True)
@@ -517,11 +517,11 @@ class ImageBrowser(gtk.HBox):
 ##        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def expose_signal(self,event,arg):
-        '''received when part of the drawing area needs to be shown'''
+        '''callback received when part of the drawing area needs to be shown'''
         self.realize_signal(event)
 
     def realize_signal(self,event):
-        '''renders the view - received when the drawing area needs to be shown'''
+        '''calback to render the view - received when the drawing area needs to be shown'''
         request_thumbs=False
         self.lock.acquire()
         drawable = self.imarea.window
