@@ -261,24 +261,27 @@ class ImageBrowser(gtk.HBox):
     def button_press(self,obj,event):
         '''callback for mouse button presses (handles selections, view double clicks,
             context menu right clicks, mouse overlay clicks)'''
-        print 'press',event.button,event.type
+        print 'press',event.button,event.type,event.x,event.y
         self.imarea.grab_focus()
         self.lock.acquire()
         ind=(int(self.geo_view_offset)+int(event.y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(event.x)/(self.geo_thumbwidth+self.geo_pad))
-        ind=max(0,min(len(self.tm.view)-1,ind))
-        item=self.tm.view(ind)
-        if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
+        if ind<0 or ind>len(self.tm.view)-1 or event.x==0 and event.y==0:
+            item=None
+            ind=-1
+        else:
+            item=self.tm.view(ind)
+        if item and event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
 ##            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                 self.emit("activate-item",ind,item)
                 self.button_press_block=True
                 if item==self.pressed_item:
                     self.select_item(self.pressed_ind)
         elif event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
-                if not self.button_press_block:
+                if item and not self.button_press_block:
                     self.drop_item=item
                     cmd=self.get_hover_command(ind,event.x,event.y)
-                    if cmd>=0:
+                    if cmd>=0 and not event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                         cmd=self.hover_cmds.tools[cmd]
                         if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                             if cmd.is_active(item,self.hover_ind==ind):
@@ -292,9 +295,9 @@ class ImageBrowser(gtk.HBox):
                             if item==self.pressed_item:
                                 self.select_item(self.pressed_ind)
                 self.button_press_block=False
-        elif event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
+        elif item and event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.emit("context-click-item",ind,item)
-        if event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
+        if item and event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
             self.drag_item=item
             self.pressed_ind=ind
             self.pressed_item=self.tm.view(ind)

@@ -178,6 +178,55 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
+def get_jpeg_or_png_image_file(item,size,strip_metadata):
+    import tempfile
+    try:
+        image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+    except:
+        try:
+            cmd=settings.dcraw_cmd%(item.filename,)
+            imdata=os.popen(cmd).read()
+            if not imdata or len(imdata)<100:
+                cmd=settings.dcraw_backup_cmd%(item.filename,)
+                imdata=os.popen(cmd).read()
+                if not interrupt_fn():
+                    return False
+            p = ImageFile.Parser()
+            p.feed(imdata)
+            image = p.close()
+        except:
+            return None
+    filename=item.filename
+    if size:
+        size=tuple(int(dim) for dim in size.split('x'))
+        if len(size)>0 and size[0]>0 and size[1]>0:
+            image.thumbnail(size,Image.ANTIALIAS)
+            h,filename=tempfile.mkstemp('.jpg')
+    if image.format not in ['JPEG','PNG']:
+        if item.filename==filename:
+            h,filename=tempfile.mkstemp('.jpg')
+        image.save(filename)
+        if not strip_metadata:
+            exif.copy_metadata(self.item,filename)
+    if strip_metadata:
+        if item.filename==filename:
+            h,filename=tempfile.mkstemp('.jpg')
+    if filename!=item.filename:
+        if strip_metadata:
+            try:
+                orient=item.meta['Orientation']
+            except:
+                orient=1
+            if orient>1:
+                for method in transposemethods[orient]:
+                    image=image.transpose(method)
+                    if not interrupt_fn():
+                        print 'interrupted'
+                        return False
+        image.save(filename)
+    return filename
+
+
 def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)

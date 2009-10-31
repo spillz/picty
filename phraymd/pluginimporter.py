@@ -48,12 +48,20 @@ for p in plugins:
         print 'Importing system plugin',p
         __import__(p)
     except:
+        import sys
+        import traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
         print 'Error importing system plugin',p
+        print tb_text
 for p in userplugins:
     try:
         print 'Importing user plugin',p
         __import__(p)
     except:
+        import sys
+        import traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
         print 'Error importing user plugin',p
+        print tb_text
 
 

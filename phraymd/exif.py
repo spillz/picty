@@ -157,13 +157,13 @@ def tag_split(tag_str):
         tags.append(curtag)
     return tags
 
-def tag_bind(tags):
+def tag_bind(tags,sep=' '):
     pretag=[]
     for tag in tags:
         if ' ' in tag:
             tag='"%s"'%(tag,)
         pretag.append(tag)
-    return ' '.join(pretag)
+    return sep.join(pretag)
 
 def conv_keywords(metaobject,keys,value=None):
     if value!=None:
