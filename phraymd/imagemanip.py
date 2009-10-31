@@ -205,9 +205,6 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
     if image.format not in ['JPEG','PNG']:
         if item.filename==filename:
             h,filename=tempfile.mkstemp('.jpg')
-        image.save(filename)
-        if not strip_metadata:
-            exif.copy_metadata(self.item,filename)
     if strip_metadata:
         if item.filename==filename:
             h,filename=tempfile.mkstemp('.jpg')
@@ -223,7 +220,9 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
                     if not interrupt_fn():
                         print 'interrupted'
                         return False
-        image.save(filename)
+        image.save(filename,quality=95)
+        if not strip_metadata:
+            exif.copy_metadata(item,filename)
     return filename
 
 
