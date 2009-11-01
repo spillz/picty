@@ -202,7 +202,7 @@ class PicasaService(UploadServiceBase):
                 hbox.pack_start(label,False)
             entry=gtk.Entry()
             hbox.pack_start(widget,True)
-            widget.connect(signal,signal_cb)
+            self.service_ui.pref_change_handlers.append((widget,widget.connect(signal,signal_cb)))
             box.pack_start(hbox,False)
             return widget
         box=self.service_ui.service_pref_box
@@ -233,6 +233,7 @@ class PicasaService(UploadServiceBase):
             r[MODEL_COL_PICASA_DESCRIPTION]=widget.get_text()
 
     def tags_changed(self,widget):
+        print 'tags changed',widget.get_text()
         selected_rows=self.service_ui.get_selected()
         for r in selected_rows:
             r[MODEL_COL_PICASA_TAGS]=widget.get_text()
@@ -508,8 +509,9 @@ class ServiceUI(gtk.VBox):
             return box
 
         self.service_pref_box=gtk.VBox() ##the service should add service specific image preferences to this box
-        self.service=service_class(self)
         self.mainframe=mainframe
+        self.pref_change_handlers=[]
+        self.service=service_class(self)
 
         self.login_status=gtk.Label("Not connected") ##display "connected as <username>" once logged in
         self.login_button=gtk.Button("Login ...") ##display "change login" if connected already
@@ -555,9 +557,9 @@ class ServiceUI(gtk.VBox):
         self.pack_start(self.pref_box,False)
 
         self.upload_queue.tv.get_selection().connect("changed",self.selection_changed)
-        self.resize_entry.connect("changed",self.resize_entry_changed)
-        self.strip_metadata_check.connect("toggled",self.strip_metadata_check_toggled)
-        self.album_combo_entry.child.connect("changed",self.album_combo_entry_changed)
+        self.pref_change_handlers.append((self.resize_entry,self.resize_entry.connect("changed",self.resize_entry_changed)))
+        self.pref_change_handlers.append((self.strip_metadata_check,self.strip_metadata_check.connect("toggled",self.strip_metadata_check_toggled)))
+        self.pref_change_handlers.append((self.album_combo_entry,self.album_combo_entry.child.connect("changed",self.album_combo_entry_changed)))
 
         self.pref_box.set_sensitive(False)
 
@@ -588,6 +590,9 @@ class ServiceUI(gtk.VBox):
         self.update_prefs(selected_rows)
 
     def update_prefs(self,selected_rows):
+        print 'update pref start'
+        for o,h in self.pref_change_handlers:
+            o.handler_block(h)
         val=self.all_same(selected_rows,MODEL_COL_ALBUM)
         if val!=None:
             self.album_combo_entry.child.set_text(val)
@@ -604,6 +609,9 @@ class ServiceUI(gtk.VBox):
         else:
             self.strip_metadata_check.set_inconsistent(True)
         self.service.update_prefs(selected_rows)
+        for o,h in self.pref_change_handlers:
+            o.handler_unblock(h)
+        print 'update pref done'
 
     def get_default_service_cols(self,item):
         return self.service.get_default_cols(item)
@@ -613,11 +621,13 @@ class ServiceUI(gtk.VBox):
         return [store[r] for r in row_list]
 
     def album_combo_entry_changed(self,widget):
+        print 'album combo changed'
         selected_rows=self.get_selected()
         for r in selected_rows:
             r[MODEL_COL_ALBUM]=widget.get_text()
 
     def resize_entry_changed(self,widget):
+        print 'resize'
         selected_rows=self.get_selected()
         for r in selected_rows:
             r[MODEL_COL_SIZE]=widget.get_text()
