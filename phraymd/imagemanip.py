@@ -180,6 +180,7 @@ def cache_thumb(item):
 
 def get_jpeg_or_png_image_file(item,size,strip_metadata):
     import tempfile
+    filename=item.filename
     try:
         image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
     except:
@@ -194,14 +195,15 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
             p = ImageFile.Parser()
             p.feed(imdata)
             image = p.close()
+            h,filename=tempfile.mkstemp('.jpg')
         except:
             return None
-    filename=item.filename
     if size:
         size=tuple(int(dim) for dim in size.split('x'))
         if len(size)>0 and size[0]>0 and size[1]>0:
             image.thumbnail(size,Image.ANTIALIAS)
-            h,filename=tempfile.mkstemp('.jpg')
+            if item.filename==filename:
+                h,filename=tempfile.mkstemp('.jpg')
     if image.format not in ['JPEG','PNG']:
         if item.filename==filename:
             h,filename=tempfile.mkstemp('.jpg')
