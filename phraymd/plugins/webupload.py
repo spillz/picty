@@ -606,6 +606,7 @@ class ServiceUI(gtk.VBox):
         val=self.all_same(selected_rows,MODEL_COL_STRIP)
         if val!=None:
             self.strip_metadata_check.set_active(val)
+            self.strip_metadata_check.set_inconsistent(False)
         else:
             self.strip_metadata_check.set_inconsistent(True)
         self.service.update_prefs(selected_rows)
