@@ -104,6 +104,10 @@ class MainFrame(gtk.VBox):
         self.browser=browser.ImageBrowser(self.hover_cmds)
         self.tm=self.browser.tm
 
+        self.browser_box=gtk.VBox()
+        self.browser_box.show()
+        self.browser_box.pack_start(self.browser,True)
+
         self.neededitem=None
         self.iv=viewer.ImageViewer(self.tm,self.viewer_hover_cmds,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
@@ -296,7 +300,7 @@ class MainFrame(gtk.VBox):
         self.sidebar=gtk.Notebook()
 
         self.hpane_ext.add1(self.sidebar)
-        self.hpane_ext.add2(self.browser)
+        self.hpane_ext.add2(self.browser_box)
         self.hpane_ext.show()
         self.hpane.add1(self.hpane_ext)
         self.hpane.add2(self.iv)
@@ -305,7 +309,7 @@ class MainFrame(gtk.VBox):
 
         self.pack_start(self.toolbar,False,False)
         self.pack_start(self.hpane)
-        self.pack_start(self.status_bar,False)
+        self.browser_box.pack_start(self.status_bar,False)
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
