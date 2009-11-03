@@ -209,7 +209,7 @@ class UploadQueue(gtk.HBox):
             drop_row=None
             drop_iter=None
             pos=None
-
+        iter=None
         data=selection_data.data
         uris=selection_data.get_uris()
         if uris: ##todo: all of this should be done on the worker thread, with a notification to add items to the list when done
@@ -240,12 +240,21 @@ class UploadQueue(gtk.HBox):
                     thumb_pb=thumb_pb.scale_simple(width*1.5,height*1.5,gtk.gdk.INTERP_BILINEAR)
                 self.upload_collection.add(item)
                 row=(thumb_pb,os.path.split(item.filename)[1],0.0,0,item,'',False,'')+self.default_service_cols_cb(item)
-                if not drop_row:
-                    self.model.append(row)
+                if iter:
+                    iter=self.model.insert_after(iter,row)
+                elif not drop_row:
+                    iter=self.model.append(row)
+                    ref_first=gtk.TreeRowReference(self.model,self.model.get_path(iter))
                 elif pos == gtk.TREE_VIEW_DROP_BEFORE:
-                    self.model.insert_before(drop_iter,row)
+                    iter=self.model.insert_before(drop_iter,row)
+                    ref_first=gtk.TreeRowReference(self.model,self.model.get_path(iter))
                 else:
-                    self.model.insert_after(drop_iter,row)
+                    iter=self.model.insert_after(drop_iter,row)
+                    ref_first=gtk.TreeRowReference(self.model,self.model.get_path(iter))
+            first_path=ref_first.get_path()
+            last_path=self.model.get_path(iter)
+            self.tv.get_selection().unselect_all()
+            self.tv.get_selection().select_range(first_path,last_path)
 
     def context_menu(self,widget,event):
         if event.button==3:

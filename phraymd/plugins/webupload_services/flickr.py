@@ -68,8 +68,10 @@ class FlickrService(UploadServiceBase):
                 self.id=user.attrib['id']
                 print 'login result',self.username,self.id
                 self.t_notify_login(True,'Logged in as %s'%(self.username,))
-        except flickrapi.FlickrError:
-            pass
+        except:
+            import traceback, sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print 'Error retrieving set data',tb_text
 
     def get_pref_types(self):
         '''return a tuple of gobject type constants defining additional per image upload preferences (e.g. whether image is public or private)'''
