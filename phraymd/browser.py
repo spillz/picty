@@ -265,8 +265,8 @@ class ImageBrowser(gtk.HBox):
         self.imarea.grab_focus()
         self.lock.acquire()
         ind=(int(self.geo_view_offset)+int(event.y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
-        ind+=min(self.geo_horiz_count,int(event.x)/(self.geo_thumbwidth+self.geo_pad))
-        if ind<0 or ind>len(self.tm.view)-1 or event.x==0 and event.y==0:
+        ind+=min(self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad),int(event.x)/(self.geo_thumbwidth+self.geo_pad))
+        if ind<0 or ind>len(self.tm.view)-1 or event.x==0 and event.y==0 or event.x>=self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad):
             item=None
             ind=-1
         else:
