@@ -326,10 +326,7 @@ class ServiceUI(gtk.VBox):
         self.service_pref_box=gtk.VBox() ##the service should add service specific image preferences to this box
         self.mainframe=mainframe
         self.pref_change_handlers=[]
-        print service_data[2]
         smod=__import__('phraymd.plugins.webupload_services.'+service_data[2],fromlist=[service_data[3]])
-        print smod
-        print dir(smod)
         self.service=getattr(smod,service_data[3])(self) ##todo: handle import errors in the plugin
 
         self.login_status=gtk.Label("Not connected") ##display "connected as <username>" once logged in

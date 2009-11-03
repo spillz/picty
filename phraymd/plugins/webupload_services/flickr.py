@@ -204,7 +204,9 @@ class FlickrService(UploadServiceBase):
             photosets=response.find('photosets')
             sets=photosets.findall('photoset')
             alist=[(s.find('title').text,s) for s in sets]
-            print alist
             self.t_notify_albums(alist,'')
-        except flickrapi.FlickrError:
+        except:
+            import traceback, sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print 'Error retrieving set data',tb_text
             self.t_notify_albums([],'')
