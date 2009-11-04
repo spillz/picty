@@ -84,9 +84,9 @@ class FlickrService(UploadServiceBase):
                 return cb(item)
             except:
                 return ''
-        title=exif.app_key_to_string('Title',catch(lambda item: item.meta['Title'],item))
-        description=exif.app_key_to_string('ImageDescription',catch(lambda item: item.meta['ImageDescription'],item))
-        tags=exif.app_key_to_string('Keywords',catch(lambda item: item.meta['Keywords'],item))
+        title=metadata.app_key_to_string('Title',catch(lambda item: item.meta['Title'],item))
+        description=metadata.app_key_to_string('ImageDescription',catch(lambda item: item.meta['ImageDescription'],item))
+        tags=metadata.app_key_to_string('Keywords',catch(lambda item: item.meta['Keywords'],item))
         private=0
         return (title,description,tags,private)
 

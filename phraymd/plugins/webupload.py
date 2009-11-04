@@ -34,7 +34,7 @@ from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
 from phraymd import collections
-from phraymd import exif
+from phraymd import metadata
 
 import webupload_services as services
 
@@ -69,7 +69,7 @@ class UploadPlugin(pluginbase.Plugin):
         self.service_combo.connect("changed",self.service_combo_changed)
 
         self.scrolled_window=gtk.ScrolledWindow()
-        self.scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
+        self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
 
         self.vbox=gtk.VBox()
         self.service_box=hbox_group([(self.service_label,False),(self.service_combo,True,False)])
@@ -86,6 +86,7 @@ class UploadPlugin(pluginbase.Plugin):
         for s in self.services:
             if self.services[s][1]!=None:
                 self.services[s][1].service.shutdown()
+                self.services[s][1]=None
         del self.services
         if not app_shutdown:
             self.vbox.destroy()

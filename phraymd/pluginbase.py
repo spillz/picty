@@ -24,6 +24,8 @@ License:
 api_version='0.1.0' ##this is the current version of the API
 
 
+##TODO: callbacks related to changing the view or collection should also pass the view/collection
+
 ##base plugin class
 class Plugin(object):
     '''base plugin class

@@ -31,7 +31,7 @@ import threading
 import os
 import sys
 import time
-import exif
+import metadata
 import datetime
 import bisect
 
@@ -706,7 +706,7 @@ class EditMetaDataJob(WorkerJob):
             pluginmanager.mgr.callback('t_collection_modify_start_hint')
         items=collection if self.scope==EDIT_COLLECTION else view
         if self.mode==ADD_KEYWORDS:
-            tags=exif.tag_split(self.keyword_string)
+            tags=metadata.tag_split(self.keyword_string)
             tags_lower=[t.lower() for t in tags]
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
@@ -730,7 +730,7 @@ class EditMetaDataJob(WorkerJob):
                     gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==RENAME_KEYWORDS:
-            tags=exif.tag_split(self.keyword_string) ##tags should contain a pair of keywords (find, replace)
+            tags=metadata.tag_split(self.keyword_string) ##tags should contain a pair of keywords (find, replace)
             find_tag=tags[0].lower()
             repl_tag=tags[1] ##todo: can get weird results/errors if tags contains bad data
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
@@ -756,7 +756,7 @@ class EditMetaDataJob(WorkerJob):
                     gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==TOGGLE_KEYWORDS:
-            tags=exif.tag_split(self.keyword_string)
+            tags=metadata.tag_split(self.keyword_string)
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
@@ -765,7 +765,7 @@ class EditMetaDataJob(WorkerJob):
                     gobject.idle_add(browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==REMOVE_KEYWORDS:
-            tags=exif.tag_split(self.keyword_string)
+            tags=metadata.tag_split(self.keyword_string)
             tags_lower=[t.lower() for t in tags]
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
@@ -1025,16 +1025,16 @@ class DirectoryUpdateJob(WorkerJob):
 
 class Worker:
     def __init__(self,browser):
-        self.collection=imageinfo.Collection([])
-        self.view_key=imageinfo.get_mtime
-        self.view=imageinfo.Index(self.view_key,[])
+        self.collection=imageinfo.Collection([]) #the collection of images
+        self.view_key=imageinfo.get_mtime #the callback used for sorting the viewed subset
+        self.view=imageinfo.Index(self.view_key,[]) #the viewed subset of the collection
+        self.browser=browser # the browser widget
         self.jobs=WorkerJobCollection()
         self.event=threading.Event()
-        self.browser=browser
         self.lock=threading.Lock()
         self.exit=False
         self.thread=threading.Thread(target=self._loop)
-        self.dirtimer=None ##threading.Timer(2,self.request_dir_update)
+        self.dirtimer=None # timer used to delay update after directory change notifications
 
     def start(self):
         self.thread.start()

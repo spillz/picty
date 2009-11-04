@@ -26,7 +26,7 @@ import datetime
 from phraymd import imagemanip
 from phraymd import settings
 from phraymd import pluginbase
-from phraymd import exif
+from phraymd import metadata
 
 class MetaDataViewer(pluginbase.Plugin):
     name='MetadataViewer'
@@ -110,7 +110,7 @@ class MetaDataViewer(pluginbase.Plugin):
 
     def create_meta_table(self):
         rows=2
-        rows+=len(exif.apptags)
+        rows+=len(metadata.apptags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
@@ -118,7 +118,7 @@ class MetaDataViewer(pluginbase.Plugin):
         self.add_meta_row(table, stable.data_items,'FullPath','Full Path','',0)
         self.add_meta_row(table, stable.data_items,'UnixLastModified','Last Modified','',1)
         r=2
-        for t in exif.apptags:
+        for t in metadata.apptags:
             k=t[0]
             v=t[1]
             w=t[2]
@@ -144,7 +144,7 @@ class MetaDataViewer(pluginbase.Plugin):
         self.meta_table.data_items['FullPath'][1].set_text(item.filename)
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
-        for t in exif.apptags:
+        for t in metadata.apptags:
             k=t[0]
             v=t[1]
             w=t[2]
@@ -154,7 +154,7 @@ class MetaDataViewer(pluginbase.Plugin):
             else:
                 try:
                     value=item.meta[k]
-                    value=exif.app_key_to_string(k,value)
+                    value=metadata.app_key_to_string(k,value)
                 except:
                     value=''
                 try:
@@ -207,14 +207,14 @@ class MetaDataViewer(pluginbase.Plugin):
         rows=2
         d=datetime.datetime.fromtimestamp(item.mtime)
         if item.meta:
-            rows+=len(exif.apptags)
+            rows+=len(metadata.apptags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.add_meta_row(table,'Full Path',item.filename,0)
         self.add_meta_row(table,'Last Modified',d.isoformat(' '),1)
         r=2
-        for t in exif.apptags:
+        for t in metadata.apptags:
             k=t[0]
             v=t[1]
             w=t[2]

@@ -36,7 +36,7 @@ import datetime
 ##phraymd imports
 import pluginmanager
 import simple_parser as sp
-import exif
+import metadata
 
 
 def get_mtime(item):
@@ -300,11 +300,11 @@ class RationalCompare:
         text=r.strip()
         try:
             val=float(text)
-            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+            return self.op(metadata.app_key_as_sortable(item.meta,self.field),val)
         except:
 ##            print 'error on item',item,val
-##            print exif.app_key_as_sortable(item.meta,self.field)
-##            print self.op(val,exif.app_key_as_sortable(item.meta,self.field))
+##            print metadata.app_key_as_sortable(item.meta,self.field)
+##            print self.op(val,metadata.app_key_as_sortable(item.meta,self.field))
             return False
 
 
@@ -327,11 +327,11 @@ class IntCompare:
         text=r.strip()
         try:
             val=int(text)
-            return self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+            return self.op(metadata.app_key_as_sortable(item.meta,self.field),val)
         except:
             print 'int cmp fail',item,val
-            print exif.app_key_as_sortable(item.meta,self.field)
-            print self.op(exif.app_key_as_sortable(item.meta,self.field),val)
+            print metadata.app_key_as_sortable(item.meta,self.field)
+            print self.op(metadata.app_key_as_sortable(item.meta,self.field),val)
             return False
 
 date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, -](\d{1,2}))?(?:[:-](\d{1,2}))?(?:[:-](\d{1,2}))?')
@@ -346,7 +346,7 @@ class DateCompare:
             self.__call__=self.call1
     def call1(self,l,r,item):
         try:
-            return self.op(exif.app_key_as_sortable(item.meta,self.field),r)
+            return self.op(metadata.app_key_as_sortable(item.meta,self.field),r)
         except:
             return False
     def call2(self,l,r,item):

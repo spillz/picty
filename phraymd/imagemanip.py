@@ -25,7 +25,7 @@ import gtk
 import StringIO
 import Image
 import ImageFile
-import exif
+import metadata
 import datetime
 import bisect
 import os.path
@@ -74,24 +74,24 @@ def load_metadata(item,notify_plugins=True):
             meta=item.meta.copy()
         else:
             meta=item.meta
-        result=exif.load_metadata(item)
+        result=metadata.load_metadata(item)
         if result:
             if item.meta!=meta:
                 pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
         return result
     else:
-        return exif.load_metadata(item)
+        return metadata.load_metadata(item)
 
 
 def save_metadata(item):
-    if exif.save_metadata(item):
+    if metadata.save_metadata(item):
         update_thumb_date(item)
         return True
     return False
 
 
 def save_metadata_key(item,key,value):
-    if exif.save_metadata_key(item,key,value):
+    if metadata.save_metadata_key(item,key,value):
         update_thumb_date(item)
         return True
     return False
@@ -224,7 +224,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
                         return False
         image.save(filename,quality=95)
         if not strip_metadata:
-            exif.copy_metadata(item,filename)
+            metadata.copy_metadata(item,filename)
     return filename
 
 

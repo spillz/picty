@@ -44,9 +44,9 @@ class PicasaService(UploadServiceBase):
                 return cb(item)
             except:
                 return ''
-        title=exif.app_key_to_string('Title',catch(lambda item: item.meta['Title'],item))
-        description=exif.app_key_to_string('ImageDescription',catch(lambda item: item.meta['ImageDescription'],item))
-        tags=exif.app_key_to_string('Keywords',catch(lambda item: item.meta['Keywords'],item))
+        title=metadata.app_key_to_string('Title',catch(lambda item: item.meta['Title'],item))
+        description=metadata.app_key_to_string('ImageDescription',catch(lambda item: item.meta['ImageDescription'],item))
+        tags=metadata.app_key_to_string('Keywords',catch(lambda item: item.meta['Keywords'],item))
         return (title,description,tags,False)
 
     def title_changed(self,widget):
@@ -149,7 +149,7 @@ class PicasaService(UploadServiceBase):
                 title=os.path.split(item.filename)[1]
             photo.title.text = title
             photo.media = gdata.media.Group()
-            keywords=exif.tag_bind(exif.tag_split(preferences[MODEL_COL_PICASA_TAGS]),',')
+            keywords=metadata.tag_bind(metadata.tag_split(preferences[MODEL_COL_PICASA_TAGS]),',')
             if keywords:
                 photo.media.keywords = gdata.media.Keywords(text=keywords)
             description=preferences[MODEL_COL_PICASA_DESCRIPTION]

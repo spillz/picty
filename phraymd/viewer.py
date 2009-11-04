@@ -35,7 +35,7 @@ import settings
 import imagemanip
 import imageinfo
 import pluginmanager
-import exif
+import metadata
 
 class ImageLoader:
     '''

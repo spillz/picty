@@ -29,7 +29,7 @@ from phraymd import imagemanip
 from phraymd import settings
 from phraymd import pluginbase
 from phraymd import metadatadialogs
-from phraymd import exif
+from phraymd import metadata
 
 class ImageWriterPlugin(pluginbase.Plugin):
     name='ImageWriter'
@@ -102,7 +102,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         except:
             metadatadialogs.prompt_dialog("Save Failed","Could not save image\n"+filename,("_OK",),1)
             return
-        if not exif.copy_metadata(self.item,filename):
+        if not metadata.copy_metadata(self.item,filename):
             metadatadialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+filename,("_OK",),1)
         self.reset()
     def write_cancel_callback(self,widget):

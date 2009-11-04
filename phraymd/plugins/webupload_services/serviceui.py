@@ -11,7 +11,7 @@ from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
 from phraymd import collections
-from phraymd import exif
+from phraymd import metadata
 
 
 

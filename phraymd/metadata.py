@@ -1,5 +1,5 @@
 '''
-exif.py
+metadata.py
 
 This module describes the exif, iptc and xmp metadata used by the program
 and provides a dictionary to handle conversion between exiv2 formats and internal

@@ -25,7 +25,18 @@ import gtk
 
 #local imports
 import settings
-import exif
+import metadata
+
+def directory_dialog(title='Choose Image Directory'):
+    fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
+    fcd.set_current_folder(os.environ['HOME'])
+    response=fcd.run()
+    image_dir=''
+    if response == gtk.RESPONSE_OK:
+        image_dir=fcd.get_filename()
+    fcd.destroy()
+    return image_dir
 
 
 def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
@@ -54,7 +65,7 @@ class BatchMetaDialog(gtk.Dialog):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL,
                          buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
         self.set_title('Batch Tag Manipulation')
-        tags=[t[0:2] for t in exif.apptags if t[2]]
+        tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=3, homogeneous=False)
         self.item=item
@@ -63,7 +74,7 @@ class BatchMetaDialog(gtk.Dialog):
         for k,v in tags:
             try:
                 print k,v
-                val=exif.app_key_to_string(k,item.meta[k])
+                val=metadata.app_key_to_string(k,item.meta[k])
                 if not val:
                     val=''
                 print 'item',k,val
@@ -83,12 +94,12 @@ class BatchMetaDialog(gtk.Dialog):
         self.vbox.pack_start(file_label)
         self.set_default_response(gtk.RESPONSE_ACCEPT)
     def meta_changed(self,widget,key):
-        value=exif.app_key_from_string(key,widget.get_text())
+        value=metadata.app_key_from_string(key,widget.get_text())
         self.item.set_meta_key(key,value)
     def toggled(self,widget,entry_widget,key):
         if widget.get_active():
             entry_widget.set_sensitive(True)
-            value=exif.app_key_from_string(key,entry_widget.get_text())
+            value=metadata.app_key_from_string(key,entry_widget.get_text())
             self.item.set_meta_key(key,value)
         else:
             entry_widget.set_sensitive(False)
@@ -118,7 +129,7 @@ class MetaDialog(gtk.Dialog):
     def __init__(self,item):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
         self.set_title('Edit Descriptive Info')
-        tags=[t[0:2] for t in exif.apptags if t[2]]
+        tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.item=item
@@ -127,7 +138,7 @@ class MetaDialog(gtk.Dialog):
         for k,v in tags:
             try:
                 print k,v
-                val=exif.app_key_to_string(k,item.meta[k])
+                val=metadata.app_key_to_string(k,item.meta[k])
                 if not val:
                     val=''
                 print 'item',k,val
@@ -150,7 +161,7 @@ class MetaDialog(gtk.Dialog):
         file_label.show()
         self.vbox.pack_start(file_label)
     def meta_changed(self,widget,key):
-        value=exif.app_key_from_string(key,widget.get_text())
+        value=metadata.app_key_from_string(key,widget.get_text())
         self.item.set_meta_key(key,value)
     def add_meta_row(self,table,key,label,data,row,writable=True):
         child1=gtk.Label(label)
