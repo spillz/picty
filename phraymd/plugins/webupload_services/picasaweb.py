@@ -27,7 +27,6 @@ class PicasaService(UploadServiceBase):
             if label_text:
                 label=gtk.Label(label_text)
                 hbox.pack_start(label,False)
-            entry=gtk.Entry()
             hbox.pack_start(widget,True)
             self.service_ui.pref_change_handlers.append((widget,widget.connect(signal,signal_cb)))
             box.pack_start(hbox,False)
@@ -36,7 +35,6 @@ class PicasaService(UploadServiceBase):
         self.title_entry=box_add(box,gtk.Entry(),"Title","changed",self.title_changed)
         self.description_entry=box_add(box,gtk.Entry(),"Description","changed",self.description_changed)
         self.tags_entry=box_add(box,gtk.Entry(),"Tags","changed",self.tags_changed)
-        #self.private_check=box_add(box,gtk.CheckButton("Private"),"","toggled",self.private_changed)
 
     def get_default_cols(self,item):
         def catch(cb,item):

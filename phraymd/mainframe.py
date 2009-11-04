@@ -297,7 +297,8 @@ class MainFrame(gtk.VBox):
 
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
-        self.sidebar=gtk.Notebook()
+        self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
+        self.sidebar.set_scrollable(True)
 
         self.hpane_ext.add1(self.sidebar)
         self.hpane_ext.add2(self.browser_box)
