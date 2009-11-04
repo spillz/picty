@@ -74,13 +74,13 @@ class MainFrame(gtk.VBox):
         self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main'),
-                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main'),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main')
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
+                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder')
                         ]
         for tool in tools:
             self.hover_cmds.register_tool(*tool)
@@ -89,13 +89,13 @@ class MainFrame(gtk.VBox):
         self.viewer_hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_LARGE_TOOLBAR)
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main'),
-                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main'),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main')
+                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
+                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder')
                         ]
         for tool in viewer_tools:
             self.viewer_hover_cmds.register_tool(*tool)

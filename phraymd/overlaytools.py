@@ -45,13 +45,14 @@ class OverlayTool:
     icon -- a gtk.gdk.Pixbuf representing the icon
     owner -- 'Main' or the name of a plugin
     '''
-    def __init__(self,name,action_callback=None,active_callback=show_on_hover,icon=None,owner='Main',priority=50):
+    def __init__(self,name,action_callback=None,active_callback=show_on_hover,icon=None,owner='Main',tooltip='This is a tooltip',priority=50):
         self.name=name
         self.action=action_callback
         self.is_active=active_callback
         self.icon=icon
         self.owner=owner
         self.priority=priority
+        self.tooltip=tooltip
 
 
 class OverlayGroup:
@@ -71,18 +72,18 @@ class OverlayGroup:
         overlay_groups.append(self)
     def __getitem__(self,index):
         return self.tools[index]
-    def register_tool(self,name,action_callback=None,active_callback=show_on_hover,icon=None,owner='Main',priority=50):
-        new_t=OverlayTool(name,action_callback,active_callback,self.widget_render_source.render_icon(icon,self.size),owner,priority)
+    def register_tool(self,name,action_callback=None,active_callback=show_on_hover,icon=None,owner='Main',tooltip='This is a tooltip',priority=50):
+        new_t=OverlayTool(name,action_callback,active_callback,self.widget_render_source.render_icon(icon,self.size),owner,tooltip,priority)
         for i in range(len(self.tools)):
             if priority>self.tools[i].priority:
                 self.tools.insert(i,new_t)
                 return
         self.tools.append(new_t)
-    def register_tool_for_plugin(self,plugin,name,action_callback=None,active_callback=show_on_hover,icon=None,priority=50):
+    def register_tool_for_plugin(self,plugin,name,action_callback=None,active_callback=show_on_hover,icon=None,tooltip='This is a tooltip',priority=50):
         '''
         adds a new tool whose owner is plugin
         '''
-        self.register_tool(name,action_callback,active_callback,icon,plugin.name,priority)
+        self.register_tool(name,action_callback,active_callback,icon,plugin.name,tooltip,priority)
     def deregister_tools_for_plugin(self,plugin):
         '''
         removes all tools whose owners are plugin

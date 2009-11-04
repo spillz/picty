@@ -173,13 +173,14 @@ class ImageViewer(gtk.VBox):
         self.imarea.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
-
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
         self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
         self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
 
+        self.imarea.set_property("has-tooltip",True)
+        self.imarea.connect("query-tooltip",self.drawable_tooltip_query)
 
         if click_callback:
             self.imarea.connect_after("button-press-event",click_callback)
@@ -312,6 +313,14 @@ class ImageViewer(gtk.VBox):
     def redraw_view(self):
         #forces an image to be resized with a call to the worker thread
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+
+
+    def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
+        cmd=self.get_hover_command(x, y)
+        if cmd>0:
+            cmd=self.hover_cmds[cmd]
+            tooltip.set_text(cmd.tooltip)
+            return True
 
 
     def configure_signal(self,obj,event):

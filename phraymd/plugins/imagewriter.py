@@ -76,7 +76,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_commands.default_active_callback,'phraymd-image-write',priority=30)
+        shortcut_commands.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_commands.default_active_callback,'phraymd-image-write','Write a copy of the image including any edits',priority=30)
     def writer_button_callback(self,cmd,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer

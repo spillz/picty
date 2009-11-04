@@ -169,8 +169,11 @@ class ImageBrowser(gtk.HBox):
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         if self.hover_ind<0:
             return
-        self.get_hover_command(self.hover_ind, x, y)
-        return True
+        cmd=self.get_hover_command(self.hover_ind, x, y)
+        if cmd>0:
+            cmd=self.hover_cmds[cmd]
+            tooltip.set_text(cmd.tooltip)
+            return True
 
     def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
 
