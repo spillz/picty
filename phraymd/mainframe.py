@@ -350,11 +350,11 @@ class MainFrame(gtk.VBox):
             self.sidebar.show()
             self.sidebar_toggle.set_active(True)
             self.sidebar_toggle.handler_unblock_by_func(self.activate_sidebar)
-            for i in range(self.sidebar.get_n_pages()):
-                if layout['sidebar tab']==self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(i)):
-                    self.sidebar.set_current_page(i)
-                    self.hpane_ext.set_position(layout['sidebar width'])
-                    break
+        for i in range(self.sidebar.get_n_pages()):
+            if layout['sidebar tab']==self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(i)):
+                self.sidebar.set_current_page(i)
+                self.hpane_ext.set_position(layout['sidebar width'])
+                break
 
     def get_layout(self):
         layout=dict()
