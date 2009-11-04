@@ -185,7 +185,7 @@ class FlickrService(UploadServiceBase):
                 is_public=public,is_family=family,is_friend=friends,callback=progress_cb)
             photo_id=photo_id.find('photoid').text
 
-            if album:
+            if album[0]:
                 photoset_id=album[1].attrib['id']
                 self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
 
