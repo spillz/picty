@@ -109,6 +109,9 @@ class ImageBrowser(gtk.HBox):
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
         self.imarea.set_size_request(160,160)
+        self.imarea.set_property("has-tooltip",True)
+        self.imarea.connect("query-tooltip",self.drawable_tooltip_query)
+
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
         self.vscroll.set_property("has-tooltip",True)
@@ -162,7 +165,15 @@ class ImageBrowser(gtk.HBox):
         self.vscroll.show()
         self.imarea.grab_focus()
 
+
+    def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
+        if self.hover_ind<0:
+            return
+        self.get_hover_command(self.hover_ind, x, y)
+        return True
+
     def scroll_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
+
 #        height=widget.window.get_size()[1]
 #        yscroll=y*self.scrolladj.upper/height
 #        ind=min(len(self.tm.view),max(0,int(yscroll)/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count))
