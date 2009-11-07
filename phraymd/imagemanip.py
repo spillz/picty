@@ -310,6 +310,7 @@ def image_to_pixbuf(im):
     return pixbuf
 
 
+
 def size_image(item,size,antialias=False,zoom='fit'):
     image=item.image
     if not image:
@@ -434,33 +435,42 @@ def make_thumb(item,interrupt_fn=None,force=False):
         thumb_pb=None
 #        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
         if not thumb_pb:
-            try:
-                image=Image.open(item.filename)
-                image.thumbnail((128,128),Image.ANTIALIAS)
-            except:
-                cmd=settings.dcraw_cmd%(item.filename,)
+            if mimetype.lower().startswith('video'):
+                cmd=settings.video_thumbnailer%(item.filename,)
                 imdata=os.popen(cmd).read()
-                if not imdata or len(imdata)<100:
-                    cmd=settings.dcraw_backup_cmd%(item.filename,)
-                    imdata=os.popen(cmd).read()
-#                pipe = subprocess.Popen(cmd, shell=True,
-#                        stdout=PIPE) ##, close_fds=True
-#                print pipe
-#                pipe=pipe.stdout
-#                print 'pipe opened'
-#                imdata=pipe.read()
-#                print 'pipe read'
-                p = ImageFile.Parser()
-                p.feed(imdata)
-                image = p.close()
+                image=Image.open(StringIO.StringIO(imdata))
+#                p = ImageFile.Parser()
+#                p.feed(imdata)
+#                image = p.close()
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            if orient>1:
-                for method in transposemethods[orient]:
-                    image=image.transpose(method)
+            else:
+                try:
+                    image=Image.open(item.filename)
+                    image.thumbnail((128,128),Image.ANTIALIAS)
+                except:
+                    cmd=settings.dcraw_cmd%(item.filename,)
+                    imdata=os.popen(cmd).read()
+                    if not imdata or len(imdata)<100:
+                        cmd=settings.dcraw_backup_cmd%(item.filename,)
+                        imdata=os.popen(cmd).read()
+    #                pipe = subprocess.Popen(cmd, shell=True,
+    #                        stdout=PIPE) ##, close_fds=True
+    #                print pipe
+    #                pipe=pipe.stdout
+    #                print 'pipe opened'
+    #                imdata=pipe.read()
+    #                print 'pipe read'
+                    p = ImageFile.Parser()
+                    p.feed(imdata)
+                    image = p.close()
+                    image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+                try:
+                    orient=item.meta['Orientation']
+                except:
+                    orient=1
+                if orient>1:
+                    for method in transposemethods[orient]:
+                        image=image.transpose(method)
             thumbsize=image.size
             thumb_pb=image_to_pixbuf(image)
             if thumb_pb==None:

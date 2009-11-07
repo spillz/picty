@@ -34,10 +34,13 @@ import settings
 
 class SimpleCollection(list):
     '''defines a sorted collection of Items'''
-    def __init__(self,items=[]): ##todo: store base path for the collection
-        list.__init__(self)
-        for item in items:
-            self.add(item)
+    def __init__(self,items=[],items_sorted=False): ##todo: store base path for the collection
+        if items_sorted:
+            list.__init__(self,items[:])
+        else:
+            list.__init__(self)
+            for item in items:
+                self.add(item)
     def add(self,item):
         bisect.insort(self,item)
     def find(self,item):
@@ -60,7 +63,7 @@ class SimpleCollection(list):
 
 
 class Collection(list):
-    '''defines a sorted collection of Items'''
+    '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
     def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection
         list.__init__(self)
         self.numselected=0
@@ -69,11 +72,26 @@ class Collection(list):
         for item in items:
             self.add(item)
             self.numselected+=item.selected
+    def copy(self):
+        dup=Collection([])
+        dup+=self
+        dup.numselected=self.numselected
+        dup.image_dirs=self.image_dirs[:]
+        dup.filename=self.filename
+        return dup
+    def simple_copy(self):
+        return SimpleCollection(self,True)
     def add(self,item):
+        '''
+        add an item to the collection and notify plugin
+        '''
         self.numselected+=item.selected
         bisect.insort(self,item)
         pluginmanager.mgr.callback('t_collection_item_added',item)
     def find(self,item):
+        '''
+        find an item in the collection and return its index
+        '''
         i=bisect.bisect_left(self,item)
         if i>=len(self) or i<0:
             return -1
@@ -81,6 +99,10 @@ class Collection(list):
             return i
         return -1
     def delete(self,item):
+        '''
+        delete an item from the collection, returning the item to the caller if present
+        notifies plugins if the item is remmoved
+        '''
         i=self.find(item)
         if i>=0:
             self.numselected-=item.selected
@@ -90,18 +112,10 @@ class Collection(list):
         return None
     def __call__(self,ind):
         return self[ind]
-#    def __getstate__(self):
-#        odict = self.__dict__.copy() # copy the dict since we change it
-#        del odict['numselected']
-#        del odict['image_dirs']
-#        del odict['filename']
-#        return odict
-#    def __setstate__(self,dict):
-#        self.__dict__.update(dict)   # update attributes
-#        self.numselected=0
-#        self.image_dirs=[]
-#        self.filename=None
     def load(self,filename=''):
+        '''
+        load the collection from a binary pickle file identified by the pathname in the filename argument
+        '''
         try:
             if not filename:
                 filename=self.filename
@@ -119,6 +133,9 @@ class Collection(list):
             self.empty()
             return False
     def save(self):
+        '''
+        save the collection to a binary pickle file using the filename attribute of the collection
+        '''
         print 'saving collection',self.filename
         try:
             f=open(self.filename,'wb')

@@ -34,6 +34,8 @@ layout={}  #the layout of the user interface
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
 dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
+video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
+
 
 imagetypes=['jpg','jpeg','png']
 

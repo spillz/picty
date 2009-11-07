@@ -193,4 +193,6 @@ class Plugin(object):
     def sidebar_register_pane(self): ##
         '''register a panel in the sidebar -- not sure this is needed'''
         return None
-
+    def image_import(self):
+        '''a plugin that handle import should respond to this callback'''
+        pass

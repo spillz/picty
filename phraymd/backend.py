@@ -380,7 +380,7 @@ class WalkDirectoryJob(WorkerJob):
                     continue
                 fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=io.get_mime_type(fullpath)
-                if not mimetype.lower().startswith('image'):
+                if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
                 mtime=os.path.getmtime(fullpath)
@@ -1135,6 +1135,7 @@ class Worker:
         self.event.set()
 
     def scan_and_verify(self):
+        self.jobs.unset_all()
         self.jobs['WALKDIRECTORY'].setevent()
         self.event.set()
 

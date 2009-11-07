@@ -39,12 +39,19 @@ except:
 
 from phraymd import settings
 
-settings.init() ##todo: make this call occur upon first import inside the settings module
+settings.init() ##todo: make more of the settings module dependant on this call??
+
+try:
+    from phraymd import dbusserver
+except ImportError:
+    print 'DBus not available or server already started for another phraymd instance'
 
 from phraymd import mainframe
 
+
 class MainWindow:
     def __init__(self):
+
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_default_size(680, 400)
         self.window.set_title("phraymd")
