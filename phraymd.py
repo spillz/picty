@@ -41,13 +41,7 @@ from phraymd import settings
 
 settings.init() ##todo: make more of the settings module dependant on this call??
 
-try:
-    from phraymd import dbusserver
-except ImportError:
-    print 'DBus not available or server already started for another phraymd instance'
-
 from phraymd import mainframe
-
 
 class MainWindow:
     def __init__(self):

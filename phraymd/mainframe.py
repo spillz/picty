@@ -48,6 +48,8 @@ import pluginmanager
 import pluginimporter
 import io
 import overlaytools
+import dbusserver
+
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
@@ -318,6 +320,11 @@ class MainFrame(gtk.VBox):
         print 'set layout',settings.layout
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
+        try:
+            dbusserver.start()
+        except ImportError:
+            print 'DBus not available'
+
         self.tm.view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.start()
 

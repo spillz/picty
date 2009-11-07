@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=phraymd Photo Manager
+GenericName=Photo Manager
+Comment=View and organize your images
+Categories=GNOME;GTK;Graphics;Viewer;RasterGraphics;2DGraphics;Photography;
+Exec=phraymd %U
+Icon=phraymd
+MimeType=image/bmp;image/jpeg;image/gif;image/png;image/tiff;image/x-bmp;image/x-ico;image/x-png;image/x-pcx;image/x-tga;image/xpm;image/svg+xml;
+StartupNotify=true
+Terminal=false
+Type=Application
+X-Ubuntu-Gettext-Domain=phraymd
