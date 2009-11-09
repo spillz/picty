@@ -1,4 +1,4 @@
-PHRAYMD - A photo collection manager
+phraymd - A photo collection manager
 
 (c) 2009 Damien Moore
 
@@ -31,9 +31,9 @@ python-gnome2-extras
 python-pyexiv2
 python-pyinotify
 
-(python v2.5 is assumed, the program may work with other versions, but may not)
+(python v2.5-2.6 is assumed, the program may work with other versions, but may not)
 
 RUNNING PHRAYMD
 ===============
 
-python phraymd.py
+phraymd

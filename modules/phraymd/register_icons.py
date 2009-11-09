@@ -1,6 +1,8 @@
 import gtk
 import os.path
 
+import settings
+
 '''Registers new icons with gtk.  Tries to use already existing icons
 if they are available, otherwise it loads them from files.'''
 
@@ -13,7 +15,12 @@ ICON_INFO = [
   ('phraymd-image-write', 'phraymd-image-write.png'),
   ]
 
-icon_path=os.path.join(os.path.split(__file__)[0],'icons/')
+filename=os.path.abspath(__file__)
+if filename.startswith('/usr/share/phraymd/phraymd/register_icons.py'):
+    icon_path='/usr/share/phraymd/icons/'
+else:
+    icon_path=os.path.join(os.path.split(os.path.split(os.path.split(filename)[0])[0])[0],'icons/')
+print 'REGISTERING ICONS IN',icon_path
 
 def register_iconset(icon_info):
   iconfactory = gtk.IconFactory()

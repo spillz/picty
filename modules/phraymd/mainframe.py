@@ -320,10 +320,8 @@ class MainFrame(gtk.VBox):
         print 'set layout',settings.layout
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
-        try:
-            dbusserver.start()
-        except ImportError:
-            print 'DBus not available'
+
+        dbusserver.start()
 
         self.tm.view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.start()

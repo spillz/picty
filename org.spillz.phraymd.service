@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=org.spillz.phraymd
-Exec=/usr/bin/python /home/damien/src/image-viewer/phraymd.py

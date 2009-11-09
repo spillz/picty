@@ -17,7 +17,7 @@ class DBusServer(dbus.service.Object):
     def media_connected(self, uri):
         import pluginmanager
         pluginmanager.mgr.callback('media_connected',uri)
-        print "DBus import for "+uri
+        print "DBus media connection event for "+uri
         return 'success'
 
 def start():
@@ -28,5 +28,6 @@ def start():
         return False
         ##could also just abort here and send a bring to front message to phraymd
     server = DBusServer(bus)
+    print 'Registered dbus server'
     return True
 
