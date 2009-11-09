@@ -1,2 +1,2 @@
 import os
-os.popen("phraymd")
+os.popen("bin/phraymd")
