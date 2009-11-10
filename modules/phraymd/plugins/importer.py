@@ -58,9 +58,61 @@ from phraymd import imagemanip
 from phraymd import io
 from phraymd import collections
 from phraymd import metadata
+from phraymd import backend
 
-import webupload_services as services
+class ImporterBrowserSwitchJob(backend.WorkerJob):
+    def __init__(self):
+        backend.WorkerJob.__init__(self,'IMPORTERBROWSERSWITCH')
+        self.priority=8
+        self.collection_copy=None
+        self.view_copy=None
+        self.restore_monitor=None
+        self.mode='BROWSE'
+        self.source=''
 
+    def __call__(self,worker,collection,view,browser,*args):
+        worker.jobs.unset_all()
+        if self.mode=='BROWSE':
+            collection=worker.collection
+            view=worker.view
+            self.collection_copy=collection.copy()
+            self.view_copy=view.copy()
+            worker.monitor.stop(collection.image_dirs[0])
+
+            collection.empty()
+            collection.image_dirs=[self.source]
+            collection.filename=''
+            worker.monitor.start(collection.image_dirs[0])
+            del view[:]
+            worker.jobs.unset_all()
+            worker.jobs['WALKDIRECTORY'].setevent()
+            self.mode='RESTORE'
+        else:
+            worker.monitor.stop(collection.image_dirs[0])
+            collection.image_dirs=self.collection_copy.image_dirs
+            collection.filename=self.collection_copy.filename
+            collection[:]=self.collection_copy[:]
+            view[:]=self.view_copy[:]
+            if self.restore_monitor:
+                worker.monitor.start(collection.image_dirs[0])
+            gobject.idle_add(browser.refresh_view)
+            self.collection_copy=None
+            self.view_copy=None
+            self.mode='BROWSE'
+            worker.jobs.unset_all()
+
+
+class ImporterImportJob(backend.WorkerJob):
+    def __init__(self):
+        backend.WorkerJob.__init__(self,'IMPORTERIMPORT')
+        self.priority=8
+        self.collection_src=None
+        self.collection_dest=None
+        self.view_src=None
+        self.view_dest=None
+
+    def __call__(self,worker,collection,view,browser,*args):
+        self.unsetevent()
 
 
 class ImportPlugin(pluginbase.Plugin):
@@ -73,6 +125,10 @@ class ImportPlugin(pluginbase.Plugin):
 
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
+        self.browse_job=ImporterBrowserSwitchJob()
+        self.import_job=ImporterImportJob()
+        mainframe.tm.register_job(self.browse_job,'BUILDVIEW')
+        mainframe.tm.register_job(self.import_job,'BUILDVIEW')
 
         def box_add(box,widget_data,label_text):
             hbox=gtk.HBox()
@@ -90,6 +146,20 @@ class ImportPlugin(pluginbase.Plugin):
             [(gtk.Entry(),"changed",self.import_source_changed),
             (gtk.Button("..."),"clicked",self.import_source_browse_dir)],
             "Import from")
+        ##SETTINGS
+        ##IMPORT OPTIONS
+        ##destination directory -- defaults to image directory
+        ##naming scheme -- <original name>, <date -- original name>, <date.original extension>
+        ##use exif date taken or mtime data
+        ##name clashes -- rename <name>(1),<name>(2),... or don't upload
+        ##BROWSING OPTIONS
+        ##use internal thumbnails
+        ##don't store thumbnails in home (use tmp folder instead)
+        ##don't read metadata
+
+
+        ##QUESTION: when copying: copy to tmp location -> read exif, rename
+
         self.mode_box,button1,button2=box_add(self.vbox,
             [(gtk.Button("Import Now"),"clicked",self.import_now),
             (gtk.Button("Browse Now"),"clicked",self.browse_now)],
@@ -114,6 +184,10 @@ class ImportPlugin(pluginbase.Plugin):
     def plugin_shutdown(self,app_shutdown):
         if not app_shutdown:
             self.scrolled_window.destroy()
+            self.mainframe.tm.deregister_job(self.import_job)
+            self.mainframe.tm.deregister_job(self.browse_job)
+            del self.import_job
+            del self.browse_job
             ##todo: delete references to widgets
         else:
             if self.collection_copy!=None:
@@ -130,18 +204,11 @@ class ImportPlugin(pluginbase.Plugin):
         self.import_source_entry.set_editable(False)
         self.browse_dir_button.set_sensitive(False)
 
-        collection=self.mainframe.tm.collection
-        view=self.mainframe.tm.view
-        self.collection_copy=collection.copy()
-        self.view_copy=view.copy()
-        self.mainframe.tm.monitor.stop(collection.image_dirs[0])
+        self.browse_job.source=self.import_source_entry.get_text()
+        self.mainframe.tm.queue_job('IMPORTERBROWSERSWITCH')
+        ##call_job(BROWSENOW)
 
-        collection.empty()
-        collection.image_dirs=[self.import_source_entry.get_text()]
-        collection.filename=''
-        self.mainframe.tm.monitor.start(collection.image_dirs[0])
-        del view[:]
-        self.mainframe.tm.scan_and_verify()
+        ##self.mainframe.tm.scan_and_verify()
 
     def cancel_import(self,button):
         self.import_source_entry.set_editable(True)
@@ -154,20 +221,7 @@ class ImportPlugin(pluginbase.Plugin):
         pass
 
     def restore(self,restore_monitor=True):
-        collection=self.mainframe.tm.collection
-        view=self.mainframe.tm.view
-        self.mainframe.tm.monitor.stop(collection.image_dirs[0])
-        collection.image_dirs=self.collection_copy.image_dirs
-        collection.filename=self.collection_copy.filename
-        collection[:]=self.collection_copy[:]
-        view[:]=self.view_copy[:]
-        if restore_monitor:
-            self.mainframe.tm.monitor.start(collection.image_dirs[0])
-        self.mainframe.browser.refresh_view()
-        self.collection_copy=None
-        self.view_copy=None
-
-        ##todo:restore collection, view and monitor
+        self.mainframe.tm.queue_job('IMPORTERBROWSERSWITCH')
 
     def do_import(self):
         pass
@@ -200,6 +254,4 @@ class ImportPlugin(pluginbase.Plugin):
         if self.collection_copy==None:
             self.import_source_entry.set_text(io.get_path_from_uri(uri))
         self.mainframe.sidebar_toggle.set_active(True)
-
-
 

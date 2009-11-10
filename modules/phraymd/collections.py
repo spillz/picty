@@ -116,6 +116,7 @@ class Collection(list):
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument
         '''
+        print 'loading collection',filename
         try:
             if not filename:
                 filename=self.filename

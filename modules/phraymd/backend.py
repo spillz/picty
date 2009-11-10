@@ -52,12 +52,9 @@ def del_view_item(view,browser,item):
 
 class WorkerJob:
     'Base class for jobs'
-    priority=0
     def __init__(self,name=''):
-        self.priority=WorkerJob.priority
         self.state=False
         self.name=name
-        WorkerJob.priority+=1
 
     def __nonzero__(self):
         return self.state
@@ -68,7 +65,7 @@ class WorkerJob:
     def unsetevent(self):
         self.state=False
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
         'subclasses should override this'
         return None
 
@@ -77,8 +74,8 @@ class WorkerJobCollection(dict):
     def __init__(self):
         self.collection=[
             WorkerJob('QUIT'),
-            ThumbnailJob(),
             RegisterJobJob(),
+            ThumbnailJob(),
             BuildViewJob(),
             MapImagesJob(),
             SelectionJob(),
@@ -98,35 +95,33 @@ class WorkerJobCollection(dict):
         for i in range(len(self.collection)):
             self[self.collection[i].name]=self.collection[i]
 
-    def register_job(self,job_class,before_job='BUILDVIEW'):
+    def register_job(self,job,before_job_name):
         ##todo: really shouldn't do this while a job is in progress since jobs frequently access the collection using ishighestpriority
         job_ind=len(self.collection)
         for i in range(job_ind):
-            if before_job==self.collection[i].name:
+            if before_job_name==self.collection[i].name:
                 job_ind=i
                 break
-        job=job_class()
         log.info('registered plugin job '+job.name)
         self.collection.insert(job_ind,job)
-        self[job.name]=self.collection[job_ind]
+        self[job.name]=job
 
-    def deregister_job(self,job_name):
+    def deregister_job(self,job):
         ##todo: should wait until no job is running
-        job_class=None
+        del self[job.name]
         for i in range(len(self.collection)):
-            if self.collection[i].name==job_name:
-                job_class=self.collection[i].__class__
+            if self.collection[i]==job:
                 del self.collection[i]
                 break
-        del self[job_name]
-        log.info('deregistered plugin job '+job_name)
-        return job_class
+        log.info('deregistered plugin job '+job.name)
 
     def ishighestpriority(self,job):
-        for j in self.collection[0:job.priority]:
+        for j in self.collection:
+            if j==job:
+                return True
             if j.state:
                 return False
-        return True
+        return False
 
     def gethighest(self):
         for j in self.collection:
@@ -153,7 +148,8 @@ class ThumbnailJob(WorkerJob):
         self.memthumbs=[]
 
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         cu_job=jobs['COLLECTIONUPDATE']
         cu_job.queue=[]
         cu_job.unsetevent()
@@ -178,25 +174,25 @@ class ThumbnailJob(WorkerJob):
 class RegisterJobJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'REGISTERJOB')
-        self.unsetevent()
+        self.deregister_queue=[]
+        self.register_queue=[]
 
     def unsetevent(self):
-        WorkerJob.unsetevent(self)
-        self.register_queue=[]
-        self.deregister_queue=[]
+        pass ##don't allow this job to be cancelled!
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         while jobs.ishighestpriority(self) and len(self.deregister_queue)+len(self.register_queue)>0:
             if len(self.deregister_queue)>0:
                 j=self.deregister_queue.pop(0)
-                job_class=jobs.deregister_job(j)
-                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_deregistered',job_class)
+                jobs.deregister_job(j)
+                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_deregistered',j.name)
             if len(self.register_queue)>0:
-                j=self.register_queue.pop(0)
-                jobs.register_job(j)
-                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_registered',j)
+                j,before_job_name=self.register_queue.pop(0)
+                jobs.register_job(j,before_job_name)
+                gobject.idle_add(pluginmanager.mgr.callback,'plugin_job_registered',j.name)
         if len(self.deregister_queue)+len(self.register_queue)==0:
-            self.unsetevent()
+            WorkerJob.unsetevent(self)
 
 
 class CollectionUpdateJob(WorkerJob):
@@ -208,7 +204,8 @@ class CollectionUpdateJob(WorkerJob):
         WorkerJob.unsetevent(self)
         self.queue=[]
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             item=self.queue.pop(0)
             if item.meta==None:
@@ -232,7 +229,8 @@ class RecreateThumbJob(WorkerJob):
         WorkerJob.unsetevent(self)
         self.queue=[]
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             gobject.idle_add(browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
             item=self.queue.pop(0)
@@ -261,7 +259,8 @@ class ReloadMetadataJob(WorkerJob):
         self.queue=[]
 
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             gobject.idle_add(browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
             item=self.queue.pop(0)
@@ -288,7 +287,8 @@ class LoadCollectionJob(WorkerJob):
         WorkerJob.unsetevent(self)
         self.pos=0
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         jobs.unset_all()
         if settings.active_collection!=None:
             log.info('Saving collection '+collection.filename)
@@ -327,8 +327,8 @@ class SaveCollectionJob(WorkerJob):
     def __init__(self):
         WorkerJob.__init__(self,'SAVECOLLECTION')
 
-    def __call__(self,jobs,collection,view,browser):
-        log.info('Saving '+collection.filename)
+    def __call__(self,worker,collection,view,browser):
+        log.info('Saving '+str(collection.filename))
         collection.save()
         self.unsetevent()
 
@@ -345,7 +345,8 @@ class WalkDirectoryJob(WorkerJob):
         self.notify_items=[]
         self.done=False
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
@@ -433,7 +434,8 @@ class WalkSubDirectoryJob(WorkerJob):
         self.done=False
         self.sub_dir=''
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
@@ -537,7 +539,8 @@ class BuildViewJob(WorkerJob):
     def cancel_job(self):
         self.cancel=True
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.pos
         browser.lock.acquire()
         if i==0:
@@ -600,7 +603,8 @@ class MapImagesJob(WorkerJob):
         self.im_count=0
         self.restart=False
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.pos
         if self.limit_to_view:
             listitems=view
@@ -649,7 +653,8 @@ class SelectionJob(WorkerJob):
         self.limit_to_view=True
         self.mode=SELECT
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.pos
         select=self.mode==SELECT
         if self.limit_to_view:
@@ -700,7 +705,8 @@ class EditMetaDataJob(WorkerJob):
         self.keyword_string=''
         self.meta=None
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.pos
         if i==0:
             pluginmanager.mgr.callback('t_collection_modify_start_hint')
@@ -822,7 +828,8 @@ class SaveViewJob(WorkerJob):
         self.selected_only=False
         self.save=True
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.pos
         listitems=view
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
@@ -877,7 +884,8 @@ class VerifyImagesJob(WorkerJob):
         WorkerJob.unsetevent(self)
         self.countpos=0
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         pluginmanager.mgr.callback('t_collection_modify_start_hint')
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
@@ -935,7 +943,8 @@ class MakeThumbsJob(WorkerJob):
         WorkerJob.unsetevent(self)
         self.countpos=0
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
+        jobs=worker.jobs
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
@@ -964,9 +973,10 @@ class DirectoryUpdateJob(WorkerJob):
         self.deferred=[]
         self.deflock=threading.Lock()
 
-    def __call__(self,jobs,collection,view,browser):
+    def __call__(self,worker,collection,view,browser):
         #todo: make sure job.queue has been initialized
         #todo: acquire and release collection lock
+        jobs=worker.jobs
         pluginmanager.mgr.callback('t_collection_modify_start_hint')
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             fullpath,action=self.queue.pop(0)
@@ -1058,7 +1068,7 @@ class Worker:
                         if self.dirtimer!=None:
                             self.dirtimer.cancel()
                         savejob=SaveCollectionJob()
-                        savejob(self.jobs,self.collection,self.view,self.browser)
+                        savejob(self,self.collection,self.view,self.browser)
                     except:
                         import traceback
                         tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -1066,7 +1076,7 @@ class Worker:
                     return
                 job=self.jobs.gethighest()
                 if job:
-                    job(self.jobs,self.collection,self.view,self.browser)
+                    job(self,self.collection,self.view,self.browser)
             except:
                 import traceback
                 tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -1145,7 +1155,8 @@ class Worker:
         while self.thread.isAlive():
             time.sleep(0.1)
 
-    def queue_job(self,job):
+    def queue_job(self,job_name):
+        print 'QUEUEING JOB',job_name
         self.jobs[job_name].setevent()
         self.event.set()
 
@@ -1158,15 +1169,15 @@ class Worker:
         job.setevent()
         self.event.set()
 
-    def register_job(self,job_class):
+    def register_job(self,job_object,before_job_name=''):
         job=self.jobs['REGISTERJOB']
-        job.register_queue.append(job_class)
+        job.register_queue.append((job_object,before_job_name))
         job.setevent()
         self.event.set()
 
-    def deregister_job(self,job_name):
+    def deregister_job(self,job_object):
         job=self.jobs['REGISTERJOB']
-        job.deregister_queue.append(job_name)
+        job.deregister_queue.append(job_object)
         job.setevent()
         self.event.set()
 

@@ -37,7 +37,7 @@ class TagCloudRebuildJob(backend.WorkerJob):
         backend.WorkerJob.__init__(self,'TAGCLOUDREBUILD')
         self.tagframe=None
 
-    def __call__(self,jobs,collection,view,browser,*args):
+    def __call__(self,worker,collection,view,browser,*args):
         if not self.tagframe:
             return False
 #        while self.pos<len(collection):
@@ -146,7 +146,8 @@ class TagSidebarPlugin(pluginbase.Plugin):
             ##todo: could flush unused bitmaps out of the png_path
         except:
             print 'Tag Plugin: No tag layout data found'
-        self.worker.register_job(TagCloudRebuildJob)
+        self.rebuild_job=TagCloudRebuildJob()
+        self.worker.register_job(self.rebuild_job,'BUILDVIEW')
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
@@ -162,7 +163,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         except:
             print 'Tag Plugin: Failed to save tag layout'
         self.tagframe.destroy()
-        self.worker.deregister_job('TAGCLOUDREBUILD')
+        self.worker.deregister_job(self.rebuild_job)
         del self.tagframe
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
