@@ -421,9 +421,9 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 def make_thumb(item,interrupt_fn=None,force=False):
-    print 'MAKING THUMB',item.thumburi
     if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
         if not force:
+            item.cannot_thumb=True
             return
         print 'forcing thumbnail creation'
         uri = io.get_uri(item.filename)
@@ -433,53 +433,53 @@ def make_thumb(item,interrupt_fn=None,force=False):
             os.remove(thumb_uri)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
+    print 'MAKING THUMB FOR',item.filename
     t=time.time()
     try:
         uri = io.get_uri(item.filename)
         mimetype=io.get_mime_type(item.filename)
         thumb_pb=None
 #        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
-        if not thumb_pb:
-            if mimetype.lower().startswith('video'):
-                cmd=settings.video_thumbnailer%(item.filename,)
-                imdata=os.popen(cmd).read()
-                image=Image.open(StringIO.StringIO(imdata))
+        if mimetype.lower().startswith('video'):
+            cmd=settings.video_thumbnailer%(item.filename,)
+            imdata=os.popen(cmd).read()
+            image=Image.open(StringIO.StringIO(imdata))
 #                p = ImageFile.Parser()
 #                p.feed(imdata)
 #                image = p.close()
-                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            else:
-                try:
-                    image=Image.open(item.filename)
-                    image.thumbnail((128,128),Image.ANTIALIAS)
-                except:
-                    cmd=settings.dcraw_cmd%(item.filename,)
+            image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+        else:
+            try:
+                image=Image.open(item.filename)
+                image.thumbnail((128,128),Image.ANTIALIAS)
+            except:
+                cmd=settings.dcraw_cmd%(item.filename,)
+                imdata=os.popen(cmd).read()
+                if not imdata or len(imdata)<100:
+                    cmd=settings.dcraw_backup_cmd%(item.filename,)
                     imdata=os.popen(cmd).read()
-                    if not imdata or len(imdata)<100:
-                        cmd=settings.dcraw_backup_cmd%(item.filename,)
-                        imdata=os.popen(cmd).read()
-    #                pipe = subprocess.Popen(cmd, shell=True,
-    #                        stdout=PIPE) ##, close_fds=True
-    #                print pipe
-    #                pipe=pipe.stdout
-    #                print 'pipe opened'
-    #                imdata=pipe.read()
-    #                print 'pipe read'
-                    p = ImageFile.Parser()
-                    p.feed(imdata)
-                    image = p.close()
-                    image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-                try:
-                    orient=item.meta['Orientation']
-                except:
-                    orient=1
-                if orient>1:
-                    for method in transposemethods[orient]:
-                        image=image.transpose(method)
-            thumbsize=image.size
-            thumb_pb=image_to_pixbuf(image)
-            if thumb_pb==None:
-                raise TypeError
+#                pipe = subprocess.Popen(cmd, shell=True,
+#                        stdout=PIPE) ##, close_fds=True
+#                print pipe
+#                pipe=pipe.stdout
+#                print 'pipe opened'
+#                imdata=pipe.read()
+#                print 'pipe read'
+                p = ImageFile.Parser()
+                p.feed(imdata)
+                image = p.close()
+                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+            try:
+                orient=item.meta['Orientation']
+            except:
+                orient=1
+            if orient>1:
+                for method in transposemethods[orient]:
+                    image=image.transpose(method)
+        thumbsize=image.size
+        thumb_pb=image_to_pixbuf(image)
+        if thumb_pb==None:
+            raise TypeError
     except:
         print 'creating FAILED thumbnail',item
         item.thumbsize=(0,0)
