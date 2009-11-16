@@ -28,10 +28,64 @@ import gtk
 import settings
 import metadata
 
-def directory_dialog(title='Choose Image Directory'):
+
+def box_add(box,widget_data,label_text):
+    hbox=gtk.HBox()
+    if label_text:
+        label=gtk.Label(label_text)
+        hbox.pack_start(label,False)
+    for widget in widget_data:
+        hbox.pack_start(widget[0],widget[1])
+        if widget[2]:
+            widget[0].connect(widget[2],widget[3])
+    box.pack_start(hbox,False)
+    return tuple([hbox]+[widget[0] for widget in widget_data])
+
+
+class PathnameEntry(gtk.VBox):
+    def __init__(self,default_path,label,browse_prompt,directory=True):
+        gtk.VBox.__init__(self)
+        self.browse_prompt=browse_prompt
+        self.directory=directory
+        box,self.path_entry,self.browse_dir_button=box_add(self,
+            [(gtk.Entry(),True,None),
+            (gtk.Button('...'),False,"clicked",self.browse_path)], #stock=gtk.STOCK_OPEN
+            label)
+    def set_editable(self,editable=True):
+        self.path_entry.set_editable(editable)
+        self.browse_dir_button.set_sensitive(editable)
+    def browse_path(self,button):
+        if self.directory:
+            path=directory_dialog(self.browse_prompt,self.path_entry.get_text())
+        else:
+            path=file_dialog(self.browse_prompt,self.path_entry.get_text())
+        if path:
+            self.path_entry.set_text(path)
+    def get_path(self):
+        return self.path_entry.get_text()
+    def set_path(self,path):
+        self.path_entry.set_text(path)
+
+
+def file_dialog(title='Choose an Image',default=''):
+    fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FILE,
+        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
+    if not default:
+        default=os.environ['HOME']
+    fcd.set_current_folder(default)
+    response=fcd.run()
+    image_dir=''
+    if response == gtk.RESPONSE_OK:
+        image_dir=fcd.get_filename()
+    fcd.destroy()
+    return image_dir
+
+def directory_dialog(title='Choose Image Directory',default=''):
     fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-    fcd.set_current_folder(os.environ['HOME'])
+    if not default:
+        default=os.environ['HOME']
+    fcd.set_current_folder(default)
     response=fcd.run()
     image_dir=''
     if response == gtk.RESPONSE_OK:

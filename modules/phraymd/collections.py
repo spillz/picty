@@ -69,6 +69,10 @@ class Collection(list):
         self.numselected=0
         self.image_dirs=image_dirs
         self.filename=None
+        self.verify_after_walk=True
+        self.load_metadata=True ##image will be loaded into the collection and view without metadata
+        self.load_embedded_thumbs=False ##only relevant if load_metadata is true
+        self.load_preview_icons=False ##only relevant if load_metadata is false
         for item in items:
             self.add(item)
             self.numselected+=item.selected

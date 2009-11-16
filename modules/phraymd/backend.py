@@ -391,7 +391,22 @@ class WalkDirectoryJob(WorkerJob):
                     continue
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:
-                    self.notify_items.append(item)
+                    if not collection.verify_after_walk:
+                        browser.lock.acquire()
+                        for item in self.notify_items:
+                            collection.add(item)
+                        browser.lock.release()
+                        if collection.load_metadata:
+                            imagemanip.load_metadata(item,get_thumbnail=collection.load_embedded_thumbs)
+                        elif collection.load_preview_icons:
+                            imagemanip.load_thumb_from_preview_icon(item)
+                        del_view_item(view,browser,item)
+                        browser.lock.acquire()
+                        view.add_item(item)
+                        browser.lock.release()
+                        gobject.idle_add(browser.refresh_view)
+                    else:
+                        self.notify_items.append(item)
             # once we have found enough items add to collection and notify browser
             if time.time()>self.last_update_time+1.0 or len(self.notify_items)>100:
                 self.last_update_time=time.time()
@@ -416,7 +431,8 @@ class WalkDirectoryJob(WorkerJob):
             self.done=False
             self.unsetevent()
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
-            jobs['VERIFYIMAGES'].setevent()
+            if collection.verify_after_walk:
+                jobs['VERIFYIMAGES'].setevent()
         else:
             log.debug('Directory walk pausing '+collection.image_dirs[0])
 
@@ -468,7 +484,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     continue
                 fullpath=os.path.normcase(os.path.join(root, p))
                 mimetype=io.get_mime_type(fullpath)
-                if not mimetype.lower().startswith('image'):
+                if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
                 mtime=os.path.getmtime(fullpath)
@@ -995,7 +1011,7 @@ class DirectoryUpdateJob(WorkerJob):
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=io.get_mime_type(fullpath)
-                    if not mimetype.startswith('image'): ##todo: move this to the else clause below
+                    if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                         continue
                     i=collection.find([fullpath])
                     if i>=0:

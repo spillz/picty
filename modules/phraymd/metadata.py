@@ -8,21 +8,40 @@ representation
 
 import pyexiv2
 
+import gtk
 ##todo: reimplement for xmp support
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
 
 
-def load_metadata(item):
+def load_metadata(item,filename=None,thumbnail=False):
     if item.meta==False:
         return
     try:
-        rawmeta = pyexiv2.Image(item.filename)
+        if not filename:
+            filename=item.filename
+        rawmeta = pyexiv2.Image(filename)
         rawmeta.readMetadata()
         item.meta=dict()
         get_exiv2_meta(item.meta,rawmeta)
+        try:
+            ttype,tdata=rawmeta.getThumbnailData()
+            pbloader = gtk.gdk.PixbufLoader() ##todo: gtk stuff doesn't belong here -- shift it to image manip (i.e. just return the binary data)
+            pbloader.write(tdata)
+            pb=pbloader.get_pixbuf()
+            pbloader.close()
+            w=pb.get_width()
+            h=pb.get_height()
+            a=max(128,w,h)
+            item.thumb=pb.scale_simple(128*w/a,128*h/a)
+            item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
+            print 'loaded thumbnail',item.filename,item.thumb
+        except:
+            print 'load thumbnail failed',item.filename
+            item.thumb=None
+
     except:
-        print 'Error reading metadata for',item.filename
+        print 'Error reading metadata for',filename
         item.meta=False
     item.mark_meta_saved()
     return True

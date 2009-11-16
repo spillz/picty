@@ -53,6 +53,7 @@ import gobject
 from phraymd import metadatadialogs
 from phraymd import settings
 from phraymd import pluginbase
+from phraymd import pluginmanager
 from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
@@ -60,59 +61,190 @@ from phraymd import collections
 from phraymd import metadata
 from phraymd import backend
 
-class ImporterBrowserSwitchJob(backend.WorkerJob):
-    def __init__(self):
-        backend.WorkerJob.__init__(self,'IMPORTERBROWSERSWITCH')
-        self.priority=8
-        self.collection_copy=None
-        self.view_copy=None
-        self.restore_monitor=None
-        self.mode='BROWSE'
-        self.source=''
+exist_actions=['Skip','Rename','Overwrite Always','Overwrite if Newer']
+EXIST_SKIP=0
+EXIST_RENAME=1
+EXIST_OVERWRITE=2
+EXIST_OVERWRITE_NEWER=3
 
-    def __call__(self,worker,collection,view,browser,*args):
-        worker.jobs.unset_all()
-        if self.mode=='BROWSE':
-            collection=worker.collection
-            view=worker.view
-            self.collection_copy=collection.copy()
-            self.view_copy=view.copy()
-            worker.monitor.stop(collection.image_dirs[0])
 
-            collection.empty()
-            collection.image_dirs=[self.source]
-            collection.filename=''
-            worker.monitor.start(collection.image_dirs[0])
-            del view[:]
-            worker.jobs.unset_all()
-            worker.jobs['WALKDIRECTORY'].setevent()
-            self.mode='RESTORE'
-        else:
-            worker.monitor.stop(collection.image_dirs[0])
-            collection.image_dirs=self.collection_copy.image_dirs
-            collection.filename=self.collection_copy.filename
-            collection[:]=self.collection_copy[:]
-            view[:]=self.view_copy[:]
-            if self.restore_monitor:
-                worker.monitor.start(collection.image_dirs[0])
-            gobject.idle_add(browser.refresh_view)
-            self.collection_copy=None
-            self.view_copy=None
-            self.mode='BROWSE'
-            worker.jobs.unset_all()
 
+def default_destname(item,dest_dir_base):
+    '''
+    returns a tuple (path,name) for the import destination
+    '''
+    return dest_dir_base,os.path.split(item.filename)[1]
+
+
+def altname(name):
+    return name
+
+IMPORT_MODE_BROWSE=0
+IMPORT_MODE_RESTORE=1
+IMPORT_MODE_IMPORT=2
 
 class ImporterImportJob(backend.WorkerJob):
-    def __init__(self):
-        backend.WorkerJob.__init__(self,'IMPORTERIMPORT')
-        self.priority=8
+    def __init__(self,plugin):
+        backend.WorkerJob.__init__(self,'IMPORT')
+        self.plugin=plugin
+        self.items=None
+        self.unsetevent()
+
+
+    def start_browse_source(self,path):
+        self.mode=IMPORT_MODE_BROWSE
+        self.source_path=path
+        self.plugin.mainframe.tm.queue_job('IMPORT')
+
+    def start_browse_restore(self):
+        self.mode=IMPORT_MODE_RESTORE
+        self.plugin.mainframe.tm.queue_job('IMPORT')
+
+    def start_import(self,params):
+        self.mode=IMPORT_MODE_IMPORT
+        for p in params:
+            self.__dict__[p]=params[p]
+        self.plugin.mainframe.tm.queue_job('IMPORT')
+
+    def cancel_import(self):
+        self.cancel=True
+
+    def unsetevent(self):
+        backend.WorkerJob.unsetevent(self)
+        self.cancel=False
+        self.countpos=0
         self.collection_src=None
         self.collection_dest=None
         self.view_src=None
         self.view_dest=None
+        self.items=None
+        self.move=False
+        self.action_if_exists=EXIST_SKIP#EXIST_SKIP|EXIST_RENAME|EXIST_OVERWRITE
+        self.dest_name_needs_meta=False
+        self.dest_name=default_destname
+        self.base_dest_dir=None
+        self.cancel=False
 
     def __call__(self,worker,collection,view,browser,*args):
-        self.unsetevent()
+        if self.mode==IMPORT_MODE_BROWSE:
+            self.browse_source(worker,collection,view,browser)
+            self.unsetevent()
+            return
+        if self.mode==IMPORT_MODE_RESTORE:
+            self.browse_restore(worker,collection,view,browser)
+            self.unsetevent()
+            return
+
+        self.browse_restore(worker,collection,view,browser,False)
+        jobs=worker.jobs
+        pluginmanager.mgr.callback('t_collection_modify_start_hint')
+        i=self.countpos  ##todo: make sure this gets initialized
+        view_dest=self.view_dest
+        if self.items==None:
+            self.items=self.view_src.get_selected_items()
+            self.count=len(self.items)
+        if not self.base_dest_dir:
+            self.base_dest_dir=self.collection_dest.image_dirs[0]
+        print 'importing',len(self.items),'items'
+        while len(self.items)>0 and jobs.ishighestpriority(self) and not self.cancel:
+            item=self.items.pop()
+            print 'importing item',item.filename
+            self.dest_dir=self.base_dest_dir
+            src_filename=item.filename
+            temp_dest_filename=''
+            if self.dest_name_needs_meta and not item.meta:
+                ##copy file to a temp location so that it can be renamed
+                ##todo:use h
+                h,temp_filename=tempfile.mkstemp('','.image-')
+                temp_dest_filename=os.path.join(self.dest_dir,os.path.split(temp_filename)[1])
+                io.copy(item.filename,temp_dest_filename)
+                h.close()
+                src_filename=temp_dest_filename
+                imagemanip.load_metadata(item,True,src_filename)
+            dest_path,dest_name=self.dest_name(item,self.base_dest_dir)
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+            dest_filename=os.path.join(dest_path,dest_name)
+            if os.path.exists(dest_filename):
+                if self.action_if_exists==EXIST_SKIP:
+                    ##TODO: LOGGING TO IMPORT LOG
+                    continue
+                if self.action_if_exists==EXIST_RENAME:
+                    dest_filename=altname(dest_filename)
+            try:
+                ##todo: set mtime to the mtime of the original after copy/move?
+                if self.move or temp_dest_filename:
+                    io.move_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
+                else:
+                    io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
+                    if temp_dest_filename:
+                        io.remove_file(temp_dest_filename)
+            except IOError:
+                ##todo: log an error
+                continue
+            item[0]=dest_filename
+            item.filename=dest_filename
+            item.mtime=os.path.getmtime(item.filename)
+            imagemanip.update_thumb_date(item)
+            browser.lock.acquire()
+            collection.add(item)
+            view.add_item(item)
+            browser.lock.release()
+            print 'imported item',item.filename
+            ##todo: log success
+            ##todo: kill temp file
+            gobject.idle_add(browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
+            gobject.idle_add(browser.refresh_view)
+            i+=1
+        self.countpos=i
+        if not self.state:
+            self.idle_add(self.plugin.import_cancelled)
+            worker.monitor.start(collection.image_dirs[0])
+        if len(self.items)==0 or self.cancel:
+            gobject.idle_add(browser.update_status,2,'Import Complete')
+            gobject.idle_add(self.plugin.import_completed)
+            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            worker.monitor.start(collection.image_dirs[0])
+            #jobs['VERIFYTIMAGES'].setevent()
+            worker.monitor.start(collection.image_dirs[0])
+            self.unsetevent()
+
+    def browse_source(self,worker,collection,view,browser,*args):
+        worker.jobs.unset_all()
+        collection=worker.collection
+        view=worker.view
+        self.collection_copy=collection.copy()
+        self.view_copy=view.copy()
+        worker.monitor.stop(collection.image_dirs[0])
+
+        collection.empty()
+        collection.image_dirs=[self.source_path]
+        collection.filename=''
+        collection.verify_after_walk=False
+        collection.load_embedded_thumbs=True
+        collection.load_metadata=False
+        collection.load_preview_icons=True
+        worker.monitor.start(collection.image_dirs[0])
+        del view[:]
+        self.collection_dest=collection.copy()
+        self.view_dest=view.copy()
+        self.collection_src=collection
+        self.view_src=view
+        worker.jobs['WALKDIRECTORY'].setevent()
+
+    def browse_restore(self,worker,collection,view,browser,restore_monitor=True):
+        self.collection_src=collection.copy()
+        self.view_src=view.copy()
+        worker.monitor.stop(collection.image_dirs[0])
+        collection.image_dirs=self.collection_copy.image_dirs
+        collection.filename=self.collection_copy.filename
+        collection[:]=self.collection_copy[:]
+        view[:]=self.view_copy[:]
+        if restore_monitor:
+            worker.monitor.start(collection.image_dirs[0])
+        gobject.idle_add(browser.refresh_view)
+        self.collection_copy=None
+        self.view_copy=None
 
 
 class ImportPlugin(pluginbase.Plugin):
@@ -125,9 +257,7 @@ class ImportPlugin(pluginbase.Plugin):
 
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
-        self.browse_job=ImporterBrowserSwitchJob()
-        self.import_job=ImporterImportJob()
-        mainframe.tm.register_job(self.browse_job,'BUILDVIEW')
+        self.import_job=ImporterImportJob(self)
         mainframe.tm.register_job(self.import_job,'BUILDVIEW')
 
         def box_add(box,widget_data,label_text):
@@ -137,39 +267,64 @@ class ImportPlugin(pluginbase.Plugin):
                 hbox.pack_start(label,False)
             for widget in widget_data:
                 hbox.pack_start(widget[0],True)
-                widget[0].connect(widget[1],widget[2])
+                if widget[1]:
+                    widget[0].connect(widget[1],widget[2])
             box.pack_start(hbox,False)
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
         self.vbox=gtk.VBox()
-        box,self.import_source_entry,self.browse_dir_button=box_add(self.vbox,
-            [(gtk.Entry(),"changed",self.import_source_changed),
-            (gtk.Button("..."),"clicked",self.import_source_browse_dir)],
-            "Import from")
+        self.import_source_entry=metadatadialogs.PathnameEntry('',
+            "From Path","Choose Import Source Directory")
+        self.vbox.pack_start(self.import_source_entry,False)
         ##SETTINGS
         ##IMPORT OPTIONS
         ##destination directory -- defaults to image directory
         ##naming scheme -- <original name>, <date -- original name>, <date.original extension>
         ##use exif date taken or mtime data
         ##name clashes -- rename <name>(1),<name>(2),... or don't upload
+        self.import_box=gtk.VBox()
+        self.base_dir_entry=metadatadialogs.PathnameEntry('', ##self.mainframe.tm.collection.image_dirs[0]
+            "To Path","Choose import directory")
+        self.import_box.pack_start(self.base_dir_entry,False)
+
+
+        self.name_scheme_model=gtk.ListStore(str,gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN) ##display, callback, uses metadata
+        self.name_scheme_model.append(("Simple: <Original Image Name>",default_destname,False))
+        self.name_scheme_combo=gtk.ComboBox(self.name_scheme_model)
+        box,self.name_scheme_combo=box_add(self.import_box,[(self.name_scheme_combo,None)],"Naming Scheme")
+        cell = gtk.CellRendererText()
+        self.name_scheme_combo.pack_start(cell, True)
+        self.name_scheme_combo.add_attribute(cell, 'text', 0)
+        self.name_scheme_combo.set_active(0)
+
+        box,self.exists_combo=box_add(self.import_box,[(gtk.combo_box_new_text(),None)],"Action if Destination Exists")
+        for x in exist_actions:
+            self.exists_combo.append_text(x)
+        self.exists_combo.set_active(0)
+
+        self.copy_radio=gtk.RadioButton(None,"_Copy",True)
+        self.move_radio=gtk.RadioButton(self.copy_radio,"_Move",True)
+        box_add(self.import_box,[(self.copy_radio,None),(self.move_radio,None)],"Import Operation")
+
+        box,button,self.start_import_button=box_add(self.import_box,
+            [(gtk.Button("Cancel"),"clicked",self.cancel_browse),
+            (gtk.Button("Import Selected"),"clicked",self.start_import)],
+            "")
+
+        self.vbox.pack_start(self.import_box,False)
+
         ##BROWSING OPTIONS
         ##use internal thumbnails
         ##don't store thumbnails in home (use tmp folder instead)
         ##don't read metadata
 
 
-        ##QUESTION: when copying: copy to tmp location -> read exif, rename
-
         self.mode_box,button1,button2=box_add(self.vbox,
             [(gtk.Button("Import Now"),"clicked",self.import_now),
             (gtk.Button("Browse Now"),"clicked",self.browse_now)],
             "")
         button1.set_sensitive(False)
-        self.import_box,button1,button2=box_add(self.vbox,
-            [(gtk.Button("Cancel"),"clicked",self.cancel_import),
-            (gtk.Button("Import Selected"),"clicked",self.start_import)],
-            "")
-        button2.set_sensitive(False)
+        #button2.set_sensitive(False)
 
         self.scrolled_window=gtk.ScrolledWindow() ##use a custom Notebook to embed all pages in a scrolled window automatically
         self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
@@ -185,43 +340,81 @@ class ImportPlugin(pluginbase.Plugin):
         if not app_shutdown:
             self.scrolled_window.destroy()
             self.mainframe.tm.deregister_job(self.import_job)
-            self.mainframe.tm.deregister_job(self.browse_job)
             del self.import_job
-            del self.browse_job
             ##todo: delete references to widgets
         else:
             if self.collection_copy!=None:
-                self.restore(False)
+                self.import_job.start_browse_restore(False)
             ##restore the collection and view files if import browse is active
 
+    def import_cancelled(self):
+        '''
+        called from the import job thread to indicate the job has been cancelled
+        '''
+        ##todo: give visual indication of cancellation
+        self.import_box.hide()
+        self.mode_box.show()
+        self.import_source_entry.set_editable(True)
+        self.start_import_button.set_sensitive(True)
+
+    def import_completed(self):
+        '''
+        called from the import job thread to indicate the job has completed
+        '''
+        ##todo: give visual indication of completion
+        self.import_box.hide()
+        self.mode_box.show()
+        self.import_source_entry.set_editable(True)
+        self.start_import_button.set_sensitive(True)
+
     def import_now(self,button):
-        pass
+        self.start_import_button.set_sensitive(False)
+        worker=self.mainframe.tm
+        import_job.start_import(params)
 
     def browse_now(self,button):
         ##todo: this needs to be moved to a worker job
+        worker=self.mainframe.tm
+        path=self.import_source_entry.get_path()
+        if not os.path.exists(path):
+            return
         self.mode_box.hide()
         self.import_box.show()
         self.import_source_entry.set_editable(False)
-        self.browse_dir_button.set_sensitive(False)
-
-        self.browse_job.source=self.import_source_entry.get_text()
-        self.mainframe.tm.queue_job('IMPORTERBROWSERSWITCH')
+        if not self.base_dir_entry.get_path():
+            self.base_dir_entry.set_path(worker.collection.image_dirs[0])
+        self.import_job.start_browse_source(path)
         ##call_job(BROWSENOW)
 
         ##self.mainframe.tm.scan_and_verify()
 
-    def cancel_import(self,button):
+    def cancel_browse(self,button):
         self.import_source_entry.set_editable(True)
-        self.browse_dir_button.set_sensitive(True)
         self.mode_box.show()
         self.import_box.hide()
-        self.restore()
+        self.import_job.start_browse_restore(False)
+
+    def cancel_import(self,button):
+        self.import_source_entry.set_editable(True)
+        self.mode_box.show()
+        self.import_box.hide()
+        self.import_job.start_browse_restore(False)
 
     def start_import(self,button):
-        pass
-
-    def restore(self,restore_monitor=True):
-        self.mainframe.tm.queue_job('IMPORTERBROWSERSWITCH')
+        self.start_import_button.set_sensitive(False)
+        worker=self.mainframe.tm
+        params={}
+        params['move']=self.move_radio.get_active()
+        params['base_dest_dir']=self.base_dir_entry.get_path()
+        params['action_if_exists']=self.exists_combo.get_active()
+        iter=self.name_scheme_combo.get_active_iter()
+        if iter:
+            row=self.name_scheme_model[iter]
+            params['dest_name_needs_meta']=row[2]
+            params['dest_name']=row[1]
+        else:
+            return
+        self.import_job.start_import(params)
 
     def do_import(self):
         pass

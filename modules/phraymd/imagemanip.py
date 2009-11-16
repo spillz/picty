@@ -68,19 +68,19 @@ memimages=[]
 memthumbs=[]
 
 
-def load_metadata(item,notify_plugins=True):
+def load_metadata(item,notify_plugins=True,filename=None,get_thumbnail=False):
     if notify_plugins:
         if item.meta:
             meta=item.meta.copy()
         else:
             meta=item.meta
-        result=metadata.load_metadata(item)
+        result=metadata.load_metadata(item,filename,get_thumbnail)
         if result:
             if item.meta!=meta:
                 pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
         return result
     else:
-        return metadata.load_metadata(item)
+        return metadata.load_metadata(item,filename)
 
 
 def save_metadata(item):
@@ -182,7 +182,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
     import tempfile
     filename=item.filename
     try:
-        image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+        image=Image.open(item.filename)
     except:
         try:
             cmd=settings.dcraw_cmd%(item.filename,)
@@ -374,14 +374,19 @@ def delete_thumb(item):
         item.thumburi=None
 
 
-def update_thumb_date(item,interrupt_fn=None):
+def update_thumb_date(item,interrupt_fn=None,remove_old=True):
     item.mtime=os.path.getmtime(item.filename)
-    if item.thumb and item.thumburi:
+    if item.thumburi:
+        if not item.thumb:
+            load_thumb(item)
         uri = io.get_uri(item.filename)
         thumb_factory.save_thumbnail(item.thumb,uri,item.mtime)
+        if remove_old:
+            io.remove_file(item.thumburi)
         item.thumburi=thumb_factory.lookup(uri,item.mtime)
         return True
     return make_thumb(item,interrupt_fn)
+
 
 
 def rotate_thumb(item,right=True,interrupt_fn=None):
@@ -494,6 +499,29 @@ def make_thumb(item,interrupt_fn=None,force=False):
         cache_thumb(item)
     return True
 
+
+def load_thumb_from_preview_icon(item):
+    try:
+        print 'loading thumb from preview icon',item.filename
+        data,dtype=io.get_preview_icon_data(item.filename)
+        loader = gtk.gdk.PixbufLoader()
+        loader.write(data.read())
+        pb = loader.get_pixbuf()
+        loader.close()
+        w=pb.get_width()
+        h=pb.get_height()
+        a=max(128,w,h) ##todo: remove hardcoded sizes
+        item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+        item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
+        return True
+    except:
+        import sys
+        import traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print 'Error loading thumb from preview icon',item.filename
+        print tb_text
+        item.thumb=None
+        return False
 
 def load_thumb(item):
     ##todo: could also try extracting the thumb from the image
