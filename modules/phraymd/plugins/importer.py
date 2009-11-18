@@ -273,20 +273,34 @@ class ImportPlugin(pluginbase.Plugin):
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
         self.vbox=gtk.VBox()
-        self.import_source_entry=metadatadialogs.PathnameEntry('',
-            "From Path","Choose Import Source Directory")
-        self.vbox.pack_start(self.import_source_entry,False)
+#        self.import_source_entry=metadatadialogs.PathnameEntry('',
+#            "From Path","Choose Import Source Directory")
+#        self.vbox.pack_start(self.import_source_entry,False)
+        print dir(io)
+        self.vm=io.VolumeMonitor()
+        self.import_source_combo=metadatadialogs.PathnameCombo("","Import from","Select directory to import from",volume_monitor=self.vm,directory=True)
+        self.vbox.pack_start(self.import_source_combo,False)
         ##SETTINGS
+
+        ##BROWSING OPTIONS
+        self.browse_frame=gtk.Frame("Browsing Options")
+        self.browse_box=gtk.VBox()
+        self.browse_frame.add(self.browse_box)
+        self.browse_read_meta_check=gtk.CheckButton("Load Metadata")
+        self.browse_use_internal_thumbnails=gtk.CheckButton("Use Internal Thumbnails")
+        self.browse_store_thumbnails=gtk.CheckButton("Store Thumbnails in Cache")
+        self.browse_box.pack_start(self.browse_read_meta_check,False)
+        self.browse_box.pack_start(self.browse_use_internal_thumbnails,False)
+        self.browse_box.pack_start(self.browse_store_thumbnails,False)
+        self.vbox.pack_start(self.browse_frame,False)
+
         ##IMPORT OPTIONS
-        ##destination directory -- defaults to image directory
-        ##naming scheme -- <original name>, <date -- original name>, <date.original extension>
-        ##use exif date taken or mtime data
-        ##name clashes -- rename <name>(1),<name>(2),... or don't upload
+        self.import_frame=gtk.Frame("Import Options")
         self.import_box=gtk.VBox()
+        self.import_frame.add(self.import_box)
         self.base_dir_entry=metadatadialogs.PathnameEntry('', ##self.mainframe.tm.collection.image_dirs[0]
             "To Path","Choose import directory")
         self.import_box.pack_start(self.base_dir_entry,False)
-
 
         self.name_scheme_model=gtk.ListStore(str,gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN) ##display, callback, uses metadata
         self.name_scheme_model.append(("Simple: <Original Image Name>",default_destname,False))
@@ -306,18 +320,12 @@ class ImportPlugin(pluginbase.Plugin):
         self.move_radio=gtk.RadioButton(self.copy_radio,"_Move",True)
         box_add(self.import_box,[(self.copy_radio,None),(self.move_radio,None)],"Import Operation")
 
-        box,button,self.start_import_button=box_add(self.import_box,
+        self.vbox.pack_start(self.import_frame,False)
+
+        self.import_action_box,button,self.start_import_button=box_add(self.vbox,
             [(gtk.Button("Cancel"),"clicked",self.cancel_browse),
             (gtk.Button("Import Selected"),"clicked",self.start_import)],
             "")
-
-        self.vbox.pack_start(self.import_box,False)
-
-        ##BROWSING OPTIONS
-        ##use internal thumbnails
-        ##don't store thumbnails in home (use tmp folder instead)
-        ##don't read metadata
-
 
         self.mode_box,button1,button2=box_add(self.vbox,
             [(gtk.Button("Import Now"),"clicked",self.import_now),
@@ -330,7 +338,8 @@ class ImportPlugin(pluginbase.Plugin):
         self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         self.scrolled_window.add_with_viewport(self.vbox)
         self.scrolled_window.show_all()
-        self.import_box.hide()
+        self.import_frame.hide()
+        self.import_action_box.hide()
 
         self.collection_copy=None
         self.view_copy=None
@@ -352,9 +361,11 @@ class ImportPlugin(pluginbase.Plugin):
         called from the import job thread to indicate the job has been cancelled
         '''
         ##todo: give visual indication of cancellation
-        self.import_box.hide()
+        self.import_frame.hide()
+        self.import_action_box.hide()
+        self.browse_frame.show()
         self.mode_box.show()
-        self.import_source_entry.set_editable(True)
+        self.import_source_combo.set_editable(True)
         self.start_import_button.set_sensitive(True)
 
     def import_completed(self):
@@ -362,9 +373,11 @@ class ImportPlugin(pluginbase.Plugin):
         called from the import job thread to indicate the job has completed
         '''
         ##todo: give visual indication of completion
-        self.import_box.hide()
+        self.import_frame.hide()
+        self.import_action_box.hide()
+        self.browse_frame.show()
         self.mode_box.show()
-        self.import_source_entry.set_editable(True)
+        self.import_source_combo.set_editable(True)
         self.start_import_button.set_sensitive(True)
 
     def import_now(self,button):
@@ -373,32 +386,29 @@ class ImportPlugin(pluginbase.Plugin):
         import_job.start_import(params)
 
     def browse_now(self,button):
-        ##todo: this needs to be moved to a worker job
         worker=self.mainframe.tm
-        path=self.import_source_entry.get_path()
+        path=self.import_source_combo.get_path()
         if not os.path.exists(path):
             return
         self.mode_box.hide()
-        self.import_box.show()
-        self.import_source_entry.set_editable(False)
+        self.import_frame.show()
+        self.import_action_box.show()
+        self.browse_frame.hide()
+        self.import_source_combo.set_editable(False)
         if not self.base_dir_entry.get_path():
             self.base_dir_entry.set_path(worker.collection.image_dirs[0])
         self.import_job.start_browse_source(path)
-        ##call_job(BROWSENOW)
-
-        ##self.mainframe.tm.scan_and_verify()
 
     def cancel_browse(self,button):
-        self.import_source_entry.set_editable(True)
+        self.import_source_combo.set_editable(True)
         self.mode_box.show()
-        self.import_box.hide()
-        self.import_job.start_browse_restore(False)
+        self.import_frame.hide()
+        self.import_action_box.hide()
+        self.browse_frame.show()
+        self.import_job.start_browse_restore()
 
     def cancel_import(self,button):
-        self.import_source_entry.set_editable(True)
-        self.mode_box.show()
-        self.import_box.hide()
-        self.import_job.start_browse_restore(False)
+        self.import_job.import_cancel(False)
 
     def start_import(self,button):
         self.start_import_button.set_sensitive(False)
@@ -432,14 +442,6 @@ class ImportPlugin(pluginbase.Plugin):
         if len(coll_dir)>0:
             if imageinfo.create_empty_file(name,coll_dir):
                 self.model.append((name,400))
-
-    def import_source_changed(self,entry):
-        pass
-
-    def import_source_browse_dir(self,button):
-        path=metadatadialogs.directory_dialog("Choose Import Source Directory")
-        if path:
-            self.import_source_entry.set_text(path)
 
     def media_connected(self,uri):
         sidebar=self.mainframe.sidebar

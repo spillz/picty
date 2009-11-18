@@ -1,6 +1,7 @@
 try:
     print 'Using gio'
     import gio
+    import gobject
 
     def get_preview_icon_data(path):
         ifile=gio.File(path)
@@ -8,6 +9,48 @@ try:
         icon=info.get_attribute_object("preview::icon")
         data,dtype=icon.load()
         return data,dtype
+
+    class VolumeMonitor(gobject.GObject):
+        __gsignals__={
+            'mount-added':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_STRING,gobject.TYPE_PYOBJECT,gobject.TYPE_STRING)),
+            'mount-removed':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_STRING,gobject.TYPE_PYOBJECT,gobject.TYPE_STRING)),
+            }
+
+        def __init__(self):
+            gobject.GObject.__init__(self)
+            self.vm=gio.volume_monitor_get()
+            self.vm.connect("mount-added",self.mount_added)
+            self.vm.connect("mount-removed",self.mount_removed)
+        def mount_added(self,vm,m):
+            print 'mount event',vm,m
+            self.emit("mount-added",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def mount_removed(self,vm,m):
+            print 'unmount event',vm,m
+            self.emit("mount-removed",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def get_mount_info(self):
+            '''
+            returns a list of tuples (name,icon_data,fuse path)
+            '''
+            mdict={}
+            mounts=[]
+            for m in self.vm.get_mounts():
+                root=m.get_root()
+                name=m.get_name()
+                icon_names=m.get_icon().get_names()
+                if root not in mdict:
+                    vals=[name,icon_names,root.get_path()]
+                    mdict[root]=vals
+                    mounts.append(vals)
+                else:
+                    if len(icon_names)>len(mdict[root][1]):
+                        mdict[root][1]=icon_names
+                    if len(name)>len(mdict[root][0]):
+                        mdict[root][0]=name
+            return mounts
+    gobject.type_register(VolumeMonitor)
+
+
+
 
     def get_uri(path):
         ifile=gio.File(path)
@@ -52,7 +95,7 @@ try:
         except gio.Error:
             raise IOError ##todo: reuse the error message
 
-except:
+except ImportError:
     import gnomevfs
     import subprocess
     print 'Using gnomevfs'

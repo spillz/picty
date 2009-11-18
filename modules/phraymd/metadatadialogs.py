@@ -42,6 +42,64 @@ def box_add(box,widget_data,label_text):
     return tuple([hbox]+[widget[0] for widget in widget_data])
 
 
+class PathnameCombo(gtk.VBox):
+    def __init__(self,default_path,label,browse_prompt,volume_monitor=None,directory=True):
+        gtk.VBox.__init__(self)
+        self.browse_prompt=browse_prompt
+        self.directory=directory
+        self.model=gtk.ListStore(str,gtk.gdk.Pixbuf,str)
+        self.vm=volume_monitor
+        volume_monitor.connect_after("mount-added",self.set_mounts)
+        volume_monitor.connect_after("mount-removed",self.set_mounts)
+        self.combo_entry=gtk.ComboBoxEntry(self.model,0)
+        cpb=gtk.CellRendererPixbuf()
+        self.combo_entry.pack_start(cpb,False)
+        self.combo_entry.reorder(cpb, 0)
+        self.combo_entry.add_attribute(cpb, 'pixbuf', 1)
+
+        box,self.path_entry,self.browse_dir_button=box_add(self,
+            [(self.combo_entry,True,None),
+            (gtk.Button('...'),False,"clicked",self.browse_path)], #stock=gtk.STOCK_OPEN
+            label)
+        self.set_mounts()
+    def set_mounts(self,*args):
+        iter=self.combo_entry.get_active_iter()
+        if iter:
+            last_active=list(self.model[iter])
+        else:
+            last_active=None
+        self.model.clear()
+        t=gtk.icon_theme_get_default()
+        mi=self.vm.get_mount_info()
+        for name,icon_names,path in mi:
+            ii=t.choose_icon(icon_names,gtk.ICON_SIZE_MENU,0)
+            pb=ii.load_icon()
+            iter=self.model.append((name,pb,path))
+            if last_active:
+                if last_active[0]==name and last_active[0]==path:
+                    self.combo_entry.set_active_iter(iter)
+                else:
+                    self.set_path('')
+    def set_editable(self,editable=True):
+##        self.combo_entry.child.set_editable(editable)
+        self.combo_entry.set_sensitive(editable)##(gtk.SENSITIVITY_AUTO if editable else gtk.SENSITIVITY_OFF)
+        self.browse_dir_button.set_sensitive(editable)
+    def browse_path(self,button):
+        if self.directory:
+            path=directory_dialog(self.browse_prompt,self.get_path())
+        else:
+            path=file_dialog(self.browse_prompt,self.get_path())
+        if path:
+            self.combo_entry.child.set_text(path)
+    def get_path(self):
+        iter=self.combo_entry.get_active_iter()
+        if iter:
+            return self.model[iter][2]
+        return self.combo_entry.child.get_text()
+    def set_path(self,path):
+        self.combo_entry.child.set_text(path)
+
+
 class PathnameEntry(gtk.VBox):
     def __init__(self,default_path,label,browse_prompt,directory=True):
         gtk.VBox.__init__(self)
