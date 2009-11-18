@@ -260,6 +260,8 @@ class ImportPlugin(pluginbase.Plugin):
         pass
 
     def plugin_init(self,mainframe,app_init):
+        if not 'gio' in dir(io):
+            return
         self.mainframe=mainframe
         self.import_job=ImporterImportJob(self)
         mainframe.tm.register_job(self.import_job,'BUILDVIEW')
