@@ -82,6 +82,20 @@ class Collection(list):
         dup.numselected=self.numselected
         dup.image_dirs=self.image_dirs[:]
         dup.filename=self.filename
+        dup.verify_after_walk=self.verify_after_walk
+        dup.load_metadata=self.load_metadata
+        dup.load_embedded_thumbs=self.load_embedded_thumbs
+        dup.load_preview_icons=self.load_preview_icons
+        return dup
+    def copy_from(self,dup):
+        self[:]=dup[:]
+        self.numselected=dup.numselected
+        self.image_dirs=dup.image_dirs[:]
+        self.filename=dup.filename
+        self.verify_after_walk=dup.verify_after_walk
+        self.load_metadata=dup.load_metadata
+        self.load_embedded_thumbs=dup.load_embedded_thumbs
+        self.load_preview_icons=dup.load_preview_icons
         return dup
     def simple_copy(self):
         return SimpleCollection(self,True)

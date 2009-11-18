@@ -398,8 +398,12 @@ class WalkDirectoryJob(WorkerJob):
                         browser.lock.release()
                         if collection.load_metadata:
                             imagemanip.load_metadata(item,get_thumbnail=collection.load_embedded_thumbs)
+                            if collection.load_embedded_thumbs and not item.thumb:
+                                item.cannot_thumb=True
                         elif collection.load_preview_icons:
                             imagemanip.load_thumb_from_preview_icon(item)
+                            if not item.thumb:
+                                item.cannot_thumb=True
                         del_view_item(view,browser,item)
                         browser.lock.acquire()
                         view.add_item(item)

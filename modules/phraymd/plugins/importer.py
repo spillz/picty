@@ -91,9 +91,11 @@ class ImporterImportJob(backend.WorkerJob):
         self.unsetevent()
 
 
-    def start_browse_source(self,path):
+    def start_browse_source(self,path,options):
         self.mode=IMPORT_MODE_BROWSE
         self.source_path=path
+        for o in options:
+            self.__dict__[o]=options[o]
         self.plugin.mainframe.tm.queue_job('IMPORT')
 
     def start_browse_restore(self):
@@ -185,8 +187,11 @@ class ImporterImportJob(backend.WorkerJob):
             item[0]=dest_filename
             item.filename=dest_filename
             item.mtime=os.path.getmtime(item.filename)
+            if collection.load_metadata and not item.meta:
+                imagemanip.load_metadata(item,True)
             imagemanip.update_thumb_date(item)
             browser.lock.acquire()
+            print 'importing item',item.filename,'to',collection.filename
             collection.add(item)
             view.add_item(item)
             browser.lock.release()
@@ -206,7 +211,6 @@ class ImporterImportJob(backend.WorkerJob):
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             worker.monitor.start(collection.image_dirs[0])
             #jobs['VERIFYTIMAGES'].setevent()
-            worker.monitor.start(collection.image_dirs[0])
             self.unsetevent()
 
     def browse_source(self,worker,collection,view,browser,*args):
@@ -220,14 +224,16 @@ class ImporterImportJob(backend.WorkerJob):
         collection.empty()
         collection.image_dirs=[self.source_path]
         collection.filename=''
+
         collection.verify_after_walk=False
-        collection.load_embedded_thumbs=True
-        collection.load_metadata=False
-        collection.load_preview_icons=True
+        collection.load_embedded_thumbs=self.use_internal_thumbnails
+        collection.load_metadata=self.read_meta
+        collection.load_preview_icons=self.use_internal_thumbnails
+        collection.store_thumbnails=self.store_thumbnails
         worker.monitor.start(collection.image_dirs[0])
         del view[:]
-        self.collection_dest=collection.copy()
-        self.view_dest=view.copy()
+#        self.collection_dest=collection.copy()
+#        self.view_dest=view.copy()
         self.collection_src=collection
         self.view_src=view
         worker.jobs['WALKDIRECTORY'].setevent()
@@ -236,9 +242,7 @@ class ImporterImportJob(backend.WorkerJob):
         self.collection_src=collection.copy()
         self.view_src=view.copy()
         worker.monitor.stop(collection.image_dirs[0])
-        collection.image_dirs=self.collection_copy.image_dirs
-        collection.filename=self.collection_copy.filename
-        collection[:]=self.collection_copy[:]
+        collection.copy_from(self.collection_copy)
         view[:]=self.view_copy[:]
         if restore_monitor:
             worker.monitor.start(collection.image_dirs[0])
@@ -287,11 +291,12 @@ class ImportPlugin(pluginbase.Plugin):
         self.browse_box=gtk.VBox()
         self.browse_frame.add(self.browse_box)
         self.browse_read_meta_check=gtk.CheckButton("Load Metadata")
-        self.browse_use_internal_thumbnails=gtk.CheckButton("Use Internal Thumbnails")
-        self.browse_store_thumbnails=gtk.CheckButton("Store Thumbnails in Cache")
+        self.browse_use_internal_thumbnails_check=gtk.CheckButton("Use Internal Thumbnails")
+        self.browse_use_internal_thumbnails_check.set_active(True)
+        self.browse_store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache")
         self.browse_box.pack_start(self.browse_read_meta_check,False)
-        self.browse_box.pack_start(self.browse_use_internal_thumbnails,False)
-        self.browse_box.pack_start(self.browse_store_thumbnails,False)
+        self.browse_box.pack_start(self.browse_use_internal_thumbnails_check,False)
+        #self.browse_box.pack_start(self.browse_store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
         self.vbox.pack_start(self.browse_frame,False)
 
         ##IMPORT OPTIONS
@@ -395,9 +400,16 @@ class ImportPlugin(pluginbase.Plugin):
         self.import_action_box.show()
         self.browse_frame.hide()
         self.import_source_combo.set_editable(False)
+
+        options={
+        'read_meta':self.browse_read_meta_check.get_active(),
+        'use_internal_thumbnails':self.browse_use_internal_thumbnails_check.get_active(),
+        'store_thumbnails':self.browse_store_thumbnails_check.get_active(),
+        }
+
         if not self.base_dir_entry.get_path():
             self.base_dir_entry.set_path(worker.collection.image_dirs[0])
-        self.import_job.start_browse_source(path)
+        self.import_job.start_browse_source(path,options)
 
     def cancel_browse(self,button):
         self.import_source_combo.set_editable(True)
