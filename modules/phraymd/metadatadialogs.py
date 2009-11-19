@@ -21,13 +21,15 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+##todo: rename this module commonui
+
 import os
 import gtk
 
 #local imports
 import settings
 import metadata
-
+import io
 
 def box_add(box,widget_data,label_text):
     hbox=gtk.HBox()
@@ -73,7 +75,7 @@ class PathnameCombo(gtk.VBox):
         mi=self.vm.get_mount_info()
         for name,icon_names,path in mi:
             ii=t.choose_icon(icon_names,gtk.ICON_SIZE_MENU,0)
-            pb=ii.load_icon()
+            pb=None if not ii else ii.load_icon()
             iter=self.model.append((name,pb,path))
             if last_active:
                 if last_active[0]==name and last_active[0]==path:
@@ -90,13 +92,19 @@ class PathnameCombo(gtk.VBox):
         else:
             path=file_dialog(self.browse_prompt,self.get_path())
         if path:
-            self.combo_entry.child.set_text(path)
+            self.set_path(path)
     def get_path(self):
         iter=self.combo_entry.get_active_iter()
         if iter:
             return self.model[iter][2]
         return self.combo_entry.child.get_text()
     def set_path(self,path):
+        iter=self.model.get_iter_root()
+        while iter:
+            if io.equal(path,self.model[iter][2]):
+                self.combo_entry.set_active_iter(iter)
+                return
+            iter=self.model.iter_next(iter)
         self.combo_entry.child.set_text(path)
 
 

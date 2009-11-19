@@ -260,8 +260,6 @@ class ImportPlugin(pluginbase.Plugin):
         pass
 
     def plugin_init(self,mainframe,app_init):
-        if not 'gio' in dir(io):
-            return
         self.mainframe=mainframe
         self.import_job=ImporterImportJob(self)
         mainframe.tm.register_job(self.import_job,'BUILDVIEW')
@@ -457,10 +455,10 @@ class ImportPlugin(pluginbase.Plugin):
             if imageinfo.create_empty_file(name,coll_dir):
                 self.model.append((name,400))
 
-    def media_connected(self,uri):
+    def media_connected(self,uri): ##todo: I think the uri is actually a local path
         sidebar=self.mainframe.sidebar
         sidebar.set_current_page(sidebar.page_num(self.scrolled_window))
         if self.collection_copy==None:
-            self.import_source_entry.set_text(io.get_path_from_uri(uri))
+            self.import_source_entry.set_path(io.get_path_from_uri(uri))
         self.mainframe.sidebar_toggle.set_active(True)
 
