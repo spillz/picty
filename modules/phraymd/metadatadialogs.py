@@ -82,6 +82,8 @@ class PathnameCombo(gtk.VBox):
                     self.combo_entry.set_active_iter(iter)
                 else:
                     self.set_path('')
+    def get_editable(self):
+        return self.browse_dir_button.get_property("sensitive")
     def set_editable(self,editable=True):
 ##        self.combo_entry.child.set_editable(editable)
         self.combo_entry.set_sensitive(editable)##(gtk.SENSITIVITY_AUTO if editable else gtk.SENSITIVITY_OFF)

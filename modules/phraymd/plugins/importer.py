@@ -456,9 +456,10 @@ class ImportPlugin(pluginbase.Plugin):
                 self.model.append((name,400))
 
     def media_connected(self,uri): ##todo: I think the uri is actually a local path
+        print 'media connected event for',uri
         sidebar=self.mainframe.sidebar
         sidebar.set_current_page(sidebar.page_num(self.scrolled_window))
-        if self.collection_copy==None:
-            self.import_source_entry.set_path(io.get_path_from_uri(uri))
+        if self.import_source_combo.get_editable():
+            self.import_source_combo.set_path(io.get_path_from_uri(uri))
         self.mainframe.sidebar_toggle.set_active(True)
 
