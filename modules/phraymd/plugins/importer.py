@@ -155,8 +155,15 @@ naming_schemes=[
     ("<Year>/<Month>/<Day>/<DateTime>-<ImageName>","<Year>/<Month>/<Day>/<DateTime>-<ImageName>",True),
     ]
 
-def altname(name):
-    return name
+def altname(pathname):
+    dirname,fullname=os.path.split(pathname)
+    name,ext=os.path.splitext(fullname)
+    i=0
+    while os.path.exists(pathname):
+        i+=1
+        aname=name+'_(%i)'%i
+        pathname=os.path.join(dirname,aname+ext)
+    return pathname
 
 IMPORT_MODE_BROWSE=0
 IMPORT_MODE_RESTORE=1
@@ -239,7 +246,14 @@ class ImporterImportJob(backend.WorkerJob):
             if self.dest_name_needs_meta and not item.meta:
                 temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
                 temp_filename=os.path.join(temp_dir,os.path.split(item.filename)[1])
-                io.copy_file(item.filename,temp_filename)
+                try:
+                    if self.move:
+                        io.move_file(item.filename,temp_filename)
+                    else:
+                        io.copy_file(item.filename,temp_filename)
+                except IOError:
+                    ##todo: log an error
+                    continue
                 src_filename=temp_filename
                 imagemanip.load_metadata(item,True,src_filename)
             dest_path,dest_name=name_item(item,self.base_dest_dir,self.dest_name_template)
@@ -256,12 +270,10 @@ class ImporterImportJob(backend.WorkerJob):
                 ##todo: set mtime to the mtime of the original after copy/move?
                 if self.move or temp_filename:
                     io.move_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
-                    if temp_filename:
-                        io.remove_file(item.filename)
                 else:
                     io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
-                    if temp_filename:
-                        io.remove_file(temp_filename)
+                if temp_filename:
+                    io.remove_file(temp_filename)
                 if temp_dir:
                     os.rmdir(temp_dir)
             except IOError:
@@ -272,6 +284,9 @@ class ImporterImportJob(backend.WorkerJob):
             item.mtime=os.path.getmtime(item.filename)
             if collection.load_metadata and not item.meta:
                 imagemanip.load_metadata(item,True)
+            if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:
+                if not collection.load_embedded_thumbs and not collection.load_preview_icons:
+                    imagemanip.make_thumb(item)
             imagemanip.update_thumb_date(item)
             browser.lock.acquire()
             print 'importing item',item.filename,'to',collection.filename
