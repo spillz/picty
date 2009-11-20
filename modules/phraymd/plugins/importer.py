@@ -46,6 +46,10 @@ maybe need a gphoto alternative for non-gnome desktops
 import os
 import os.path
 import threading
+import tempfile
+import string
+import datetime
+import re
 
 import gtk
 import gobject
@@ -58,6 +62,7 @@ from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
 from phraymd import collections
+from phraymd import views
 from phraymd import metadata
 from phraymd import backend
 
@@ -68,13 +73,87 @@ EXIST_OVERWRITE=2
 EXIST_OVERWRITE_NEWER=3
 
 
+class NamingTemplate(string.Template):
+    def __init__(self,template):
+        print 'naming template',template
+        t=template.replace("<","${").replace(">","}")
+        print 'subbed naming template',t
+        string.Template.__init__(self,t)
 
-def default_destname(item,dest_dir_base):
+def get_date(item):
+    '''
+    returns a datetime object containing the date the image was taken or if not available the mtime
+    '''
+    result=views.get_ctime(item)
+    if result==datetime.datetime(1900,1,1):
+        return datetime.datetime.fromtimestamp(item.mtime)
+    else:
+        return result
+
+def get_year(item):
+    '''
+    returns 4 digit year as string
+    '''
+    return '%04i'%get_date(item).year
+
+def get_month(item):
+    '''
+    returns 2 digit month as string
+    '''
+    return '%02i'%get_date(item).month
+
+def get_day(item):
+    '''
+    returns 2 digit day as string
+    '''
+    return '%02i'%get_date(item).day
+
+def get_datetime(item):
+    '''
+    returns a datetime string of the form "YYYYMMDD-HHMMSS"
+    '''
+    d=get_date(item)
+    return '%04i%02i%02i-%02i%02i%02i'%(d.year,d.month,d.day,d.hour,d.minute,d.day)
+
+def get_original_name(item):
     '''
     returns a tuple (path,name) for the import destination
     '''
-    return dest_dir_base,os.path.split(item.filename)[1]
+    return os.path.splitext(os.path.split(item.filename)[1])[0]
 
+
+class VariableExpansion:
+    def __init__(self,item):
+        self.item=item
+        self.variables={
+            'Year':get_year,
+            'Month':get_month,
+            'Day':get_day,
+            'DateTime':get_datetime,
+            'ImageName':get_original_name,
+            }
+    def __getitem__(self,variable):
+        return self.variables[variable](self.item)
+
+#def naming_default(item,dest_dir_base):
+#    '''
+#    returns a tuple (path,name) for the import destination
+#    '''
+#    return dest_dir_base,os.path.split(item.filename)[1]
+
+def name_item(item,dest_base_dir,naming_scheme):
+    subpath=NamingTemplate(naming_scheme).substitute(VariableExpansion(item))
+    ext=os.path.splitext(item.filename)[1]
+    fullpath=os.path.join(dest_base_dir,subpath+ext)
+    return os.path.split(fullpath)
+
+naming_schemes=[
+    ("<ImageName>","<ImageName>",False),
+    ("<Year>/<Month>/<ImageName>","<Year>/<Month>/<ImageName>",True),
+    ("<Year>/<Month>/<DateTime>-<ImageName>","<Year>/<Month>/<DateTime>-<ImageName>",True),
+    ("<Year>/<Month>/<Day>/<ImageName>","<Year>/<Month>/<Day>/<ImageName>",True),
+    ("<Year>/<Month>/<Day>/<DateTime>-<ImageName>","<Year>/<Month>/<Day>/<DateTime>-<ImageName>",True),
+    ]
 
 def altname(name):
     return name
@@ -123,7 +202,7 @@ class ImporterImportJob(backend.WorkerJob):
         self.move=False
         self.action_if_exists=EXIST_SKIP#EXIST_SKIP|EXIST_RENAME|EXIST_OVERWRITE
         self.dest_name_needs_meta=False
-        self.dest_name=default_destname
+        self.dest_name_template=''
         self.base_dest_dir=None
         self.cancel=False
 
@@ -148,22 +227,22 @@ class ImporterImportJob(backend.WorkerJob):
         if not self.base_dest_dir:
             self.base_dest_dir=self.collection_dest.image_dirs[0]
         print 'importing',len(self.items),'items'
+        if not os.path.exists(self.base_dest_dir):
+            os.makedirs(self.base_dest_dir)
         while len(self.items)>0 and jobs.ishighestpriority(self) and not self.cancel:
             item=self.items.pop()
             print 'importing item',item.filename
             self.dest_dir=self.base_dest_dir
             src_filename=item.filename
-            temp_dest_filename=''
+            temp_filename=''
+            temp_dir=''
             if self.dest_name_needs_meta and not item.meta:
-                ##copy file to a temp location so that it can be renamed
-                ##todo:use h
-                h,temp_filename=tempfile.mkstemp('','.image-')
-                temp_dest_filename=os.path.join(self.dest_dir,os.path.split(temp_filename)[1])
-                io.copy(item.filename,temp_dest_filename)
-                h.close()
-                src_filename=temp_dest_filename
+                temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
+                temp_filename=os.path.join(temp_dir,os.path.split(item.filename)[1])
+                io.copy_file(item.filename,temp_filename)
+                src_filename=temp_filename
                 imagemanip.load_metadata(item,True,src_filename)
-            dest_path,dest_name=self.dest_name(item,self.base_dest_dir)
+            dest_path,dest_name=name_item(item,self.base_dest_dir,self.dest_name_template)
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             dest_filename=os.path.join(dest_path,dest_name)
@@ -175,12 +254,16 @@ class ImporterImportJob(backend.WorkerJob):
                     dest_filename=altname(dest_filename)
             try:
                 ##todo: set mtime to the mtime of the original after copy/move?
-                if self.move or temp_dest_filename:
+                if self.move or temp_filename:
                     io.move_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
+                    if temp_filename:
+                        io.remove_file(item.filename)
                 else:
                     io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
-                    if temp_dest_filename:
-                        io.remove_file(temp_dest_filename)
+                    if temp_filename:
+                        io.remove_file(temp_filename)
+                if temp_dir:
+                    os.rmdir(temp_dir)
             except IOError:
                 ##todo: log an error
                 continue
@@ -197,7 +280,6 @@ class ImporterImportJob(backend.WorkerJob):
             browser.lock.release()
             print 'imported item',item.filename
             ##todo: log success
-            ##todo: kill temp file
             gobject.idle_add(browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
             gobject.idle_add(browser.refresh_view)
             i+=1
@@ -308,7 +390,8 @@ class ImportPlugin(pluginbase.Plugin):
         self.import_box.pack_start(self.base_dir_entry,False)
 
         self.name_scheme_model=gtk.ListStore(str,gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN) ##display, callback, uses metadata
-        self.name_scheme_model.append(("Simple: <Original Image Name>",default_destname,False))
+        for n in naming_schemes:
+            self.name_scheme_model.append(n)
         self.name_scheme_combo=gtk.ComboBox(self.name_scheme_model)
         box,self.name_scheme_combo=box_add(self.import_box,[(self.name_scheme_combo,None)],"Naming Scheme")
         cell = gtk.CellRendererText()
@@ -433,7 +516,7 @@ class ImportPlugin(pluginbase.Plugin):
         if iter:
             row=self.name_scheme_model[iter]
             params['dest_name_needs_meta']=row[2]
-            params['dest_name']=row[1]
+            params['dest_name_template']=row[1]
         else:
             return
         self.import_job.start_import(params)
