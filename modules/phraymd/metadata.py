@@ -33,11 +33,12 @@ def load_metadata(item,filename=None,thumbnail=False):
             w=pb.get_width()
             h=pb.get_height()
             a=max(128,w,h)
-            item.thumb=pb.scale_simple(128*w/a,128*h/a)
+            item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
             item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
-            print 'loaded thumbnail',item.filename,item.thumb
         except:
             print 'load thumbnail failed',item.filename
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])
             item.thumb=None
 
     except:
