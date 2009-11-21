@@ -174,9 +174,10 @@ class FlickrService(UploadServiceBase):
             tags=preferences[MODEL_COL_FLICKR_TAGS]
             description=preferences[MODEL_COL_FLICKR_DESCRIPTION]
             privacy=preferences[MODEL_COL_FLICKR_PRIVACY]
-            public=True if privacy==PRIVACY_PUBLIC else False
-            family=True if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else False
-            friends=True if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else False
+            public=1 if privacy==PRIVACY_PUBLIC else 0
+            family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
+            friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
+            print 'uploading',item.filename,'with privacy',public,family,friends
 
             def progress_cb(progress,done):
                 print 'progress notify',progress,done
