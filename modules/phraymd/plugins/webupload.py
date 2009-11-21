@@ -70,6 +70,8 @@ class UploadPlugin(pluginbase.Plugin):
 
         self.scrolled_window=gtk.ScrolledWindow()
         self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        self.viewport=gtk.Viewport()
+        self.scrolled_window.add(self.viewport)
 
         self.vbox=gtk.VBox()
         self.service_box=hbox_group([(self.service_label,False),(self.service_combo,True,False)])
@@ -97,9 +99,10 @@ class UploadPlugin(pluginbase.Plugin):
         if slist[1]==None:
             import webupload_services.serviceui
             slist[1]=services.serviceui.ServiceUI(self.mainframe,slist)
-        child=self.scrolled_window.get_child()
+        child=self.viewport.get_child()
         if child:
-            self.scrolled_window.remove(child)
-        self.scrolled_window.add_with_viewport(slist[1])
-        if not child:
-            self.scrolled_window.show_all()
+            self.viewport.remove(child)
+        self.viewport.add(slist[1])
+#        if not child:
+#            self.viewport.show_all()
+

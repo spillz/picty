@@ -421,7 +421,7 @@ class ServiceUI(gtk.VBox):
         if val!=None:
             self.album_combo_entry.child.set_text(val)
         else:
-            self.album_combo_entry.set_text("")
+            self.album_combo_entry.child.set_text("")
         val=self.all_same(selected_rows,MODEL_COL_SIZE)
         if val!=None:
             self.resize_entry.set_text(val)
