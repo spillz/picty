@@ -905,6 +905,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=0
 
     def __call__(self,worker,collection,view,browser):
+        print 'running verify job'
         jobs=worker.jobs
         pluginmanager.mgr.callback('t_collection_modify_start_hint')
         i=self.countpos  ##todo: make sure this gets initialized
@@ -1084,7 +1085,7 @@ class Worker:
                 if self.jobs['QUIT']:
                     try:
                         if len(self.collection.image_dirs)>0:
-                            self.monitor.stop(self.collection.image_dirs[0])
+                            self.monitor.end(self.collection.image_dirs[0])
                         if self.dirtimer!=None:
                             self.dirtimer.cancel()
                         savejob=SaveCollectionJob()
@@ -1109,6 +1110,7 @@ class Worker:
     def deferred_dir_update(self):
         log.info('Deferred directory monitor event')
         job=self.jobs['DIRECTORYUPDATE']
+        print 'DIRECTORY REMOVAL EVENT'
         job.deflock.acquire()
         for j in job.deferred:
             job.queue.append(j)
@@ -1133,8 +1135,10 @@ class Worker:
                 log.warning('change_notify invalid '+path+' '+action)
                 return
         if isdir:
+            print 'directory changed '+path+' '+action
             log.debug('directory changed '+path+' '+action)
             if action in ('MOVED_FROM','DELETE'):
+                print 'doing verify'
                 #queue a verify job since we won't get individual image removal notifications
                 self.jobs['VERIFYIMAGES'].countpos=0
                 self.jobs['VERIFYIMAGES'].setevent()

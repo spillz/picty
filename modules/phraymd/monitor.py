@@ -15,6 +15,15 @@ class Monitor(ProcessEvent):
         self.notifier = ThreadedNotifier(wm, self)
         self.wdd=None
         self.notifier.start()
+    def end(self,dir):
+        try:
+            if not self.wdd<0 and dir in self.wdd:
+                wm.rm_watch(self.wdd[dir], rec=True)
+            self.notifier.stop() ##todo: should be checking if there are any other watches still active?
+        except:
+            print 'Error stopping watch'
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])
     def process_IN_MODIFY(self, event):
         path=os.path.join(event.path, event.name)
         self.cb(path,'MODIFY',event.is_dir)
@@ -49,8 +58,9 @@ class Monitor(ProcessEvent):
         self.wdd = wm.add_watch(dir, mask, rec=True, auto_add=True)
     def stop(self,dir):
         try:
-            if self.wdd and dir in self.wdd:
+            if not self.wdd<0 and dir in self.wdd:
                 wm.rm_watch(self.wdd[dir], rec=True)
-            self.notifier.stop() ##todo: should be checking if there are any other watches still active?
         except:
-            pass
+            print 'Error stopping watch'
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])

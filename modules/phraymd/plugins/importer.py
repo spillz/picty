@@ -173,9 +173,10 @@ class ImporterImportJob(backend.WorkerJob):
     def __init__(self,plugin):
         backend.WorkerJob.__init__(self,'IMPORT')
         self.plugin=plugin
-        self.items=None
         self.unsetevent()
-
+        self.collection_src=None
+        self.collection_dest=None
+        self.collection_copy=None
 
     def start_browse_source(self,path,options):
         self.mode=IMPORT_MODE_BROWSE
@@ -201,8 +202,6 @@ class ImporterImportJob(backend.WorkerJob):
         backend.WorkerJob.unsetevent(self)
         self.cancel=False
         self.countpos=0
-        self.collection_src=None
-        self.collection_dest=None
         self.view_src=None
         self.view_dest=None
         self.items=None
@@ -222,7 +221,6 @@ class ImporterImportJob(backend.WorkerJob):
             self.browse_restore(worker,collection,view,browser)
             self.unsetevent()
             return
-
         self.browse_restore(worker,collection,view,browser,False)
         jobs=worker.jobs
         pluginmanager.mgr.callback('t_collection_modify_start_hint')
@@ -238,7 +236,6 @@ class ImporterImportJob(backend.WorkerJob):
             os.makedirs(self.base_dest_dir)
         while len(self.items)>0 and jobs.ishighestpriority(self) and not self.cancel:
             item=self.items.pop()
-            print 'importing item',item.filename
             self.dest_dir=self.base_dest_dir
             src_filename=item.filename
             temp_filename=''
@@ -247,10 +244,7 @@ class ImporterImportJob(backend.WorkerJob):
                 temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
                 temp_filename=os.path.join(temp_dir,os.path.split(item.filename)[1])
                 try:
-                    if self.move:
-                        io.move_file(item.filename,temp_filename)
-                    else:
-                        io.copy_file(item.filename,temp_filename)
+                    io.copy_file(item.filename,temp_filename)
                 except IOError:
                     ##todo: log an error
                     continue
@@ -274,6 +268,8 @@ class ImporterImportJob(backend.WorkerJob):
                     io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
                 if temp_filename:
                     io.remove_file(temp_filename)
+                    if self.move and item.filename!=src_filename:
+                        io.remove_file(item.filename)
                 if temp_dir:
                     os.rmdir(temp_dir)
             except IOError:
@@ -286,6 +282,7 @@ class ImporterImportJob(backend.WorkerJob):
                 imagemanip.load_metadata(item,True)
             if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:
                 if not collection.load_embedded_thumbs and not collection.load_preview_icons:
+                    print 'recreating thumbnail on import for',item.filename
                     imagemanip.make_thumb(item)
             imagemanip.update_thumb_date(item)
             browser.lock.acquire()
@@ -293,11 +290,10 @@ class ImporterImportJob(backend.WorkerJob):
             collection.add(item)
             view.add_item(item)
             browser.lock.release()
-            print 'imported item',item.filename
             ##todo: log success
+            i+=1
             gobject.idle_add(browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
             gobject.idle_add(browser.refresh_view)
-            i+=1
         self.countpos=i
         if not self.state:
             self.idle_add(self.plugin.import_cancelled)
@@ -307,6 +303,9 @@ class ImporterImportJob(backend.WorkerJob):
             gobject.idle_add(self.plugin.import_completed)
             pluginmanager.mgr.callback('t_collection_modify_complete_hint')
             worker.monitor.start(collection.image_dirs[0])
+            self.collection_src=None
+            self.collection_dest=None
+            self.collection_copy=None
             #jobs['VERIFYTIMAGES'].setevent()
             self.unsetevent()
 
