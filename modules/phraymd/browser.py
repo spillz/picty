@@ -227,7 +227,7 @@ class ImageBrowser(gtk.HBox):
         return self.hover_cmds.get_command(x,y,left,top,self.geo_pad/4)
 
     def item_to_view_index(self,item):
-        return self.tm.view.find_item(item)
+        return self.tm.active_view.find_item(item)
 
     def item_to_scroll_value(self,item):
         ind=self.item_to_view_index(item)
@@ -238,19 +238,19 @@ class ImageBrowser(gtk.HBox):
         self.tm.lock.acquire()
         if ind_to>ind_from:
             for x in range(ind_from,ind_to+1):
-                item=self.tm.view(x)
+                item=self.tm.active_view(x)
                 if not item.selected and select:
-                    self.tm.collection.numselected+=1
+                    self.tm.active_collection.numselected+=1
                 if item.selected and not select:
-                    self.tm.collection.numselected-=1
+                    self.tm.active_collection.numselected-=1
                 item.selected=select
         else:
             for x in range(ind_from,ind_to-1,-1):
-                item=self.tm.view(x)
+                item=self.tm.active_view(x)
                 if not item.selected and select:
-                    self.tm.collection.numselected+=1
+                    self.tm.active_collection.numselected+=1
                 if item.selected and not select:
-                    self.tm.collection.numselected-=1
+                    self.tm.active_collection.numselected-=1
                 item.selected=select
         self.tm.lock.release()
         self.emit('view-changed')
@@ -259,13 +259,13 @@ class ImageBrowser(gtk.HBox):
     def select_item(self,ind):
         '''select an item by array index of the view. in tag mode, toggles
         whatever tags are checked in the tag pane'''
-        if 0<=ind<len(self.tm.view):
-            item=self.tm.view(ind)
+        if 0<=ind<len(self.tm.active_view):
+            item=self.tm.active_view(ind)
             if self.mode==self.MODE_NORMAL:
                 if item.selected:
-                    self.tm.collection.numselected-=1
+                    self.tm.active_collection.numselected-=1
                 else:
-                    self.tm.collection.numselected+=1
+                    self.tm.active_collection.numselected+=1
                 item.selected=not item.selected
             self.last_selected=item
             self.last_selected_ind=ind
@@ -280,11 +280,11 @@ class ImageBrowser(gtk.HBox):
         self.lock.acquire()
         ind=(int(self.geo_view_offset)+int(event.y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad),int(event.x)/(self.geo_thumbwidth+self.geo_pad))
-        if ind<0 or ind>len(self.tm.view)-1 or event.x==0 and event.y==0 or event.x>=self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad):
+        if ind<0 or ind>len(self.tm.active_view)-1 or event.x==0 and event.y==0 or event.x>=self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad):
             item=None
             ind=-1
         else:
-            item=self.tm.view(ind)
+            item=self.tm.active_view(ind)
         if item and event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
 ##            if ind==self.pressed_ind and self.tm.view(ind)==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                 self.emit("activate-item",ind,item)
@@ -314,7 +314,7 @@ class ImageBrowser(gtk.HBox):
         if item and event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
             self.drag_item=item
             self.pressed_ind=ind
-            self.pressed_item=self.tm.view(ind)
+            self.pressed_item=self.tm.active_view(ind)
         else:
             self.pressed_ind=-1
             self.pressed_item=None
@@ -341,8 +341,8 @@ class ImageBrowser(gtk.HBox):
         (viewer is the destination of the drop)'''
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
-        ind=max(0,min(len(self.tm.view)-1,ind))
-        item=self.tm.view(ind)
+        ind=max(0,min(len(self.tm.active_view)-1,ind))
+        item=self.tm.active_view(ind)
         if selection_data.type=='tag-tree-row':
             data=selection_data.data
             paths=data.split('-')
@@ -366,8 +366,8 @@ class ImageBrowser(gtk.HBox):
         else:
             uris=[]
             i=0
-            while i<len(self.tm.view):
-                item=self.tm.view(i)
+            while i<len(self.tm.active_view):
+                item=self.tm.active_view(i)
                 if item.selected:
                     uri=io.get_uri(item.filename)
                     uris.append(uri)
@@ -379,7 +379,7 @@ class ImageBrowser(gtk.HBox):
         '''return the index of the item of the drawable coordinates (x,y)'''
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
-        ind=max(0,min(len(self.tm.view)-1,ind))
+        ind=max(0,min(len(self.tm.active_view)-1,ind))
         if x>=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
             ind=-1
         return ind
@@ -446,8 +446,8 @@ class ImageBrowser(gtk.HBox):
 
     def update_scrollbar(self):
         '''called to resync the scrollbar to changes in view geometry'''
-        upper=len(self.tm.view)/self.geo_horiz_count
-        if len(self.tm.view)%self.geo_horiz_count!=0:
+        upper=len(self.tm.active_view)/self.geo_horiz_count
+        if len(self.tm.active_view)%self.geo_horiz_count!=0:
             upper+=1
         upper=upper*(self.geo_thumbheight+self.geo_pad)
         self.scrolladj.set_all(value=self.geo_view_offset, lower=0,
@@ -487,7 +487,7 @@ class ImageBrowser(gtk.HBox):
            size changes, or changes to the number of items in the collection'''
         nudge=self.calc_screen_offset()
         self.geo_horiz_count=max(int(self.geo_width/(self.geo_thumbwidth+self.geo_pad)),1)
-        self.geo_view_offset_max=max(1,(self.geo_thumbheight+self.geo_pad)+(len(self.tm.view)-1)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
+        self.geo_view_offset_max=max(1,(self.geo_thumbheight+self.geo_pad)+(len(self.tm.active_view)-1)*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count)
         self.geo_view_offset=max(0,min(self.geo_view_offset_max-self.geo_height,self.geo_view_offset))
         if recenter:
             if self.focal_item!=None:
@@ -504,7 +504,7 @@ class ImageBrowser(gtk.HBox):
 
     def update_required_thumbs(self):
         #self.lock.acquire()
-        onscreen_items=self.tm.view.get_items(self.geo_ind_view_first,min(self.geo_ind_view_last,len(self.tm.view)))
+        onscreen_items=self.tm.active_view.get_items(self.geo_ind_view_first,min(self.geo_ind_view_last,len(self.tm.active_view)))
         self.tm.request_thumbnails(onscreen_items) ##todo: caching ,fore_items,back_items
         #self.lock.release()
 
@@ -572,8 +572,8 @@ class ImageBrowser(gtk.HBox):
         i=imgind
         neededitem=None
         while i<self.geo_ind_view_last:
-            if 0<=i<len(self.tm.view):
-                item=self.tm.view(i)
+            if 0<=i<len(self.tm.active_view):
+                item=self.tm.active_view(i)
             else:
                 break
             if self.last_selected_ind>=0 and self.hover_ind>=0 and (self.last_selected_ind>=i>=self.hover_ind or self.last_selected_ind<=i<=self.hover_ind):
@@ -589,7 +589,7 @@ class ImageBrowser(gtk.HBox):
 #           todo: come up with a scheme for highlighting images
             if item==self.focal_item:
                 try:
-                    (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+                    (thumbwidth,thumbheight)=self.tm.active_view(i).thumbsize
                     adjy=self.geo_pad/2+(128-thumbheight)/2-3
                     adjx=self.geo_pad/2+(128-thumbwidth)/2-3
                     drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
@@ -602,7 +602,7 @@ class ImageBrowser(gtk.HBox):
                 if not imagemanip.load_thumb(item):
                     request_thumbs=True
             if item.thumb:
-                (thumbwidth,thumbheight)=self.tm.view(i).thumbsize
+                (thumbwidth,thumbheight)=self.tm.active_view(i).thumbsize
                 adjy=self.geo_pad/2+(128-thumbheight)/2
                 adjx=self.geo_pad/2+(128-thumbwidth)/2
                 drawable.draw_pixbuf(gc, item.thumb, 0, 0,x+adjx,y+adjy)

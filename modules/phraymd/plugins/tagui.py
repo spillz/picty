@@ -33,22 +33,23 @@ from phraymd import settings
 from phraymd import metadatadialogs
 
 class TagCloudRebuildJob(backend.WorkerJob):
-    def __init__(self):
+    def __init__(self,worker,collection,browser,tagframe):
         backend.WorkerJob.__init__(self,'TAGCLOUDREBUILD')
-        self.tagframe=None
+        self.tagframe=tagframe
 
-    def __call__(self,worker,collection,view,browser,*args):
+    def __call__(self):
         if not self.tagframe:
-            return False
+            return True
 #        while self.pos<len(collection):
         self.tagframe.tag_cloud.empty()
-        for item in collection:
+        for item in self.collection:
             self.tagframe.tag_cloud.add(item)
         self.tagframe.tag_cloud_view.empty()
-        for item in view:
+        for item in self.view:
             self.tagframe.tag_cloud_view.add(item)
         if self.tagframe:
             gobject.idle_add(self.tagframe.start_refresh_timer)
+        return True
 
 
 class TagCloud():
@@ -146,8 +147,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
             ##todo: could flush unused bitmaps out of the png_path
         except:
             print 'Tag Plugin: No tag layout data found'
-        self.rebuild_job=TagCloudRebuildJob()
-        self.worker.register_job(self.rebuild_job,'BUILDVIEW')
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
@@ -163,7 +162,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
         except:
             print 'Tag Plugin: Failed to save tag layout'
         self.tagframe.destroy()
-        self.worker.deregister_job(self.rebuild_job)
         del self.tagframe
     def t_collection_item_added(self,item):
         '''item was added to the collection'''
@@ -176,7 +174,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_collection_item_metadata_changed(self,item,meta_before):
         '''item metadata has changed'''
         self.tagframe.tag_cloud.update(item,meta_before)
-        i=self.worker.view.find_item(item)
+        i=self.worker.active_view.find_item(item)
         if i>0:
             self.tagframe.tag_cloud_view.update(item,meta_before)
         self.thread_refresh()
@@ -207,7 +205,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         '''collection has loaded into main frame'''
         self.tagframe.tag_cloud.empty()
         self.tagframe.tag_cloud_view.empty()
-        for item in self.worker.collection:
+        for item in self.worker.active_collection:
             self.tagframe.tag_cloud.add(item)
         self.thread_refresh()
     def t_view_emptied(self):
@@ -566,10 +564,10 @@ class TagFrame(gtk.VBox):
                 path=data
                 from phraymd import imageinfo
                 item=imageinfo.Item(path,0)
-                ind=self.worker.collection.find(item)
+                ind=self.worker.active_collection.find(item)
                 if ind<0:
                     return False
-                thumb_pb=self.worker.collection(ind).thumb
+                thumb_pb=self.worker.active_collection(ind).thumb
                 if thumb_pb:
                     width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
                     width=width*3/2

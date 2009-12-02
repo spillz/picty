@@ -30,7 +30,8 @@ import cPickle
 ##phraymd imports
 import pluginmanager
 import settings
-
+import monitor
+import views
 
 class SimpleCollection(list):
     '''defines a sorted collection of Items'''
@@ -75,7 +76,10 @@ class Collection(list):
         self.load_preview_icons=False ##only relevant if load_metadata is false
         self.trash_location=None ## none defaults to <collection dir>/.trash
         self.thumbnail_cache=None ## use gnome/freedesktop or put in the image folder
-        ##self.monitor
+        self.monitor=None
+        self.monitor_master_callback=None
+        self.views=[]
+        self.active_view=None
         for item in items:
             self.add(item)
             self.numselected+=item.selected
@@ -89,6 +93,10 @@ class Collection(list):
         dup.load_metadata=self.load_metadata
         dup.load_embedded_thumbs=self.load_embedded_thumbs
         dup.load_preview_icons=self.load_preview_icons
+        dup.monitor=None
+        dup.views=[]
+        for v in self.views:
+            dup.views.append(v.copy())
         return dup
     def copy_from(self,dup):
         self[:]=dup[:]
@@ -99,16 +107,22 @@ class Collection(list):
         self.load_metadata=dup.load_metadata
         self.load_embedded_thumbs=dup.load_embedded_thumbs
         self.load_preview_icons=dup.load_preview_icons
+        del self.views[:]
+        for v in dup.views:
+            self.views.append(v.copy())
         return dup
     def simple_copy(self):
         return SimpleCollection(self,True)
-    def add(self,item):
+    def add(self,item,add_to_view=True):
         '''
         add an item to the collection and notify plugin
         '''
         self.numselected+=item.selected
         bisect.insort(self,item)
         pluginmanager.mgr.callback('t_collection_item_added',item)
+        if add_to_view:
+            for v in self.views:
+                v.add_item(item)
     def find(self,item):
         '''
         find an item in the collection and return its index
@@ -119,7 +133,7 @@ class Collection(list):
         if self[i]==item:
             return i
         return -1
-    def delete(self,item):
+    def delete(self,item,delete_from_view=True):
         '''
         delete an item from the collection, returning the item to the caller if present
         notifies plugins if the item is remmoved
@@ -129,10 +143,41 @@ class Collection(list):
             self.numselected-=item.selected
             self.pop(i)
             pluginmanager.mgr.callback('t_collection_item_removed',item)
+            for v in self.views:
+                v.del_item(item)
             return item
         return None
     def __call__(self,ind):
         return self[ind]
+    def create_monitor(self,callback):
+        self.monitor_master_callback=callback
+        self.monitor=monitor.Monitor(self.monitor_callback)
+    def start_monitor(self):
+        self.monitor.start(self.image_dirs[0])
+    def stop_monitor(self):
+        self.monitor.stop(self.image_dirs[0])
+    def end_monitor(self):
+        if self.monitor:
+            self.monitor.end(self.image_dirs[0])
+    def monitor_callback(self,path,action,is_dir):
+        self.monitor_master_callback(self,path,action,is_dir)
+    def add_view(self,sort_criteria=None):
+        view=views.Index(sort_criteria,self)
+        self.views.append(view)
+        if not self.active_view:
+            self.active_view=view
+        return view
+    def remove_view(self,view):
+        ind=self.view.find(view)
+        if ind>=0:
+            del self.views[ind]
+            return view
+        return False
+    def set_active_view(self,view):
+        if view in self.views:
+            self.active_view=view
+    def get_active_view(self):
+        return self.active_view
     def load(self,filename=''):
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument

@@ -323,7 +323,7 @@ class MainFrame(gtk.VBox):
 
         dbusserver.start()
 
-        self.tm.view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+        self.tm.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.start()
 
     def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
@@ -338,8 +338,8 @@ class MainFrame(gtk.VBox):
             if layout['sort order']==sort_model[i][0]:
                 self.sort_order.set_active(i)#sort_model.get_iter((i,)))
                 break
-        self.tm.view.reverse=layout['sort direction']
-        if self.tm.view.reverse:
+        self.tm.active_view.reverse=layout['sort direction']
+        if self.tm.active_view.reverse:
             self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
             self.sort_toggle.set_active(True)
             self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
@@ -366,7 +366,7 @@ class MainFrame(gtk.VBox):
         ##layout['window size']=self.window.get_size()
         ##layout['window maximized']=self.window.get_size()
         layout['sort order']=self.sort_order.get_active_text()
-        layout['sort direction']=self.tm.view.reverse
+        layout['sort direction']=self.tm.active_view.reverse
 #        layout['viewer active']=self.is_iv_showing
 #        if self.is_iv_showing:
 #            layout['viewer width']=self.hpane.get_position()
@@ -442,7 +442,7 @@ class MainFrame(gtk.VBox):
 
     def view_changed(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
-        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
+        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.active_collection),self.tm.active_collection.numselected,len(self.tm.active_view)))
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -491,14 +491,14 @@ class MainFrame(gtk.VBox):
 
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.tm.view,sel_dir,self.update_status)
+        fileops.worker.copy(self.tm.active_view,sel_dir,self.update_status)
 
     def select_move(self,widget):
         sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.tm.view,sel_dir,self.update_status)
+        fileops.worker.move(self.tm.active_view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.tm.view,self.update_status)
+        fileops.worker.delete(self.tm.active_view,self.update_status)
 
     def select_reload_metadata(self,widget):
         self.tm.reload_selected_metadata()
@@ -527,8 +527,8 @@ class MainFrame(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        self.tm.view.reverse=not self.tm.view.reverse
-        widget.set_active(self.tm.view.reverse)
+        self.tm.active_view.reverse=not self.tm.active_view.reverse
+        widget.set_active(self.tm.active_view.reverse)
         self.browser.refresh_view()
 
     def update_status(self,widget,progress,message):
@@ -544,7 +544,7 @@ class MainFrame(gtk.VBox):
     def key_press_signal(self,obj,event):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
-                fileops.worker.delete(self.tm.view,self.update_status)
+                fileops.worker.delete(self.tm.active_view,self.update_status)
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
@@ -568,7 +568,7 @@ class MainFrame(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
-                self.tm.view.reverse=not self.tm.view.reverse
+                self.tm.active_view.reverse=not self.tm.active_view.reverse
                 self.browser.refresh_view()
             elif event.keyval==65293: #enter
                 if self.iv.item:
@@ -599,13 +599,13 @@ class MainFrame(gtk.VBox):
             elif event.keyval==65361: #left
                 if self.iv.item:
                     ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.tm.view)>ind>0:
-                        self.view_image(self.tm.view(ind-1))
+                    if len(self.tm.active_view)>ind>0:
+                        self.view_image(self.tm.active_view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
                     ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.tm.view)-1>ind>=0:
-                        self.view_image(self.tm.view(ind+1))
+                    if len(self.tm.active_view)-1>ind>=0:
+                        self.view_image(self.tm.active_view(ind+1))
         return True
 
 
@@ -760,7 +760,7 @@ class MainFrame(gtk.VBox):
         if uri:
             app_cmd.launch_uris([uri])
         else:
-            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.tm.view.get_selected_items()])
+            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.tm.active_view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template
@@ -839,12 +839,12 @@ class MainFrame(gtk.VBox):
 
     def delete_item(self,widget,item):
         fileops.worker.delete([item],None,False)
-        ind=self.tm.view.find_item(item)
+        ind=self.tm.active_view.find_item(item)
         if ind>=0:
-            self.tm.view.del_item(item)
+            self.tm.active_view.del_item(item)
             if self.is_iv_showing:
-                ind=min(ind,len(self.tm.view)-1)
-                self.view_image(self.tm.view(ind))
+                ind=min(ind,len(self.tm.active_view)-1)
+                self.view_image(self.tm.active_view(ind))
         elif self.is_iv_showing:
             self.hide_image()
         self.browser.refresh_view()

@@ -2,7 +2,7 @@
 
 '''
 
-    phraymd
+    phraymd Import plugin
     Copyright (C) 2009  Damien Moore
 
 License:
@@ -171,9 +171,8 @@ IMPORT_MODE_IMPORT=2
 
 class ImporterImportJob(backend.WorkerJob):
     def __init__(self,plugin):
-        backend.WorkerJob.__init__(self,'IMPORT')
+        backend.WorkerJob.__init__(self,'IMPORT',plugin.mainframe.tm.get_default_job_tuple())
         self.plugin=plugin
-        self.unsetevent()
         self.collection_src=None
         self.collection_dest=None
         self.collection_copy=None
@@ -311,8 +310,8 @@ class ImporterImportJob(backend.WorkerJob):
 
     def browse_source(self,worker,collection,view,browser,*args):
         worker.jobs.unset_all()
-        collection=worker.collection
-        view=worker.view
+        collection=worker.active_collection
+        view=worker.active_view
         self.collection_copy=collection.copy()
         self.view_copy=view.copy()
         worker.monitor.stop(collection.image_dirs[0])
@@ -358,7 +357,6 @@ class ImportPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.import_job=ImporterImportJob(self)
-        mainframe.tm.register_job(self.import_job,'BUILDVIEW')
 
         def box_add(box,widget_data,label_text):
             hbox=gtk.HBox()
@@ -450,7 +448,6 @@ class ImportPlugin(pluginbase.Plugin):
     def plugin_shutdown(self,app_shutdown):
         if not app_shutdown:
             self.scrolled_window.destroy()
-            self.mainframe.tm.deregister_job(self.import_job)
             del self.import_job
             ##todo: delete references to widgets
         else:
@@ -505,7 +502,7 @@ class ImportPlugin(pluginbase.Plugin):
         }
 
         if not self.base_dir_entry.get_path():
-            self.base_dir_entry.set_path(worker.collection.image_dirs[0])
+            self.base_dir_entry.set_path(worker.active_collection.image_dirs[0])
         self.import_job.start_browse_source(path,options)
 
     def cancel_browse(self,button):
