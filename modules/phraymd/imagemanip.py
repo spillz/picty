@@ -68,16 +68,19 @@ memimages=[]
 memthumbs=[]
 
 
-def load_metadata(item,notify_plugins=True,filename=None,get_thumbnail=False):
-    if notify_plugins:
+def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
+    if collection:
         if item.meta:
             meta=item.meta.copy()
         else:
             meta=item.meta
         result=metadata.load_metadata(item,filename,get_thumbnail)
         if result:
+            if get_thumbnail:
+                item.thumb=orient_pixbuf(item.thumb,item.meta)
+                item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
             if item.meta!=meta:
-                pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
+                pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
         return result
     else:
         return metadata.load_metadata(item,filename)
@@ -115,6 +118,17 @@ def scale_pixbuf(pixbuf,size):
     pb=pixbuf.scale_simple(w,h, gtk.gdk.INTERP_BILINEAR)
     pb_square=pb.subpixbuf(dest_x,dest_y,size,size)
     return pb_square
+
+
+def orient_pixbuf(pixbuf,meta):
+    try:
+        orient=meta['Orientation']
+    except:
+        orient=1
+    if orient>1:
+        for method in transposemethods[orient]:
+            pixbuf=pixbuf.transpose(method)
+    return pixbuf
 
 
 def small_pixbuf(pixbuf):
@@ -212,16 +226,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
             h,filename=tempfile.mkstemp('.jpg')
     if filename!=item.filename:
         if strip_metadata:
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            if orient>1:
-                for method in transposemethods[orient]:
-                    image=image.transpose(method)
-                    if not interrupt_fn():
-                        print 'interrupted'
-                        return False
+            image=orient_pixbuf(image,item.meta)
         image.save(filename,quality=95)
         if not strip_metadata:
             metadata.copy_metadata(item,filename)
@@ -266,20 +271,8 @@ def load_image(item,interrupt_fn,draft_mode=False):
             return False
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
-    if not interrupt_fn():
-        print 'interrupted'
-        return False
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient>1:
-        for method in transposemethods[orient]:
-            image=image.transpose(method)
-            if not interrupt_fn():
-                print 'interrupted'
-                return False
-    item.image=image
+    if interrupt_fn():
+        item.image=orient_pixbuf(image,item.meta)
     try:
         item.imagergba='A' in item.image.getbands()
     except:
@@ -469,13 +462,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
                 p.feed(imdata)
                 image = p.close()
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            if orient>1:
-                for method in transposemethods[orient]:
-                    image=image.transpose(method)
+            image=orient_pixbuf(image,item.meta)
         thumbsize=image.size
         thumb_pb=image_to_pixbuf(image)
         if thumb_pb==None:
@@ -493,10 +480,9 @@ def make_thumb(item,interrupt_fn=None,force=False):
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
     item.cannot_thumb=False
-    if item.thumb: ##reload if it has already been loaded
-        item.thumbsize=(width,height)
-        item.thumb=thumb_pb
-        cache_thumb(item)
+    item.thumbsize=(width,height)
+    item.thumb=thumb_pb
+    cache_thumb(item)
     return True
 
 
