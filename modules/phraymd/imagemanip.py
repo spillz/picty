@@ -67,6 +67,16 @@ import time
 memimages=[]
 memthumbs=[]
 
+def orient_pixbuf(pixbuf,meta):
+    try:
+        orient=meta['Orientation']
+    except:
+        orient=1
+    if orient>1:
+        for method in transposemethods[orient]:
+            pixbuf=pixbuf.transpose(method)
+    return pixbuf
+
 
 def load_metadata(item,notify_plugins=True,filename=None,get_thumbnail=False):
     if notify_plugins:
@@ -76,6 +86,9 @@ def load_metadata(item,notify_plugins=True,filename=None,get_thumbnail=False):
             meta=item.meta
         result=metadata.load_metadata(item,filename,get_thumbnail)
         if result:
+            if get_thumbnail and item.meta:
+                item.thumb=orient_pixbuf(item.thumb,item.meta)
+                item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
             if item.meta!=meta:
                 pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
         return result
@@ -493,7 +506,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
     thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
     item.thumburi=thumb_factory.lookup(uri,item.mtime)
     item.cannot_thumb=False
-    if item.thumb: ##reload if it has already been loaded
+    if thumb_pb:
         item.thumbsize=(width,height)
         item.thumb=thumb_pb
         cache_thumb(item)
