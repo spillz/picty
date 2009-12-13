@@ -193,7 +193,7 @@ class ThumbnailJob(WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         i=0
-        self.worker.kill_jobs(CollectionUpdateJob,self.collection)
+        self.worker.jobs.clear(CollectionUpdateJob,self.collection)
         while jobs.ishighestpriority(self) and len(self.queue_onscreen)>0:
             item=self.queue_onscreen.pop(0)
             if item.thumb:
@@ -207,7 +207,7 @@ class ThumbnailJob(WorkerJob):
                 gobject.idle_add(self.browser.redraw_view)
         if len(self.queue_onscreen)==0:
             gobject.idle_add(self.browser.redraw_view)
-            if len(cu_job_queue)>0:
+            if len(self.cu_job_queue)>0:
                 self.worker.queue_job_instance(CollectionUpdateJob(self.worker,self.collection,self.browser,cu_job_queue))
             return True
         return False
@@ -226,7 +226,7 @@ class CollectionUpdateJob(WorkerJob):
             if item.meta==None:
                 self.browser.lock.acquire()
                 if self.view.del_item(item):
-                    imagemanip.load_metadata(item)
+                    imagemanip.load_metadata(item,self.collection)
                     self.view.add_item(item)
                     gobject.idle_add(self.browser.refresh_view)
                 self.browser.lock.release()
@@ -251,7 +251,7 @@ class RecreateThumbJob(WorkerJob):
             if item.meta==None:
                 self.browser.lock.acquire()
                 if view.del_item(item):
-                    imagemanip.load_metadata(item)
+                    imagemanip.load_metadata(item,self.collection)
                     view.add_item(item)
                 self.browser.lock.release()
             if item.meta!=None:
@@ -277,7 +277,7 @@ class ReloadMetadataJob(WorkerJob):
             self.browser.lock.acquire()
             if view.del_item(item):
                 item.meta=None
-                imagemanip.load_metadata(item)
+                imagemanip.load_metadata(item,self.collection)
                 log.info('reloaded metadata for '+item.filename)
                 view.add_item(item)
             self.browser.lock.release()
@@ -301,11 +301,11 @@ class LoadCollectionJob(WorkerJob):
             log.info('Saving collection '+collection.filename)
             gobject.idle_add(self.browser.update_status,0.33,'Saving Collection: %s'%(collection.filename,))
             self.monitor.stop_monitor()
-            savejob=SaveCollectionJob()
-            savejob(jobs,collection,view,browser)
+            savejob=SaveCollectionJob(self.worker,collection,self.browser)
+            savejob()
             self.browser.lock.acquire()
             collection.empty()
-            del view[:] ##todo: send plugin notification?
+            view.empty() ##todo: send plugin notification?
             self.browser.lock.release()
             settings.active_collection=None
             collection.filename=None
@@ -313,6 +313,7 @@ class LoadCollectionJob(WorkerJob):
             self.collection_file=settings.active_collection_file
         log.info('Loading collection '+self.collection_file)
         gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
+        print 'opening collection',self.collection_file
         if collection.load(self.collection_file):
             settings.active_collection=collection
             settings.active_collection_file=self.collection_file
@@ -321,7 +322,7 @@ class LoadCollectionJob(WorkerJob):
                 self.collection.start_monitor()
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
-            pluginmanager.mgr.callback('t_collection_loaded') ##todo: plugins need to know if collection on/offline?
+            pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             settings.active_collection=None
@@ -330,14 +331,35 @@ class LoadCollectionJob(WorkerJob):
         self.collection_file=''
         return True
 
+class CloseCollection(WorkerJob):
+    def __init__(self,worker,collection,browser,save=True):
+        WorkerJob.__init__(self,'CLOSECOLLECTION',775,worker,collection,browser)
+        self.save=save
+
+    def __call__(self):
+        try:
+            ind=self.worker.collections.index[self.collection]
+        except ValueError:
+            return True
+        del self.worker.collections[ind]
+        ##todo: point self.active_collection somewhere
+        self.worker.jobs.clear(collection=self.collection)
+        if self.save:
+            savejob=SaveCollectionJob(self.worker,self.collection,self.browser)
+            savejob()
+        pluginmanager.mgr.callback_collection('t_collection_closed',self.collection)
+        return True
+
 
 class SaveCollectionJob(WorkerJob):
-    def __init__(self,worker,collection,browser,filename):
+    def __init__(self,worker,collection,browser,filename=''):
         WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,browser)
         self.filename=filename
 
     def __call__(self):
-        log.info('Saving '+str(collection.filename))
+        if self.filename:
+            self.collection.filename=self.filename
+        log.info('Saving '+str(self.collection.filename))
         self.collection.save()
         return True
 
@@ -359,7 +381,7 @@ class WalkDirectoryJob(WorkerJob):
                 scan_dir=self.collection.image_dirs[0]
                 self.collection_walker=os.walk(scan_dir)
                 self.done=False
-                pluginmanager.mgr.callback('t_collection_modify_start_hint')
+                pluginmanager.mgr.suspend_collection_events(self.collection)
         except StopIteration:
             self.notify_items=[]
             self.collection_walker=None
@@ -398,7 +420,7 @@ class WalkDirectoryJob(WorkerJob):
                 if collection.find(item)<0:
                     if not collection.verify_after_walk:
                         if collection.load_metadata:
-                            imagemanip.load_metadata(item,get_thumbnail=collection.load_embedded_thumbs)
+                            imagemanip.load_metadata(item,collection,get_thumbnail=collection.load_embedded_thumbs)
                             if collection.load_embedded_thumbs and not item.thumb:
                                 item.cannot_thumb=True
                         elif collection.load_preview_icons:
@@ -434,7 +456,7 @@ class WalkDirectoryJob(WorkerJob):
             self.notify_items=[]
             self.collection_walker=None
             self.done=False
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             if collection.verify_after_walk:
                 self.worker.queue_job_instance(VerifyImagesJob(self.worker,self.collection,self.browser))
             return True
@@ -458,7 +480,7 @@ class WalkSubDirectoryJob(WorkerJob):
             if not self.collection_walker:
                 scan_dir=self.sub_dir
                 self.collection_walker=os.walk(scan_dir)
-                pluginmanager.mgr.callback('t_collection_modify_start_hint')
+                pluginmanager.mgr.suspend_collection_events(self.collection)
         except StopIteration:
             log.error('Aborted directory walk on '+self.sub_dir)
             self.notify_items=[]
@@ -498,7 +520,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     collection.add(item)
                     self.browser.lock.release()
                     del_view_item(view,browser,item)
-                    imagemanip.load_metadata(item) ##todo: check if exists already
+                    imagemanip.load_metadata(item,collection) ##todo: check if exists already
                     self.browser.lock.acquire()
                     view.add_item(item)
                     self.browser.lock.release()
@@ -515,7 +537,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 gobject.idle_add(self.browser.refresh_view)
             self.notify_items=[]
             self.collection_walker=None
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         else:
             log.debug('Directory walk pausing '+self.sub_dir)
@@ -572,9 +594,9 @@ class BuildViewJob(WorkerJob):
                 view.set_filter(filter_text)
             else:
                 view.clear_filter(filter_text)
-            del view[:] ##todo: create a view method to empty the view
-            pluginmanager.mgr.callback('t_view_emptied')
-            pluginmanager.mgr.callback('t_collection_modify_start_hint')
+            view.empty() ##todo: create a view method to empty the view
+            pluginmanager.mgr.callback('t_view_emptied',collection,view)
+            pluginmanager.mgr.suspend_collection_events(self.collection)
             gobject.idle_add(self.browser.update_view)
         lastrefresh=i
         self.browser.lock.release()
@@ -598,7 +620,7 @@ class BuildViewJob(WorkerJob):
             gobject.idle_add(self.browser.refresh_view)
             gobject.idle_add(self.browser.update_status,2,'View rebuild complete')
             gobject.idle_add(self.browser.post_build_view)
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             return True
 
 
@@ -713,7 +735,7 @@ class EditMetaDataJob(WorkerJob):
         jobs=self.worker.jobs
         i=self.pos
         if i==0:
-            pluginmanager.mgr.callback('t_collection_modify_start_hint')
+            pluginmanager.mgr.suspend_collection_events(self.collection)
         items=collection if self.scope==EDIT_COLLECTION else view
         if self.mode==ADD_KEYWORDS:
             tags=metadata.tag_split(self.keyword_string)
@@ -816,7 +838,7 @@ class EditMetaDataJob(WorkerJob):
             gobject.idle_add(self.browser.refresh_view)
             self.pos=0
             self.cancel=False
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         return False
 
@@ -885,7 +907,7 @@ class VerifyImagesJob(WorkerJob):
         print 'running verify job'
         jobs=self.worker.jobs
         collection=self.collection
-        pluginmanager.mgr.callback('t_collection_modify_start_hint')
+        pluginmanager.mgr.suspend_collection_events(self.collection)
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
@@ -895,7 +917,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                imagemanip.load_metadata(item) ##todo: check if exists already
+                imagemanip.load_metadata(item,collection) ##todo: check if exists already
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
@@ -915,7 +937,7 @@ class VerifyImagesJob(WorkerJob):
                 item.image=None
                 item.qview=None
                 item.qview_size=None
-                imagemanip.load_metadata(item)
+                imagemanip.load_metadata(item,collection)
                 item.thumb=None
                 item.thumburi=None
                 self.browser.lock.acquire()
@@ -928,7 +950,7 @@ class VerifyImagesJob(WorkerJob):
             self.countpos=0
             gobject.idle_add(self.browser.update_status,2,'Verification complete')
             log.info('Image verification complete')
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             self.worker.queue_job_instance(MakeThumbsJob(self.worker,self.collection,self.browser))
             return True
         return False
@@ -969,7 +991,7 @@ class DirectoryUpdateJob(WorkerJob):
         #todo: make sure job.queue has been initialized
         #todo: acquire and release collection lock
         jobs=self.worker.jobs
-        pluginmanager.mgr.callback('t_collection_modify_start_hint')
+        pluginmanager.mgr.suspend_collection_events(self.collection)
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             collection,fullpath,action=self.queue.pop(0)
             if action in ('DELETE','MOVED_FROM'):
@@ -992,7 +1014,7 @@ class DirectoryUpdateJob(WorkerJob):
                             collection.delete(item)
                             self.browser.lock.release()
                             item.mtime=os.path.getmtime(fullpath)
-                            imagemanip.load_metadata(item)
+                            imagemanip.load_metadata(item,collection)
                             imagemanip.make_thumb(item) ##todo: queue this onto lower priority job
                             self.browser.lock.acquire()
                             collection.add(item)
@@ -1000,7 +1022,7 @@ class DirectoryUpdateJob(WorkerJob):
                             gobject.idle_add(self.browser.refresh_view)
                     else:
                         item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
-                        imagemanip.load_metadata(item)
+                        imagemanip.load_metadata(item,collection)
                         self.browser.lock.acquire()
                         collection.add(item)
                         self.browser.lock.release()
@@ -1011,7 +1033,7 @@ class DirectoryUpdateJob(WorkerJob):
                     if action=='MOVED_TO':
                         self.worker.queue_job_instance(WalkSubdirectoryJob(self.worker,collection,self.browser,fullpath))
         if len(self.queue)==0:
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         return False
 
@@ -1056,8 +1078,8 @@ class Worker:
                         self.active_collection.end_monitor()
                         if self.dirtimer!=None:
                             self.dirtimer.cancel()
-                        savejob=SaveCollectionJob()
-                        savejob(self,self.active_collection,self.browser)
+                        savejob=SaveCollectionJob(self,self.active_collection,self.browser)
+                        savejob()
                     except:
                         import traceback
                         tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -1131,7 +1153,7 @@ class Worker:
         self.queue_job(SelectionJob,mode,view)
 
     def info_edit(self,meta):
-        self.queue_job(EditMetadataJob,CHANGE_META,meta)
+        self.queue_job(EditMetaDataJob,CHANGE_META,meta)
 
     def keyword_edit(self,keyword_string,toggle=False,remove=False,replace=False,scope=EDIT_SELECTION):
         if toggle:
@@ -1142,7 +1164,7 @@ class Worker:
             mode=RENAME_KEYWORDS
         else:
             mode=ADD_KEYWORDS
-        self.queue_job(EditMetadataJob,mode,None,keyword_string,scope)
+        self.queue_job(EditMetaDataJob,mode,None,keyword_string,scope)
 
     def rebuild_view(self,sort_key,filter_text=''):
         self.queue_job(BuildViewJob,sort_key,filter_text)

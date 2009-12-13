@@ -63,10 +63,10 @@ class SimpleCollection(list):
         del self[:]
 
 
-class Collection(list):
+class Collection():
     '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
     def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection
-        list.__init__(self)
+        self.items=[]
         self.numselected=0
         self.image_dirs=image_dirs
         self.filename=None
@@ -81,11 +81,11 @@ class Collection(list):
         self.views=[]
         self.active_view=None
         for item in items:
-            self.add(item)
+            self.items.add(item)
             self.numselected+=item.selected
     def copy(self):
         dup=Collection([])
-        dup+=self
+        dup.items=self.items[:]
         dup.numselected=self.numselected
         dup.image_dirs=self.image_dirs[:]
         dup.filename=self.filename
@@ -99,7 +99,7 @@ class Collection(list):
             dup.views.append(v.copy())
         return dup
     def copy_from(self,dup):
-        self[:]=dup[:]
+        self.items[:]=dup.items[:]
         self.numselected=dup.numselected
         self.image_dirs=dup.image_dirs[:]
         self.filename=dup.filename
@@ -118,8 +118,8 @@ class Collection(list):
         add an item to the collection and notify plugin
         '''
         self.numselected+=item.selected
-        bisect.insort(self,item)
-        pluginmanager.mgr.callback('t_collection_item_added',item)
+        bisect.insort(self.items,item)
+        pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
         if add_to_view:
             for v in self.views:
                 v.add_item(item)
@@ -128,9 +128,9 @@ class Collection(list):
         find an item in the collection and return its index
         '''
         i=bisect.bisect_left(self,item)
-        if i>=len(self) or i<0:
+        if i>=len(self.items) or i<0:
             return -1
-        if self[i]==item:
+        if self.items[i]==item:
             return i
         return -1
     def delete(self,item,delete_from_view=True):
@@ -141,14 +141,16 @@ class Collection(list):
         i=self.find(item)
         if i>=0:
             self.numselected-=item.selected
-            self.pop(i)
-            pluginmanager.mgr.callback('t_collection_item_removed',item)
+            self.items.pop(i)
+            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
             return item
         return None
     def __call__(self,ind):
-        return self[ind]
+        return self.items[ind]
+    def __getitem__(self,ind):
+        return self.items[ind]
     def create_monitor(self,callback):
         self.monitor_master_callback=callback
         self.monitor=monitor.Monitor(self.monitor_callback)
@@ -162,7 +164,7 @@ class Collection(list):
     def monitor_callback(self,path,action,is_dir):
         self.monitor_master_callback(self,path,action,is_dir)
     def add_view(self,sort_criteria=None):
-        view=views.Index(sort_criteria,self)
+        view=views.Index(sort_criteria,self.items,self)
         self.views.append(view)
         if not self.active_view:
             self.active_view=view
@@ -192,7 +194,7 @@ class Collection(list):
                 self.image_dirs=cPickle.load(f)
             else:
                 self.image_dirs=settings.legacy_image_dirs
-            self[:]=cPickle.load(f)
+            self.items=cPickle.load(f)
             self.filename=filename
             self.numselected=0
             return True
@@ -211,14 +213,16 @@ class Collection(list):
             return False
         cPickle.dump(settings.version,f,-1)
         cPickle.dump(self.image_dirs,f,-1)
-        cPickle.dump(self,f,-1)
+        cPickle.dump(self.items,f,-1)
         f.close()
         return True
     def empty(self):
-        del self[:]
+        del self.items[:]
         self.numselected=0
         self.filename=''
         self.image_dirs=[]
+    def __len__(self):
+        return len(self.items)
 
 
 def create_empty_file(filename,image_dirs):
@@ -227,8 +231,8 @@ def create_empty_file(filename,image_dirs):
         f=open(fullpath,'wb')
         cPickle.dump(settings.version,f,-1)
         cPickle.dump(image_dirs,f,-1)
-        collection=Collection([])
-        cPickle.dump(collection[:],f,-1)
+#        collection=Collection([])
+        cPickle.dump([],f,-1)
         f.close()
     except:
         print 'failed to open collection for write'

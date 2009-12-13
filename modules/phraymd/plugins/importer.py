@@ -211,7 +211,7 @@ class ImporterImportJob(backend.WorkerJob):
         self.base_dest_dir=None
         self.cancel=False
 
-    def __call__(self,worker,collection,view,browser,*args):
+    def __call__(self):
         if self.mode==IMPORT_MODE_BROWSE:
             self.browse_source(worker,collection,view,browser)
             self.unsetevent()
@@ -222,7 +222,7 @@ class ImporterImportJob(backend.WorkerJob):
             return
         self.browse_restore(worker,collection,view,browser,False)
         jobs=worker.jobs
-        pluginmanager.mgr.callback('t_collection_modify_start_hint')
+        pluginmanager.mgr.suspend_collection_events(self.collection)
         i=self.countpos  ##todo: make sure this gets initialized
         view_dest=self.view_dest
         if self.items==None:
@@ -248,7 +248,7 @@ class ImporterImportJob(backend.WorkerJob):
                     ##todo: log an error
                     continue
                 src_filename=temp_filename
-                imagemanip.load_metadata(item,True,src_filename)
+                imagemanip.load_metadata(item,self.collection,src_filename)
             dest_path,dest_name=name_item(item,self.base_dest_dir,self.dest_name_template)
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
@@ -278,7 +278,7 @@ class ImporterImportJob(backend.WorkerJob):
             item.filename=dest_filename
             item.mtime=os.path.getmtime(item.filename)
             if collection.load_metadata and not item.meta:
-                imagemanip.load_metadata(item,True)
+                imagemanip.load_metadata(item,collection)
             if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:
                 if not collection.load_embedded_thumbs and not collection.load_preview_icons:
                     print 'recreating thumbnail on import for',item.filename
@@ -300,7 +300,7 @@ class ImporterImportJob(backend.WorkerJob):
         if len(self.items)==0 or self.cancel:
             gobject.idle_add(browser.update_status,2,'Import Complete')
             gobject.idle_add(self.plugin.import_completed)
-            pluginmanager.mgr.callback('t_collection_modify_complete_hint')
+            pluginmanager.mgr.resume_collection_events(self.collection)
             worker.monitor.start(collection.image_dirs[0])
             self.collection_src=None
             self.collection_dest=None

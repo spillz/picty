@@ -109,7 +109,7 @@ class ImageLoader:
                 self.vlock.acquire()
                 continue
             if not item.meta:
-                imagemanip.load_metadata(item)
+                imagemanip.load_metadata(item) ##todo: 2nd arg = collection
             if not item.image:
                 def interrupt_cb():
                     return self.item.filename==item.filename
