@@ -1,0 +1,70 @@
+phraymd (0.1.0a10) karmic; urgency=low
+
+  * double grr... 0.1.0a9 thumbnailing was broken (this problem may go back a couple of versions) 
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sat, 12 Dec 2009 22:36:02 -0500
+
+phraymd (0.1.0a9) karmic; urgency=low
+
+  * grrr... 0.1.0a8 was broken -- missing function in imagemanip.py 
+
+ -- Damien Moore <damienlmoore@gmail.com>  Tue, 08 Dec 2009 21:44:37 -0500
+
+phraymd (0.1.0a8) karmic; urgency=low
+
+  * Corrects thumbnail orientation issues
+  * Based on rev337 in trunk of lp:phraymd + patch to imagemanip.py and metadata.py
+
+ -- Damien Moore <damienlmoore@gmail.com>  Tue, 08 Dec 2009 21:34:52 -0500
+
+phraymd (0.1.0a7) karmic; urgency=low
+
+  * Various tweaks to improve import robustness
+  * Based on rev337 in trunk of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Mon, 23 Nov 2009 23:25:22 -0500
+
+phraymd (0.1.0a6) karmic; urgency=low
+
+  * Based on revision 336 in trunk of lp:phraymd
+  * webupload plugin bug fixes: 1. switching between services would 
+    fail to redisplay the gui 
+    2. flickr upload did not respect privacy settings
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sun, 22 Nov 2009 19:24:02 -0500
+
+phraymd (0.1.0a5) karmic; urgency=low
+
+  * Based on revision 335 in trunk of lp:phraymd
+  * Bug fix: Import copy would sometime move instead of copy!
+  * Bug fix: Import rename if file exists now actually works
+  * Bug fix: Retrieving internal thumbnail using pyexiv2 lib now works properly
+
+ -- Damien Moore <damienlmoore@gmail.com>  Fri, 20 Nov 2009 18:31:21 -0500
+
+phraymd (0.1.0a4) karmic; urgency=low
+
+  * Based on revision 333 in trunk of lp:phraymd
+  * Importer now support various "rename on import" schemes 
+
+ -- Damien Moore <damienlmoore@gmail.com>  Thu, 19 Nov 2009 23:17:26 -0500
+
+phraymd (0.1.0a3) karmic; urgency=low
+
+  * Based on revision 332 in trunk of lp:phraymd
+  * Fixes media handling for mounted devices
+
+ -- Damien Moore <damienlmoore@gmail.com>  Wed, 18 Nov 2009 23:29:21 -0500
+
+phraymd (0.1.0a2) karmic; urgency=low
+
+  * Based on revision 331 in trunk of lp:phraymd
+  * Features enhancements to the importer plugin (better device handling, import and brose options)
+
+ -- Damien Moore <damienlmoore@gmail.com>  Wed, 18 Nov 2009 22:33:31 -0500
+
+phraymd (0.1.0) karmic; urgency=low
+
+  * Initial Release.
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sat, 8 Nov 2009 10:47:04 -0400
