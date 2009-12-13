@@ -369,10 +369,10 @@ def has_thumb(item):
         return True
     if not settings.maemo:
         uri = io.get_uri(item.filename)
-        item.thumburi=thumb_factory.lookup(uri,item.mtime)
+        item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
             return True
-        if thumb_factory_large.lookup(uri,item.mtime):
+        if thumb_factory_large.lookup(uri,int(item.mtime)):
             return True
     return False
 
@@ -382,7 +382,7 @@ def delete_thumb(item):
         item.thumbsize=None
     if item.thumburi:
         os.remove(item.thumburi)
-        thumburi=thumb_factory.lookup(uri,item.mtime)
+        thumburi=thumb_factory.lookup(uri,int(item.mtime))
         os.remove(thumburi)
         item.thumburi=None
 
@@ -393,17 +393,17 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
         if not item.thumb:
             load_thumb(item)
         uri = io.get_uri(item.filename)
-        thumb_factory.save_thumbnail(item.thumb,uri,item.mtime)
+        thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
         if remove_old:
             io.remove_file(item.thumburi)
-        item.thumburi=thumb_factory.lookup(uri,item.mtime)
+        item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         return True
     return make_thumb(item,interrupt_fn)
 
 
 
 def rotate_thumb(item,right=True,interrupt_fn=None):
-    if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
+    if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
         return False
     if item.thumburi:
         try:
@@ -420,8 +420,8 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             width=thumb_pb.get_width()
             height=thumb_pb.get_height()
             uri = io.get_uri(item.filename)
-            thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
-            item.thumburi=thumb_factory.lookup(uri,item.mtime)
+            thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
             if item.thumb:
                 item.thumbsize=(width,height)
                 item.thumb=thumb_pb
@@ -434,13 +434,13 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 def make_thumb(item,interrupt_fn=None,force=False):
-    if thumb_factory.has_valid_failed_thumbnail(item.filename,item.mtime):
+    if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
         if not force:
             item.cannot_thumb=True
             return
         print 'forcing thumbnail creation'
         uri = io.get_uri(item.filename)
-        thumb_uri=thumb_factory.lookup(uri,item.mtime)
+        thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
         if thumb_uri:
             print 'removing failed thumb',thumb_uri
             os.remove(thumb_uri)
@@ -498,15 +498,15 @@ def make_thumb(item,interrupt_fn=None,force=False):
         item.thumbsize=(0,0)
         item.thumb=None
         item.cannot_thumb=True ##TODO: check if this is used anywhere -- try to remove
-        thumb_factory.create_failed_thumbnail(item.filename,item.mtime)
+        thumb_factory.create_failed_thumbnail(item.filename,int(item.mtime))
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
     uri = io.get_uri(item.filename)
-    thumb_factory.save_thumbnail(thumb_pb,uri,item.mtime)
-    item.thumburi=thumb_factory.lookup(uri,item.mtime)
+    thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+    item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
     item.cannot_thumb=False
-    if thumb_pb:
+    if item.thumb:
         item.thumbsize=(width,height)
         item.thumb=thumb_pb
         cache_thumb(item)
@@ -547,13 +547,13 @@ def load_thumb(item):
         else:
             uri = io.get_uri(item.filename)
             if not item.thumburi:
-                item.thumburi=thumb_factory.lookup(uri,item.mtime)
+                item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
             if item.thumburi:
                 image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
                 s=(image.get_width(),image.get_height())
                 #image.thumbnail((128,128))
             else:
-                thumburi=thumb_factory_large.lookup(uri,item.mtime)
+                thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
                 if thumburi:
                     #print 'using large thumb'
                     image = Image.open(thumburi)
