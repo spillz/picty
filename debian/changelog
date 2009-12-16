@@ -1,3 +1,17 @@
+phraymd (0.1.0a12) karmic; urgency=low
+
+  * Use time.sleep after idle_add on the backend thread to improve UI responsiveness during collection scan and other intensive ops
+  * Based on rev 341 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Tue, 15 Dec 2009 23:15:19 -0500
+
+phraymd (0.1.0a11) karmic; urgency=low
+
+  * karmic version of gnome thumbnail factory expects integer mtime. this provides a fix
+  * based on rev 340 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sun, 13 Dec 2009 15:20:16 -0500
+
 phraymd (0.1.0a10) karmic; urgency=low
 
   * double grr... 0.1.0a9 thumbnailing was broken (this problem may go back a couple of versions) 
