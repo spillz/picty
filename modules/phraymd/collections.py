@@ -63,9 +63,15 @@ class SimpleCollection(list):
         del self[:]
 
 
+##todo: perhaps there should be multiple classes of collection for different types of collection?
+## * local store
+## * device/directory
+## * online store (images stored online, with thumbnails and metadata cached locally)
+## define an abstract class for the common features
+
 class Collection():
     '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
-    def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection
+    def __init__(self,items=[],image_dirs=[]): ##todo: store base path for the collection
         self.items=[]
         self.numselected=0
         self.image_dirs=image_dirs
@@ -155,8 +161,10 @@ class Collection():
         self.monitor_master_callback=callback
         self.monitor=monitor.Monitor(self.monitor_callback)
     def start_monitor(self):
+        print 'starting monitor'
         self.monitor.start(self.image_dirs[0])
     def stop_monitor(self):
+        print 'stopping monitor'
         self.monitor.stop(self.image_dirs[0])
     def end_monitor(self):
         if self.monitor:
@@ -184,10 +192,12 @@ class Collection():
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument
         '''
-        print 'loading collection',filename
+        print 'loading collection',filename,self.filename
         try:
             if not filename:
                 filename=self.filename
+            if not filename: ##if no filename, there's nothing to load (scan instead)
+                return True
             f=open(filename,'rb')
             version=cPickle.load(f)
             if version>='0.3.0':
@@ -205,7 +215,9 @@ class Collection():
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
-        print 'saving collection',self.filename
+        if not self.filename: ##no filename assumed to be a temporary collection
+            return False
+        print 'saving collection',self.filename,self.image_dirs
         try:
             f=open(self.filename,'wb')
         except:

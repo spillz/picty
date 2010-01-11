@@ -45,11 +45,11 @@ import io
 from logger import log
 
 
-
+##TODO: (CRITICAL) ALL JOBS THE TOUCH A VIEW SHOULD BE PASSED THAT VIEW DURING CONSTRUCTION (do not use collection.get_active_view())
 class WorkerJob:
     '''
     Base class for jobs performed on the browser's worker thread. Because all jobs share a single thread
-    they are run sequentially with higher priority jobs running first. A running job must check for higher priority
+    they are run sequentially with higher priority jobs running first. A running job must regularly check for higher priority
     job(s) being added to the queue and if so, pause operation and return, resuming when the higher priority job(s)
     complete
     Jobs:
@@ -100,14 +100,21 @@ class WorkerJobQueue:
         self.lock=threading.Lock()
 
     def ishighestpriority(self,job):
+        self.lock.acquire()
         for j in self.queue:
             if j==job:
+                self.lock.release()
                 return True
+            break
+        self.lock.release()
         return False
 
     def gethighest(self):
+        self.lock.acquire()
         for j in self.queue:
+            self.lock.release()
             return j
+        self.lock.release()
         return None
 
     def set_priority_colleciton(self,collection):
@@ -175,6 +182,7 @@ class WorkerJobQueue:
             if (job.collection==self.priority_collection)>=(self.queue[j].collection==self.priority_collection):
                 if self.queue[j].priority<job.priority:
                     self.queue.insert(j,job)
+                    self.lock.release()
                     return
         self.queue.append(job)
         self.lock.release()
@@ -208,7 +216,7 @@ class ThumbnailJob(WorkerJob):
         if len(self.queue_onscreen)==0:
             gobject.idle_add(self.browser.redraw_view)
             if len(self.cu_job_queue)>0:
-                self.worker.queue_job_instance(CollectionUpdateJob(self.worker,self.collection,self.browser,cu_job_queue))
+                self.worker.queue_job_instance(CollectionUpdateJob(self.worker,self.collection,self.browser,self.cu_job_queue))
             return True
         return False
 
@@ -297,26 +305,9 @@ class LoadCollectionJob(WorkerJob):
         jobs=self.worker.jobs
         jobs.clear()
         collection=self.collection
-        if settings.active_collection!=None:
-            log.info('Saving collection '+collection.filename)
-            gobject.idle_add(self.browser.update_status,0.33,'Saving Collection: %s'%(collection.filename,))
-            self.monitor.stop_monitor()
-            savejob=SaveCollectionJob(self.worker,collection,self.browser)
-            savejob()
-            self.browser.lock.acquire()
-            collection.empty()
-            view.empty() ##todo: send plugin notification?
-            self.browser.lock.release()
-            settings.active_collection=None
-            collection.filename=None
-        if not self.collection_file:
-            self.collection_file=settings.active_collection_file
         log.info('Loading collection '+self.collection_file)
         gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
-        print 'opening collection',self.collection_file
         if collection.load(self.collection_file):
-            settings.active_collection=collection
-            settings.active_collection_file=self.collection_file
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.create_monitor(self.worker.directory_change_notify)
                 self.collection.start_monitor()
@@ -325,28 +316,22 @@ class LoadCollectionJob(WorkerJob):
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
-            settings.active_collection=None
-            settings.action_collection_file=''
             log.error('Load collection failed')
         self.collection_file=''
         return True
 
-class CloseCollection(WorkerJob):
+class CloseCollectionJob(WorkerJob):
     def __init__(self,worker,collection,browser,save=True):
         WorkerJob.__init__(self,'CLOSECOLLECTION',775,worker,collection,browser)
         self.save=save
 
     def __call__(self):
-        try:
-            ind=self.worker.collections.index[self.collection]
-        except ValueError:
-            return True
-        del self.worker.collections[ind]
-        ##todo: point self.active_collection somewhere
         self.worker.jobs.clear(collection=self.collection)
-        if self.save:
-            savejob=SaveCollectionJob(self.worker,self.collection,self.browser)
-            savejob()
+        if self.filename:
+            self.collection.filename=self.filename
+        log.info('Closing '+str(self.collection.filename))
+        self.collection.end_monitor()
+        self.collection.save()
         pluginmanager.mgr.callback_collection('t_collection_closed',self.collection)
         return True
 
@@ -360,6 +345,8 @@ class SaveCollectionJob(WorkerJob):
         if self.filename:
             self.collection.filename=self.filename
         log.info('Saving '+str(self.collection.filename))
+        print 'started save job'
+        self.collection.end_monitor()
         self.collection.save()
         return True
 
@@ -1040,55 +1027,37 @@ class DirectoryUpdateJob(WorkerJob):
 
 class Worker:
     def __init__(self,browser):
-        self.active_collection=imageinfo.Collection([]) #the collection of images
-        self.active_view=self.active_collection.add_view(imageinfo.get_mtime)
-        self.collections=[self.active_collection]
         self.browser=browser # the browser widget
         self.jobs=WorkerJobQueue()
         self.event=threading.Event()
         self.lock=threading.Lock()
-        self.exit=False
         self.thread=threading.Thread(target=self._loop)
         self.dirtimer=None # timer used to delay update after directory change notifications
         self.dirlock=threading.Lock() #lock used to update the queue of deferred directory change notifications
         self.deferred_dir_update_queue=[]
+        self.active_collection=None
 
     def start(self):
         self.thread.start()
 
     def _loop(self):
-        try:
-            self.queue_job(LoadCollectionJob)
-        except: ##TODO: start using logging and make the log accessible from the gui (even calling gedit)
-            import traceback
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            log.error("Error Initializing Worker Thread\n"+tb_text)
+        print 'worker thread started'
         while 1:
             try:
                 for j in self.jobs.get_removed_jobs(): ##clean up any cancelled jobs
                     j.cancel()
-                print 'checking for active job',self.jobs.gethighest()
-                if not self.jobs.gethighest():
+                if self.jobs.gethighest()==None:
+                    print 'clear and wait'
                     self.event.clear()
                     self.event.wait()
-                print 'WORKER PROCESSING JOB',self.jobs.gethighest()
                 job=self.jobs.gethighest()
+                print job
                 if isinstance(job,QuitJob):
-                    try:
-                        self.active_collection.end_monitor()
-                        if self.dirtimer!=None:
-                            self.dirtimer.cancel()
-                        savejob=SaveCollectionJob(self,self.active_collection,self.browser)
-                        savejob()
-                    except:
-                        import traceback
-                        tb_text=traceback.format_exc(sys.exc_info()[2])
-                        log.error("Error on Exit From Worker Thread\n"+tb_text)
+                    print 'quitting worker thread!'
                     return
                 if job:
                     if job():
                         self.jobs.pop(job)
-
             except:
                 import traceback
                 tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -1098,6 +1067,15 @@ class Worker:
                     log.info("Abandoning Highest Priority Task "+job.name+" and Resuming Worker Loop")
                     self.jobs.pop(job)
 
+    def set_active_collection(self,collection):
+        '''
+        the active collection is the default collection passed to the job requests in the methods below
+        '''
+        self.active_collection=collection
+
+    def get_active_collection(self,colleciton):
+        return self.active_collection
+
     def get_default_job_tuple(self):
         return (self,self.active_collection,self.browser)
 
@@ -1105,11 +1083,13 @@ class Worker:
         print 'QUEUEING JOB',job_instance
         self.jobs.add(job_instance)
         self.event.set()
+        print 'QUEUED JOB',job_instance
 
     def queue_job(self,job_class,*extra_args):
         print 'QUEUEING JOB',job_class
         self.jobs.add(job_class(self,self.active_collection,self.browser,*extra_args))
         self.event.set()
+        print 'QUEUED JOB',job_class
 
     def kill_jobs_by_class(self,job_class):
         self.jobs.clear_by_job_class(job_class)
@@ -1122,14 +1102,15 @@ class Worker:
         ##todo: this should be opening a new collection that adds to the list of collections (currently replaces collection)
         self.queue_job(LoadCollectionJob,filename)
 
-    def scan_and_verify(self):
+    def scan_and_verify(self,collection):
         ##todo: clear out other queued jobs in the scan and verify chain for this collection
-        self.queue_job(WalkDirectoryJob)
+        self.queue_job(WalkDirectoryJob,collection)
 
     def quit(self):
         self.queue_job(QuitJob)
         while self.thread.isAlive(): ##todo: replace this with a notification
             time.sleep(0.1)
+        print 'quit returned'
 
     def request_map_images(self,region,callback):
         self.queue_job(MapImagesJob,region,callback)

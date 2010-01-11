@@ -271,7 +271,9 @@ class TagFrame(gtk.VBox):
         self.worker=mainframe.tm
         self.browser=mainframe.browser
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
-        self.tv=gtk.TreeView(self.model)
+        self.sort_model=gtk.TreeModelSort(self.model)
+        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
+        self.tv=gtk.TreeView(self.sort_model)
 #        self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
         self.tv.connect("row-activated",self.tag_activate)
@@ -731,7 +733,7 @@ class TagFrame(gtk.VBox):
 
     def refresh(self):
         collection=self.worker.active_collection
-        view=self.worker.active_view
+        view=collection.get_active_view()
         try:
             tag_cloud=self.tag_cloud[collection].copy() ##todo: should be using a lock here
         except KeyError:

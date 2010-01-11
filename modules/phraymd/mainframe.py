@@ -49,6 +49,7 @@ import pluginimporter
 import io
 import overlaytools
 import dbusserver
+import collectionmanager
 
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
@@ -64,6 +65,13 @@ class MainFrame(gtk.VBox):
     def __init__(self,window):
         gtk.VBox.__init__(self)
         self.lock=threading.Lock()
+        self.volume_monitor=io.VolumeMonitor()
+        self.volume_monitor.connect_after("mount-added",self.mount_added)
+        self.volume_monitor.connect_after("mount-removed",self.mount_removed)
+        self.coll_set=collectionmanager.CollectionSet()
+        self.coll_combo=collectionmanager.CollectionCombo(self.coll_set)
+        self.active_collection_id=None
+        self.collections_init()
 
         ##plugin-todo: instantiate plugins
         self.plugmgr=pluginmanager.mgr
@@ -103,8 +111,11 @@ class MainFrame(gtk.VBox):
             self.viewer_hover_cmds.register_tool(*tool)
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_hover_cmds)
 
-        self.browser=browser.ImageBrowser(self.hover_cmds)
-        self.tm=self.browser.tm
+        self.browser=browser.ImageBrowser(self.hover_cmds) ##todo: create thread manager here and assign to the browser
+        self.tm=backend.Worker(self.browser)
+        self.browser.tm=self.tm
+        self.browser.active_collection=self.active_collection
+        self.browser.active_view=self.active_collection.get_active_view()
 
         self.browser_box=gtk.VBox()
         self.browser_box.show()
@@ -250,6 +261,8 @@ class MainFrame(gtk.VBox):
             self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
             add_item(self.toolbar,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
             self.toolbar.add(gtk.SeparatorToolItem())
+            add_widget(self.toolbar,gtk.Label("Browse: "),None,None,None)
+            add_widget(self.toolbar,self.coll_combo,None,None,"Switch the active collection, directory or device")
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
             add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
             add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
@@ -317,19 +330,105 @@ class MainFrame(gtk.VBox):
 
         self.connect("destroy", self.destroy)
         self.plugmgr.init_plugins(self)
+
+
         print 'set layout',settings.layout
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
 
         dbusserver.start()
 
-        self.tm.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+        self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+        self.tm.set_active_collection(self.active_collection)
         self.tm.start()
+        self.tm.load_collection('')
+        print 'active collection dirs',self.active_collection.image_dirs
+        self.coll_combo.connect("collection-changed",self.collection_changed)
+#        self.tm.load_collection(self.active_collection_id,'')
+#        self.tm.open_collection(self.active_collection_id,collection)
+
+    def collections_init(self):
+        ##now fill the collection manager with
+        ##1/ localstore collections
+        self.coll_set.init_localstores()
+        ##2/ mounted devices
+        mi=self.volume_monitor.get_mount_info()
+        self.coll_set.init_mounts(mi)
+        ##3/ local directory if specified as a command line args
+        ##set and open active collection (by default the last used localstore, otherwise
+
+        ##open last used collection or
+        ##todo: device or directory specified at command line.
+        self.active_collection=imageinfo.Collection()
+        self.active_collection.filename=settings.active_collection_file
+        self.active_collection.add_view()
+        self.coll_set[settings.active_collection_file].collection=self.active_collection
+        if settings.active_collection_file:
+            self.coll_combo.set_active(settings.active_collection_file)
+
+
+    def collection_changed(self,combo,id):
+        coll=self.coll_set[id].collection
+        new=False
+        print 'changing to coll set with id',id,coll
+        if coll==None:
+            coll=imageinfo.Collection()
+            new=True
+            if self.coll_set[id].type=='LOCALSTORE':
+                coll.filename=id
+            else:
+                coll.image_dirs=[id]
+            coll.add_view()
+            self.coll_set[id].collection=coll
+        self.active_collection=coll
+        self.tm.set_active_collection(coll)
+        self.browser.active_collection=coll
+        self.browser.active_view=coll.get_active_view()
+        if new:
+            self.tm.load_collection('')
+            self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+        self.browser.refresh_view()
+
+    def collection_opened(self,collection): ##callback used by worker thread
+        self.browser.refresh_view()
+
+    def collection_closed(self,collection): ##callback used by worker thread
+        self.browser.refresh_view()
+
+    def open_collection(self,collection_id):
+        coll=self.coll_set[self.active_collection_id].collection
+        if coll!=None:
+            return
+        coll=collections.Collection()
+
+    def close_collection(self,collection_id):
+        coll=self.coll_set[self.active_collection_id].collection
+        if coll==None:
+            return
+
+    def mount_added(self,name,icon_names,path):
+        self.coll_set.add_mount(path,name,icon_names)
+
+    def mount_removed(self,name,icon_names,path):
+        collection=self.coll_set[path].collection
+        self.coll_set.remove_mount(path)
+        self.worker.close_collection(collection)
+
+    def add_dir(self,name,path):
+        pass
+
+    def remove_dir(self,name):
+        pass
+
+    def add_localstore(self,coll_file):
+        pass
+
+    def remove_localstore(self,coll_file):
+        pass
 
     def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
         print 'sidebar callback'
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
-
 
     def set_layout(self,layout):
         print 'setting layout',layout
@@ -337,9 +436,10 @@ class MainFrame(gtk.VBox):
         for i in range(len(sort_model)):
             if layout['sort order']==sort_model[i][0]:
                 self.sort_order.set_active(i)#sort_model.get_iter((i,)))
+                #imageinfo.sort_keys[self.sort_order.get_active_text()]
                 break
-        self.tm.active_view.reverse=layout['sort direction']
-        if self.tm.active_view.reverse:
+        self.active_collection.get_active_view().reverse=layout['sort direction']
+        if self.active_collection.get_active_view().reverse:
             self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
             self.sort_toggle.set_active(True)
             self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
@@ -366,7 +466,7 @@ class MainFrame(gtk.VBox):
         ##layout['window size']=self.window.get_size()
         ##layout['window maximized']=self.window.get_size()
         layout['sort order']=self.sort_order.get_active_text()
-        layout['sort direction']=self.tm.active_view.reverse
+        layout['sort direction']=self.browser.active_view.reverse
 #        layout['viewer active']=self.is_iv_showing
 #        if self.is_iv_showing:
 #            layout['viewer width']=self.hpane.get_position()
@@ -381,6 +481,14 @@ class MainFrame(gtk.VBox):
         self.view_image(item)
 
     def destroy(self,event):
+        for id in self.coll_set:
+            coll=self.coll_set[id].collection
+            print 'closing',id,coll,coll.image_dirs if coll else None
+            if coll==None:
+                continue
+            sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
+            sj.priority=1050
+            self.tm.queue_job_instance(sj)
         try:
             settings.layout=self.get_layout()
             settings.save()
@@ -388,6 +496,7 @@ class MainFrame(gtk.VBox):
             print 'Error saving settings'
         self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
+        print 'main frame destroyed'
         return False
 
     def activate_sidebar(self,widget):
@@ -442,7 +551,7 @@ class MainFrame(gtk.VBox):
 
     def view_changed(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
-        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.active_collection),self.tm.active_collection.numselected,len(self.tm.active_view)))
+        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(self.browser.active_view)))
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -491,14 +600,14 @@ class MainFrame(gtk.VBox):
 
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.tm.active_view,sel_dir,self.update_status)
+        fileops.worker.copy(self.browser.active_view,sel_dir,self.update_status)
 
     def select_move(self,widget):
         sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.tm.active_view,sel_dir,self.update_status)
+        fileops.worker.move(self.browser.active_view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.tm.active_view,self.update_status)
+        fileops.worker.delete(self.browser.active_view,self.update_status)
 
     def select_reload_metadata(self,widget):
         self.tm.reload_selected_metadata()
@@ -514,11 +623,12 @@ class MainFrame(gtk.VBox):
         self.set_sort_key(widget)
 
     def set_sort_key(self,widget):
-       self.browser.grab_focus()
-       key=self.sort_order.get_active_text()
-       filter_text=self.filter_entry.get_text()
-       print 'sort&filter',key,filter_text
-       self.tm.rebuild_view(key,filter_text)
+        self.browser.grab_focus()
+        key=self.sort_order.get_active_text()
+        filter_text=self.filter_entry.get_text()
+        print 'sort&filter',key,filter_text
+        if self.active_collection:
+            self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):
         print 'add_filter',widget
@@ -527,8 +637,8 @@ class MainFrame(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        self.tm.active_view.reverse=not self.tm.active_view.reverse
-        widget.set_active(self.tm.active_view.reverse)
+        self.browser.active_view.reverse=not self.browser.active_view.reverse
+        widget.set_active(self.browser.active_view.reverse)
         self.browser.refresh_view()
 
     def update_status(self,widget,progress,message):
@@ -544,7 +654,7 @@ class MainFrame(gtk.VBox):
     def key_press_signal(self,obj,event):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
-                fileops.worker.delete(self.tm.active_view,self.update_status)
+                fileops.worker.delete(self.browser.active_view,self.update_status)
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
@@ -568,7 +678,7 @@ class MainFrame(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
-                self.tm.active_view.reverse=not self.tm.active_view.reverse
+                self.browser.active_view.reverse=not self.browser.active_view.reverse
                 self.browser.refresh_view()
             elif event.keyval==65293: #enter
                 if self.iv.item:
@@ -599,13 +709,13 @@ class MainFrame(gtk.VBox):
             elif event.keyval==65361: #left
                 if self.iv.item:
                     ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.tm.active_view)>ind>0:
-                        self.view_image(self.tm.active_view(ind-1))
+                    if len(self.browser.active_view)>ind>0:
+                        self.view_image(self.browser.active_view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
                     ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.tm.active_view)-1>ind>=0:
-                        self.view_image(self.tm.active_view(ind+1))
+                    if len(self.browser.active_view)-1>ind>=0:
+                        self.view_image(self.browser.active_view(ind+1))
         return True
 
 
@@ -760,7 +870,7 @@ class MainFrame(gtk.VBox):
         if uri:
             app_cmd.launch_uris([uri])
         else:
-            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.tm.active_view.get_selected_items()])
+            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.browser.active_view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template
@@ -839,12 +949,12 @@ class MainFrame(gtk.VBox):
 
     def delete_item(self,widget,item):
         fileops.worker.delete([item],None,False)
-        ind=self.tm.active_view.find_item(item)
+        ind=self.browser.active_view.find_item(item)
         if ind>=0:
-            self.tm.active_view.del_item(item)
+            self.browser.active_view.del_item(item)
             if self.is_iv_showing:
-                ind=min(ind,len(self.tm.active_view)-1)
-                self.view_image(self.tm.active_view(ind))
+                ind=min(ind,len(self.browser.active_view)-1)
+                self.view_image(self.browser.active_view(ind))
         elif self.is_iv_showing:
             self.hide_image()
         self.browser.refresh_view()
