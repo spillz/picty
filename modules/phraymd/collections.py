@@ -71,24 +71,36 @@ class SimpleCollection(list):
 
 class Collection():
     '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
-    def __init__(self,items=[],image_dirs=[]): ##todo: store base path for the collection
-        self.items=[]
-        self.numselected=0
-        self.image_dirs=image_dirs
-        self.filename=None
-        self.verify_after_walk=True
-        self.load_metadata=True ##image will be loaded into the collection and view without metadata
-        self.load_embedded_thumbs=False ##only relevant if load_metadata is true
-        self.load_preview_icons=False ##only relevant if load_metadata is false
-        self.trash_location=None ## none defaults to <collection dir>/.trash
-        self.thumbnail_cache=None ## use gnome/freedesktop or put in the image folder
-        self.monitor=None
-        self.monitor_master_callback=None
-        self.views=[]
-        self.active_view=None
+    def __init__(self,items=[],image_dirs=[],id='',type='LOCALSTORE',name='',pixbuf=None): #todo: store base path for the collection
+        self.type=type #either localstore, device or directory (future: webstore?)
+        self.name=name #name displayed to the user
+        self.pixbuf=pixbuf #icon to display in the interface (maybe need more than one size)
+        self.id=id
+
+        self.items=[] #the image/video items
         for item in items:
             self.items.add(item)
             self.numselected+=item.selected
+        self.is_open=True if len(items)>0 else False
+
+        self.numselected=0
+
+        self.filename=None
+        self.image_dirs=image_dirs
+
+        self.verify_after_walk=True
+        self.load_metadata=True #image will be loaded into the collection and view without metadata
+        self.load_embedded_thumbs=False #only relevant if load_metadata is true
+        self.load_preview_icons=False #only relevant if load_metadata is false
+        self.trash_location=None #none defaults to <collection dir>/.trash
+        self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
+
+        self.monitor=None
+        self.monitor_master_callback=None #
+
+        self.views=[]  #a view is a sorted subset of the collection (i.e. database notion of a view)
+        self.active_view=None
+
     def copy(self):
         dup=Collection([])
         dup.items=self.items[:]
@@ -188,11 +200,12 @@ class Collection():
             self.active_view=view
     def get_active_view(self):
         return self.active_view
-    def load(self,filename=''):
+    def open(self,filename=''):
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument
         '''
         print 'loading collection',filename,self.filename
+        self.is_open=True
         try:
             if not filename:
                 filename=self.filename
@@ -209,12 +222,14 @@ class Collection():
             self.numselected=0
             return True
         except:
+            self.is_open=False
             self.empty()
             return False
-    def save(self):
+    def close(self):
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
+        self.is_open=False
         if not self.filename: ##no filename assumed to be a temporary collection
             return False
         print 'saving collection',self.filename,self.image_dirs

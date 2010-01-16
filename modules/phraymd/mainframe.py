@@ -359,40 +359,32 @@ class MainFrame(gtk.VBox):
 
         ##open last used collection or
         ##todo: device or directory specified at command line.
-        self.active_collection=imageinfo.Collection()
-        self.active_collection.filename=settings.active_collection_file
-        self.active_collection.add_view()
-        self.coll_set[settings.active_collection_file].collection=self.active_collection
+        self.coll_set.init_localstores()
+        print settings.active_collection_file
         if settings.active_collection_file:
+            self.active_collection=self.coll_set[settings.active_collection_file]
             self.coll_combo.set_active(settings.active_collection_file)
 
-
     def collection_changed(self,combo,id):
-        coll=self.coll_set[id].collection
-        new=False
+        coll=self.coll_set[id]
         print 'changing to coll set with id',id,coll
-        if coll==None:
-            coll=imageinfo.Collection()
-            new=True
-            if self.coll_set[id].type=='LOCALSTORE':
-                coll.filename=id
-            else:
-                coll.image_dirs=[id]
-            coll.add_view()
-            self.coll_set[id].collection=coll
         self.active_collection=coll
         self.tm.set_active_collection(coll)
         self.browser.active_collection=coll
         self.browser.active_view=coll.get_active_view()
-        if new:
+        if not coll.is_open:
             self.tm.load_collection('')
             self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.browser.refresh_view()
 
     def collection_opened(self,collection): ##callback used by worker thread
+        collection.is_open=True
+        ##todo: call Tree model changed
         self.browser.refresh_view()
 
     def collection_closed(self,collection): ##callback used by worker thread
+        collection.is_open=False
+        ##todo: call Tree model changed
         self.browser.refresh_view()
 
     def open_collection(self,collection_id):
@@ -481,11 +473,7 @@ class MainFrame(gtk.VBox):
         self.view_image(item)
 
     def destroy(self,event):
-        for id in self.coll_set:
-            coll=self.coll_set[id].collection
-            print 'closing',id,coll,coll.image_dirs if coll else None
-            if coll==None:
-                continue
+        for coll in self.coll_set:
             sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
             sj.priority=1050
             self.tm.queue_job_instance(sj)

@@ -307,7 +307,7 @@ class LoadCollectionJob(WorkerJob):
         collection=self.collection
         log.info('Loading collection '+self.collection_file)
         gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
-        if collection.load(self.collection_file):
+        if collection.open(self.collection_file):
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.create_monitor(self.worker.directory_change_notify)
                 self.collection.start_monitor()
@@ -347,7 +347,7 @@ class SaveCollectionJob(WorkerJob):
         log.info('Saving '+str(self.collection.filename))
         print 'started save job'
         self.collection.end_monitor()
-        self.collection.save()
+        self.collection.close()
         return True
 
 
