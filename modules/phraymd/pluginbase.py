@@ -78,6 +78,9 @@ class Plugin(object):
         blocking the gui'''
         pass
     '''collection'''
+    def collection_activated(self,collection):
+        '''browser has been switched to a different collection'''
+        pass
     def t_collection_item_added(self,collection,item):
         '''item was added to the collection'''
         pass

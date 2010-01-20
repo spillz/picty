@@ -400,8 +400,10 @@ class ImageBrowser(gtk.HBox):
             self.hover_ind=-1
             self.redraw_view()
 
-    def redraw_view(self):
+    def redraw_view(self,collection=None):
         '''redraw the view without recomputing geometry or changing position'''
+        if collection and collection!=self.active_collection:
+            return
 #        self.refresh_view()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
@@ -411,8 +413,10 @@ class ImageBrowser(gtk.HBox):
 ##        ##todo: send a signal about collection updates
 ##        #self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
-    def refresh_view(self):
+    def refresh_view(self,collection=None):
         '''update geometry, scrollbars, redraw the thumbnail view'''
+        if collection and collection!=self.active_collection:
+            return
         self.emit('view-changed')
         self.update_geometry()
         ##self.update_required_thumbs()

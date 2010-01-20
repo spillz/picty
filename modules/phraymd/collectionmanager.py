@@ -42,6 +42,8 @@ class CollectionSet(gtk.GenericTreeModel):
         gtk.GenericTreeModel.__init__(self)
         self.collections={}
         self.types=['LOCALSTORE','DEVICE','DIRECTORY']
+        for r in self.view_iter():
+            self.row_inserted(*self.pi_from_id(r))
     def __iter__(self):
         '''
         iterator yielding all open collections
@@ -55,7 +57,7 @@ class CollectionSet(gtk.GenericTreeModel):
         '''
         for id,c in self.collections.iteritems():
             if not ctype or c.type==ctype:
-                yield c.id
+                yield id
     def iter_coll(self,ctype=None):
         '''
         iterates over the open collections yielding the collection matching ctype
@@ -69,31 +71,35 @@ class CollectionSet(gtk.GenericTreeModel):
         if name is an id returns the collection
         if name is an iter returns the collection descriptive data as a row from a tree model (list)
         '''
+        if not name:
+            return
         if isinstance(name,gtk.TreeIter):
             id=self.get_user_data(name)
-            print '__getitem__ lookup for id',name,id
             return self.as_row(id)
         return self.collections[name]
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
         return self.get_path(iter),iter
-    def __setitem__(self,name,value):
-        if isinstance(name,gtk.TreeIter):
-            id=self.get_user_data(name)
-        if isinstance(name,str):
-            id=name
-        if not isinstance(value,Collection):
-             raise ValueError("CollectionSet Error: invalid value "+str(value))
-        added=True if id not in self.collections else False
-        self.collections[id]=value
-        if added:
-            self.row_inserted(*self.pi_from_id(id))
-        else:
-            self.row_changed(*self.pi_from_id(id))
+#    def __setitem__(self,name,value):
+#        if isinstance(name,gtk.TreeIter):
+#            id=self.get_user_data(name)
+#        if isinstance(name,str):
+#            id=name
+#        if not isinstance(value,Collection):
+#             raise ValueError("CollectionSet Error: invalid value "+str(value))
+#        added=True if id not in self.collections else False
+#        self.collections[id]=value
+#        if added:
+#            self.row_inserted(*self.pi_from_id(id))
+#        else:
+#            self.row_changed(*self.pi_from_id(id))
     def __delitem__(self,name):
+        coll=self.collections[name]
+        self.row_deleted(*self.pi_from_id(name)[0])
         del self.collections[name]
-        path=self._get_path(name)
-        self.row_deleted(*self.pi_from_name(name))
+        path=self.on_get_path(name)
+        if coll.type=='DEVICE':
+            self.row_inserted(*self.pi_from_id('#no-devices'))
     def clear(self):
         for id in self.collections:
             del self[id]
@@ -101,6 +107,8 @@ class CollectionSet(gtk.GenericTreeModel):
         t=gtk.icon_theme_get_default()
         ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
         return None if not ii else ii.load_icon()
+    def count(self,type):
+        return sum([1 for id in self.iter_id(type)])
     def add_mount(self,path,name,icon_names):
         c=collections.Collection()
         c.type='DEVICE'
@@ -109,7 +117,10 @@ class CollectionSet(gtk.GenericTreeModel):
         c.id=path
         c.pixbuf=self.get_icon(icon_names)
         c.add_view()
+        if self.count('DEVICE')==0:
+            self.row_deleted(*self.pi_from_id('#no-devices')[0])
         self.collections[c.id]=c
+        self.row_inserted(*self.pi_from_id(c.id))
         return c
     def add_localstore(self,col_file):
         c=collections.Collection()
@@ -120,11 +131,16 @@ class CollectionSet(gtk.GenericTreeModel):
         c.type='LOCALSTORE'
         c.add_view()
         self.collections[col_path]=c
+        self.row_inserted(*self.pi_from_id(c.id))
         return c
     def remove(self,id):
         coll=self[id]
         del self[id]
         return coll
+    def open_collection(self,id):
+        pass
+    def close_collection(self,id):
+        pass
     def init_localstores(self):
         for col_file in settings.get_collection_files():
             self.add_localstore(col_file)
@@ -140,7 +156,7 @@ class CollectionSet(gtk.GenericTreeModel):
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
-        return ICON_LIST+2
+        return COMBO_OPEN+1
     def on_get_column_type(self, index):
         return [str,str,int,gtk.gdk.Pixbuf,bool][index]
     def on_get_iter(self, path):
@@ -154,7 +170,7 @@ class CollectionSet(gtk.GenericTreeModel):
         i=0
         for id in self.view_iter():
             if id==rowref:
-                return i
+                return (i,)
             i+=1
         return None
     def on_get_value(self, rowref, column):
@@ -189,7 +205,7 @@ class CollectionSet(gtk.GenericTreeModel):
         if id.startswith('*'):
             return [id,'',800,None,False]
         if id.startswith('#'):
-            return [id,id[1:],400,None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
+            return [id,id[1:]+'...',400,None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
         ci=self.collections[id]
         if ci.is_open:
             return [id,ci.name,800,ci.pixbuf,True]
@@ -200,14 +216,18 @@ class CollectionSet(gtk.GenericTreeModel):
         this iterator defines the rows of the collection model
         '''
         tcount=0
-        options=['#new-coll',None,'#add-dir']
+        options=['#add-localstore',None,'#add-dir']
         for t in self.types:
             if tcount>0:
                 yield '*%i'%(tcount,)
-                if options[tcount]:
-                    yield options[tcount]
+            i=0
             for id in self.iter_id(t):
                 yield id
+                i+=1
+            if t=='DEVICE' and i==0:
+                yield '#no-devices'
+            if options[tcount]!=None:
+                yield options[tcount]
             tcount+=1
 
 
@@ -258,18 +278,23 @@ class CollectionCombo(gtk.VBox):
         self.combo.connect("changed",self.changed)
     def changed(self,combo):
         iter=combo.get_active_iter()
+        if iter==None:
+            self.emit('collection-changed','')
+            return
         id=self.model[iter][COMBO_ID]
-        if id=='#add_dir':
+        if id=='#add-dir':
             self.emit('add-dir')
         elif id=='#add-localstore':
             self.emit('add-localstore')
+        elif id.startswith('#'):
+            return
         elif not id.startswith('*'):
             self.emit('collection-changed',id)
     def sep_cb(self, model, iter):
         '''
         callback determining whether a row should appear as a separator in the combo
         '''
-        if self.model[iter][COMBO_NAME].startswith('*'):
+        if self.model[iter][COMBO_ID].startswith('*'):
             return True
         return False
     def get_choice(self):

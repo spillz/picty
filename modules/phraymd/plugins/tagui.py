@@ -221,6 +221,8 @@ class TagSidebarPlugin(pluginbase.Plugin):
         except KeyError:
             pass
         self.thread_refresh()
+    def collection_activated(self,collection):
+        self.tagframe.refresh()
     def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
         self.tagframe.tag_cloud_view[view]=TagCloud()
@@ -271,9 +273,9 @@ class TagFrame(gtk.VBox):
         self.worker=mainframe.tm
         self.browser=mainframe.browser
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
-        self.sort_model=gtk.TreeModelSort(self.model)
-        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
-        self.tv=gtk.TreeView(self.sort_model)
+##        self.sort_model=gtk.TreeModelSort(self.model)
+##        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
+        self.tv=gtk.TreeView(self.model)
 #        self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
         self.tv.connect("row-activated",self.tag_activate)

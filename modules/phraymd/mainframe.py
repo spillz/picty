@@ -359,52 +359,58 @@ class MainFrame(gtk.VBox):
 
         ##open last used collection or
         ##todo: device or directory specified at command line.
-        self.coll_set.init_localstores()
         print settings.active_collection_file
         if settings.active_collection_file:
             self.active_collection=self.coll_set[settings.active_collection_file]
             self.coll_combo.set_active(settings.active_collection_file)
 
     def collection_changed(self,combo,id):
+        if not id:
+            self.active_collection=None
+            self.tm.set_active_collection(None)
+            self.browser.active_collection=None
+            self.browser.active_view=None
+            self.browser.hide()
+            return
+
         coll=self.coll_set[id]
         print 'changing to coll set with id',id,coll
         self.active_collection=coll
         self.tm.set_active_collection(coll)
         self.browser.active_collection=coll
         self.browser.active_view=coll.get_active_view()
+        if coll.filename:
+            settings.active_collection_file=coll.filename
         if not coll.is_open:
             self.tm.load_collection('')
             self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+        self.browser.show()
         self.browser.refresh_view()
+        pluginmanager.mgr.callback('collection_activated',coll)
 
     def collection_opened(self,collection): ##callback used by worker thread
+        print 'COLLECTION OPENED',collection.id
         collection.is_open=True
         ##todo: call Tree model changed
         self.browser.refresh_view()
 
     def collection_closed(self,collection): ##callback used by worker thread
+        print 'COLLECTION CLOSED',collection.id
         collection.is_open=False
         ##todo: call Tree model changed
         self.browser.refresh_view()
 
-    def open_collection(self,collection_id):
-        coll=self.coll_set[self.active_collection_id].collection
-        if coll!=None:
-            return
-        coll=collections.Collection()
-
-    def close_collection(self,collection_id):
-        coll=self.coll_set[self.active_collection_id].collection
-        if coll==None:
-            return
-
-    def mount_added(self,name,icon_names,path):
+    def mount_added(self,monitor,name,icon_names,path):
         self.coll_set.add_mount(path,name,icon_names)
 
-    def mount_removed(self,name,icon_names,path):
-        collection=self.coll_set[path].collection
-        self.coll_set.remove_mount(path)
-        self.worker.close_collection(collection)
+    def mount_removed(self,monitor,name,icon_names,path):
+        collection=self.coll_set[path]
+        self.coll_set.remove(path)
+        print 'removed',collection,collection.filename
+        if collection.is_open:
+            sj=backend.SaveCollectionJob(self.tm,collection,self.browser)
+            sj.priority=1050
+            self.tm.queue_job_instance(sj)
 
     def add_dir(self,name,path):
         pass
@@ -648,7 +654,8 @@ class MainFrame(gtk.VBox):
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
-                        self.browser.show()
+                        if self.active_collection:
+                            self.browser.show()
                         self.hpane_ext.show()
                         self.toolbar.show()
                         self.info_bar.show()
@@ -677,7 +684,8 @@ class MainFrame(gtk.VBox):
                             self.is_fullscreen=False
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
-                        self.browser.show()
+                        if self.active_collection:
+                            self.browser.show()
                         self.hpane_ext.show()
                         self.info_bar.show()
                         self.toolbar.show()
@@ -735,7 +743,8 @@ class MainFrame(gtk.VBox):
     def hide_image(self):
         self.iv.hide()
         self.iv.ImageNormal()
-        self.browser.show()
+        if self.active_collection:
+            self.browser.show()
         #self.hbox.show()
         self.toolbar.show()
         self.hpane_ext.show()
@@ -748,7 +757,8 @@ class MainFrame(gtk.VBox):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             if self.is_iv_fullscreen:
                 self.iv.ImageNormal()
-                self.browser.show()
+                if self.active_collection:
+                    self.browser.show()
                 self.toolbar.show()
                 self.hpane_ext.show()
                 self.info_bar.show()
