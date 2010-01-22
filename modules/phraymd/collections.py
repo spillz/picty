@@ -336,7 +336,7 @@ class Collection2():
                 self.image_dirs=cPickle.load(f)
             else:
                 self.image_dirs=settings.legacy_image_dirs
-            if version>='0.4.0'
+            if version>='0.4.0':
                 self.items=cPickle.load(f)
             else:
                 f.close()

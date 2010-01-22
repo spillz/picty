@@ -131,6 +131,7 @@ class CollectionSet(gtk.GenericTreeModel):
         c.name=col_file
         c.id=col_path
         c.type='LOCALSTORE'
+        c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK])
         c.add_view()
         self.collections[col_path]=c
         self.row_inserted(*self.pi_from_id(c.id))
@@ -142,6 +143,7 @@ class CollectionSet(gtk.GenericTreeModel):
         c.id=path
         c.type='DIRECTORY'
         c.image_dirs=[path]
+        c.pixbuf=self.get_icon([gtk.STOCK_DIRECTORY])
         c.recursive=recursive
         c.add_view()
         self.collections[path]=c
