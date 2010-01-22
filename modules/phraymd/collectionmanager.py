@@ -112,7 +112,7 @@ class CollectionSet(gtk.GenericTreeModel):
     def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
     def add_mount(self,path,name,icon_names):
-        c=collections.Collection()
+        c=collections.Collection2()
         c.type='DEVICE'
         c.image_dirs=[path] ##todo: if device collection data is stored persistently, what to do if path changes?
         c.name=name
@@ -125,7 +125,7 @@ class CollectionSet(gtk.GenericTreeModel):
         self.row_inserted(*self.pi_from_id(c.id))
         return c
     def add_localstore(self,col_file):
-        c=collections.Collection()
+        c=collections.Collection2()
         col_path=os.path.join(settings.collections_dir,col_file)
         c.filename=col_path
         c.name=col_file
@@ -136,7 +136,7 @@ class CollectionSet(gtk.GenericTreeModel):
         self.row_inserted(*self.pi_from_id(c.id))
         return c
     def add_directory(self,path,recursive=False):
-        c=collections.Collection()
+        c=collections.Collection2()
         c.filename=''
         c.name=os.path.split(path)[1]
         c.id=path
