@@ -462,12 +462,17 @@ class Index():
         for item in items:
             self.add(key_cb(item),item)
         self.key_cb=key_cb
+        self.sort_key_text=''
         self.filter_tree=None
+        self.filter_text=''
         self.collection=collection
-##        self.filters=[(keyword_filter,('in','tom'))] #tests out the filtering mechanism
         self.reverse=False
     def copy(self):
         dup=Index(self.key_cb)
+        dup.sort_key_text=self.sort_key_text
+        dup.filter_tree=self.filter_tree
+        dup.filter_text=self.filter_text
+        dup.collection=collection
         dup.items[:]=self.items[:]
         return dup
     def set_filter(self,expr):

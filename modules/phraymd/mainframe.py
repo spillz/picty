@@ -155,7 +155,10 @@ class MainFrame(gtk.VBox):
 
         self.filter_entry=gtk.Entry()
         self.filter_entry.connect("activate",self.set_filter_text)
+        self.filter_entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
+
+
         try:
             self.filter_entry.set_icon_from_stock(gtk.STOCK_CLEAR)
             self.filter_entry.connect("icon-press",self.clear_filter)
@@ -261,7 +264,7 @@ class MainFrame(gtk.VBox):
             self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
             add_item(self.toolbar,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
             self.toolbar.add(gtk.SeparatorToolItem())
-            add_widget(self.toolbar,gtk.Label("Browse: "),None,None,None)
+            add_widget(self.toolbar,gtk.Label("Browsing: "),None,None,None)
             add_widget(self.toolbar,self.coll_combo,None,None,"Switch the active collection, directory or device")
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
             add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
@@ -338,14 +341,50 @@ class MainFrame(gtk.VBox):
 
         dbusserver.start()
 
+        self.browser.active_view.sort_key_text=self.sort_order.get_active_text()
         self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.tm.set_active_collection(self.active_collection)
         self.tm.start()
         self.tm.load_collection('')
         print 'active collection dirs',self.active_collection.image_dirs
         self.coll_combo.connect("collection-changed",self.collection_changed)
+        self.coll_combo.connect("add-dir",self.browse_dir_collection)
+        self.coll_combo.connect("add-localstore",self.create_local_store)
 #        self.tm.load_collection(self.active_collection_id,'')
 #        self.tm.open_collection(self.active_collection_id,collection)
+
+    def browse_dir_collection(self,combo):
+        #prompt for path
+        old_id=''
+        if self.active_collection:
+            old_id=self.active_collection.id
+        path=metadatadialogs.directory_dialog(title='Choose Image Directory',default='')
+        if path:
+            self.coll_set.add_directory(path)
+            self.coll_combo.set_active(path)
+        else:
+            self.coll_combo.set_active(old_id)
+
+    def create_local_store(self,combo):
+        #prompt name and path
+        old_id=''
+        if self.active_collection:
+            old_id=self.active_collection.id
+        name=self.entry_dialog('New Collection','Name:')
+        if not name:
+            if old_id:
+                self.coll_combo.set_active(old_id)
+            return
+        coll_path=settings.user_add_dir()
+        if len(coll_path)>0:
+            if imageinfo.create_empty_file(name,coll_path):
+                self.coll_set.add_localstore(coll_path)
+                self.coll_combo.set_active(coll_path)
+            else:
+                print 'Error loading creating colleciton',coll_path
+        else:
+            if old_id:
+                self.coll_combo.set_active(old_id)
 
     def collections_init(self):
         ##now fill the collection manager with
@@ -365,12 +404,16 @@ class MainFrame(gtk.VBox):
             self.coll_combo.set_active(settings.active_collection_file)
 
     def collection_changed(self,combo,id):
+        self.browser.grab_focus()
         if not id:
             self.active_collection=None
             self.tm.set_active_collection(None)
             self.browser.active_collection=None
             self.browser.active_view=None
             self.browser.hide()
+            self.filter_entry.set_text('')
+            self.sort_order.set_active(-1)
+            self.sort_toggle.set_active(False)
             return
 
         coll=self.coll_set[id]
@@ -379,13 +422,24 @@ class MainFrame(gtk.VBox):
         self.tm.set_active_collection(coll)
         self.browser.active_collection=coll
         self.browser.active_view=coll.get_active_view()
+
+        sort_model=self.sort_order.get_model()
+        for i in xrange(len(sort_model)):
+            if self.browser.active_view.sort_key_text==sort_model[i][0]:
+                self.sort_order.set_active(i)
+                break
+        self.sort_toggle.set_active(self.browser.active_view.reverse)
+
         if coll.filename:
             settings.active_collection_file=coll.filename
         if not coll.is_open:
             self.tm.load_collection('')
+            ##todo: the two insructions below don't really make sense -- justt make sure they values have been set to sensible defaults
+            self.browser.active_view.sort_key_text=self.sort_order.get_active_text()
             self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
         self.browser.show()
         self.browser.refresh_view()
+        self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
         pluginmanager.mgr.callback('collection_activated',coll)
 
     def collection_opened(self,collection): ##callback used by worker thread
@@ -517,6 +571,10 @@ class MainFrame(gtk.VBox):
 ##        dlg.run()
 ##        dlg.destroy()
 
+    def filter_text_changed(self,widget):
+        if self.active_collection:
+            self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
+
     def select_show(self,widget):
         self.filter_entry.set_text("selected")
         self.filter_entry.activate()
@@ -610,18 +668,21 @@ class MainFrame(gtk.VBox):
         self.tm.recreate_selected_thumbs()
 
     def set_filter_text(self,widget):
-        self.set_sort_key(widget)
+        self.browser.grab_focus()
+        key=self.sort_order.get_active_text()
+        filter_text=self.filter_entry.get_text()
+        if self.active_collection and self.browser.active_view and self.browser.active_view.filter_text!=filter_text:
+            self.tm.rebuild_view(key,filter_text)
 
     def clear_filter(self,widget):
         self.filter_entry.set_text('')
-        self.set_sort_key(widget)
+        self.set_filter_text(widget)
 
     def set_sort_key(self,widget):
         self.browser.grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        print 'sort&filter',key,filter_text
-        if self.active_collection:
+        if self.active_collection and self.browser.active_view and self.browser.active_view.sort_key_text!=key:
             self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):
@@ -631,8 +692,10 @@ class MainFrame(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        self.browser.active_view.reverse=not self.browser.active_view.reverse
-        widget.set_active(self.browser.active_view.reverse)
+        self.browser.active_view.reverse=widget.get_active()#not self.browser.active_view.reverse
+#        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
+#        widget.set_active(self.browser.active_view.reverse)
+#        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
         self.browser.refresh_view()
 
     def update_status(self,widget,progress,message):

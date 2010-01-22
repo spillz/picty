@@ -574,6 +574,7 @@ class BuildViewJob(WorkerJob):
         if i==0:
             if self.sort_key:
                 view.key_cb=imageinfo.sort_keys[self.sort_key]
+                view.sort_key_text=self.sort_key
             view.filters=None
             filter_text=self.filter_text.strip()
             if filter_text.startswith('lastview&'):

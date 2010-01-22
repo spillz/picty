@@ -9,8 +9,10 @@ import collections
 COMBO_ID=0
 COMBO_NAME=1
 COMBO_FONT_WGT=2
-COMBO_PIXBUF=3
-COMBO_OPEN=4
+COMBO_FONT_COLOR_SET=3
+COMBO_FONT_COLOR=4
+COMBO_PIXBUF=5
+COMBO_OPEN=6
 
 def combo_cols(coll,index):
     return [coll.type,coll.path,coll.collection,coll.icon_list,coll.pixbuf][index]
@@ -107,7 +109,7 @@ class CollectionSet(gtk.GenericTreeModel):
         t=gtk.icon_theme_get_default()
         ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
         return None if not ii else ii.load_icon()
-    def count(self,type):
+    def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
     def add_mount(self,path,name,icon_names):
         c=collections.Collection()
@@ -131,6 +133,18 @@ class CollectionSet(gtk.GenericTreeModel):
         c.type='LOCALSTORE'
         c.add_view()
         self.collections[col_path]=c
+        self.row_inserted(*self.pi_from_id(c.id))
+        return c
+    def add_directory(self,path,recursive=False):
+        c=collections.Collection()
+        c.filename=''
+        c.name=os.path.split(path)[1]
+        c.id=path
+        c.type='DIRECTORY'
+        c.image_dirs=[path]
+        c.recursive=recursive
+        c.add_view()
+        self.collections[path]=c
         self.row_inserted(*self.pi_from_id(c.id))
         return c
     def remove(self,id):
@@ -158,7 +172,7 @@ class CollectionSet(gtk.GenericTreeModel):
     def on_get_n_columns(self):
         return COMBO_OPEN+1
     def on_get_column_type(self, index):
-        return [str,str,int,gtk.gdk.Pixbuf,bool][index]
+        return [str,str,int,bool,str,gtk.gdk.Pixbuf,bool][index]
     def on_get_iter(self, path):
         i=0
         for id in self.view_iter():
@@ -202,15 +216,21 @@ class CollectionSet(gtk.GenericTreeModel):
     def as_row(self,id):
 #        print 'as_row called',rowref
 #        id=self.get_user_data(rowref)
+        label_dict={
+            '#add-localstore':'New Collection...',
+            '#no-devices':'No Devices Connected',
+            '#add-dir':'Browse a Local Directory...',
+
+        }
         if id.startswith('*'):
-            return [id,'',800,None,False]
+            return [id,'',800,False,'black',None,False]
         if id.startswith('#'):
-            return [id,id[1:]+'...',400,None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
+            return [id,label_dict[id],400,False,'black',None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
         ci=self.collections[id]
         if ci.is_open:
-            return [id,ci.name,800,ci.pixbuf,True]
+            return [id,ci.name,800,False,'brown',ci.pixbuf,True]
         else:
-            return [id,ci.name,400,ci.pixbuf,False]
+            return [id,ci.name,400,False,'brown',ci.pixbuf,False]
     def view_iter(self):
         '''
         this iterator defines the rows of the collection model
@@ -261,6 +281,7 @@ class CollectionCombo(gtk.VBox):
 
         self.combo=gtk.ComboBox(self.model)
         self.combo.set_row_separator_func(self.sep_cb)
+        self.combo.set_focus_on_click(False)
         cpb=gtk.CellRendererPixbuf()
         self.combo.pack_start(cpb,False)
         self.combo.add_attribute(cpb, 'pixbuf', COMBO_PIXBUF)
@@ -268,6 +289,8 @@ class CollectionCombo(gtk.VBox):
         self.combo.pack_start(cpt,False)
         self.combo.add_attribute(cpt, 'text', COMBO_NAME)
         self.combo.add_attribute(cpt, 'weight', COMBO_FONT_WGT)
+        self.combo.add_attribute(cpt, 'foreground-set', COMBO_FONT_COLOR_SET)
+        self.combo.add_attribute(cpt, 'foreground', COMBO_FONT_COLOR)
 
 #        cpto=gtk.CellRendererToggle()
 #        self.combo.pack_start(cpto,False)
