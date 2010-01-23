@@ -137,7 +137,7 @@ class WorkerJobQueue:
         jobs=self.removed_jobs
         self.removed_jobs=[]
         self.lock.release()
-        return jobs
+        return jobs[:]
 
 #    def find_by_job_class(self,job_class):
 #        self.lock.acquire()
@@ -330,7 +330,7 @@ class CloseCollectionJob(WorkerJob):
         self.save=save
 
     def __call__(self):
-        self.worker.jobs.clear(self.collection)
+        self.worker.jobs.clear(None,self.collection)
         if self.filename:
             self.collection.filename=self.filename
         log.info('Closing '+str(self.collection.filename))
@@ -346,12 +346,14 @@ class SaveCollectionJob(WorkerJob):
         self.filename=filename
 
     def __call__(self):
+        self.worker.jobs.clear(None,self.collection)
         if self.filename:
             self.collection.filename=self.filename
         log.info('Saving '+str(self.collection.filename))
         print 'started save job'
-        self.collection.end_monitor()
+        self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
+        self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)
         return True
 
 
@@ -558,12 +560,12 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW',925,worker,collection,browser)
         self.sort_key=sort_key
         self.pos=0
-        self.cancel=False
+#        self.cancel=False
         self.filter_text=filter_text
         self.superset=None
 
-    def cancel_job(self):
-        self.cancel=True
+#    def cancel_job(self):
+#        self.cancel=True
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -586,13 +588,13 @@ class BuildViewJob(WorkerJob):
                 view.set_filter(filter_text)
             else:
                 view.clear_filter(filter_text)
-            view.empty() ##todo: create a view method to empty the view
+            view.empty()
             pluginmanager.mgr.callback('t_view_emptied',collection,view)
             pluginmanager.mgr.suspend_collection_events(self.collection)
             gobject.idle_add(self.browser.update_view)
         lastrefresh=i
         self.browser.lock.release()
-        while i<len(self.superset) and jobs.ishighestpriority(self) and not self.cancel:
+        while i<len(self.superset) and jobs.ishighestpriority(self):
             item=self.superset(i)
             if item.meta!=None:
                 self.browser.lock.acquire()
@@ -603,12 +605,11 @@ class BuildViewJob(WorkerJob):
                     gobject.idle_add(self.browser.refresh_view,self.collection)
                     gobject.idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
-        if i<len(self.superset) and not self.cancel:
+        if i<len(self.superset):  ## and jobs.ishighestpriority(self)
             self.pos=i
             return False
         else:
             self.pos=0
-            self.cancel=False
             gobject.idle_add(self.browser.refresh_view,self.collection)
             gobject.idle_add(self.browser.update_status,2,'View rebuild complete')
             gobject.idle_add(self.browser.post_build_view)
@@ -1051,11 +1052,13 @@ class Worker:
         print 'worker thread started'
         while 1:
             try:
-                for j in self.jobs.get_removed_jobs(): ##clean up any cancelled jobs
-                    j.cancel()
+                rem_jobs=self.jobs.get_removed_jobs()
+                print 'CANCELLED JOBS',rem_jobs,len(rem_jobs)
+                if len(rem_jobs)>0:
+                    for j in rem_jobs: ##clean up any cancelled jobs
+                        print 'CANCELLING',j
+                        j.cancel()
                 if self.jobs.gethighest()==None:
-                    print 'clear and wait'
-                    print self.jobs.queue,self.jobs.priority_collection
                     self.event.clear()
                     self.event.wait()
                 job=self.jobs.gethighest()

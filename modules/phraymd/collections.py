@@ -63,11 +63,10 @@ class SimpleCollection(list):
         del self[:]
 
 
-##todo: perhaps there should be multiple classes of collection for different types of collection?
-## * local store
-## * device/directory
-## * online store (images stored online, with thumbnails and metadata cached locally)
-## define an abstract class for the common features
+## This is the old style collection (ver 0.3.2 and earlier)
+## only needed for legacy support
+## all collections in phraymd are derived from the Collection2 class
+## todo: drop legacy support to reduce cruft.
 class Collection(list):
     '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
     def __init__(self,items,image_dirs=[]): ##todo: store base path for the collection
@@ -189,7 +188,9 @@ class Collection(list):
 
 
 class Collection2():
-    '''defines a sorted collection of Items with callbacks to plugins when the contents of the collection change'''
+    '''defines a sorted collection of Items with
+    callbacks to plugins when the contents of the collection change'''
+    ##todo: do more plugin callbacks here instead of the job classes?
     def __init__(self,items=[],image_dirs=[],id='',type='LOCALSTORE',name='',pixbuf=None): #todo: store base path for the collection
         self.type=type #either localstore, device or directory (future: webstore?)
         self.name=name #name displayed to the user
@@ -302,7 +303,7 @@ class Collection2():
             self.monitor.end(self.image_dirs[0])
     def monitor_callback(self,path,action,is_dir):
         self.monitor_master_callback(self,path,action,is_dir)
-    def add_view(self,sort_criteria=None):
+    def add_view(self,sort_criteria=views.get_mtime):
         view=views.Index(sort_criteria,self.items,self)
         self.views.append(view)
         if not self.active_view:
@@ -372,11 +373,12 @@ class Collection2():
         cPickle.dump(self.items,f,-1)
         f.close()
         return True
-    def empty(self):
+    def empty(self,empty_views=True):
         del self.items[:]
         self.numselected=0
-        self.filename=''
-        self.image_dirs=[]
+        if empty_views:
+            for v in self.views:
+                v.empty()
     def __len__(self):
         return len(self.items)
 

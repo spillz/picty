@@ -329,6 +329,8 @@ class CollectionCombo(gtk.VBox):
     def set_active(self,id):
         if id:
             self.combo.set_active_iter(self.model.create_tree_iter(id))
+        else:
+            self.combo.set_active(-1)
 
 
 gobject.type_register(CollectionCombo)

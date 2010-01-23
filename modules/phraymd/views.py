@@ -463,10 +463,13 @@ class Index():
             self.add(key_cb(item),item)
         self.key_cb=key_cb
         self.sort_key_text=''
+        for text,cb in sort_keys.iteritems():
+            if cb==key_cb:
+                self.sort_key_text=text
         self.filter_tree=None
         self.filter_text=''
-        self.collection=collection
         self.reverse=False
+        self.collection=collection
     def copy(self):
         dup=Index(self.key_cb)
         dup.sort_key_text=self.sort_key_text
