@@ -358,10 +358,10 @@ class MainFrame(gtk.VBox):
         coll_path=settings.user_add_dir()
         if len(coll_path)>0:
             if imageinfo.create_empty_file(name,coll_path):
-                self.coll_set.add_localstore(coll_path)
+                self.coll_set.add_localstore(name)
                 self.coll_combo.set_active(coll_path)
             else:
-                print 'Error loading creating colleciton',coll_path
+                print 'Error loading creating collection',coll_path
         else:
             if old_id:
                 self.coll_combo.set_active(old_id)
@@ -421,6 +421,8 @@ class MainFrame(gtk.VBox):
     def close_collection(self,widget):
         coll=self.active_collection
         if not coll:
+            return
+        if not coll.is_open:
             return
         sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
         sj.priority=1050
@@ -519,9 +521,10 @@ class MainFrame(gtk.VBox):
 
     def destroy(self,event):
         for coll in self.coll_set:
-            sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
-            sj.priority=1050
-            self.tm.queue_job_instance(sj)
+            if coll.is_open:
+                sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
+                sj.priority=1050
+                self.tm.queue_job_instance(sj)
         try:
             settings.layout=self.get_layout()
             settings.save()
@@ -677,7 +680,9 @@ class MainFrame(gtk.VBox):
         print 'show_filters',widget
 
     def reverse_sort_order(self,widget):
-        self.browser.active_view.reverse=widget.get_active()#not self.browser.active_view.reverse
+        c=self.active_collection
+        if c:
+            c.get_active_view().reverse=widget.get_active()#not self.browser.active_view.reverse
 #        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
 #        widget.set_active(self.browser.active_view.reverse)
 #        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)

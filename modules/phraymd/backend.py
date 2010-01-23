@@ -44,6 +44,10 @@ import pluginmanager
 import io
 from logger import log
 
+def idle_add(*args):
+    gobject.idle_add(*args)
+    time.sleep(0.005)
+
 
 ##TODO: (CRITICAL) ALL JOBS THE TOUCH A VIEW SHOULD BE PASSED THAT VIEW DURING CONSTRUCTION (do not use collection.get_active_view())
 class WorkerJob:
@@ -216,9 +220,9 @@ class ThumbnailJob(WorkerJob):
                     continue
             i+=1
             if i%20==0:
-                gobject.idle_add(self.browser.redraw_view,self.collection)
+                idle_add(self.browser.redraw_view,self.collection)
         if len(self.queue_onscreen)==0:
-            gobject.idle_add(self.browser.redraw_view,self.collection)
+            idle_add(self.browser.redraw_view,self.collection)
             if len(self.cu_job_queue)>0:
                 self.worker.queue_job_instance(CollectionUpdateJob(self.worker,self.collection,self.browser,self.cu_job_queue))
             return True
@@ -240,11 +244,11 @@ class CollectionUpdateJob(WorkerJob):
                 if self.view.del_item(item):
                     imagemanip.load_metadata(item,self.collection)
                     self.view.add_item(item)
-                    gobject.idle_add(self.browser.refresh_view,self.collection)
+                    idle_add(self.browser.refresh_view,self.collection)
                 self.browser.lock.release()
             if not imagemanip.has_thumb(item):
                 imagemanip.make_thumb(item)
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
         if len(self.queue)==0:
             return True
         return False
@@ -258,7 +262,7 @@ class RecreateThumbJob(WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         while len(self.queue)>0 and jobs.ishighestpriority(self):
-            gobject.idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
+            idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
             item=self.queue.pop(0)
             if item.meta==None:
                 self.browser.lock.acquire()
@@ -269,9 +273,9 @@ class RecreateThumbJob(WorkerJob):
             if item.meta!=None:
                 imagemanip.make_thumb(item,None,True) ##force creation of thumbnail (3rd arg = True)
                 imagemanip.load_thumb(item)
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
         if len(self.queue)==0:
-            gobject.idle_add(self.browser.update_status,2.0,'Recreating thumbnails done')
+            idle_add(self.browser.update_status,2.0,'Recreating thumbnails done')
             return True
         return False
 
@@ -284,7 +288,7 @@ class ReloadMetadataJob(WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         while len(self.queue)>0 and jobs.ishighestpriority(self):
-            gobject.idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
+            idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
             item=self.queue.pop(0)
             self.browser.lock.acquire()
             if view.del_item(item):
@@ -294,7 +298,7 @@ class ReloadMetadataJob(WorkerJob):
                 view.add_item(item)
             self.browser.lock.release()
         if len(self.queue)==0:
-            gobject.idle_add(self.browser.update_status,2.0,'Reloading metadata')
+            idle_add(self.browser.update_status,2.0,'Reloading metadata')
             return True
         return False
 
@@ -310,7 +314,7 @@ class LoadCollectionJob(WorkerJob):
         jobs.clear(None,self.collection)
         collection=self.collection
         log.info('Loading collection '+self.collection_file)
-        gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
+        idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
         if collection.open(self.collection_file):
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.create_monitor(self.worker.directory_change_notify)
@@ -394,7 +398,7 @@ class WalkDirectoryJob(WorkerJob):
                 else:
                     i+=1
 
-            gobject.idle_add(self.browser.update_status,-1,'Scanning for new images')
+            idle_add(self.browser.update_status,-1,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
                 if r<=0:
@@ -424,7 +428,7 @@ class WalkDirectoryJob(WorkerJob):
                         for item in self.notify_items:
                             collection.add(item)
                         self.browser.lock.release()
-                        gobject.idle_add(self.browser.refresh_view,self.collection)
+                        idle_add(self.browser.refresh_view,self.collection)
                     else:
                         self.notify_items.append(item)
             # once we have found enough items add to collection and notify browser
@@ -434,18 +438,18 @@ class WalkDirectoryJob(WorkerJob):
                 for item in self.notify_items:
                     collection.add(item,False)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
                 self.notify_items=[]
         if self.done:
             log.debug('Directory walk complete for '+collection.image_dirs[0])
-            gobject.idle_add(self.browser.refresh_view,self.collection)
-            gobject.idle_add(self.browser.update_status,2,'Search complete')
+            idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,2,'Search complete')
             if self.notify_items:
                 self.browser.lock.acquire()
                 for item in self.notify_items:
                     collection.add(item)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
             self.notify_items=[]
             self.collection_walker=None
             self.done=False
@@ -492,7 +496,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     dirs.pop(i)
                 else:
                     i+=1
-            gobject.idle_add(self.browser.update_status,-1,'Scanning for new images')
+            idle_add(self.browser.update_status,-1,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
                 if r<=0:
@@ -517,17 +521,17 @@ class WalkSubDirectoryJob(WorkerJob):
                     self.browser.lock.acquire()
                     view.add_item(item)
                     self.browser.lock.release()
-                    gobject.idle_add(self.browser.refresh_view,self.collection)
+                    idle_add(self.browser.refresh_view,self.collection)
         if self.done:
             log.debug('Directory walk complete for '+self.sub_dir)
-            gobject.idle_add(self.browser.refresh_view,self.collection)
-            gobject.idle_add(self.browser.update_status,2,'Search complete')
+            idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,2,'Search complete')
             if self.notify_items:
                 self.browser.lock.acquire()
                 for item in self.notify_items:
                     collection.add(item)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
             self.notify_items=[]
             self.collection_walker=None
             pluginmanager.mgr.resume_collection_events(self.collection)
@@ -591,7 +595,7 @@ class BuildViewJob(WorkerJob):
             view.empty()
             pluginmanager.mgr.callback('t_view_emptied',collection,view)
             pluginmanager.mgr.suspend_collection_events(self.collection)
-            gobject.idle_add(self.browser.update_view)
+            idle_add(self.browser.update_view)
         lastrefresh=i
         self.browser.lock.release()
         while i<len(self.superset) and jobs.ishighestpriority(self):
@@ -602,17 +606,17 @@ class BuildViewJob(WorkerJob):
                 self.browser.lock.release()
                 if i-lastrefresh>200:
                     lastrefresh=i
-                    gobject.idle_add(self.browser.refresh_view,self.collection)
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
+                    idle_add(self.browser.refresh_view,self.collection)
+                    idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset):  ## and jobs.ishighestpriority(self)
             self.pos=i
             return False
         else:
             self.pos=0
-            gobject.idle_add(self.browser.refresh_view,self.collection)
-            gobject.idle_add(self.browser.update_status,2,'View rebuild complete')
-            gobject.idle_add(self.browser.post_build_view)
+            idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,2,'View rebuild complete')
+            idle_add(self.browser.post_build_view)
             pluginmanager.mgr.resume_collection_events(self.collection)
             return True
 
@@ -647,13 +651,13 @@ class MapImagesJob(WorkerJob):
                     self.pblist.append((item,pb))
                     self.im_count+=1
             if self.update_callback and i%100==0:
-                gobject.idle_add(self.update_callback,self.pblist)
+                idle_add(self.update_callback,self.pblist)
                 self.pblist=[]
             i+=1
         if i<len(listitems) and self.im_count<self.max_images and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(self.update_callback,self.pblist)
+            idle_add(self.update_callback,self.pblist)
             self.pblist=[]
             self.pos=0
             self.cancel=False
@@ -692,13 +696,13 @@ class SelectionJob(WorkerJob):
                 item.selected=select
             collection.numselected+=item.selected-prev
             if i%100==0:
-                gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
+                idle_add(self.browser.update_status,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
             i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
-            gobject.idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,1.0*i/len(listitems),'Selecting images - %i of %i'%(i,len(listitems)))
+            idle_add(self.browser.refresh_view,self.collection)
             self.pos=0
             self.cancel=False
             return True
@@ -752,7 +756,7 @@ class EditMetaDataJob(WorkerJob):
                         meta['Keywords']=new_tags
                     item.set_meta(meta)
                 if i%100==0:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
+                    idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==RENAME_KEYWORDS:
             tags=metadata.tag_split(self.keyword_string) ##tags should contain a pair of keywords (find, replace)
@@ -778,7 +782,7 @@ class EditMetaDataJob(WorkerJob):
                             meta['Keywords']=new_tags
                         item.set_meta(meta)
                 if i%100==0:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
+                    idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==TOGGLE_KEYWORDS:
             tags=metadata.tag_split(self.keyword_string)
@@ -787,7 +791,7 @@ class EditMetaDataJob(WorkerJob):
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     imageinfo.toggle_tags(item,tags)
                 if i%100==0:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
+                    idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
         if self.mode==REMOVE_KEYWORDS:
             tags=metadata.tag_split(self.keyword_string)
@@ -811,7 +815,7 @@ class EditMetaDataJob(WorkerJob):
                     except:
                         pass
                 if i%100==0:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(items),'Removing keywords - %i of %i'%(i,len(items)))
+                    idle_add(self.browser.update_status,1.0*i/len(items),'Removing keywords - %i of %i'%(i,len(items)))
                 i+=1
 
         if self.mode==CHANGE_META:
@@ -821,14 +825,14 @@ class EditMetaDataJob(WorkerJob):
                     for k,v in self.meta.iteritems():
                         item.set_meta_key(k,v)
                 if i%100==0:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(items),'Setting keywords - %i of %i'%(i,len(items)))
+                    idle_add(self.browser.update_status,1.0*i/len(items),'Setting keywords - %i of %i'%(i,len(items)))
                 i+=1
 
         if i<len(items) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(self.browser.update_status,2.0,'Metadata edit complete - %i of %i'%(i,len(items)))
-            gobject.idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,2.0,'Metadata edit complete - %i of %i'%(i,len(items)))
+            idle_add(self.browser.refresh_view,self.collection)
             self.pos=0
             self.cancel=False
             pluginmanager.mgr.resume_collection_events(self.collection)
@@ -854,8 +858,8 @@ class SaveViewJob(WorkerJob):
                 if self.save:
                     if item.meta_changed:
                         imagemanip.save_metadata(item)
-                        gobject.idle_add(self.browser.refresh_view,self.collection)
-                        gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
+                        idle_add(self.browser.refresh_view,self.collection)
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
                     if item.meta_changed:
                         try:
@@ -871,19 +875,19 @@ class SaveViewJob(WorkerJob):
                         if orient!=orient_backup:
                             item.thumb=None
                             self.worker.queue_job_instance(RecreateThumbJob(self.worker,self.collection,self.browser,[item]))
-                        gobject.idle_add(self.browser.refresh_view,self.collection)
-                        gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
+                        idle_add(self.browser.refresh_view,self.collection)
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
             if i%100==0:
                 if self.save:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
+                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
-                    gobject.idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
+                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
             i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:
-            gobject.idle_add(self.browser.update_status,2.0,'Saving images complete')
-            gobject.idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.update_status,2.0,'Saving images complete')
+            idle_add(self.browser.refresh_view,self.collection)
             self.pos=0
             self.cancel=False
             return True
@@ -905,7 +909,7 @@ class VerifyImagesJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                gobject.idle_add(self.browser.update_status,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.update_status,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
             if item.meta==None:
                 self.browser.lock.acquire()
                 collection.delete(item)
@@ -914,12 +918,12 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
             if not os.path.exists(item.filename) or os.path.isdir(item.filename) or item.filename!=os.path.normcase(item.filename):
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
                 continue
             mtime=os.path.getmtime(item.filename)
             if mtime!=item.mtime:
@@ -936,12 +940,12 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
-                gobject.idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.refresh_view,self.collection)
             i+=1
         self.countpos=i
         if i>=len(collection):
             self.countpos=0
-            gobject.idle_add(self.browser.update_status,2,'Verification complete')
+            idle_add(self.browser.update_status,2,'Verification complete')
             log.info('Image verification complete')
             pluginmanager.mgr.resume_collection_events(self.collection)
             self.worker.queue_job_instance(MakeThumbsJob(self.worker,self.collection,self.browser))
@@ -962,17 +966,17 @@ class MakeThumbsJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                gobject.idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             if not imagemanip.has_thumb(item):
                 imagemanip.make_thumb(item)
-                gobject.idle_add(self.browser.refresh_view,self.collection)
-                gobject.idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.refresh_view,self.collection)
+                idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             i+=1
         self.countpos=i
         if i>=len(collection):
             print 'MAKE THUMB JOBS ENDED',collection,collection.filename
             self.countpos=0
-            gobject.idle_add(self.browser.update_status,2,'Thumbnailing complete')
+            idle_add(self.browser.update_status,2,'Thumbnailing complete')
             return True
         return False
 
@@ -995,7 +999,7 @@ class DirectoryUpdateJob(WorkerJob):
                     self.browser.lock.acquire()
                     collection.delete([fullpath])
                     self.browser.lock.release()
-                    gobject.idle_add(self.browser.refresh_view,self.collection)
+                    idle_add(self.browser.refresh_view,self.collection)
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=io.get_mime_type(fullpath)
@@ -1014,7 +1018,7 @@ class DirectoryUpdateJob(WorkerJob):
                             self.browser.lock.acquire()
                             collection.add(item)
                             self.browser.lock.release()
-                            gobject.idle_add(self.browser.refresh_view,self.collection)
+                            idle_add(self.browser.refresh_view,self.collection)
                     else:
                         item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
                         imagemanip.load_metadata(item,collection)
@@ -1023,7 +1027,7 @@ class DirectoryUpdateJob(WorkerJob):
                         self.browser.lock.release()
                         if not imagemanip.has_thumb(item):
                             imagemanip.make_thumb(item) ##todo: queue this onto lower priority job
-                        gobject.idle_add(self.browser.refresh_view,self.collection)
+                        idle_add(self.browser.refresh_view,self.collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':
                         self.worker.queue_job_instance(WalkSubdirectoryJob(self.worker,collection,self.browser,fullpath))
@@ -1119,7 +1123,8 @@ class Worker:
         self.queue_job(WalkDirectoryJob,collection)
 
     def quit(self):
-        self.queue_job(QuitJob)
+        sj=QuitJob(self,None,self.browser)
+        self.queue_job_instance(sj)
         while self.thread.isAlive(): ##todo: replace this with a notification
             time.sleep(0.1)
         print 'quit returned'
