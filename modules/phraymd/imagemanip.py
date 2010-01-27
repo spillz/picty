@@ -368,7 +368,7 @@ def delete_thumb(item):
 
 
 def update_thumb_date(item,interrupt_fn=None,remove_old=True):
-    item.mtime=os.path.getmtime(item.filename)
+    item.mtime=io.get_mtime(item.filename)
     if item.thumburi:
         if not item.thumb:
             load_thumb(item)

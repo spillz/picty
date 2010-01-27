@@ -1,3 +1,8 @@
+import os.path
+
+def get_mtime(path):
+    return int(os.path.getmtime(path))
+
 try:
     print 'Using gio'
     import gio

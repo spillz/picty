@@ -276,7 +276,7 @@ class ImporterImportJob(backend.WorkerJob):
                 continue
             item[0]=dest_filename
             item.filename=dest_filename
-            item.mtime=os.path.getmtime(item.filename)
+            item.mtime=io.get_mtime(item.filename)
             if collection.load_metadata and not item.meta:
                 imagemanip.load_metadata(item,collection)
             if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:

@@ -158,10 +158,18 @@ class WorkerJobQueue:
 #        return [j for j in self.queue if j.collection==collection]
 #        self.lock.release()
 #
-    def clear(self,job_class=None,collection=None):
+    def clear(self,job_class=None,collection=None,excluded_job=None):
+        '''
+        removes jobs from the job queue
+        job_class, only jobs that are instances of the job_class, all classes if None
+        collection, only jobs associated with the collection, jobs associated with all if None
+        excluded_job, a specific job that should be excluded from the removal operation
+        '''
         self.lock.acquire()
-        self.removers=[j for j in self.queue if
-            (job_class==None or isinstance(j,job_class)) and (collection==None or j.collection==collection)]
+        self.removers=[j for j in self.queue if ##todo: verify that this actually works
+            (job_class==None or isinstance(j,job_class)) and
+            (collection==None or j.collection==collection) and
+            (excluded_job==None or j!=excluded_job) ]
         self.removed_jobs+=self.removers
         self.queue=[j for j in self.queue if not j in self.removers]
         self.lock.release()
@@ -188,11 +196,9 @@ class WorkerJobQueue:
             if (job.collection==self.priority_collection)>=(self.queue[j].collection==self.priority_collection):
                 if self.queue[j].priority<job.priority:
                     self.queue.insert(j,job)
-                    print 'added job',j,self.queue,job
                     self.lock.release()
                     return
         self.queue.append(job)
-        print 'appended job',self.queue,job
         self.lock.release()
 
 class QuitJob(WorkerJob):
@@ -311,14 +317,13 @@ class LoadCollectionJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
-        jobs.clear(None,self.collection)
+        jobs.clear(None,self.collection,self)
         collection=self.collection
         log.info('Loading collection '+self.collection_file)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
         if collection.open(self.collection_file):
             if os.path.exists(collection.image_dirs[0]):
-                self.collection.create_monitor(self.worker.directory_change_notify)
-                self.collection.start_monitor()
+                self.collection.start_monitor(self.worker.directory_change_notify)
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
@@ -334,7 +339,7 @@ class CloseCollectionJob(WorkerJob):
         self.save=save
 
     def __call__(self):
-        self.worker.jobs.clear(None,self.collection)
+        self.worker.jobs.clear(None,self.collection,self)
         if self.filename:
             self.collection.filename=self.filename
         log.info('Closing '+str(self.collection.filename))
@@ -350,7 +355,7 @@ class SaveCollectionJob(WorkerJob):
         self.filename=filename
 
     def __call__(self):
-        self.worker.jobs.clear(None,self.collection)
+        self.worker.jobs.clear(None,self.collection,self)
         if self.filename:
             self.collection.filename=self.filename
         log.info('Saving '+str(self.collection.filename))
@@ -408,7 +413,7 @@ class WalkDirectoryJob(WorkerJob):
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
-                mtime=os.path.getmtime(fullpath)
+                mtime=io.get_mtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
                     log.warning('Directory Walk: item '+fullpath+' is a directory')
@@ -506,7 +511,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
-                mtime=os.path.getmtime(fullpath)
+                mtime=io.get_mtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
                     log.warning('Directory Walk: item '+fullpath+' is a directory')
@@ -925,7 +930,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.release()
                 idle_add(self.browser.refresh_view,self.collection)
                 continue
-            mtime=os.path.getmtime(item.filename)
+            mtime=io.get_mtime(item.filename)
             if mtime!=item.mtime:
                 self.browser.lock.acquire()
                 collection.delete(item)
@@ -962,7 +967,6 @@ class MakeThumbsJob(WorkerJob):
         jobs=self.worker.jobs
         collection=self.collection
         i=self.countpos
-        print 'STARTING MAKE THUMB JOB',jobs.queue
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
@@ -974,7 +978,6 @@ class MakeThumbsJob(WorkerJob):
             i+=1
         self.countpos=i
         if i>=len(collection):
-            print 'MAKE THUMB JOBS ENDED',collection,collection.filename
             self.countpos=0
             idle_add(self.browser.update_status,2,'Thumbnailing complete')
             return True
@@ -1007,12 +1010,12 @@ class DirectoryUpdateJob(WorkerJob):
                         continue
                     i=collection.find([fullpath])
                     if i>=0:
-                        if os.path.getmtime(fullpath)!=collection[i].mtime:
+                        if io.get_mtime(fullpath)!=collection[i].mtime:
                             item=collection[i]
                             self.browser.lock.acquire()
                             collection.delete(item)
                             self.browser.lock.release()
-                            item.mtime=os.path.getmtime(fullpath)
+                            item.mtime=io.get_mtime(fullpath)
                             imagemanip.load_metadata(item,collection)
                             imagemanip.make_thumb(item) ##todo: queue this onto lower priority job
                             self.browser.lock.acquire()
@@ -1020,7 +1023,7 @@ class DirectoryUpdateJob(WorkerJob):
                             self.browser.lock.release()
                             idle_add(self.browser.refresh_view,self.collection)
                     else:
-                        item=imageinfo.Item(fullpath,os.path.getmtime(fullpath))
+                        item=imageinfo.Item(fullpath,io.get_mtime(fullpath))
                         imagemanip.load_metadata(item,collection)
                         self.browser.lock.acquire()
                         collection.add(item)
@@ -1057,16 +1060,13 @@ class Worker:
         while 1:
             try:
                 rem_jobs=self.jobs.get_removed_jobs()
-                print 'CANCELLED JOBS',rem_jobs,len(rem_jobs)
                 if len(rem_jobs)>0:
                     for j in rem_jobs: ##clean up any cancelled jobs
-                        print 'CANCELLING',j
                         j.cancel()
                 if self.jobs.gethighest()==None:
                     self.event.clear()
                     self.event.wait()
                 job=self.jobs.gethighest()
-                print job
                 if isinstance(job,QuitJob):
                     print 'quitting worker thread!'
                     return
@@ -1096,16 +1096,12 @@ class Worker:
         return (self,self.active_collection,self.browser)
 
     def queue_job_instance(self,job_instance):
-        print 'QUEUEING JOB',job_instance
         self.jobs.add(job_instance)
         self.event.set()
-        print 'QUEUED JOB',job_instance
 
     def queue_job(self,job_class,*extra_args):
-        print 'QUEUEING JOB',job_class
         self.jobs.add(job_class(self,self.active_collection,self.browser,*extra_args))
         self.event.set()
-        print 'QUEUED JOB',job_class
 
     def kill_jobs_by_class(self,job_class):
         self.jobs.clear_by_job_class(job_class)

@@ -551,15 +551,15 @@ class ImageBrowser(gtk.HBox):
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
-        grey = colormap.alloc('grey')
+        grey = colormap.alloc_color('grey')
         gc_s = drawable.new_gc(foreground=grey,background=grey)
-        white = colormap.alloc('white')
+        white = colormap.alloc_color('white')
         gc_v = drawable.new_gc(foreground=white)
         colormap=drawable.get_colormap()
-        black = colormap.alloc('black')
-        green = colormap.alloc('green')
+        black = colormap.alloc_color('black')
+        green = colormap.alloc_color('green')
         gc_g = drawable.new_gc(foreground=green)
-        red= colormap.alloc('red')
+        red= colormap.alloc_color('red')
         gc_r = drawable.new_gc(foreground=red)
 
         drawable.set_background(black)
@@ -588,18 +588,21 @@ class ImageBrowser(gtk.HBox):
                 if key_mods&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                     if self.last_selected:
                         if key_mods&gtk.gdk.SHIFT_MASK:
-                            drawable.draw_rectangle(gc_g, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
+                            drawable.draw_rectangle(gc_g, True, int(x+self.geo_pad/16), int(y+self.geo_pad/16),
+                                int(self.geo_thumbwidth+self.geo_pad*7/8), int(self.geo_thumbheight+self.geo_pad*7/8))
                         else:
-                            drawable.draw_rectangle(gc_r, True, x+self.geo_pad/16, y+self.geo_pad/16, self.geo_thumbwidth+self.geo_pad*7/8, self.geo_thumbheight+self.geo_pad*7/8)
+                            drawable.draw_rectangle(gc_r, True, int(x+self.geo_pad/16), int(y+self.geo_pad/16),
+                                int(self.geo_thumbwidth+self.geo_pad*7/8), int(self.geo_thumbheight+self.geo_pad*7/8))
             if item.selected:
-                drawable.draw_rectangle(gc_s, True, x+self.geo_pad/8, y+self.geo_pad/8, self.geo_thumbwidth+self.geo_pad*3/4, self.geo_thumbheight+self.geo_pad*3/4)
+                drawable.draw_rectangle(gc_s, True, int(x+self.geo_pad/8), int(y+self.geo_pad/8),
+                    int(self.geo_thumbwidth+self.geo_pad*3/4), int(self.geo_thumbheight+self.geo_pad*3/4))
 #           todo: come up with a scheme for highlighting images
             if item==self.focal_item:
                 try:
                     (thumbwidth,thumbheight)=self.active_view(i).thumbsize
                     adjy=self.geo_pad/2+(128-thumbheight)/2-3
                     adjx=self.geo_pad/2+(128-thumbwidth)/2-3
-                    drawable.draw_rectangle(gc_v, True, x+adjx, y+adjy, thumbwidth+6, thumbheight+6)
+                    drawable.draw_rectangle(gc_v, True, int(x+adjx), int(y+adjy), thumbwidth+6, thumbheight+6)
                 except:
                     pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
@@ -612,21 +615,21 @@ class ImageBrowser(gtk.HBox):
                 (thumbwidth,thumbheight)=self.active_view(i).thumbsize
                 adjy=self.geo_pad/2+(128-thumbheight)/2
                 adjx=self.geo_pad/2+(128-thumbwidth)/2
-                drawable.draw_pixbuf(gc, item.thumb, 0, 0,x+adjx,y+adjy)
+                drawable.draw_pixbuf(gc, item.thumb, 0, 0,int(x+adjx),int(y+adjy))
             elif item.cannot_thumb:
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
-                drawable.draw_pixbuf(gc, self.pixbuf_thumb_fail, 0, 0,x+adjx,y+adjy)
+                drawable.draw_pixbuf(gc, self.pixbuf_thumb_fail, 0, 0,int(x+adjx),int(y+adjy))
             else:
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
-                drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,x+adjx,y+adjy)
+                drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
             if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     l=self.imarea.create_pango_layout('')
                     l.set_markup('<b><big>'+a+'</big></b>\n'+b)
-                    drawable.draw_layout(gc,x+self.geo_pad/4,y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4,l,white)
+                    drawable.draw_layout(gc,int(x+self.geo_pad/4),int(y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4),l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
                 self.hover_cmds.simple_render(item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/4)

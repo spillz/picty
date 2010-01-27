@@ -30,7 +30,7 @@ import cPickle
 ##phraymd imports
 import pluginmanager
 import settings
-import monitor
+import monitor2 as monitor
 import views
 
 class SimpleCollection(list):
@@ -207,6 +207,7 @@ class Collection2():
 
         self.filename=None
         self.image_dirs=image_dirs
+        self.recursive=True
 
         self.verify_after_walk=True
         self.load_metadata=True #image will be loaded into the collection and view without metadata
@@ -289,18 +290,12 @@ class Collection2():
         return self.items[ind]
     def __getitem__(self,ind):
         return self.items[ind]
-    def create_monitor(self,callback):
+    def start_monitor(self,callback):
         self.monitor_master_callback=callback
-        self.monitor=monitor.Monitor(self.monitor_callback)
-    def start_monitor(self):
-        print 'starting monitor'
-        self.monitor.start(self.image_dirs[0])
-    def stop_monitor(self):
-        print 'stopping monitor'
-        self.monitor.stop(self.image_dirs[0])
+        self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
     def end_monitor(self):
-        if self.monitor:
-            self.monitor.end(self.image_dirs[0])
+        self.monitor.stop()
+        self.monitor=None
     def monitor_callback(self,path,action,is_dir):
         self.monitor_master_callback(self,path,action,is_dir)
     def add_view(self,sort_criteria=views.get_mtime):
