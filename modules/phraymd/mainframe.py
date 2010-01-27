@@ -647,7 +647,7 @@ class MainFrame(gtk.VBox):
         fileops.worker.move(self.browser.active_view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.browser.active_view,self.update_status)
+        fileops.worker.delete(self.browser.active_collection,self.browser.active_view,self.update_status)
 
     def select_reload_metadata(self,widget):
         self.tm.reload_selected_metadata()
@@ -999,7 +999,7 @@ class MainFrame(gtk.VBox):
             self.view_image(item)
 
     def delete_item(self,widget,item):
-        fileops.worker.delete([item],None,False)
+        fileops.worker.delete(self.browser.active_collection,[item],None,False)
         ind=self.browser.active_view.find_item(item)
         if ind>=0:
             self.browser.active_view.del_item(item)

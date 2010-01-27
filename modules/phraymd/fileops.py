@@ -41,7 +41,7 @@ class Worker:
         self.kill=False
 
     def _delete(self):
-        trashdir=os.path.join(settings.active_collection.image_dirs[0],'.trash')
+        trashdir=os.path.join(self.collection.image_dirs[0],'.trash')
         for i in range(len(self.items)):
             item=self.items[i]
             if self.kill:
@@ -50,7 +50,7 @@ class Worker:
             if self.cb:
                 gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Deleting '+item.filename)
             try:
-                empty,imdir,relpath=item.filename.partition(settings.active_collection.image_dirs[0])
+                empty,imdir,relpath=item.filename.partition(self.collection.image_dirs[0])
                 relpath=relpath.strip('/')
                 if relpath:
                     dest=os.path.join(trashdir,relpath)
@@ -63,11 +63,12 @@ class Worker:
             gobject.idle_add(self.cb,None,2.0,'Finished Deleting')
         self.active=False
 
-    def delete(self,items,cb,selected_only=True):
+    def delete(self,collection,items,cb,selected_only=True):
         if self.active:
             return False
         self.active=True
         self.kill=False
+        self.collection=collection
         if selected_only:
             self.items=[]
             for i in range(len(items)):

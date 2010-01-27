@@ -279,6 +279,7 @@ class Collection2():
         '''
         i=self.find(item)
         if i>=0:
+            item=self.items[i]
             self.numselected-=item.selected
             self.items.pop(i)
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)

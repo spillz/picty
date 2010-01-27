@@ -285,6 +285,7 @@ class CollectionCombo(gtk.VBox):
         self.combo.set_row_separator_func(self.sep_cb)
         self.combo.set_focus_on_click(False)
         cpb=gtk.CellRendererPixbuf()
+        cpb.set_property("width",20) ##todo: don't hardcode the width
         self.combo.pack_start(cpb,False)
         self.combo.add_attribute(cpb, 'pixbuf', COMBO_PIXBUF)
         cpt=gtk.CellRendererText()
