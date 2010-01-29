@@ -69,7 +69,7 @@ class MainFrame(gtk.VBox):
         self.volume_monitor.connect_after("mount-added",self.mount_added)
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)
         self.coll_set=collectionmanager.CollectionSet()
-        self.coll_combo=collectionmanager.CollectionCombo(self.coll_set)
+        self.coll_combo=collectionmanager.CollectionCombo(self.coll_set.add_model('MENU'))
         self.active_collection_id=None
         self.collections_init()
 

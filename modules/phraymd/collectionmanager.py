@@ -23,7 +23,7 @@ def get_icon(icon_id_list):
     return None if not ii else ii.load_icon()
 
 
-class CollectionSet(gtk.GenericTreeModel):
+class CollectionSet():
     '''
     Defines a set of image collections, managed with a dictionary like syntax
     The program should use this class to create and remove collections
@@ -37,15 +37,18 @@ class CollectionSet(gtk.GenericTreeModel):
      display_name is the name shown to the user (usually == key value??)
      icon_str is the string identifying the icon
     also:
-     implements various iterators for retrieving collection info
-     derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
+     manages models that can display the collection model
     '''
     def __init__(self):
-        gtk.GenericTreeModel.__init__(self)
         self.collections={}
         self.types=['LOCALSTORE','DEVICE','DIRECTORY']
-        for r in self.view_iter():
-            self.row_inserted(*self.pi_from_id(r))
+        self.models=[]
+    def add_model(self,model_type='SELECTOR'):   ##todo: remove model
+        m=CollectionModel(self,model_type)
+        self.models.append(m)
+        for r in m.view_iter():
+            m.row_inserted(*m.pi_from_id(r))
+        return m
     def __iter__(self):
         '''
         iterator yielding all open collections
@@ -76,12 +79,8 @@ class CollectionSet(gtk.GenericTreeModel):
         if not name:
             return
         if isinstance(name,gtk.TreeIter):
-            id=self.get_user_data(name)
-            return self.as_row(id)
+            name=self.get_user_data(name)
         return self.collections[name]
-    def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
-        iter=self.create_tree_iter(name)
-        return self.get_path(iter),iter
 #    def __setitem__(self,name,value):
 #        if isinstance(name,gtk.TreeIter):
 #            id=self.get_user_data(name)
@@ -97,11 +96,13 @@ class CollectionSet(gtk.GenericTreeModel):
 #            self.row_changed(*self.pi_from_id(id))
     def __delitem__(self,name):
         coll=self.collections[name]
-        self.row_deleted(*self.pi_from_id(name)[0])
+        for m in self.models:
+            m.row_deleted(*m.pi_from_id(name)[0])
         del self.collections[name]
         path=self.on_get_path(name)
         if coll.type=='DEVICE':
-            self.row_inserted(*self.pi_from_id('#no-devices'))
+            for m in self.models:
+                m.row_inserted(*m.pi_from_id('#no-devices'))
     def clear(self):
         for id in self.collections:
             del self[id]
@@ -120,9 +121,11 @@ class CollectionSet(gtk.GenericTreeModel):
         c.pixbuf=self.get_icon(icon_names)
         c.add_view()
         if self.count('DEVICE')==0:
-            self.row_deleted(*self.pi_from_id('#no-devices')[0])
+            for m in self.models:
+                m.row_deleted(*m.pi_from_id('#no-devices')[0])
         self.collections[c.id]=c
-        self.row_inserted(*self.pi_from_id(c.id))
+        for m in self.models:
+            m.row_inserted(*m.pi_from_id(c.id))
         return c
     def add_localstore(self,col_file):
         c=collections.Collection2()
@@ -134,7 +137,8 @@ class CollectionSet(gtk.GenericTreeModel):
         c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK])
         c.add_view()
         self.collections[col_path]=c
-        self.row_inserted(*self.pi_from_id(c.id))
+        for m in self.models:
+            m.row_inserted(*m.pi_from_id(c.id))
         return c
     def add_directory(self,path,recursive=False):
         c=collections.Collection2()
@@ -147,7 +151,8 @@ class CollectionSet(gtk.GenericTreeModel):
         c.recursive=recursive
         c.add_view()
         self.collections[path]=c
-        self.row_inserted(*self.pi_from_id(c.id))
+        for m in self.models:
+            m.row_inserted(*m.pi_from_id(c.id))
         return c
     def remove(self,id):
         coll=self[id]
@@ -164,11 +169,19 @@ class CollectionSet(gtk.GenericTreeModel):
         for name,icon_names,path in mount_info:
             self.add_mount(path,name,icon_names)
 
+
+class CollectionModel(gtk.GenericTreeModel):
     '''
+    derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
     methods needed for implementing gtk.TreeModel (see pygtk tutorial)
-    TODO: put this stuff in a separate class
-    TODO: can then define multiple implementations of the class model for different widgets
     '''
+    def __init__(self,coll_set,model_type):
+        gtk.GenericTreeModel.__init__(self)
+        self.coll_set=coll_set
+        if model_type=='SELECTOR':
+            self.view_iter=self.view_iter_selector
+        if model_type=='MENU':
+            self.view_iter=self.view_iter_menu
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
@@ -228,22 +241,23 @@ class CollectionSet(gtk.GenericTreeModel):
             return [id,'',800,False,'black',None,False]
         if id.startswith('#'):
             return [id,label_dict[id],400,False,'black',None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
-        ci=self.collections[id]
+        ci=self.coll_set.collections[id]
         if ci.is_open:
             return [id,ci.name,800,False,'brown',ci.pixbuf,True]
         else:
             return [id,ci.name,400,False,'brown',ci.pixbuf,False]
-    def view_iter(self):
+    def view_iter_menu(self):
         '''
         this iterator defines the rows of the collection model
+        and adds items for separators, collections and menu options
         '''
         tcount=0
         options=['#add-localstore',None,'#add-dir']
-        for t in self.types:
+        for t in self.coll_set.types:
             if tcount>0:
                 yield '*%i'%(tcount,)
             i=0
-            for id in self.iter_id(t):
+            for id in self.coll_set.iter_id(t):
                 yield id
                 i+=1
             if t=='DEVICE' and i==0:
@@ -251,6 +265,25 @@ class CollectionSet(gtk.GenericTreeModel):
             if options[tcount]!=None:
                 yield options[tcount]
             tcount+=1
+    def view_iter_selector(self):
+        '''
+        this iterator defines the rows of the collection model
+        and adds items for separators, collections, but not menu options
+        '''
+        tcount=0
+        for t in self.coll_set.types:
+            if tcount>0:
+                yield '*%i'%(tcount,)
+            i=0
+            for id in self.coll_set.iter_id(t):
+                yield id
+                i+=1
+            if t=='DEVICE' and i==0:
+                yield '#no-devices'
+            tcount+=1
+    def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
+        iter=self.create_tree_iter(name)
+        return self.get_path(iter),iter
 
 
 
@@ -325,13 +358,18 @@ class CollectionCombo(gtk.VBox):
         return False
     def get_choice(self):
         iter=self.combo.get_active_iter()
-        if iter!='':
+        if iter!=None:
             return self.model[iter][COMBO_ID]
     def set_active(self,id):
         if id:
             self.combo.set_active_iter(self.model.create_tree_iter(id))
         else:
             self.combo.set_active(-1)
+    def get_active_coll(self):
+        coll_id=self.get_choice()
+        if not coll_id:
+            return
+        return self.mainframe.coll_set[coll_id]
 
 
 gobject.type_register(CollectionCombo)

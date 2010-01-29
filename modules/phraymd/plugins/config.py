@@ -72,7 +72,7 @@ class ConfigPanel(gtk.ScrolledWindow):
         self.add_with_viewport(main_box)
 
         def frame(text):
-            frame=gtk.Frame()
+            frame=gtk.Expander()
             label=gtk.Label()
             label.set_markup('<b>'+text+'</b>')
             frame.set_label_widget(label)
@@ -85,10 +85,10 @@ class ConfigPanel(gtk.ScrolledWindow):
         plugins_frame.add(PluginBox())
         tools_frame=frame('Tools')
         tools_frame.add(ToolsBox())
-        main_box.pack_start(collection_settings_frame)
+        main_box.pack_start(collection_settings_frame,False)
 #        main_box.pack_start(collections_frame)
-        main_box.pack_start(plugins_frame)
-        main_box.pack_start(tools_frame)
+        main_box.pack_start(plugins_frame,False)
+        main_box.pack_start(tools_frame,False)
         self.show_all()
     def save_settings(self):
         pass
