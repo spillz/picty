@@ -1,7 +1,34 @@
-import os.path
+import os,os.path
 
 def get_mtime(path):
-    return int(os.path.getmtime(path))
+    '''
+    forces mtime to an integer for compatibility with gnome thumbnailer
+    '''
+    return int(os.path.getmtime(path)) ##todo: better to just cast to int in the few places a float would cause problems
+
+def get_true_path(path):
+    return path  ##todo: unfortunately, this runs too slowly to be used. there must be a simpler way to get the name as represented on the disk
+    p=os.getcwd()
+    if not os.path.exists(path):
+        os.chdir(p)
+        return None
+    try:
+        os.chdir(path)
+        path=os.path.abspath('.')
+        os.chdir(p)
+        return path
+    except OSError:
+        base,name=os.path.split(path)
+        try:
+            os.chdir(base)
+        except OSError:
+            return None
+        for n in os.listdir(base):
+            if os.path.samefile(n,name):
+                b=os.path.abspath('.')
+                os.chdir(p)
+                return os.path.join(b,n)
+        return None
 
 try:
     print 'Using gio'
