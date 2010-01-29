@@ -31,12 +31,12 @@ import datetime
 
 ##phraymd imports
 import pluginmanager
-
+import io
 
 class Item(list):
     '''An item is a class describing an image, including filename, pixbuf representations and related metadata'''
     def __init__(self,filename,mtime):
-        filename=os.path.normcase(filename) ##todo: remove this - doesn't do anything and might break stuff in future
+        filename=io.get_true_path(filename) ##todo: remove this - doesn't do anything and might break stuff in future
         list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime

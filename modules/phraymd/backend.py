@@ -638,12 +638,13 @@ class MapImagesJob(WorkerJob):
         self.max_images=50
         self.im_count=0
         self.restart=False
+        self.view=collection.get_active_view()
 
     def __call__(self):
         jobs=self.worker.jobs
         i=self.pos
         if self.limit_to_view:
-            listitems=view
+            listitems=self.view
         else:
             listitems=collection
         while i<len(listitems) and jobs.ishighestpriority(self) and self.im_count<self.max_images and not self.cancel:
@@ -924,7 +925,7 @@ class VerifyImagesJob(WorkerJob):
                 collection.add(item)
                 self.browser.lock.release()
                 idle_add(self.browser.refresh_view,self.collection)
-            if not os.path.exists(item.filename) or os.path.isdir(item.filename) or item.filename!=os.path.normcase(item.filename):
+            if not os.path.exists(item.filename) or os.path.isdir(item.filename) or item.filename!=io.get_true_path(item.filename):  ##todo: what if mimetype or size changed?
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -1177,7 +1178,6 @@ class Worker:
 
     def directory_change_notify(self,collection,path,action,isdir):
         homedir=os.path.normpath(collection.image_dirs[0])
-        path=os.path.normcase(path)
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
             log.warning('change_notify invalid '+path+' '+action)
