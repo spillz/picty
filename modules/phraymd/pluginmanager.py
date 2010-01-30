@@ -118,7 +118,7 @@ class PluginManager():
             self.collection_suppress[collection]-=1
         except:
             pass
-        if self.collection_suppress[collection]<=0:
+        if collection in self.collection_suppress and self.collection_suppress[collection]<=0:
             del self.collection_suppress[collection]
             self.callback('t_collection_modify_complete_hint',collection)
     def callback_collection(self,interface_name,collection,*args):

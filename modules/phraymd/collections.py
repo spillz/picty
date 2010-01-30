@@ -291,6 +291,8 @@ class Collection2():
         return self.items[ind]
     def __getitem__(self,ind):
         return self.items[ind]
+    def get_items(self):
+        return self.items[:]
     def start_monitor(self,callback):
         self.monitor_master_callback=callback
         self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)

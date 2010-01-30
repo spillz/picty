@@ -327,6 +327,7 @@ class LoadCollectionJob(WorkerJob):
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
+            gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             log.error('Load collection failed')
@@ -363,6 +364,7 @@ class SaveCollectionJob(WorkerJob):
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)
+        gobject.idle_add(self.worker.coll_set.collection_closed,self.collection.id)
         return True
 
 
@@ -1042,8 +1044,9 @@ class DirectoryUpdateJob(WorkerJob):
 
 
 class Worker:
-    def __init__(self,browser):
+    def __init__(self,browser,coll_set):
         self.browser=browser # the browser widget
+        self.coll_set=coll_set
         self.jobs=WorkerJobQueue()
         self.event=threading.Event()
         self.lock=threading.Lock()
@@ -1051,7 +1054,7 @@ class Worker:
         self.dirtimer=None # timer used to delay update after directory change notifications
         self.dirlock=threading.Lock() #lock used to update the queue of deferred directory change notifications
         self.deferred_dir_update_queue=[]
-        self.active_collection=None
+        self.active_collection=None #to be used only on main thread
 
     def start(self):
         self.thread.start()

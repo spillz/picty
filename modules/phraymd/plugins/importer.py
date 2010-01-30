@@ -167,44 +167,44 @@ def altname(pathname):
     return pathname
 
 class ImporterImportJob(backend.WorkerJob):
-    def __init__(self,plugin,collection_src,collection_dest,params):
-        backend.WorkerJob.__init__(self,'IMPORT',plugin.mainframe.tm.get_default_job_tuple())
+    def __init__(self,worker,collection,browser,plugin,collection_src,collection_dest,params):
+        backend.WorkerJob.__init__(self,'IMPORT',780,worker,collection,browser)
         self.plugin=plugin
-        self.collection_src=None
-        self.collection_dest=None
+        self.collection_src=collection_src
+        self.collection_dest=collection_dest
+        self.stop=False
+        self.countpos=0
+        self.items=None
         for p in params:
             self.__dict__[p]=params[p]
 ##        self.plugin.mainframe.tm.queue_job_instance(self)
 
-    def cancel_import(self):
-        self.cancel=True
-
-    def unsetevent(self):
-        backend.WorkerJob.unsetevent(self)
-        self.cancel=False
-        self.countpos=0
-        self.items=None
-        self.move=False
-        self.action_if_exists=EXIST_SKIP #EXIST_SKIP|EXIST_RENAME|EXIST_OVERWRITE
-        self.dest_name_needs_meta=False
-        self.dest_name_template=''
-        self.base_dest_dir=None
-        self.cancel=False
+    def cancel(self,shutdown=False):
+        if not shutdown:
+            gobject.idle_add(self.plugin.import_cancelled)
 
     def __call__(self):
-        jobs=worker.jobs
+        jobs=self.worker.jobs
+        worker=self.worker
         pluginmanager.mgr.suspend_collection_events(self.collection_dest)
+        browser=self.browser
         i=self.countpos
+        if not self.collection_dest.is_open or not self.collection_src.is_open:
+            gobject.idle_add(self.plugin.import_cancelled)
+            return True
         collection=self.collection_dest
         if self.items==None:
-            self.items=self.collection_src.get_active_view().get_selected_items()
-            self.count=len(self.items)
+            if self.import_all:
+                self.items=self.collection_src.get_items()
+            else:
+                self.items=self.collection_src.get_active_view().get_selected_items()
+                self.count=len(self.items)
         if not self.base_dest_dir:
             self.base_dest_dir=collection.image_dirs[0]
         print 'importing',len(self.items),'items'
         if not os.path.exists(self.base_dest_dir):
             os.makedirs(self.base_dest_dir)
-        while len(self.items)>0 and jobs.ishighestpriority(self) and not self.cancel:
+        while len(self.items)>0 and jobs.ishighestpriority(self) and not self.stop:
             item=self.items.pop()
             self.dest_dir=self.base_dest_dir
             src_filename=item.filename
@@ -264,18 +264,19 @@ class ImporterImportJob(backend.WorkerJob):
             gobject.idle_add(browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
             gobject.idle_add(browser.refresh_view)
         self.countpos=i
-        if not self.state:
-            self.idle_add(self.plugin.import_cancelled)
-            worker.monitor.start(collection.image_dirs[0])
-        if len(self.items)==0 or self.cancel:
+        if len(self.items)==0 or self.stop:
             gobject.idle_add(browser.update_status,2,'Import Complete')
             gobject.idle_add(self.plugin.import_completed)
             pluginmanager.mgr.resume_collection_events(self.collection)
-            worker.monitor.start(collection.image_dirs[0])
             self.collection_src=None
             self.collection_dest=None
             #jobs['VERIFYIMAGES'].setevent()
-            self.unsetevent()
+            if self.stop:
+                gobject.idle_add(self.plugin.import_cancelled)
+            else:
+                gobject.idle_add(self.plugin.import_completed)
+            return True
+        return False
 
 
 class ImportPlugin(pluginbase.Plugin):
@@ -297,7 +298,7 @@ class ImportPlugin(pluginbase.Plugin):
             for widget in widget_data:
                 hbox.pack_start(widget[0],True)
                 if widget[1]:
-                    widget[0].connect(widget[1],widget[2])
+                    widget[0].connect(*widget[1:])
             box.pack_start(hbox,False)
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
@@ -306,9 +307,9 @@ class ImportPlugin(pluginbase.Plugin):
 #            "From Path","Choose Import Source Directory")
 #        self.vbox.pack_start(self.import_source_entry,False)
         self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'))
-        self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'))
-        box_add(self.vbox,[(self.src_combo,"collection-changed",self.src_changed)],"Source")
-        box_add(self.vbox,[(self.dest_combo,"collection-changed",self.dest_changed)],"Destination")
+        self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('OPEN_SELECTOR'))
+        box_add(self.vbox,[(self.src_combo,"collection-changed",self.src_changed)],"From")
+        box_add(self.vbox,[(self.dest_combo,"collection-changed",self.dest_changed)],"To")
 #        self.vm=io.VolumeMonitor()
 #        self.import_source_combo=metadatadialogs.PathnameCombo("","Import from","Select directory to import from",volume_monitor=self.vm,directory=True)
 #        self.vbox.pack_start(self.import_source_combo,False)
@@ -352,14 +353,17 @@ class ImportPlugin(pluginbase.Plugin):
 
         self.copy_radio=gtk.RadioButton(None,"_Copy",True)
         self.move_radio=gtk.RadioButton(self.copy_radio,"_Move",True)
-        box_add(self.import_box,[(self.copy_radio,None),(self.move_radio,None)],"Import Operation")
+        box_add(self.vbox,[(self.copy_radio,None),(self.move_radio,None)],"Import Operation")
 
         self.vbox.pack_start(self.import_frame,False)
 
-        self.import_action_box,self.start_import_all_button,self.start_import_button=box_add(self.vbox,
-            [(gtk.Button("Import All"),"clicked",self.start_import,True),
-            (gtk.Button("Import Selected"),"clicked",self.start_import,False)],
+        self.import_action_box,self.cancel_button,self.start_import_all_button,self.start_import_button=box_add(self.vbox,
+            [(gtk.Button("Cancel"),"clicked",self.cancel_import),
+             (gtk.Button("Import All"),"clicked",self.start_import,False),
+             (gtk.Button("Import Selected"),"clicked",self.start_import,False)],
             "")
+
+        self.cancel_button.set_sensitive(False)
 
 #        self.mode_box,button1,button2=box_add(self.vbox,
 #            [(gtk.Button("Import Now"),"clicked",self.import_now),
@@ -375,9 +379,6 @@ class ImportPlugin(pluginbase.Plugin):
 #        self.import_frame.hide()
 #        self.import_action_box.hide()
 
-        self.coll_src=None
-        self.coll_dest=None
-
         self.mainframe.sidebar.append_page(self.scrolled_window,gtk.Label("Import"))
 
     def plugin_shutdown(self,app_shutdown):
@@ -387,10 +388,21 @@ class ImportPlugin(pluginbase.Plugin):
             ##todo: delete references to widgets
 
     def src_changed(self,combo,id):
-        pass
+        if combo.get_active_coll()==None:
+            return
+        if combo.get_active_coll()==self.dest_combo.get_active_coll():
+            self.dest_combo.set_active(None)
 
     def dest_changed(self,combo,id):
-        pass
+        coll=combo.get_active_coll()
+        if coll==None:
+            self.base_dir_entry.set_path('')
+            return
+        if combo.get_active_coll()==self.src_combo.get_active_coll():
+            self.src_combo.set_active(None)
+        if coll:
+            if coll.is_open:
+                self.base_dir_entry.set_path(coll.image_dirs[0])
 
     def import_cancelled(self):
         '''
@@ -398,11 +410,11 @@ class ImportPlugin(pluginbase.Plugin):
         '''
         ##todo: give visual indication of cancellation
         self.import_frame.set_sensitive(True)
-        self.mode_box.show()
         self.src_combo.set_sensitive(True)
         self.dest_combo.set_sensitive(True)
         self.start_import_button.set_sensitive(True)
         self.start_import_all_button.set_sensitive(True)
+        self.cancel_button.set_sensitive(False)
 
     def import_completed(self):
         '''
@@ -410,11 +422,12 @@ class ImportPlugin(pluginbase.Plugin):
         '''
         ##todo: give visual indication of completion
         self.import_frame.set_sensitive(True)
-        self.mode_box.show()
         self.src_combo.set_sensitive(True)
         self.dest_combo.set_sensitive(True)
         self.start_import_button.set_sensitive(True)
         self.start_import_all_button.set_sensitive(True)
+        self.cancel_button.set_sensitive(False)
+
 
 #    def import_now(self,button):
 #        self.start_import_button.set_sensitive(False)
@@ -422,16 +435,17 @@ class ImportPlugin(pluginbase.Plugin):
 #        import_job.start_import(params)
 
     def cancel_import(self,button):
-        self.import_job.import_cancel(False)
+        self.mainframe.tm.job_queue.clear(ImporterImportJob)
 
     def start_import(self,button,all):
-        coll_src=src_combo.get_active_coll()
-        coll_dest=dest_combo.get_active_coll()
-        if not (coll_src and coll_dest):
+        coll_src=self.src_combo.get_active_coll()
+        coll_dest=self.dest_combo.get_active_coll()
+        if coll_src==None or coll_dest==None:
             return
         self.start_import_button.set_sensitive(False)
         worker=self.mainframe.tm
         params={}
+        params['import_all']=all
         params['move']=self.move_radio.get_active()
         params['base_dest_dir']=self.base_dir_entry.get_path()
         params['action_if_exists']=self.exists_combo.get_active()
@@ -442,8 +456,15 @@ class ImportPlugin(pluginbase.Plugin):
             params['dest_name_template']=row[1]
         else:
             return
-        ij=ImporterImportJob(self,coll_src,coll_dest,params)
+        if not coll_src.is_open:
+            cj=backend.LoadCollectionJob(self.mainframe.tm,None,self.mainframe.browser)
+            self.mainframe.tm.queue_job_instance(cj)
+        ij=ImporterImportJob(self.mainframe.tm,None,self.mainframe.browser,self,coll_src,coll_dest,params)
         self.mainframe.tm.queue_job_instance(ij)
+        self.cancel_button.set_sensitive(True)
+        self.start_import_all_button.set_sensitive(False)
+        self.start_import_button.set_sensitive(False)
+        self.import_frame.set_sensitive(False)
 
     def media_connected(self,uri): ##todo: ensure that uri is actually a local path and if so rename the argument
         print 'media connected event for',uri

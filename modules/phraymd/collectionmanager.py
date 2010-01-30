@@ -23,7 +23,7 @@ def get_icon(icon_id_list):
     return None if not ii else ii.load_icon()
 
 
-class CollectionSet():
+class CollectionSet(gobject.GObject):
     '''
     Defines a set of image collections, managed with a dictionary like syntax
     The program should use this class to create and remove collections
@@ -46,8 +46,6 @@ class CollectionSet():
     def add_model(self,model_type='SELECTOR'):   ##todo: remove model
         m=CollectionModel(self,model_type)
         self.models.append(m)
-        for r in m.view_iter():
-            m.row_inserted(*m.pi_from_id(r))
         return m
     def __iter__(self):
         '''
@@ -158,10 +156,12 @@ class CollectionSet():
         coll=self[id]
         del self[id]
         return coll
-    def open_collection(self,id):
-        pass
-    def close_collection(self,id):
-        pass
+    def collection_opened(self,id):
+        for m in self.models:
+            m.coll_opened(id)
+    def collection_closed(self,id):
+        for m in self.models:
+            m.coll_closed(id)
     def init_localstores(self):
         for col_file in settings.get_collection_files():
             self.add_localstore(col_file)
@@ -178,10 +178,27 @@ class CollectionModel(gtk.GenericTreeModel):
     def __init__(self,coll_set,model_type):
         gtk.GenericTreeModel.__init__(self)
         self.coll_set=coll_set
+        self.model_type=model_type
+        if model_type=='OPEN_SELECTOR':
+            self.view_iter=self.view_iter_open_selector
         if model_type=='SELECTOR':
             self.view_iter=self.view_iter_selector
         if model_type=='MENU':
             self.view_iter=self.view_iter_menu
+        for r in self.view_iter():
+            self.row_inserted(*self.pi_from_id(r))
+    def coll_opened(self,id):
+        print 'MODEL OPENED CALLBACK',self,id
+        if self.model_type=='OPEN_SELECTOR':
+            self.row_inserted(*self.pi_from_id(id))
+        else:
+            self.row_changed(*self.pi_from_id(id))
+    def coll_closed(self,id):
+        print 'MODEL CLOSED CALLBACK',self,id
+        if self.model_type=='OPEN_SELECTOR':
+            self.row_deleted(*self.pi_from_id(id))
+        else:
+            self.row_changed(*self.pi_from_id(id))
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
@@ -271,8 +288,9 @@ class CollectionModel(gtk.GenericTreeModel):
         and adds items for separators, collections, but not menu options
         '''
         tcount=0
+        i=0
         for t in self.coll_set.types:
-            if tcount>0:
+            if i>0:
                 yield '*%i'%(tcount,)
             i=0
             for id in self.coll_set.iter_id(t):
@@ -280,6 +298,22 @@ class CollectionModel(gtk.GenericTreeModel):
                 i+=1
             if t=='DEVICE' and i==0:
                 yield '#no-devices'
+            tcount+=1
+    def view_iter_open_selector(self):
+        '''
+        this iterator defines the rows of the collection model
+        and adds items for separators, collections, but not menu options
+        '''
+        tcount=0
+        i=0
+        for t in self.coll_set.types:
+            if i>0:
+                yield '*%i'%(tcount,)
+            i=0
+            for id in self.coll_set.iter_id(t):
+                if self.coll_set[id].is_open:
+                    yield id
+                    i+=1
             tcount+=1
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
@@ -369,7 +403,7 @@ class CollectionCombo(gtk.VBox):
         coll_id=self.get_choice()
         if not coll_id:
             return
-        return self.mainframe.coll_set[coll_id]
+        return self.model.coll_set[coll_id]
 
 
 gobject.type_register(CollectionCombo)

@@ -112,7 +112,7 @@ class MainFrame(gtk.VBox):
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_hover_cmds)
 
         self.browser=browser.ImageBrowser(self.hover_cmds) ##todo: create thread manager here and assign to the browser
-        self.tm=backend.Worker(self.browser)
+        self.tm=backend.Worker(self.browser,self.coll_set)
         self.browser.tm=self.tm
         self.browser.active_collection=self.active_collection
         self.browser.active_view=self.active_collection.get_active_view()
