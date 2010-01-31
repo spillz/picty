@@ -107,7 +107,8 @@ class CollectionSet(gobject.GObject):
     def get_icon(self, icon_id_list):
         t=gtk.icon_theme_get_default()
         ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
-        return None if not ii else ii.load_icon()
+        pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
+        return pb
     def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
     def add_mount(self,path,name,icon_names):
