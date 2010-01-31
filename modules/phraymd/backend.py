@@ -689,6 +689,7 @@ class SelectionJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        collection=self.collection
         i=self.pos
         select=self.mode==SELECT
         if self.limit_to_view:

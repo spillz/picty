@@ -189,23 +189,21 @@ class CollectionModel(gtk.GenericTreeModel):
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
         if self.model_type!='OPEN_SELECTOR':
-            print 'ADDING',self,self.model_type,id
             self.row_inserted(*self.pi_from_id(id))
             if self.coll_set.count('DEVICE')>0:
-                self.row_deleted(*self.pi_from_id('#no-devices')[0])
+                pos=self.coll_set.count('LOCALSTORE')+1+(self.model_type=='MENU')
+                self.row_deleted((pos,))
     def coll_removed(self,id):
         if self.model_type!='OPEN_SELECTOR':
             self.row_deleted(*self.pi_from_id(id)[0])
             if self.coll_set.count('DEVICE')==0:
                 self.row_inserted(*self.pi_from_id('#no-devices'))
     def coll_opened(self,id):
-        print 'MODEL OPENED CALLBACK',self,id
         if self.model_type=='OPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
         else:
             self.row_changed(*self.pi_from_id(id))
     def coll_closed(self,id):
-        print 'MODEL CLOSED CALLBACK',self,id
         if self.model_type=='OPEN_SELECTOR':
             self.row_deleted(*self.pi_from_id(id)[0])
         else:
@@ -257,8 +255,6 @@ class CollectionModel(gtk.GenericTreeModel):
     helper methods for implementing the tree model methods
     '''
     def as_row(self,id):
-#        print 'as_row called',rowref
-#        id=self.get_user_data(rowref)
         label_dict={
             '#add-localstore':'New Collection...',
             '#no-devices':'No Devices Connected',

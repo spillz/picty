@@ -457,7 +457,7 @@ class ImportPlugin(pluginbase.Plugin):
         else:
             return
         if not coll_src.is_open:
-            cj=backend.LoadCollectionJob(self.mainframe.tm,None,self.mainframe.browser)
+            cj=backend.LoadCollectionJob(self.mainframe.tm,coll_src,self.mainframe.browser)
             self.mainframe.tm.queue_job_instance(cj)
         ij=ImporterImportJob(self.mainframe.tm,None,self.mainframe.browser,self,coll_src,coll_dest,params)
         self.mainframe.tm.queue_job_instance(ij)
