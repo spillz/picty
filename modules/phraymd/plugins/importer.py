@@ -196,6 +196,7 @@ class ImporterImportJob(backend.WorkerJob):
         if self.items==None:
             if self.import_all:
                 self.items=self.collection_src.get_items()
+                print 'importing all'
             else:
                 self.items=self.collection_src.get_active_view().get_selected_items()
                 self.count=len(self.items)
@@ -296,9 +297,9 @@ class ImportPlugin(pluginbase.Plugin):
                 label=gtk.Label(label_text)
                 hbox.pack_start(label,False)
             for widget in widget_data:
-                hbox.pack_start(widget[0],True)
-                if widget[1]:
-                    widget[0].connect(*widget[1:])
+                hbox.pack_start(widget[0],widget[1])
+                if widget[2]:
+                    widget[0].connect(*widget[2:])
             box.pack_start(hbox,False)
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
@@ -308,8 +309,12 @@ class ImportPlugin(pluginbase.Plugin):
 #        self.vbox.pack_start(self.import_source_entry,False)
         self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'))
         self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('OPEN_SELECTOR'))
-        box_add(self.vbox,[(self.src_combo,"collection-changed",self.src_changed)],"From")
-        box_add(self.vbox,[(self.dest_combo,"collection-changed",self.dest_changed)],"To")
+        box_add(self.vbox,[(self.src_combo,True,"collection-changed",self.src_changed),
+                           (gtk.Button("View"),False,"clicked",self.src_view)],
+                            "From: ")
+        box_add(self.vbox,[(self.dest_combo,True,"collection-changed",self.dest_changed),
+                           (gtk.Button("View"),False,"clicked",self.dest_view)],
+                            "To: ")
 #        self.vm=io.VolumeMonitor()
 #        self.import_source_combo=metadatadialogs.PathnameCombo("","Import from","Select directory to import from",volume_monitor=self.vm,directory=True)
 #        self.vbox.pack_start(self.import_source_combo,False)
@@ -329,7 +334,7 @@ class ImportPlugin(pluginbase.Plugin):
 #        self.vbox.pack_start(self.browse_frame,False)
 
         ##IMPORT OPTIONS
-        self.import_frame=gtk.Expander("Import Options")
+        self.import_frame=gtk.Expander("Advanced Import Options")
         self.import_box=gtk.VBox()
         self.import_frame.add(self.import_box)
         self.base_dir_entry=metadatadialogs.PathnameEntry('', ##self.mainframe.tm.collection.image_dirs[0]
@@ -340,27 +345,27 @@ class ImportPlugin(pluginbase.Plugin):
         for n in naming_schemes:
             self.name_scheme_model.append(n)
         self.name_scheme_combo=gtk.ComboBox(self.name_scheme_model)
-        box,self.name_scheme_combo=box_add(self.import_box,[(self.name_scheme_combo,None)],"Naming Scheme")
+        box,self.name_scheme_combo=box_add(self.import_box,[(self.name_scheme_combo,True,None)],"Naming Scheme")
         cell = gtk.CellRendererText()
         self.name_scheme_combo.pack_start(cell, True)
         self.name_scheme_combo.add_attribute(cell, 'text', 0)
         self.name_scheme_combo.set_active(0)
 
-        box,self.exists_combo=box_add(self.import_box,[(gtk.combo_box_new_text(),None)],"Action if Destination Exists")
+        box,self.exists_combo=box_add(self.import_box,[(gtk.combo_box_new_text(),True,None)],"Action if Destination Exists")
         for x in exist_actions:
             self.exists_combo.append_text(x)
         self.exists_combo.set_active(0)
 
         self.copy_radio=gtk.RadioButton(None,"_Copy",True)
         self.move_radio=gtk.RadioButton(self.copy_radio,"_Move",True)
-        box_add(self.vbox,[(self.copy_radio,None),(self.move_radio,None)],"Import Operation")
+        box_add(self.vbox,[(self.copy_radio,True,None),(self.move_radio,True,None)],"Import Operation: ")
 
         self.vbox.pack_start(self.import_frame,False)
 
         self.import_action_box,self.cancel_button,self.start_import_all_button,self.start_import_button=box_add(self.vbox,
-            [(gtk.Button("Cancel"),"clicked",self.cancel_import),
-             (gtk.Button("Import All"),"clicked",self.start_import,False),
-             (gtk.Button("Import Selected"),"clicked",self.start_import,False)],
+            [(gtk.Button("Cancel"),True,"clicked",self.cancel_import),
+             (gtk.Button("Import All"),True,"clicked",self.start_import,True),
+             (gtk.Button("Import Selected"),True,"clicked",self.start_import,False)],
             "")
 
         self.cancel_button.set_sensitive(False)
@@ -386,6 +391,18 @@ class ImportPlugin(pluginbase.Plugin):
             self.scrolled_window.destroy()
             del self.import_job
             ##todo: delete references to widgets
+
+    def src_view(self,button):
+        id=self.src_combo.get_active()
+        if id:
+            self.mainframe.coll_combo.set_active(id)
+        self.mainframe.browser.imarea.grab_focus() ##todo: add mainframe method "restore_focus"
+
+    def dest_view(self,button):
+        id=self.dest_combo.get_active()
+        if id:
+            self.mainframe.coll_combo.set_active(id)
+        self.mainframe.browser.imarea.grab_focus()
 
     def src_changed(self,combo,id):
         if combo.get_active_coll()==None:
@@ -471,7 +488,8 @@ class ImportPlugin(pluginbase.Plugin):
         sidebar=self.mainframe.sidebar
         sidebar.set_current_page(sidebar.page_num(self.scrolled_window))
         self.mainframe.sidebar_toggle.set_active(True)
-        self.src_combo.set_active(id)
+        self.src_combo.set_active(uri)
+        self.dest_combo.set_active(self.mainframe.active_collection.id)
 #        if self.src_combo.get_editable():
 #            self.import_source_combo.set_path(io.get_path_from_uri(uri))
 

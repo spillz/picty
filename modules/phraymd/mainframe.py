@@ -442,7 +442,8 @@ class MainFrame(gtk.VBox):
         self.browser.refresh_view()
 
     def mount_added(self,monitor,name,icon_names,path):
-        self.coll_set.add_mount(path,name,icon_names)
+        coll=self.coll_set.add_mount(path,name,icon_names)
+        self.plugmgr.callback('media_connected',coll.id)
 
     def mount_removed(self,monitor,name,icon_names,path):
         collection=self.coll_set[path]
@@ -452,6 +453,7 @@ class MainFrame(gtk.VBox):
             sj=backend.SaveCollectionJob(self.tm,collection,self.browser)
             sj.priority=1050
             self.tm.queue_job_instance(sj)
+        self.plugmgr.callback('media_disconnected',collection.id)
 
     def add_dir(self,name,path):
         pass

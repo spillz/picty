@@ -3,7 +3,7 @@ import os.path
 import pyinotify
 
 
-if pyinotify.__version__>='0.8.0':
+if '__version__' in dir(pyinotify) and pyinotify.__version__>='0.8.0':
     mask = (pyinotify.IN_DELETE |
             pyinotify.IN_CREATE |
             pyinotify.IN_DONT_FOLLOW |

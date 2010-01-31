@@ -97,7 +97,6 @@ class CollectionSet(gobject.GObject):
         for m in self.models:
             m.coll_removed(name)
         del self.collections[name]
-        path=self.on_get_path(name)
     def clear(self):
         for id in self.collections:
             del self[id]
@@ -116,9 +115,9 @@ class CollectionSet(gobject.GObject):
         c.id=path
         c.pixbuf=self.get_icon(icon_names)
         c.add_view()
-        if self.count('DEVICE')==0:
-            for m in self.models:
-                m.row_deleted(*m.pi_from_id('#no-devices')[0])
+#        if self.count('DEVICE')==0:
+#            for m in self.models:
+#                m.row_deleted(*m.pi_from_id('#no-devices')[0])
         self.collections[c.id]=c
         for m in self.models:
             m.coll_added(c.id)
@@ -189,10 +188,12 @@ class CollectionModel(gtk.GenericTreeModel):
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
         if self.model_type!='OPEN_SELECTOR':
-            self.row_inserted(*self.pi_from_id(id))
-            if self.coll_set.count('DEVICE')>0:
-                pos=self.coll_set.count('LOCALSTORE')+1+(self.model_type=='MENU')
-                self.row_deleted((pos,))
+            pi_data=self.pi_from_id(id)
+            if self.coll_set.count('DEVICE')==1:
+                print 'ADDING FIRST DEVICE',self.coll_set.collections,pi_data
+                #pos=self.coll_set.count('LOCALSTORE')+1+(self.model_type=='MENU')
+                self.row_deleted(pi_data[0])
+            self.row_inserted(*pi_data)
     def coll_removed(self,id):
         if self.model_type!='OPEN_SELECTOR':
             self.row_deleted(*self.pi_from_id(id)[0])
@@ -406,6 +407,8 @@ class CollectionCombo(gtk.VBox):
             self.combo.set_active_iter(self.model.create_tree_iter(id))
         else:
             self.combo.set_active(-1)
+    def get_active(self):
+        return self.get_choice()
     def get_active_coll(self):
         coll_id=self.get_choice()
         if not coll_id:
