@@ -95,12 +95,9 @@ class CollectionSet(gobject.GObject):
     def __delitem__(self,name):
         coll=self.collections[name]
         for m in self.models:
-            m.row_deleted(*m.pi_from_id(name)[0])
+            m.coll_removed(name)
         del self.collections[name]
         path=self.on_get_path(name)
-        if coll.type=='DEVICE':
-            for m in self.models:
-                m.row_inserted(*m.pi_from_id('#no-devices'))
     def clear(self):
         for id in self.collections:
             del self[id]
@@ -124,7 +121,7 @@ class CollectionSet(gobject.GObject):
                 m.row_deleted(*m.pi_from_id('#no-devices')[0])
         self.collections[c.id]=c
         for m in self.models:
-            m.row_inserted(*m.pi_from_id(c.id))
+            m.coll_added(c.id)
         return c
     def add_localstore(self,col_file):
         c=collections.Collection2()
@@ -137,7 +134,7 @@ class CollectionSet(gobject.GObject):
         c.add_view()
         self.collections[col_path]=c
         for m in self.models:
-            m.row_inserted(*m.pi_from_id(c.id))
+            m.coll_added(c.id)
         return c
     def add_directory(self,path,recursive=False):
         c=collections.Collection2()
@@ -151,18 +148,20 @@ class CollectionSet(gobject.GObject):
         c.add_view()
         self.collections[path]=c
         for m in self.models:
-            m.row_inserted(*m.pi_from_id(c.id))
+            m.coll_added(c.id)
         return c
     def remove(self,id):
         coll=self[id]
         del self[id]
         return coll
     def collection_opened(self,id):
+        self[id].is_open=True
         for m in self.models:
             m.coll_opened(id)
     def collection_closed(self,id):
         for m in self.models:
             m.coll_closed(id)
+        self[id].is_open=False
     def init_localstores(self):
         for col_file in settings.get_collection_files():
             self.add_localstore(col_file)
@@ -188,6 +187,17 @@ class CollectionModel(gtk.GenericTreeModel):
             self.view_iter=self.view_iter_menu
         for r in self.view_iter():
             self.row_inserted(*self.pi_from_id(r))
+    def coll_added(self,id):
+        if self.model_type!='OPEN_SELECTOR':
+            print 'ADDING',self,self.model_type,id
+            self.row_inserted(*self.pi_from_id(id))
+            if self.coll_set.count('DEVICE')>0:
+                self.row_deleted(*self.pi_from_id('#no-devices')[0])
+    def coll_removed(self,id):
+        if self.model_type!='OPEN_SELECTOR':
+            self.row_deleted(*self.pi_from_id(id)[0])
+            if self.coll_set.count('DEVICE')==0:
+                self.row_inserted(*self.pi_from_id('#no-devices'))
     def coll_opened(self,id):
         print 'MODEL OPENED CALLBACK',self,id
         if self.model_type=='OPEN_SELECTOR':
@@ -197,7 +207,7 @@ class CollectionModel(gtk.GenericTreeModel):
     def coll_closed(self,id):
         print 'MODEL CLOSED CALLBACK',self,id
         if self.model_type=='OPEN_SELECTOR':
-            self.row_deleted(*self.pi_from_id(id))
+            self.row_deleted(*self.pi_from_id(id)[0])
         else:
             self.row_changed(*self.pi_from_id(id))
     def on_get_flags(self):

@@ -201,7 +201,8 @@ class Collection2():
         for item in items:
             self.items.add(item)
             self.numselected+=item.selected
-        self.is_open=True if len(items)>0 else False
+        self.is_open=False
+#        self.is_open=True if len(items)>0 else False
 
         self.numselected=0
 
@@ -323,7 +324,7 @@ class Collection2():
         load the collection from a binary pickle file identified by the pathname in the filename argument
         '''
         print 'loading collection',filename,self.filename
-        self.is_open=True
+#        self.is_open=True
         try:
             if not filename:
                 filename=self.filename
@@ -350,14 +351,14 @@ class Collection2():
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print "Error Loading Collection",self.filename
             print tb_text
-            self.is_open=False
+#            self.is_open=False
             self.empty()
             return False
     def close(self):
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
-        self.is_open=False
+#        self.is_open=False
         if not self.filename: ##no filename assumed to be a temporary collection
             return False
         print 'saving collection',self.filename,self.image_dirs
