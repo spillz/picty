@@ -635,9 +635,9 @@ class ImageBrowser(gtk.HBox):
                 self.hover_cmds.simple_render(item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/4)
             i+=1
             x+=self.geo_thumbwidth+self.geo_pad
-            if x+self.geo_thumbwidth+self.geo_pad>=self.geo_width:
+            if x+self.geo_thumbwidth+self.geo_pad>self.geo_width:
                 y+=self.geo_thumbheight+self.geo_pad
-                if y>=self.geo_height+self.geo_pad:
+                if y>self.geo_height+self.geo_pad:
                     break
                 else:
                     x=0
