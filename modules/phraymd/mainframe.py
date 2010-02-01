@@ -988,14 +988,14 @@ class MainFrame(gtk.VBox):
 
     def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
-        imagemanip.rotate_left(item)
+        imagemanip.rotate_left(item,self.active_collection)
         self.browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
-        imagemanip.rotate_right(item)
+        imagemanip.rotate_right(item,self.active_collection)
         self.browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)

@@ -85,6 +85,36 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
     else:
         return metadata.load_metadata(item,filename)
 
+def rotate_left(item,collection=None):
+    'rotates image anti-clockwise'
+    try:
+        orient=item.meta['Orientation']
+    except:
+        orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
+    item.set_meta_key('Orientation',rotate_left_tx[orient],collection)
+    item.image=None
+    item.qview=None
+    rotate_thumb(item,False)
+
+
+def rotate_right(item,collection=None):
+    'rotates image clockwise'
+    try:
+        orient=item.meta['Orientation']
+    except:
+        orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
+    item.set_meta_key('Orientation',rotate_right_tx[orient],collection)
+    item.image=None
+    item.qview=None
+    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
+
+
 
 def save_metadata(item):
     if metadata.save_metadata(item):
@@ -143,35 +173,6 @@ def small_pixbuf(pixbuf):
         height=width*th/tw
     return pixbuf.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
 
-
-def rotate_left(item):
-    'rotates image anti-clockwise'
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient<1 or orient>8:
-        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
-        orient=1
-    item.set_meta_key('Orientation',rotate_left_tx[orient])
-    item.image=None
-    item.qview=None
-    rotate_thumb(item,False)
-
-
-def rotate_right(item):
-    'rotates image clockwise'
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient<1 or orient>8:
-        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
-        orient=1
-    item.set_meta_key('Orientation',rotate_right_tx[orient])
-    item.image=None
-    item.qview=None
-    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
 
 def cache_image(item):
