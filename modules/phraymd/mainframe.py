@@ -983,7 +983,7 @@ class MainFrame(gtk.VBox):
             print 'no known command for ',item.filename,' mimetype',mime
 
     def edit_item(self,widget,item):
-        self.dlg=metadatadialogs.MetaDialog(item)
+        self.dlg=metadatadialogs.MetaDialog(item,self.active_collection)
         self.dlg.show()
 
     def rotate_item_left(self,widget,item):

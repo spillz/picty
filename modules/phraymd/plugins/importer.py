@@ -196,7 +196,7 @@ class ImporterImportJob(backend.WorkerJob):
         if self.items==None:
             if self.import_all:
                 self.items=self.collection_src.get_items()
-                print 'importing all'
+                print 'importing all',len(self.items)
             else:
                 self.items=self.collection_src.get_active_view().get_selected_items()
                 self.count=len(self.items)

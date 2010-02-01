@@ -249,13 +249,14 @@ class BatchMetaDialog(gtk.Dialog):
 
 
 class MetaDialog(gtk.Dialog):
-    def __init__(self,item):
+    def __init__(self,item,collection):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
         self.set_title('Edit Descriptive Info')
         tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.item=item
+        self.collection=collection
         r=0
         print item.meta
         for k,v in tags:
@@ -285,7 +286,7 @@ class MetaDialog(gtk.Dialog):
         self.vbox.pack_start(file_label)
     def meta_changed(self,widget,key):
         value=metadata.app_key_from_string(key,widget.get_text())
-        self.item.set_meta_key(key,value)
+        self.item.set_meta_key(key,value,self.collection)
     def add_meta_row(self,table,key,label,data,row,writable=True):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
