@@ -432,8 +432,7 @@ class WalkDirectoryJob(WorkerJob):
                             if not item.thumb:
                                 item.cannot_thumb=True
                         self.browser.lock.acquire()
-                        for item in self.notify_items:
-                            collection.add(item)
+                        collection.add(item)
                         self.browser.lock.release()
                         idle_add(self.browser.refresh_view,self.collection)
                     else:

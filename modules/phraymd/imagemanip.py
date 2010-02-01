@@ -76,7 +76,7 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
             meta=item.meta
         result=metadata.load_metadata(item,filename,get_thumbnail)
         if result:
-            if get_thumbnail:
+            if item.thumb and get_thumbnail:
                 item.thumb=orient_pixbuf(item.thumb,item.meta)
                 item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
             if item.meta!=meta:

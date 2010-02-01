@@ -108,6 +108,8 @@ class CollectionSet(gobject.GObject):
     def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
     def add_mount(self,path,name,icon_names):
+        if not os.path.exists(path):
+            return
         c=collections.Collection2()
         c.type='DEVICE'
         c.image_dirs=[path] ##todo: if device collection data is stored persistently, what to do if path changes?
@@ -115,9 +117,17 @@ class CollectionSet(gobject.GObject):
         c.id=path
         c.pixbuf=self.get_icon(icon_names)
         c.add_view()
-#        if self.count('DEVICE')==0:
-#            for m in self.models:
-#                m.row_deleted(*m.pi_from_id('#no-devices')[0])
+        c.verify_after_walk=False
+        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')):
+            c.load_embedded_thumbs=False
+            c.load_metadata=False
+            c.load_preview_icons=True
+            c.store_thumbnails=False ##todo: this needs to be implemented
+        else:
+            c.load_embedded_thumbs=True
+            c.load_metadata=True
+            c.load_preview_icons=False
+            c.store_thumbnails=False
         self.collections[c.id]=c
         for m in self.models:
             m.coll_added(c.id)
