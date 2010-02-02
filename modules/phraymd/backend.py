@@ -1139,13 +1139,13 @@ class Worker:
         self.queue_job(RecreateThumbJob,[item])
 
     def recreate_selected_thumbs(self):
-        self.queue_job(RecreateThumbJob,self.view.get_selected_items())
+        self.queue_job(RecreateThumbJob,self.active_collection.get_active_view().get_selected_items())
 
     def reload_metadata(self,item):
         self.queue_job(ReloadMetadataJob,[item])
 
     def reload_selected_metadata(self):
-        self.queue_job(ReloadMetadataJob,self.view.get_selected_items())
+        self.queue_job(ReloadMetadataJob,self.active_collection.get_active_view().get_selected_items())
 
     def select_all_items(self,mode=SELECT,view=True):
         self.queue_job(SelectionJob,mode,view)

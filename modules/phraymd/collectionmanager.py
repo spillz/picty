@@ -145,15 +145,22 @@ class CollectionSet(gobject.GObject):
         for m in self.models:
             m.coll_added(c.id)
         return c
-    def add_directory(self,path,recursive=False):
+    def add_directory(self,path,prefs=None):
         c=collections.Collection2()
         c.filename=''
         c.name=os.path.split(path)[1]
         c.id=path
         c.type='DIRECTORY'
         c.image_dirs=[path]
+        c.verify_after_walk=False
         c.pixbuf=self.get_icon([gtk.STOCK_DIRECTORY])
-        c.recursive=recursive
+        c.recursive=prefs['recursive']
+        c.load_embedded_thumbs=prefs['use_internal_thumbs']
+        c.load_metadata=prefs['load_metadata']
+        if not c.load_metadata and c.load_embedded_thumbs:
+            c.load_preview_icons=True
+        c.store_thumbnails=prefs['store_thumbnails'] ##todo: this needs to be implemented
+
         c.add_view()
         self.collections[path]=c
         for m in self.models:

@@ -338,10 +338,13 @@ class MainFrame(gtk.VBox):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        path=metadatadialogs.directory_dialog(title='Choose Image Directory',default='')
-        if path:
-            self.coll_set.add_directory(path)
-            self.coll_combo.set_active(path)
+        dialog=metadatadialogs.BrowseDirectory()
+        response=dialog.run()
+        dialog.destroy()
+        if response==gtk.RESPONSE_ACCEPT:
+            prefs=dialog.get_values()
+            self.coll_set.add_directory(prefs['path'],prefs)
+            self.coll_combo.set_active(prefs['path'])
         else:
             self.coll_combo.set_active(old_id)
 

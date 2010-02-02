@@ -53,6 +53,16 @@ transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
             (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
             (Image.ROTATE_90,))
 
+transposemethods_pb=(None,
+            (None,gtk.gdk.PIXBUF_ROTATE_NONE),
+            (True,gtk.gdk.PIXBUF_ROTATE_NONE),
+            (None,gtk.gdk.PIXBUF_ROTATE_UPSIDEDOWN),
+            (True,gtk.gdk.PIXBUF_ROTATE_UPSIDEDOWN),
+            (False,gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE),
+            (None,gtk.gdk.PIXBUF_ROTATE_CLOCKWISE),
+            (False,gtk.gdk.PIXBUF_ROTATE_CLOCKWISE),
+            (None,gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE))
+
 rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
 
 rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
@@ -149,15 +159,16 @@ def scale_pixbuf(pixbuf,size):
     pb_square=pb.subpixbuf(dest_x,dest_y,size,size)
     return pb_square
 
-
 def orient_pixbuf(pixbuf,meta):
     try:
         orient=meta['Orientation']
     except:
         orient=1
     if orient>1:
-        for method in transposemethods[orient]:
-            pixbuf=pixbuf.transpose(method)
+        method=transposemethods_pb[orient]
+        if method[0]!=None:
+            pixbuf=pixbuf.flip(method[0])
+        pixbuf=pixbuf.rotate_simple(method[1])
     return pixbuf
 
 
