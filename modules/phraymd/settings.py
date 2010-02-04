@@ -6,7 +6,7 @@ import gtk
 
 maemo=False
 
-version='0.4.0' #version is saved to data and configuration files
+version='0.4.1' #version is saved to data and configuration files
 
 plugins_disabled=[]
 
@@ -146,23 +146,26 @@ def user_add_dir():
 def init():
     global image_dirs, active_collection_file
     load()
-    if not os.path.exists(active_collection_file):
+    print 'active_collection_file 0',active_collection_file
+    if not active_collection_file or not os.path.exists(active_collection_file):
         try:
+            print 'active_collection_file 1',active_collection_file
             active_collection_file=os.path.join(collections_dir,get_collection_files()[0])
+            print 'active_collection_file 2',active_collection_file
         except:
-            pass
-    if not os.path.exists(active_collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
-        image_dirs=user_add_dir()
-        if len(image_dirs)==0:
-            import sys
-            print 'no image directory selected... quitting'
-            sys.exit()
-        import imageinfo
-        if not imageinfo.create_empty_file(os.path.join(collections_dir,'collection'),image_dirs):
-            import sys
-            print 'error creating collection file... quitting'
-            sys.exit()
-        active_collection_file=os.path.join(collections_dir,'collection')
+            active_collection_file=''
+#    if not os.path.exists(active_collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
+#        image_dirs=user_add_dir()
+#        if len(image_dirs)==0:
+#            import sys
+#            print 'no image directory selected... quitting'
+#            sys.exit()
+#        import imageinfo
+#        if not imageinfo.create_empty_file(os.path.join(collections_dir,'collection'),image_dirs):
+#            import sys
+#            print 'error creating collection file... quitting'
+#            sys.exit()
+#        active_collection_file=os.path.join(collections_dir,'collection')
     save()
 
 

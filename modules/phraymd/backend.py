@@ -123,11 +123,9 @@ class WorkerJobQueue:
 
     def set_priority_collection(self,collection):
         self.lock.acquire()
-        print 'set priority collection',self.queue
         self.priority_collection=collection
         jsort=[(-1*(j.collection==collection),-j.priority,j) for j in self.queue]
         self.queue=[j[2] for j in sorted(jsort)]
-        print 'set priority collection post',self.queue
         self.lock.release()
 
     def get_priority_colleciton(self,collection):
@@ -360,7 +358,7 @@ class SaveCollectionJob(WorkerJob):
         if self.filename:
             self.collection.filename=self.filename
         log.info('Saving '+str(self.collection.filename))
-        print 'started save job'
+        print 'started save job on',self.collection.filename
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)
@@ -1111,11 +1109,9 @@ class Worker:
         self.jobs.clear_by_job_class(job_class)
 
     def save_collection(self,filename):
-        ##todo: specify collection to save and optional filename
         self.queue_job(SaveCollectionJob,filename)
 
     def load_collection(self,filename):
-        ##todo: this should be opening a new collection that adds to the list of collections (currently replaces collection)
         self.queue_job(LoadCollectionJob,filename)
 
     def scan_and_verify(self,collection):

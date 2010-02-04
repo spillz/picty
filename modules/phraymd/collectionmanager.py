@@ -132,15 +132,25 @@ class CollectionSet(gobject.GObject):
         for m in self.models:
             m.coll_added(c.id)
         return c
-    def add_localstore(self,col_file):
+    def add_localstore(self,col_name,prefs=None):
+        '''
+        add a localstore collection to the collection set
+        - col_file is the name of the collection (and is also used to set the filename of the collection cache file)
+        - prefs is a dictionary containing the preferences for the colleciton, if None they will be loaded from the collection cache file
+        '''
         c=collections.Collection2()
-        col_path=os.path.join(settings.collections_dir,col_file)
+        col_path=os.path.join(settings.collections_dir,col_name)
         c.filename=col_path
-        c.name=col_file
+        c.name=col_name
         c.id=col_path
         c.type='LOCALSTORE'
-        c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK])
+        c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK]) ##todo: let user choose an icon
         c.add_view()
+        if prefs!=None:
+            for p in prefs:
+                c.__dict__[p]=prefs[p]
+        else:
+            c.load_header_only('')
         self.collections[col_path]=c
         for m in self.models:
             m.coll_added(c.id)
@@ -206,7 +216,7 @@ class CollectionModel(gtk.GenericTreeModel):
     def coll_added(self,id):
         if self.model_type!='OPEN_SELECTOR':
             pi_data=self.pi_from_id(id)
-            if self.coll_set.count('DEVICE')==1:
+            if self.coll_set.collections[id].type=='DEVICE' and self.coll_set.count('DEVICE')==1:
                 print 'ADDING FIRST DEVICE',self.coll_set.collections,pi_data
                 #pos=self.coll_set.count('LOCALSTORE')+1+(self.model_type=='MENU')
                 self.row_deleted(pi_data[0])
@@ -214,7 +224,7 @@ class CollectionModel(gtk.GenericTreeModel):
     def coll_removed(self,id):
         if self.model_type!='OPEN_SELECTOR':
             self.row_deleted(*self.pi_from_id(id)[0])
-            if self.coll_set.count('DEVICE')==0:
+            if self.coll_set.collections[id].type=='DEVICE' and self.coll_set.count('DEVICE')==0:
                 self.row_inserted(*self.pi_from_id('#no-devices'))
     def coll_opened(self,id):
         if self.model_type=='OPEN_SELECTOR':
@@ -365,7 +375,7 @@ class CollectionModel(gtk.GenericTreeModel):
 class CollectionCombo(gtk.VBox):
     __gsignals__={
         'collection-changed':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user selects a collection
-        'collection-toggled':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user toggles the collection button
+#        'collection-toggled':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user toggles the collection button
         'add-dir':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user choooses the "browse dir" button
         'add-localstore':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user chooses the "new collection" button
         }

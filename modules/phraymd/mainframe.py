@@ -70,7 +70,6 @@ class MainFrame(gtk.VBox):
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)
         self.coll_set=collectionmanager.CollectionSet()
         self.coll_combo=collectionmanager.CollectionCombo(self.coll_set.add_model('MENU'))
-        self.active_collection_id=None
         self.collections_init()
 
         ##plugin-todo: instantiate plugins
@@ -114,8 +113,6 @@ class MainFrame(gtk.VBox):
         self.browser=browser.ImageBrowser(self.hover_cmds) ##todo: create thread manager here and assign to the browser
         self.tm=backend.Worker(self.browser,self.coll_set)
         self.browser.tm=self.tm
-        self.browser.active_collection=self.active_collection
-        self.browser.active_view=self.active_collection.get_active_view()
 
         self.browser_box=gtk.VBox()
         self.browser_box.show()
@@ -291,7 +288,7 @@ class MainFrame(gtk.VBox):
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
 
-        self.browser.show()
+        ##self.browser.show() #don't show the browser by default (it will be shown when a collection is activated)
 
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
@@ -315,30 +312,48 @@ class MainFrame(gtk.VBox):
         self.plugmgr.init_plugins(self)
 
 
-        print 'set layout',settings.layout
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
 
         dbusserver.start()
-
-        self.browser.active_view.sort_key_text=self.sort_order.get_active_text()
-        self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
-        self.tm.set_active_collection(self.active_collection)
         self.tm.start()
-        self.tm.load_collection('')
-        print 'active collection dirs',self.active_collection.image_dirs
+
+#        if self.active_collection!=None:
+#            self.browser.active_collection=self.active_collection
+#            self.browser.active_view=self.active_collection.get_active_view()
+#            self.browser.active_view.sort_key_text=self.sort_order.get_active_text()
+#            self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
+#            self.tm.set_active_collection(self.active_collection)
+#            self.tm.load_collection('')
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
-#        self.tm.load_collection(self.active_collection_id,'')
-#        self.tm.open_collection(self.active_collection_id,collection)
+        if self.active_collection==None:
+            self.create_local_store(self.coll_combo)
+        else:
+            self.browser.show()
+            coll=self.active_collection
+            self.coll_combo.set_active(coll.id)
+            self.tm.set_active_collection(coll)
+            self.browser.active_collection=coll
+            self.browser.active_view=coll.get_active_view()
+            sort_model=self.sort_order.get_model()
+            for i in xrange(len(sort_model)):
+                if self.browser.active_view.sort_key_text==sort_model[i][0]:
+                    self.sort_order.set_active(i)
+                    break
+            self.sort_toggle.set_active(self.browser.active_view.reverse)
+            if not coll.is_open:
+                self.tm.load_collection('')
+#            self.browser.refresh_view()
+            self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
 
     def browse_dir_collection(self,combo):
         #prompt for path
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=metadatadialogs.BrowseDirectory()
+        dialog=metadatadialogs.BrowseDirectoryDialog()
         response=dialog.run()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
@@ -353,21 +368,20 @@ class MainFrame(gtk.VBox):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        name=self.entry_dialog('New Collection','Name:')
-        if not name:
-            if old_id:
-                self.coll_combo.set_active(old_id)
-            return
-        coll_path=settings.user_add_dir()
-        if len(coll_path)>0:
-            if imageinfo.create_empty_file(name,coll_path):
-                self.coll_set.add_localstore(name)
-                self.coll_combo.set_active(coll_path)
-            else:
-                print 'Error loading creating collection',coll_path
-        else:
-            if old_id:
-                self.coll_combo.set_active(old_id)
+        dialog=metadatadialogs.AddLocalStoreDialog()
+        response=dialog.run()
+        dialog.destroy()
+        if response==gtk.RESPONSE_ACCEPT:
+            prefs=dialog.get_values()
+            name=prefs['name']
+            image_dir=prefs['image_dirs'][0]
+            if len(name)>0 and len(image_dir)>0:
+                imageinfo.create_empty_file(name,prefs)
+                c=self.coll_set.add_localstore(name)
+                self.coll_combo.set_active(c.id)
+                return
+        if old_id:
+            self.coll_combo.set_active(old_id)
 
     def collections_init(self):
         ##now fill the collection manager with
@@ -381,10 +395,13 @@ class MainFrame(gtk.VBox):
 
         ##open last used collection or
         ##todo: device or directory specified at command line.
-        print settings.active_collection_file
+        print 'active_collection_file 4',settings.active_collection_file
         if settings.active_collection_file:
             self.active_collection=self.coll_set[settings.active_collection_file]
             self.coll_combo.set_active(settings.active_collection_file)
+        else:
+            self.active_collection=None
+
 
     def collection_changed(self,combo,id):
         if not id:
@@ -432,17 +449,13 @@ class MainFrame(gtk.VBox):
         self.tm.queue_job_instance(sj)
         self.coll_combo.set_active(None)
 
-    def collection_opened(self,collection): ##callback used by worker thread
-        print 'COLLECTION OPENED',collection.id
-        collection.is_open=True
-        ##todo: call Tree model changed
-        self.browser.refresh_view()
-
-    def collection_closed(self,collection): ##callback used by worker thread
-        print 'COLLECTION CLOSED',collection.id
-        collection.is_open=False
-        ##todo: call Tree model changed
-        self.browser.refresh_view()
+#    def collection_opened(self,collection): ##callback used by worker thread
+#        collection.is_open=True
+#        self.browser.refresh_view()
+#
+#    def collection_closed(self,collection): ##callback used by worker thread
+#        collection.is_open=False
+#        self.browser.refresh_view()
 
     def mount_added(self,monitor,name,icon_names,path):
         coll=self.coll_set.add_mount(path,name,icon_names)
@@ -482,11 +495,12 @@ class MainFrame(gtk.VBox):
                 self.sort_order.set_active(i)#sort_model.get_iter((i,)))
                 #imageinfo.sort_keys[self.sort_order.get_active_text()]
                 break
-        self.active_collection.get_active_view().reverse=layout['sort direction']
-        if self.active_collection.get_active_view().reverse:
-            self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
-            self.sort_toggle.set_active(True)
-            self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
+        if self.active_collection:
+            self.active_collection.get_active_view().reverse=layout['sort direction']
+            if self.active_collection.get_active_view().reverse:
+                self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
+                self.sort_toggle.set_active(True)
+                self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
 
 #        if layout['viewer active']:
 #            item=self.tm.collection.find(imageinfo.Item(layout['viewed item'],0))
