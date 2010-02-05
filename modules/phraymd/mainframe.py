@@ -428,6 +428,7 @@ class MainFrame(gtk.VBox):
                 self.sort_order.set_active(i)
                 break
         self.sort_toggle.set_active(self.browser.active_view.reverse)
+        self.filter_entry.set_text(self.browser.active_view.filter_text)
 
         if coll.filename:
             settings.active_collection_file=coll.filename
@@ -435,7 +436,6 @@ class MainFrame(gtk.VBox):
             self.tm.load_collection('')
         self.browser.show()
         self.browser.refresh_view()
-        self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
         pluginmanager.mgr.callback('collection_activated',coll)
 
     def close_collection(self,widget):
@@ -578,9 +578,6 @@ class MainFrame(gtk.VBox):
 ##        dlg.run()
 ##        dlg.destroy()
 
-    def filter_text_changed(self,widget):
-        if self.active_collection:
-            self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
 
     def select_show(self,widget):
         self.filter_entry.set_text("selected")
@@ -674,11 +671,16 @@ class MainFrame(gtk.VBox):
     def select_recreate_thumb(self,widget):
         self.tm.recreate_selected_thumbs()
 
+    def filter_text_changed(self,widget):
+        if self.active_collection!=None:
+            self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
+
     def set_filter_text(self,widget):
         self.browser.grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        if self.active_collection and self.browser.active_view and self.browser.active_view.filter_text!=filter_text:
+        print 'set filter_text',self.active_collection!=None,self.browser.active_view!=None
+        if self.active_collection!=None and self.browser.active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
             self.tm.rebuild_view(key,filter_text)
 
     def clear_filter(self,widget):
@@ -689,7 +691,7 @@ class MainFrame(gtk.VBox):
         self.browser.grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        if self.active_collection and self.browser.active_view and self.browser.active_view.sort_key_text!=key:
+        if self.active_collection!=None and self.browser.active_view!=None and (self.browser.active_view.sort_key_text!=key):
             self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):

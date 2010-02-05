@@ -576,6 +576,7 @@ class BuildViewJob(WorkerJob):
 #        self.cancel=True
 
     def __call__(self):
+        print 'BUILD VIEW JOB',self.sort_key,self.pos,self.filter_text
         jobs=self.worker.jobs
         collection=self.collection
         view=self.collection.get_active_view()
@@ -1091,7 +1092,7 @@ class Worker:
         self.active_collection=collection
         self.jobs.set_priority_collection(collection)
 
-    def get_active_collection(self,colleciton):
+    def get_active_collection(self):
         return self.active_collection
 
     def get_default_job_tuple(self):
@@ -1161,6 +1162,7 @@ class Worker:
         self.queue_job(EditMetaDataJob,mode,None,keyword_string,scope)
 
     def rebuild_view(self,sort_key,filter_text=''):
+        self.jobs.clear(BuildViewJob,self.get_active_collection()) ##todo: other jobs probably need to clear out active jobs of the same type (rather than queue)
         self.queue_job(BuildViewJob,sort_key,filter_text)
 
     def save_or_revert_view(self,save=True,selected_only=False):
