@@ -515,25 +515,16 @@ class MainFrame(gtk.VBox):
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
 
     def set_layout(self,layout):
-        print 'setting layout',layout
         sort_model=self.sort_order.get_model()
-        for i in range(len(sort_model)):
-            if layout['sort order']==sort_model[i][0]:
-                self.sort_order.set_active(i)#sort_model.get_iter((i,)))
-                #imageinfo.sort_keys[self.sort_order.get_active_text()]
-                break
-        if self.active_collection:
-            self.active_collection.get_active_view().reverse=layout['sort direction']
-            if self.active_collection.get_active_view().reverse:
-                self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
-                self.sort_toggle.set_active(True)
-                self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
 
-#        if layout['viewer active']:
-#            item=self.tm.collection.find(imageinfo.Item(layout['viewed item'],0))
-#            if item:
-#                self.view_image(item)
-#                self.hpane.set_position(layout['viewer width'])
+        for c in self.coll_set.iter_coll():
+            try:
+                c.get_active_view().reverse=layout['collection'][c.id]['sort direction']
+                for i in range(len(sort_model)):
+                    if layout['collection'][c.id]['sort order']==sort_model[i][0]:
+                        c.get_active_view().sort_key_text=sort_model[i][0]
+            except KeyError:
+                pass
 
         if layout['sidebar active']:
             self.sidebar_toggle.handler_block_by_func(self.activate_sidebar)
@@ -552,6 +543,12 @@ class MainFrame(gtk.VBox):
         ##layout['window maximized']=self.window.get_size()
         layout['sort order']=self.sort_order.get_active_text()
         layout['sort direction']=self.browser.active_view.reverse
+        layout['collection']={}
+        for c in self.coll_set.iter_coll():
+            layout['collection'][c.id]={
+                'sort direction':c.get_active_view().reverse,
+                'sort order':c.get_active_view().sort_key_text
+                }
 #        layout['viewer active']=self.is_iv_showing
 #        if self.is_iv_showing:
 #            layout['viewer width']=self.hpane.get_position()
@@ -559,6 +556,7 @@ class MainFrame(gtk.VBox):
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane_ext.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
+        print 'RETRIEVED LAYOUT',layout
         return layout
 
     def activate_item(self,browser,ind,item):

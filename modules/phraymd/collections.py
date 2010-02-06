@@ -302,7 +302,7 @@ class Collection2():
             self.monitor_master_callback=callback
             self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
     def end_monitor(self):
-        if self.monitor_image_dirs:
+        if self.monitor!=None and self.monitor_image_dirs:
             self.monitor.stop()
             self.monitor=None
     def monitor_callback(self,path,action,is_dir):

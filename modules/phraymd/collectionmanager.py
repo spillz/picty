@@ -67,7 +67,7 @@ class CollectionSet(gobject.GObject):
         '''
         for id,c in self.collections.iteritems():
             if not ctype or c.type==ctype:
-                if c.is_open:
+#                if c.is_open:
                     yield c
     def __getitem__(self,name):
         '''
