@@ -328,25 +328,52 @@ class MainFrame(gtk.VBox):
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
-        if self.active_collection==None:
+        self.toolbar.connect_after("realize", self.coll_realized)
+#        if self.active_collection==None:
+#            self.create_local_store(self.coll_combo)
+#        else:
+#            self.browser.show()
+#            coll=self.active_collection
+#            self.coll_combo.set_active(coll.id)
+#            self.tm.set_active_collection(coll)
+#            self.browser.active_collection=coll
+#            self.browser.active_view=coll.get_active_view()
+#            sort_model=self.sort_order.get_model()
+#            for i in xrange(len(sort_model)):
+#                if self.browser.active_view.sort_key_text==sort_model[i][0]:
+#                    self.sort_order.set_active(i)
+#                    break
+#            self.sort_toggle.set_active(self.browser.active_view.reverse)
+#            if not coll.is_open:
+#                self.tm.load_collection('')
+##            self.browser.refresh_view()
+#            self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
+
+    def coll_realized(self, widget):
+        coll=self.active_collection
+        if coll==None:
             self.create_local_store(self.coll_combo)
         else:
-            self.browser.show()
-            coll=self.active_collection
             self.coll_combo.set_active(coll.id)
-            self.tm.set_active_collection(coll)
-            self.browser.active_collection=coll
-            self.browser.active_view=coll.get_active_view()
-            sort_model=self.sort_order.get_model()
-            for i in xrange(len(sort_model)):
-                if self.browser.active_view.sort_key_text==sort_model[i][0]:
-                    self.sort_order.set_active(i)
-                    break
-            self.sort_toggle.set_active(self.browser.active_view.reverse)
-            if not coll.is_open:
-                self.tm.load_collection('')
-#            self.browser.refresh_view()
-            self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
+            self.collection_changed(self.coll_combo,coll.id)
+
+    def destroy(self,event):
+        for coll in self.coll_set:
+            if coll.is_open:
+                sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
+                sj.priority=1050
+                self.tm.queue_job_instance(sj)
+        try:
+            settings.layout=self.get_layout()
+            settings.save()
+        except:
+            print 'Error saving settings'
+        self.tm.quit()
+        pluginmanager.mgr.callback('plugin_shutdown',True)
+        print 'main frame destroyed'
+        return False
+
+
 
     def browse_dir_collection(self,combo):
         #prompt for path
@@ -537,22 +564,6 @@ class MainFrame(gtk.VBox):
     def activate_item(self,browser,ind,item):
         print 'activated',ind,item
         self.view_image(item)
-
-    def destroy(self,event):
-        for coll in self.coll_set:
-            if coll.is_open:
-                sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
-                sj.priority=1050
-                self.tm.queue_job_instance(sj)
-        try:
-            settings.layout=self.get_layout()
-            settings.save()
-        except:
-            print 'Error saving settings'
-        self.tm.quit()
-        pluginmanager.mgr.callback('plugin_shutdown',True)
-        print 'main frame destroyed'
-        return False
 
     def activate_sidebar(self,widget):
         if widget.get_active():
