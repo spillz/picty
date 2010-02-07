@@ -71,7 +71,10 @@ try:
             for m in self.vm.get_mounts():
                 root=m.get_root()
                 name=m.get_name()
-                icon_names=m.get_icon().get_names()
+                try:
+                    icon_names=m.get_icon().get_names()
+                except AttributeError:
+                    icon_names=[]
                 if root not in mdict:
                     vals=[name,icon_names,root.get_path()]
                     mdict[root]=vals

@@ -103,7 +103,10 @@ class CollectionSet(gobject.GObject):
     def get_icon(self, icon_id_list):
         t=gtk.icon_theme_get_default()
         ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
-        pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
+        try:
+            pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
+        except:
+            pb=None
         return pb
     def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
