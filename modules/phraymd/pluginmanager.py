@@ -38,6 +38,7 @@ class PluginManager():
     def __init__(self):
         self.plugins=dict()
         self.mainframe=None
+        self.collection_suppress={}
     def instantiate_all_plugins(self):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         print 'instantiating plugins except for',settings.plugins_disabled
@@ -106,5 +107,28 @@ class PluginManager():
         '''
         for name,plugin in self.plugins.iteritems():
             yield plugin[0] and getattr(plugin[0],callback_name)(*args)
+    def suspend_collection_events(self,collection):
+        try:
+            self.collection_suppress[collection]+=1
+        except:
+            self.collection_suppress[collection]=1
+            self.callback('t_collection_modify_start_hint',collection)
+    def resume_collection_events(self,collection):
+        try:
+            self.collection_suppress[collection]-=1
+        except:
+            pass
+        if collection in self.collection_suppress and self.collection_suppress[collection]<=0:
+            del self.collection_suppress[collection]
+            self.callback('t_collection_modify_complete_hint',collection)
+    def callback_collection(self,interface_name,collection,*args):
+#        try:
+#            if self.collection_suppress[collection]>0:
+#                return
+#        except:
+#            pass
+        for name,plugin in self.plugins.iteritems():
+            if plugin[0]:
+                getattr(plugin[0],interface_name)(collection,*args)
 
 mgr=PluginManager()  ##instantiate the manager (there can only be one)

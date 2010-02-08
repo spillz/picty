@@ -78,37 +78,49 @@ class Plugin(object):
         blocking the gui'''
         pass
     '''collection'''
-    def t_collection_item_added(self,item):
+    def collection_activated(self,collection):
+        '''browser has been switched to a different collection'''
+        pass
+    def t_collection_item_added(self,collection,item):
         '''item was added to the collection'''
         pass
-    def t_collection_item_removed(self,item):
+    def t_collection_item_removed(self,collection,item):
         '''item was removed from the collection'''
         pass
-    def t_collection_item_metadata_changed(self,item,old_metadata):
+    def t_collection_item_metadata_changed(self,collection,item,old_metadata):
         '''item metadata has changed'''
         pass
-    def t_collection_item_changed(self,item): ##
+    def t_collection_item_changed(self,collection,item): ##
         '''other item characteristics have changed (mtime, size etc)'''
         pass
-    def t_collection_item_added_to_view(self,item):
+    def t_collection_item_added_to_view(self,collection,view,item):
         '''item in collection was added to view'''
         pass
-    def t_collection_item_removed_from_view(self,item):
+    def t_collection_item_removed_from_view(self,collection,view,item):
         '''item in collection was removed from view'''
         pass
-    def t_collection_modify_start_hint(self):
+    def t_collection_modify_start_hint(self,collection):
         '''the collection_item* methods have started editing the batch of images.
         use this to hint to gui plugins that it should wait for the complete_hint before refreshing'''
         pass
-    def t_collection_modify_complete_hint(self):
+    def t_collection_modify_complete_hint(self,collection):
         '''the collection_item* methods have completed on the batch of images.
         use this to hint to gui plugins that it is time to refresh'''
         pass
-    def t_view_emptied(self):
+    def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
         pass
-    def t_collection_loaded(self):
-        '''collection has loaded into main frame'''
+    def t_active_view_changed(self,collection,old_view,view):
+        ''''the active view has been changed from old_view to new view'''
+        pass
+    def t_active_collection_changed(self,old_collection,collection):
+        ''''the active colleciton has been changed from old_collecion to collection'''
+        pass
+    def t_collection_loaded(self,collection):
+        '''collection has been loaded'''
+        pass
+    def t_collection_closed(self,collection):
+        '''collection has been closed'''
         pass
     '''browser'''
     def browser_register_shortcut(self,shortcut_commands):
@@ -167,7 +179,7 @@ class Plugin(object):
     def viewer_release(self,force=False): ##
         '''user has navigated away from the image -- plugin should cancel any outstanding operations'''
         pass
-    '''image loader''' ##TODO: implement this on the appplication side
+    '''image loader''' ##TODO: these aren't yet called on the appplication side
     def t_loader_supported_mimetypes(self): ##
         '''return a tuple of supported mimetypes'''
         return None
@@ -194,5 +206,8 @@ class Plugin(object):
         '''register a panel in the sidebar -- not sure this is needed'''
         return None
     def media_connected(self,uri):
+        '''a plugin that handles media connection (e.g. import) should respond to this callback'''
+        pass
+    def media_disconnected(self,uri):
         '''a plugin that handles media connection (e.g. import) should respond to this callback'''
         pass

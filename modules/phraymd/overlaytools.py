@@ -105,7 +105,7 @@ class OverlayGroup:
         offx=0
         for t in self.tools:
             if t.is_active(item,hover_data):
-                drawable.draw_pixbuf(gc,t.icon,0,0,x+offx,y)
+                drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx),int(y))
             offx+=t.icon.get_width()+xpad
     def get_command(self, x, y, offx, offy, xpad):
         left=offx

@@ -36,13 +36,14 @@ def load_metadata(item,filename=None,thumbnail=False):
                 a=max(128,w,h)
                 item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
             except:
-                print 'load thumbnail failed',item.filename
+                print 'Load thumbnail failed',item.filename
                 import traceback,sys
                 print traceback.format_exc(sys.exc_info()[2])
                 item.thumb=None
-
     except:
         print 'Error reading metadata for',filename
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
         item.meta=False
     item.mark_meta_saved()
     return True
@@ -59,6 +60,8 @@ def save_metadata(item):
         item.mark_meta_saved()
     except:
         print 'Error writing metadata for',item.filename
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
         return False
     return True
 

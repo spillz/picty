@@ -31,12 +31,12 @@ import datetime
 
 ##phraymd imports
 import pluginmanager
-
+import io
 
 class Item(list):
     '''An item is a class describing an image, including filename, pixbuf representations and related metadata'''
     def __init__(self,filename,mtime):
-        filename=os.path.normcase(filename) ##todo: remove this - doesn't do anything and might break stuff in future
+        filename=io.get_true_path(filename) ##todo: remove this - doesn't do anything and might break stuff in future
         list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime
@@ -63,7 +63,7 @@ class Item(list):
         if self.meta_changed:
             del self.meta_backup
         self.meta_changed=False
-    def set_meta_key(self,key,value):
+    def set_meta_key(self,key,value,collection=None):
         if self.meta==False or self.meta==None:
             return None
         old=self.meta.copy()
@@ -74,18 +74,18 @@ class Item(list):
             del self.meta[key]
         else:
             self.meta[key]=value
-        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self,old)
+        pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False
         return self.meta_changed
-    def set_meta(self,meta):
+    def set_meta(self,meta,collection=None):
         if not self.meta_changed:
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
         old=self.meta
         self.meta=meta
-        pluginmanager.mgr.callback('t_collection_item_metadata_changed',self,old)
+        pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
             self.meta_changed=False

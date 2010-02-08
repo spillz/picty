@@ -220,10 +220,10 @@ class UploadQueue(gtk.HBox):
                 ind=self.upload_collection.find(item) #don't include items already in the list
                 if ind>=0:
                     continue
-                ind=self.worker.collection.find(item)
+                ind=self.worker.active_collection.find(item)
                 if ind<0:
                     continue
-                item=self.worker.collection(ind)
+                item=self.worker.active_collection(ind)
                 if not item.thumb:
                     image_manip.load_thumb(item)
                 thumb_pb=item.thumb

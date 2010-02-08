@@ -248,26 +248,124 @@ class BatchMetaDialog(gtk.Dialog):
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
 
 
+class AddLocalStoreDialog(gtk.Dialog):
+    def __init__(self,value_dict=None):
+        gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
+        self.set_title('Create a Collection')
+        box,self.name_entry=box_add(self.vbox,[(gtk.Entry(),True,None)],'Collection Name: ')
+        self.path_entry=PathnameEntry('','Path to Images: ','Choose a Directory',directory=True)
+        self.vbox.pack_start(self.path_entry)
+
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(False)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.recursive_button,False)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
+
+        self.vbox.pack_start(self.a_frame)
+
+        self.add_button("Cancel",gtk.RESPONSE_REJECT)
+        self.add_button("Create",gtk.RESPONSE_ACCEPT)
+        self.vbox.show_all()
+        if value_dict:
+            self.set_values(value_dict)
+
+    def get_values(self):
+        return {
+                'name': self.name_entry.get_text(),
+                'image_dirs': [self.path_entry.get_path()],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
+
+    def set_values(self,val_dict):
+        self.name_entry.set_path(val_dict['name'])
+        if len(val_dict['image_dirs']>0):
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recurse_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+
+class BrowseDirectoryDialog(gtk.Dialog):
+    def __init__(self,value_dict=None):
+        gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
+        self.set_title('Browse a Local Directory')
+        self.path_entry=PathnameEntry('','Path: ','Choose a Directory',directory=True)
+        self.vbox.pack_start(self.path_entry)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(True)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
+
+        self.vbox.pack_start(self.recursive_button)
+        self.vbox.pack_start(self.a_frame)
+
+        self.add_button("Cancel",gtk.RESPONSE_REJECT)
+        self.add_button("Browse",gtk.RESPONSE_ACCEPT)
+        self.vbox.show_all()
+        if value_dict:
+            self.set_values(value_dict)
+
+    def get_values(self):
+        return {
+                'image_dirs': [self.path_entry.get_path()],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
+
+    def set_values(self,val_dict):
+        if len(val_dict['image_dirs'])>0:
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recurse_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+
 class MetaDialog(gtk.Dialog):
-    def __init__(self,item):
+    def __init__(self,item,collection):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
         self.set_title('Edit Descriptive Info')
         tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
         self.item=item
+        self.collection=collection
         r=0
-        print item.meta
         for k,v in tags:
             try:
-                print k,v
                 val=metadata.app_key_to_string(k,item.meta[k])
                 if not val:
                     val=''
-                print 'item',k,val
             except:
                 val=''
-                print 'item err',k,val
             self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()
@@ -285,7 +383,7 @@ class MetaDialog(gtk.Dialog):
         self.vbox.pack_start(file_label)
     def meta_changed(self,widget,key):
         value=metadata.app_key_from_string(key,widget.get_text())
-        self.item.set_meta_key(key,value)
+        self.item.set_meta_key(key,value,self.collection)
     def add_meta_row(self,table,key,label,data,row,writable=True):
         child1=gtk.Label(label)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,

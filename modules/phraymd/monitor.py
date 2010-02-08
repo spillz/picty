@@ -17,8 +17,8 @@ class Monitor(ProcessEvent):
         self.notifier.start()
     def end(self,dir):
         try:
-            if not self.wdd<0 and dir in self.wdd:
-                wm.rm_watch(self.wdd[dir], rec=True)
+#            if not self.wdd<0 and dir in self.wdd:
+#                wm.rm_watch(self.wdd[dir], rec=True)
             self.notifier.stop() ##todo: should be checking if there are any other watches still active?
         except:
             print 'Error stopping watch'
@@ -43,6 +43,7 @@ class Monitor(ProcessEvent):
     def process_IN_CREATE(self, event):
         path=os.path.join(event.path, event.name)
         self.cb(path,'CREATE',event.is_dir)
+        print 'CREATE EVENT',event.wd
 #        print "Create: %s" %  path
 #        if os.path.isdir(path):
 #            wm.add_watch(path,mask,rec=True)

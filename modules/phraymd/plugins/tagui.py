@@ -33,22 +33,23 @@ from phraymd import settings
 from phraymd import metadatadialogs
 
 class TagCloudRebuildJob(backend.WorkerJob):
-    def __init__(self):
+    def __init__(self,worker,collection,browser,tagframe):
         backend.WorkerJob.__init__(self,'TAGCLOUDREBUILD')
-        self.tagframe=None
+        self.tagframe=tagframe
 
-    def __call__(self,worker,collection,view,browser,*args):
+    def __call__(self):
         if not self.tagframe:
-            return False
+            return True
 #        while self.pos<len(collection):
         self.tagframe.tag_cloud.empty()
-        for item in collection:
+        for item in self.collection:
             self.tagframe.tag_cloud.add(item)
         self.tagframe.tag_cloud_view.empty()
-        for item in view:
+        for item in self.view:
             self.tagframe.tag_cloud_view.add(item)
         if self.tagframe:
             gobject.idle_add(self.tagframe.start_refresh_timer)
+        return True
 
 
 class TagCloud():
@@ -146,8 +147,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
             ##todo: could flush unused bitmaps out of the png_path
         except:
             print 'Tag Plugin: No tag layout data found'
-        self.rebuild_job=TagCloudRebuildJob()
-        self.worker.register_job(self.rebuild_job,'BUILDVIEW')
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
@@ -163,34 +162,37 @@ class TagSidebarPlugin(pluginbase.Plugin):
         except:
             print 'Tag Plugin: Failed to save tag layout'
         self.tagframe.destroy()
-        self.worker.deregister_job(self.rebuild_job)
         del self.tagframe
-    def t_collection_item_added(self,item):
+    def t_collection_item_added(self,collection,item):
         '''item was added to the collection'''
-        self.tagframe.tag_cloud.add(item)
+        self.tagframe.tag_cloud[collection].add(item)
         self.thread_refresh()
-    def t_collection_item_removed(self,item):
+    def t_collection_item_removed(self,collection,item):
         '''item was removed from the collection'''
-        self.tagframe.tag_cloud.remove(item)
+        self.tagframe.tag_cloud[collection].remove(item)
         self.thread_refresh()
-    def t_collection_item_metadata_changed(self,item,meta_before):
+    def t_collection_item_metadata_changed(self,collection,item,meta_before):
         '''item metadata has changed'''
-        self.tagframe.tag_cloud.update(item,meta_before)
-        i=self.worker.view.find_item(item)
+        self.tagframe.tag_cloud[collection].update(item,meta_before)
+        i=collection.get_active_view().find_item(item)
         if i>0:
-            self.tagframe.tag_cloud_view.update(item,meta_before)
+            self.tagframe.tag_cloud_view[collection.get_active_view()].update(item,meta_before)
         self.thread_refresh()
-    def t_collection_item_added_to_view(self,item):
+    def t_collection_item_added_to_view(self,collection,view,item):
         '''item in collection was added to view'''
-        self.tagframe.tag_cloud_view.add(item)
+        self.tagframe.tag_cloud_view[view].add(item)
         self.thread_refresh()
-    def t_collection_item_removed_from_view(self,item):
+    def t_collection_item_removed_from_view(self,collection,view,item):
         '''item in collection was removed from view'''
-        self.tagframe.tag_cloud_view.remove(item)
+        self.tagframe.tag_cloud_view[view].remove(item)
         self.thread_refresh()
-    def t_collection_modify_start_hint(self):
+    def t_collection_modify_start_hint(self,collection):
+        if collection!=self.worker.active_collection:
+            return
         self.block_refresh=True
-    def t_collection_modify_complete_hint(self):
+    def t_collection_modify_complete_hint(self,collection):
+        if collection!=self.worker.active_collection:
+            return
         self.block_refresh=False
         self.thread_refresh()
     def thread_refresh(self):
@@ -203,16 +205,27 @@ class TagSidebarPlugin(pluginbase.Plugin):
             imageinfo.toggle_tags(item,tags)
         else:
             self.worker.keyword_edit(tags,True)
-    def t_collection_loaded(self):
+    def t_collection_loaded(self,collection):
         '''collection has loaded into main frame'''
-        self.tagframe.tag_cloud.empty()
-        self.tagframe.tag_cloud_view.empty()
-        for item in self.worker.collection:
-            self.tagframe.tag_cloud.add(item)
+        self.tagframe.tag_cloud[collection]=TagCloud()
+        view=collection.get_active_view()
+        if view:
+            self.tagframe.tag_cloud_view[view]=TagCloud()
+        for item in collection:
+            self.tagframe.tag_cloud[collection].add(item)
         self.thread_refresh()
-    def t_view_emptied(self):
+    def t_collection_closed(self,collection):
+        del self.tagframe.tag_cloud[collection]
+        try:
+            del self.tagframe.tag_cloud_view[collection.get_active_view()]
+        except KeyError:
+            pass
+        self.thread_refresh()
+    def collection_activated(self,collection):
+        self.tagframe.refresh()
+    def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
-        self.tagframe.tag_cloud_view.empty()
+        self.tagframe.tag_cloud_view[view]=TagCloud()
     def view_rebuild_complete(self,browser):
         self.tagframe.refresh()
     def load_user_tags(self,filename):
@@ -254,12 +267,14 @@ class TagFrame(gtk.VBox):
     def __init__(self,mainframe,user_tag_info):
         gtk.VBox.__init__(self)
         self.user_tags={}
-        self.tag_cloud=TagCloud() ##these are updated on the worker thread, be careful about accessing on the main thread (should use locks)
-        self.tag_cloud_view=TagCloud()
+        self.tag_cloud={} ##these are updated on the worker thread, be careful about accessing on the main thread (should use locks)
+        self.tag_cloud_view={}
         self.mainframe=mainframe
         self.worker=mainframe.tm
         self.browser=mainframe.browser
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
+##        self.sort_model=gtk.TreeModelSort(self.model)
+##        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
         self.tv=gtk.TreeView(self.model)
 #        self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
@@ -566,10 +581,10 @@ class TagFrame(gtk.VBox):
                 path=data
                 from phraymd import imageinfo
                 item=imageinfo.Item(path,0)
-                ind=self.worker.collection.find(item)
+                ind=self.worker.active_collection.find(item)
                 if ind<0:
                     return False
-                thumb_pb=self.worker.collection(ind).thumb
+                thumb_pb=self.worker.active_collection(ind).thumb
                 if thumb_pb:
                     width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
                     width=width*3/2
@@ -719,8 +734,16 @@ class TagFrame(gtk.VBox):
         self.check_row(path,state)
 
     def refresh(self):
-        tag_cloud=self.tag_cloud.copy() ##todo: should be using a lock here
-        tag_cloud_view=self.tag_cloud_view.copy()
+        collection=self.worker.active_collection
+        view=collection.get_active_view()
+        try:
+            tag_cloud=self.tag_cloud[collection].copy() ##todo: should be using a lock here
+        except KeyError:
+            tag_cloud=TagCloud()
+        try:
+            tag_cloud_view=self.tag_cloud_view[view].copy()
+        except KeyError:
+            tag_cloud_view=TagCloud()
         path=self.model.get_iter((1,))
         self.model.remove(path)
         self.model.append(None,(1,'other',None,'<b>Uncategorized</b>',False,''))

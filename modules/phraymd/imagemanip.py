@@ -53,6 +53,16 @@ transposemethods=(None,tuple(),(Image.FLIP_LEFT_RIGHT,),(Image.ROTATE_180,),
             (Image.ROTATE_270,),(Image.ROTATE_270,Image.FLIP_LEFT_RIGHT),
             (Image.ROTATE_90,))
 
+transposemethods_pb=(None,
+            (None,gtk.gdk.PIXBUF_ROTATE_NONE),
+            (True,gtk.gdk.PIXBUF_ROTATE_NONE),
+            (None,gtk.gdk.PIXBUF_ROTATE_UPSIDEDOWN),
+            (True,gtk.gdk.PIXBUF_ROTATE_UPSIDEDOWN),
+            (False,gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE),
+            (None,gtk.gdk.PIXBUF_ROTATE_CLOCKWISE),
+            (False,gtk.gdk.PIXBUF_ROTATE_CLOCKWISE),
+            (None,gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE))
+
 rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
 
 rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
@@ -78,22 +88,52 @@ def orient_pixbuf(pixbuf,meta):
     return pixbuf
 
 
-def load_metadata(item,notify_plugins=True,filename=None,get_thumbnail=False):
-    if notify_plugins:
+def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
+    if collection:
         if item.meta:
             meta=item.meta.copy()
         else:
             meta=item.meta
         result=metadata.load_metadata(item,filename,get_thumbnail)
         if result:
-            if get_thumbnail and item.meta:
+            if item.thumb and get_thumbnail:
                 item.thumb=orient_pixbuf(item.thumb,item.meta)
                 item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
             if item.meta!=meta:
-                pluginmanager.mgr.callback('t_collection_item_metadata_changed',item,meta)
+                pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
         return result
     else:
         return metadata.load_metadata(item,filename)
+
+def rotate_left(item,collection=None):
+    'rotates image anti-clockwise'
+    try:
+        orient=item.meta['Orientation']
+    except:
+        orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
+    item.set_meta_key('Orientation',rotate_left_tx[orient],collection)
+    item.image=None
+    item.qview=None
+    rotate_thumb(item,False)
+
+
+def rotate_right(item,collection=None):
+    'rotates image clockwise'
+    try:
+        orient=item.meta['Orientation']
+    except:
+        orient=1
+    if orient<1 or orient>8:
+        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
+        orient=1
+    item.set_meta_key('Orientation',rotate_right_tx[orient],collection)
+    item.image=None
+    item.qview=None
+    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
+
 
 
 def save_metadata(item):
@@ -129,6 +169,18 @@ def scale_pixbuf(pixbuf,size):
     pb_square=pb.subpixbuf(dest_x,dest_y,size,size)
     return pb_square
 
+def orient_pixbuf(pixbuf,meta):
+    try:
+        orient=meta['Orientation']
+    except:
+        orient=1
+    if orient>1:
+        method=transposemethods_pb[orient]
+        if method[0]!=None:
+            pixbuf=pixbuf.flip(method[0])
+        pixbuf=pixbuf.rotate_simple(method[1])
+    return pixbuf
+
 
 def small_pixbuf(pixbuf):
     width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
@@ -142,35 +194,6 @@ def small_pixbuf(pixbuf):
         height=width*th/tw
     return pixbuf.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
 
-
-def rotate_left(item):
-    'rotates image anti-clockwise'
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient<1 or orient>8:
-        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
-        orient=1
-    item.set_meta_key('Orientation',rotate_left_tx[orient])
-    item.image=None
-    item.qview=None
-    rotate_thumb(item,False)
-
-
-def rotate_right(item):
-    'rotates image clockwise'
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient<1 or orient>8:
-        print 'warning: invalid orientation',orient,'for image',item,'-- hardcoding to 1'
-        orient=1
-    item.set_meta_key('Orientation',rotate_right_tx[orient])
-    item.image=None
-    item.qview=None
-    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
 
 def cache_image(item):
@@ -225,16 +248,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
             h,filename=tempfile.mkstemp('.jpg')
     if filename!=item.filename:
         if strip_metadata:
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            if orient>1:
-                for method in transposemethods[orient]:
-                    image=image.transpose(method)
-                    if not interrupt_fn():
-                        print 'interrupted'
-                        return False
+            image=orient_pixbuf(image,item.meta)
         image.save(filename,quality=95)
         if not strip_metadata:
             metadata.copy_metadata(item,filename)
@@ -279,20 +293,8 @@ def load_image(item,interrupt_fn,draft_mode=False):
             return False
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
-    if not interrupt_fn():
-        print 'interrupted'
-        return False
-    try:
-        orient=item.meta['Orientation']
-    except:
-        orient=1
-    if orient>1:
-        for method in transposemethods[orient]:
-            image=image.transpose(method)
-            if not interrupt_fn():
-                print 'interrupted'
-                return False
-    item.image=image
+    if interrupt_fn():
+        item.image=orient_pixbuf(image,item.meta)
     try:
         item.imagergba='A' in item.image.getbands()
     except:
@@ -388,7 +390,7 @@ def delete_thumb(item):
 
 
 def update_thumb_date(item,interrupt_fn=None,remove_old=True):
-    item.mtime=os.path.getmtime(item.filename)
+    item.mtime=io.get_mtime(item.filename)
     if item.thumburi:
         if not item.thumb:
             load_thumb(item)
@@ -482,13 +484,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
                 p.feed(imdata)
                 image = p.close()
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            try:
-                orient=item.meta['Orientation']
-            except:
-                orient=1
-            if orient>1:
-                for method in transposemethods[orient]:
-                    image=image.transpose(method)
+            image=orient_pixbuf(image,item.meta)
         thumbsize=image.size
         thumb_pb=image_to_pixbuf(image)
         if thumb_pb==None:
@@ -506,10 +502,9 @@ def make_thumb(item,interrupt_fn=None,force=False):
     thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
     item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
     item.cannot_thumb=False
-    if item.thumb:
-        item.thumbsize=(width,height)
-        item.thumb=thumb_pb
-        cache_thumb(item)
+    item.thumbsize=(width,height)
+    item.thumb=thumb_pb
+    cache_thumb(item)
     return True
 
 

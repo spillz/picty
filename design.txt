@@ -176,7 +176,7 @@ Non metadata attributes
 
 (only filename, mtime kept at this point)
 
-Other useful important attributes of images that are properties of the files themselves include:
+Other useful attributes of images that are properties of the files themselves include:
 
 filename
 mtime (last modified time)
@@ -268,9 +268,9 @@ drawback --> too many image files in one dir?
 Collections
 ===========
 
-No reason not to store multcollection files. Allow the user to switch
+No reason not to store more than one collection files. Allow the user to switch
 between them at run time. Presumably the user could run multiple instances
-of phraymd. With a different collection open in each one.
+of phraymd with a different collection open in each one.
 
 To support offline collections, need to add an "offline" attribute to the collection object. The offline
 attribute gets set if the image folder is missing.

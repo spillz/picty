@@ -221,10 +221,10 @@ class MapFrame(gtk.VBox):
             path=selection_data.data
             from phraymd import imageinfo
             item=imageinfo.Item(path,0)
-            ind=self.worker.collection.find(item)
+            ind=self.worker.active_collection.find(item)
             if ind<0:
                 return False
-            item=self.worker.collection(ind)
+            item=self.worker.active_collection(ind)
             if item.thumb:
                 coords=osm.get_co_ordinates(x, y)
                 lat=coords[0]/math.pi*180
