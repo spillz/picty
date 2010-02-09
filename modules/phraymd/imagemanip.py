@@ -77,15 +77,15 @@ import time
 memimages=[]
 memthumbs=[]
 
-def orient_pixbuf(pixbuf,meta):
+def orient_image(image,meta):
     try:
         orient=meta['Orientation']
     except:
         orient=1
     if orient>1:
         for method in transposemethods[orient]:
-            pixbuf=pixbuf.transpose(method)
-    return pixbuf
+            image=image.transpose(method)
+    return image
 
 
 def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
@@ -248,7 +248,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
             h,filename=tempfile.mkstemp('.jpg')
     if filename!=item.filename:
         if strip_metadata:
-            image=orient_pixbuf(image,item.meta)
+            image=orient_image(image,item.meta)
         image.save(filename,quality=95)
         if not strip_metadata:
             metadata.copy_metadata(item,filename)
@@ -294,7 +294,7 @@ def load_image(item,interrupt_fn,draft_mode=False):
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
     if interrupt_fn():
-        item.image=orient_pixbuf(image,item.meta)
+        item.image=orient_image(image,item.meta)
     try:
         item.imagergba='A' in item.image.getbands()
     except:
@@ -484,7 +484,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
                 p.feed(imdata)
                 image = p.close()
                 image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            image=orient_pixbuf(image,item.meta)
+            image=orient_image(image,item.meta)
         thumbsize=image.size
         thumb_pb=image_to_pixbuf(image)
         if thumb_pb==None:
