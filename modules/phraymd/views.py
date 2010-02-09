@@ -235,6 +235,7 @@ def tagged_filter(l,r,item):
 def keyword_filter(item,test):
     if not test:
         return True
+    test=test.lower()
     relevance=0
     item_string=''
     item_string+=item.filename.lower()
