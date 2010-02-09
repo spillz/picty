@@ -336,23 +336,28 @@ class IntCompare:
 
 date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, -](\d{1,2}))?(?:[:-](\d{1,2}))?(?:[:-](\d{1,2}))?')
 
-class DateCompare:
+class DateCompare: ##todo: this compares only the date part of the datetime, also need a datetime compare class
     def __init__(self,field,op=eq,mdate=False):
         self.field=field
         self.op=op
+#        self.__call__=self.call1
         if mdate:
             self.__call__=self.call2
         else:
             self.__call__=self.call1
     def call1(self,l,r,item):
         try:
-            return self.op(metadata.app_key_as_sortable(item.meta,self.field),r)
+            fulldatetime=metadata.app_key_as_sortable(item.meta,self.field)
+            dateonly=datetime.datetime(fulldatetime.year,fulldatetime.month,fulldatetime.day)
+            return self.op(dateonly,r)
         except:
             return False
     def call2(self,l,r,item):
-        text=r.strip()
+        #text=r.strip()
         try:
-            return self.op(datetime.datetime.fromtimestamp(item.mtime),r)
+            fulldatetime=datetime.datetime.fromtimestamp(item.mtime)
+            dateonly=datetime.datetime(fulldatetime.year,fulldatetime.month,fulldatetime.day)
+            return self.op(dateonly,r)
         except:
             return False
 
