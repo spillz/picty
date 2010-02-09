@@ -94,6 +94,9 @@ class CollectionSet(gobject.GObject):
 #            self.row_changed(*self.pi_from_id(id))
     def __delitem__(self,name):
         coll=self.collections[name]
+        if coll.type=='DEVICE':
+            for m in self.models:
+                m.coll_closed(name)
         for m in self.models:
             m.coll_removed(name)
         del self.collections[name]
@@ -188,6 +191,8 @@ class CollectionSet(gobject.GObject):
         for m in self.models:
             m.coll_opened(id)
     def collection_closed(self,id):
+        if id not in self.collections:
+            return
         for m in self.models:
             m.coll_closed(id)
         c=self[id]
