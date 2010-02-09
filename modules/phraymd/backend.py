@@ -398,11 +398,14 @@ class WalkDirectoryJob(WorkerJob):
                 self.done=True
                 break
             i=0
-            while i<len(dirs):
-                if dirs[i].startswith('.'):
-                    dirs.pop(i)
-                else:
-                    i+=1
+            if collection.recursive:
+                while i<len(dirs):
+                    if dirs[i].startswith('.'):
+                        dirs.pop(i)
+                    else:
+                        i+=1
+            else:
+                del dirs[:]
 
             idle_add(self.browser.update_status,-1,'Scanning for new images')
             for p in files: #may need some try, except blocks

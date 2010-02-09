@@ -385,8 +385,9 @@ class MainFrame(gtk.VBox):
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
             prefs=dialog.get_values()
-            self.coll_set.add_directory(prefs['path'],prefs)
-            self.coll_combo.set_active(prefs['path'])
+            path=prefs['image_dirs'][0]
+            self.coll_set.add_directory(path,prefs)
+            self.coll_combo.set_active(path)
         else:
             self.coll_combo.set_active(old_id)
 

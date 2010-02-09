@@ -168,7 +168,7 @@ class CollectionSet(gobject.GObject):
         c.verify_after_walk=False
         c.pixbuf=self.get_icon([gtk.STOCK_DIRECTORY])
         c.recursive=prefs['recursive']
-        c.load_embedded_thumbs=prefs['use_internal_thumbs']
+        c.load_embedded_thumbs=prefs['load_embedded_thumbs']
         c.load_metadata=prefs['load_metadata']
         if not c.load_metadata and c.load_embedded_thumbs:
             c.load_preview_icons=True
