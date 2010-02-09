@@ -94,7 +94,10 @@ def call_tree(rtype,tree,conv,*args):
     else:
 #        tree=tree.replace('"','')
         if rtype and type(tree)!=rtype:
-            return conv[(type(tree),rtype)](tree,*args)
+            try:
+                return conv[(type(tree),rtype)](tree,*args)
+            except KeyError:
+                return ''
         return tree
 
 
