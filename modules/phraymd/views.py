@@ -336,7 +336,15 @@ class IntCompare:
 
 date_re=re.compile(r'(\d{4})(?:[\-\/](\d{1,2}))?(?:[\-\/](\d{1,2}))?(?:[;, -](\d{1,2}))?(?:[:-](\d{1,2}))?(?:[:-](\d{1,2}))?')
 
-class DateCompare: ##todo: this compares only the date part of the datetime, also need a datetime compare class
+class DateTime(list):
+    def __init__(self,list_object):
+        list.__init__(self,list_object)
+        dtlen=len(list_object)
+        dtlist=list_object[:]
+        dtlist+=[1]*max(0,7-dtlen)
+        self.datetime=datetime.datetime(*dtlist)
+
+class DateCompare:
     def __init__(self,field,op=eq,mdate=False):
         self.field=field
         self.op=op
@@ -347,17 +355,27 @@ class DateCompare: ##todo: this compares only the date part of the datetime, als
             self.__call__=self.call1
     def call1(self,l,r,item):
         try:
+            cmplen=len(r)
             fulldatetime=metadata.app_key_as_sortable(item.meta,self.field)
-            dateonly=datetime.datetime(fulldatetime.year,fulldatetime.month,fulldatetime.day)
-            return self.op(dateonly,r)
+            trimdtlist=[fulldatetime.year,fulldatetime.month,fulldatetime.day,fulldatetime.hour,fulldatetime.minute,fulldatetime.second,fulldatetime.microsecond]
+            if cmplen<len(trimdtlist):
+                trimdtlist[cmplen:]=[1]*(len(trimdtlist)-cmplen)
+            trimdtlist+=[1]*max(0,7-len(trimdtlist))
+            trimdt=datetime.datetime(*trimdtlist)
+            return self.op(trimdt,r.datetime)
         except:
             return False
     def call2(self,l,r,item):
         #text=r.strip()
         try:
+            cmplen=len(r)
             fulldatetime=datetime.datetime.fromtimestamp(item.mtime)
-            dateonly=datetime.datetime(fulldatetime.year,fulldatetime.month,fulldatetime.day)
-            return self.op(dateonly,r)
+            trimdtlist=[fulldatetime.year,fulldatetime.month,fulldatetime.day,fulldatetime.hour,fulldatetime.minute,fulldatetime.second,fulldatetime.microsecond]
+            if cmplen<len(trimdtlist):
+                trimdtlist[cmplen:]=[1]*(len(trimdtlist)-cmplen)
+            trimdtlist+=[1]*max(0,7-len(trimdtlist))
+            trimdt=datetime.datetime(*trimdtlist)
+            return self.op(trimdt,r.datetime)
         except:
             return False
 
@@ -397,14 +415,26 @@ def str2datetime(val,item=None):
     date_list+=[1]*max(0,3-len(date_list))
     return datetime.datetime(*date_list)
 
+def str2datetime_list(val,item=None):
+    match=date_re.match(val) ##todo: should only need to do this once per search not for every item
+    if not match:
+        return False
+    date_list=[]
+    for g in match.groups():
+        if g:
+            date_list.append(int(g))
+        else:
+            break
+    return DateTime(date_list)
+
 
 literal_converter={
-(str,datetime.datetime):str2datetime
+(str,DateTime):str2datetime_list
 }
 
 converter={
 (str,bool):str2bool,
-(str,datetime.datetime):str2datetime
+(str,DateTime):str2datetime_list
 }
 
 
@@ -445,16 +475,16 @@ TOKENS=[
 ('iso<=',(IntCompare('IsoSpeed',le),None,str)),
 ('iso>',(IntCompare('IsoSpeed',gt),None,str)),
 ('iso<',(IntCompare('IsoSpeed',lt),None,str)),
-('mdate=',(DateCompare('DateMod',eq,True),None,datetime.datetime)),
-('mdate>=',(DateCompare('DateMod',ge,True),None,datetime.datetime)),
-('mdate<=',(DateCompare('DateMod',le,True),None,datetime.datetime)),
-('mdate>',(DateCompare('DateMod',gt,True),None,datetime.datetime)),
-('mdate<',(DateCompare('DateMod',lt,True),None,datetime.datetime)),
-('date=',(DateCompare('DateTaken'),None,datetime.datetime)),
-('date>=',(DateCompare('DateTaken',ge),None,datetime.datetime)),
-('date<=',(DateCompare('DateTaken',le),None,datetime.datetime)),
-('date>',(DateCompare('DateTaken',gt),None,datetime.datetime)),
-('date<',(DateCompare('DateTaken',lt),None,datetime.datetime)),
+('mdate=',(DateCompare('DateMod',eq,True),None,DateTime)),
+('mdate>=',(DateCompare('DateMod',ge,True),None,DateTime)),
+('mdate<=',(DateCompare('DateMod',le,True),None,DateTime)),
+('mdate>',(DateCompare('DateMod',gt,True),None,DateTime)),
+('mdate<',(DateCompare('DateMod',lt,True),None,DateTime)),
+('date=',(DateCompare('DateTaken'),None,DateTime)),
+('date>=',(DateCompare('DateTaken',ge),None,DateTime)),
+('date<=',(DateCompare('DateTaken',le),None,DateTime)),
+('date>',(DateCompare('DateTaken',gt),None,DateTime)),
+('date<',(DateCompare('DateTaken',lt),None,DateTime)),
 ('selected',(selected_filter,None,None)),
 ('changed',(changed_filter,None,None)),
 ('tagged',(tagged_filter,None,None))
