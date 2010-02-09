@@ -190,7 +190,11 @@ class CollectionSet(gobject.GObject):
     def collection_closed(self,id):
         for m in self.models:
             m.coll_closed(id)
-        self[id].is_open=False
+        c=self[id]
+        c.is_open=False
+        if c.type=='DIRECTORY':
+            self.remove(id)
+
     def init_localstores(self):
         for col_file in settings.get_collection_files():
             self.add_localstore(col_file)
