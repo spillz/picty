@@ -266,6 +266,7 @@ class RecreateThumbJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        view=self.collection.get_active_view()
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
             item=self.queue.pop(0)
@@ -292,6 +293,7 @@ class ReloadMetadataJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        view=self.collection.get_active_view()
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
             item=self.queue.pop(0)
@@ -480,6 +482,7 @@ class WalkSubDirectoryJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        view.self.collection.get_active_view()
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
@@ -740,6 +743,8 @@ class EditMetaDataJob(WorkerJob):
         self.meta=meta
 
     def __call__(self):
+        collection=self.collection
+        view=self.collection.get_active_view()
         jobs=self.worker.jobs
         i=self.pos
         if i==0:
@@ -862,7 +867,7 @@ class SaveViewJob(WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         i=self.pos
-        listitems=view
+        listitems=self.collection.get_active_view()
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
             item=listitems(i)
             if not self.selected_only or listitems(i).selected:
