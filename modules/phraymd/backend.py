@@ -482,7 +482,8 @@ class WalkSubDirectoryJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
-        view.self.collection.get_active_view()
+        collection=self.collection
+        view=collection.get_active_view()
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
@@ -525,12 +526,8 @@ class WalkSubDirectoryJob(WorkerJob):
                 item=imageinfo.Item(fullpath,mtime)
                 if collection.find(item)<0:
                     self.browser.lock.acquire()
+                    imagemanip.load_metadata(item) ##todo: check if exists already
                     collection.add(item)
-                    self.browser.lock.release()
-                    del_view_item(view,browser,item)
-                    imagemanip.load_metadata(item,collection) ##todo: check if exists already
-                    self.browser.lock.acquire()
-                    view.add_item(item)
                     self.browser.lock.release()
                     idle_add(self.browser.refresh_view,self.collection)
         if self.done:
@@ -1045,7 +1042,7 @@ class DirectoryUpdateJob(WorkerJob):
                         idle_add(self.browser.refresh_view,self.collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':
-                        self.worker.queue_job_instance(WalkSubdirectoryJob(self.worker,collection,self.browser,fullpath))
+                        self.worker.queue_job_instance(WalkSubDirectoryJob(self.worker,collection,self.browser,fullpath))
         if len(self.queue)==0:
             pluginmanager.mgr.resume_collection_events(self.collection)
             return True
