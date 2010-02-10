@@ -157,6 +157,14 @@ class WorkerJobQueue:
 #        return [j for j in self.queue if j.collection==collection]
 #        self.lock.release()
 #
+    def has_job(self,job_class=None,collection=None):
+        match=self.queue
+        if job_class!=None:
+            match=[j for j in match if isinstance(j,job_class)]
+        if collection!=None:
+            match=[j for j in match if j.collection==collection ]
+        return len(match)>0
+
     def clear(self,job_class=None,collection=None,excluded_job=None):
         '''
         removes jobs from the job queue
@@ -1137,7 +1145,8 @@ class Worker:
         self.queue_job(MapImagesJob,region,callback)
 
     def request_thumbnails(self,itemlist):
-        self.queue_job(ThumbnailJob,itemlist)
+        if not self.jobs.has_job(job_class=ThumbnailJob,collection=self.active_collection):
+            self.queue_job(ThumbnailJob,itemlist)
 
     def recreate_thumb(self,item):
         self.queue_job(RecreateThumbJob,[item])

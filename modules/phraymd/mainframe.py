@@ -468,7 +468,7 @@ class MainFrame(gtk.VBox):
 
     def close_collection(self,widget):
         coll=self.active_collection
-        if not coll:
+        if coll==None:
             return
         if not coll.is_open:
             return

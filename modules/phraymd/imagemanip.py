@@ -550,13 +550,14 @@ def load_thumb(item):
             else:
                 thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
                 if thumburi:
-                    #print 'using large thumb'
-                    image = Image.open(thumburi)
-                    image.thumbnail((128,128))
-                    image=gtk.gdk.pixbuf_new_from_data(image.tostring(), gtk.gdk.COLORSPACE_RGB, False, 8, image.size[0], image.size[1], 3*image.size[0])
-                    #print 'full loading',fullpath
-                    image=None
-                    item.thumburi=thumburi
+                    try:
+                        image = Image.open(thumburi)
+                        image.thumbnail((128,128))
+                        image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
+                    except:
+                        image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+                        image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
+#                    item.thumburi=thumburi
     except:
         image=None
     if image!=None:
