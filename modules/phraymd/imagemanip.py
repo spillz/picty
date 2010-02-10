@@ -78,6 +78,9 @@ memimages=[]
 memthumbs=[]
 
 def orient_image(image,meta):
+    '''
+    returns a rotated copy of the PIL image based on the value of the 'Orientation' metadata key in meta
+    '''
     try:
         orient=meta['Orientation']
     except:
@@ -106,7 +109,9 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
         return metadata.load_metadata(item,filename)
 
 def rotate_left(item,collection=None):
-    'rotates image anti-clockwise'
+    '''
+    rotates image anti-clockwise by setting the Orientation metadata key (rotate thumbnail accordingly and reset full size images)
+    '''
     try:
         orient=item.meta['Orientation']
     except:
@@ -121,7 +126,9 @@ def rotate_left(item,collection=None):
 
 
 def rotate_right(item,collection=None):
-    'rotates image clockwise'
+    '''
+    rotates image clockwise by setting the Orientation metadata key (rotate thumbnail accordingly and reset full size images)
+    '''
     try:
         orient=item.meta['Orientation']
     except:
@@ -137,6 +144,9 @@ def rotate_right(item,collection=None):
 
 
 def save_metadata(item):
+    '''
+    save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
+    '''
     if metadata.save_metadata(item):
         update_thumb_date(item)
         return True
@@ -144,6 +154,9 @@ def save_metadata(item):
 
 
 def save_metadata_key(item,key,value):
+    '''
+    sets the metadata key to value and saves the change in the image
+    '''
     if metadata.save_metadata_key(item,key,value):
         update_thumb_date(item)
         return True
@@ -151,7 +164,10 @@ def save_metadata_key(item,key,value):
 
 
 
-def scale_pixbuf(pixbuf,size):
+def scale_pixbuf(pixbuf,size): #todo: rename this scale_and_square_pixbuf
+    '''
+    returns a copy of the pixbuf scaled down to the integer size, and makes the image square, cropping as necessary
+    '''
     tw=pixbuf.get_width()
     th=pixbuf.get_height()
     dest=pixbuf.copy()
@@ -170,6 +186,9 @@ def scale_pixbuf(pixbuf,size):
     return pb_square
 
 def orient_pixbuf(pixbuf,meta):
+    '''
+    returns a rotated copy of the pixbuf based on the value of the 'Orientation' metadata key in meta
+    '''
     try:
         orient=meta['Orientation']
     except:
@@ -183,6 +202,9 @@ def orient_pixbuf(pixbuf,meta):
 
 
 def small_pixbuf(pixbuf):
+    '''
+    create a scaled down version of a gdk pixbuf (same proportions, twice standard menu icon size)
+    '''
     width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
     width=width*2
     height=height*2
@@ -197,6 +219,9 @@ def small_pixbuf(pixbuf):
 
 
 def cache_image(item):
+    '''
+    append the item to the list of items with images kept in memory. drops first added thumbs once the max queue length is exceeded (settings.max_memimages)
+    '''
     memimages.append(item)
     if len(memimages)>settings.max_memimages:
         olditem=memimages.pop(0)
@@ -207,6 +232,9 @@ def cache_image(item):
 
 
 def cache_thumb(item):
+    '''
+    append the item to the list of items with thumbs kept in memory. drops first added thumbs once the max queue length is exceeded (settings.max_memthumbs)
+    '''
     memthumbs.append(item)
     if len(memthumbs)>settings.max_memthumbs:
         olditem=memthumbs.pop(0)
@@ -215,6 +243,9 @@ def cache_thumb(item):
 
 
 def get_jpeg_or_png_image_file(item,size,strip_metadata):
+    '''
+    writes a temporary copy of the image to disk
+    '''
     import tempfile
     filename=item.filename
     try:
@@ -252,10 +283,13 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
         image.save(filename,quality=95)
         if not strip_metadata:
             metadata.copy_metadata(item,filename)
-    return filename
+    return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
 
 def load_image(item,interrupt_fn,draft_mode=False):
+    '''
+    load a PIL image and store it in item.image
+    '''
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
@@ -306,6 +340,9 @@ def load_image(item,interrupt_fn,draft_mode=False):
 
 
 def image_to_pixbuf(im):
+    '''
+    convert a PIL image to a gdk pixbuf
+    '''
     bands=im.getbands()
     rgba = True if 'A' in bands else False
     pixbuf=None
@@ -326,7 +363,10 @@ def image_to_pixbuf(im):
 
 
 
-def size_image(item,size,antialias=False,zoom='fit'):
+def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size image to view (maybe abstract the common features)
+    '''
+    resize the fullsize PIL Image item.image and return the result in item.qview
+    '''
     image=item.image
     if not image:
         return False
@@ -367,6 +407,9 @@ def size_image(item,size,antialias=False,zoom='fit'):
 
 
 def has_thumb(item):
+    '''
+    returns true if the item has a thumbnail image in the cache
+    '''
     if item.thumburi and os.path.exists(item.thumburi):
         return True
     if not settings.maemo:
@@ -379,6 +422,9 @@ def has_thumb(item):
     return False
 
 def delete_thumb(item):
+    '''
+    remove the thumb from the item and delete the associated thumbnail image file in the cache
+    '''
     if item.thumb:
         item.thumb=None
         item.thumbsize=None
@@ -390,6 +436,14 @@ def delete_thumb(item):
 
 
 def update_thumb_date(item,interrupt_fn=None,remove_old=True):
+    '''
+    sets the internal date of the cached thumbnail image to that of the image file
+    if the thumbnail name the thumbnail name will be updated
+    if no thumbnail is present it will be create
+    interrupt_fn - callback that returns False if job should be interrupted
+    remove_old - if the item name has changed, removes the old thumbnail
+    affects mtime, thumb, thumburi, thumbsize, cannot_thumb members of item
+    '''
     item.mtime=io.get_mtime(item.filename)
     if item.thumburi:
         if not item.thumb:
@@ -405,6 +459,11 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
 
 
 def rotate_thumb(item,right=True,interrupt_fn=None):
+    '''
+    rotates thumbnail of item 90 degrees right (clockwise) or left (anti-clockwise)
+    right - rotate right if True else left
+    interrupt_fn - callback that returns False if job should be interrupted
+    '''
     if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
         return False
     if item.thumburi:
@@ -436,6 +495,12 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 def make_thumb(item,interrupt_fn=None,force=False):
+    '''
+    create a thumbnail from the original image using either PIL or dcraw
+    interrupt_fn = callback that returns False if routine should cancel (not implemented)
+    force = True if thumbnail should be recreated even if already present
+    affects cannot_thumb, thumb, thumburi and thumbsize members of item
+    '''
     if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
         if not force:
             item.cannot_thumb=True
@@ -509,6 +574,10 @@ def make_thumb(item,interrupt_fn=None,force=False):
 
 
 def load_thumb_from_preview_icon(item):
+    '''
+    try to load a thumbnail embbeded in a picture using gio provided method g_preview_icon_data
+    affects thumbnail, thumbsize members of item
+    '''
     try:
         print 'loading thumb from preview icon',item.filename
         data,dtype=io.get_preview_icon_data(item.filename)
@@ -532,6 +601,10 @@ def load_thumb_from_preview_icon(item):
         return False
 
 def load_thumb(item):
+    '''
+    load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
+    affects thumbnail, thumburi, thumbsize members of item
+    '''
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
     image=None
