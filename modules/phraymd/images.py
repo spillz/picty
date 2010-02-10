@@ -121,7 +121,7 @@ class Item(list):
         except:
             pass
 
-def toggle_tags(item,tags):
+def toggle_tags(item,tags,collection=None):
     try:
         tags_lower=[t.lower() for t in tags]
         meta=item.meta.copy()
@@ -152,7 +152,7 @@ def toggle_tags(item,tags):
                 pass
         else:
             meta['Keywords']=new_tags
-        item.set_meta(meta)
+        item.set_meta(meta,collection)
     except:
         pass
 

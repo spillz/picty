@@ -744,7 +744,7 @@ class EditMetaDataJob(WorkerJob):
 
     def __call__(self):
         collection=self.collection
-        view=self.collection.get_active_view()
+        view=collection.get_active_view()
         jobs=self.worker.jobs
         i=self.pos
         if i==0:
@@ -770,7 +770,7 @@ class EditMetaDataJob(WorkerJob):
                         del meta['Keywords']
                     else:
                         meta['Keywords']=new_tags
-                    item.set_meta(meta)
+                    item.set_meta(meta,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
@@ -796,7 +796,7 @@ class EditMetaDataJob(WorkerJob):
                             del meta['Keywords']
                         else:
                             meta['Keywords']=new_tags
-                        item.set_meta(meta)
+                        item.set_meta(meta,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
@@ -805,7 +805,7 @@ class EditMetaDataJob(WorkerJob):
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
-                    imageinfo.toggle_tags(item,tags)
+                    imageinfo.toggle_tags(item,tags,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
@@ -827,7 +827,7 @@ class EditMetaDataJob(WorkerJob):
                             del meta['Keywords']
                         else:
                             meta['Keywords']=new_tags
-                        item.set_meta(meta)
+                        item.set_meta(meta,collection)
                     except:
                         pass
                 if i%100==0:
@@ -839,7 +839,7 @@ class EditMetaDataJob(WorkerJob):
                 item=items(i)
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
                     for k,v in self.meta.iteritems():
-                        item.set_meta_key(k,v)
+                        item.set_meta_key(k,v,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Setting keywords - %i of %i'%(i,len(items)))
                 i+=1
@@ -848,10 +848,10 @@ class EditMetaDataJob(WorkerJob):
             self.pos=i
         else:
             idle_add(self.browser.update_status,2.0,'Metadata edit complete - %i of %i'%(i,len(items)))
-            idle_add(self.browser.refresh_view,self.collection)
+            idle_add(self.browser.refresh_view,collection)
             self.pos=0
             self.cancel=False
-            pluginmanager.mgr.resume_collection_events(self.collection)
+            pluginmanager.mgr.resume_collection_events(collection)
             return True
         return False
 
