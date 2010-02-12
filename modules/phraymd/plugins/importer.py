@@ -25,7 +25,7 @@ License:
 photo importer
 in gnome:
     all devices are mounted into the filesystem
-    an import source is just a directory
+    an import source is a collection (typically a directory, if a device then  a directory mounted by gio gphoto interface)
     the import destination is somewhere in the collection directory
     an import operation is a copy or move from source to destination
     the most basic import just copies all supported files across to a destination in the collection directory
@@ -33,11 +33,12 @@ in gnome:
     option to remove images from the source
     option to copy images into a date based folder structure using exif date taken
     nameclash option: don't copy or use an alternate name
-    ability to set metadata
-    keep an import log -- full src and dest path of every file copied or moved + names of files ignored
     option to select images to import or import all -- use the internal browser to handle this
-    a custom filter in the browser for viewing the most recent import
-    dbus interface to handle user plugging in camera/device containing images (should open sidebar and make src dir the volume)
+    dbus interface to handle user plugging in camera/device containing images (open sidebar and make device the import source)
+    todo:
+    * ability to set metadata
+    * keep an import log -- full src and dest path of every file copied or moved + names of files ignored
+    * a custom filter in the browser for viewing the most recent import
     if user browses the volume then the full scan/verify/create thumb steps are going to happen. once the users chooses which images to import we don't want to have to redo that step -- should just be able to copy the item objects across (and rename them appropriately) and reuse the thumbnails.
 
 maybe need a gphoto alternative for non-gnome desktops
@@ -349,7 +350,7 @@ class ImportPlugin(pluginbase.Plugin):
         cell = gtk.CellRendererText()
         self.name_scheme_combo.pack_start(cell, True)
         self.name_scheme_combo.add_attribute(cell, 'text', 0)
-        self.name_scheme_combo.set_active(0)
+        self.name_scheme_combo.set_active(3) #todo: instead of setting a fixed default, remember users last settings (maybe per device?)
 
         box,self.exists_combo=box_add(self.import_box,[(gtk.combo_box_new_text(),True,None)],"Action if Destination Exists")
         for x in exist_actions:
