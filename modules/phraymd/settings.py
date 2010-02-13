@@ -6,6 +6,7 @@ import gtk
 
 maemo=False
 
+release_version='0.2.0' #this is the version number of the released program
 version='0.4.1' #version is saved to data and configuration files
 
 plugins_disabled=[]
