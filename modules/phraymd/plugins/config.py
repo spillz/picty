@@ -85,7 +85,7 @@ class ConfigPanel(gtk.ScrolledWindow):
         plugins_frame.add(PluginBox())
         tools_frame=frame('Tools')
         tools_frame.add(ToolsBox())
-        main_box.pack_start(collection_settings_frame,False)
+#        main_box.pack_start(collection_settings_frame,False)
 #        main_box.pack_start(collections_frame)
         main_box.pack_start(plugins_frame,False)
         main_box.pack_start(tools_frame,False)
