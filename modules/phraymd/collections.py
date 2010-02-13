@@ -419,8 +419,11 @@ class Collection2():
         return len(self.items)
 
 
-def create_empty_file(filename,prefs):
+def create_empty_file(filename,prefs,overwrite_if_exists=False):
     fullpath=os.path.join(settings.collections_dir,filename)
+    if not overwrite_if_exists:
+        if os.path.exists(fullpath):
+            return False
     try:
         f=open(fullpath,'wb')
         cPickle.dump(settings.version,f,-1)

@@ -255,6 +255,8 @@ class AddLocalStoreDialog(gtk.Dialog):
         box,self.name_entry=box_add(self.vbox,[(gtk.Entry(),True,None)],'Collection Name: ')
         self.path_entry=PathnameEntry('','Path to Images: ','Choose a Directory',directory=True)
         self.vbox.pack_start(self.path_entry)
+        self.name_entry.connect("changed",self.name_changed)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
 
         self.a_frame=gtk.Expander("Advanced Options")
         self.a_box=gtk.VBox()
@@ -275,14 +277,25 @@ class AddLocalStoreDialog(gtk.Dialog):
         self.vbox.pack_start(self.a_frame)
 
         self.add_button("Cancel",gtk.RESPONSE_REJECT)
-        self.add_button("Create",gtk.RESPONSE_ACCEPT)
+        self.create_button=self.add_button("Create",gtk.RESPONSE_ACCEPT)
         self.vbox.show_all()
         if value_dict:
             self.set_values(value_dict)
+        self.create_button.set_sensitive(False)
+
+    def path_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.create_button.set_sensitive(sensitive)
+
+    def name_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.create_button.set_sensitive(sensitive)
+
+#    def path_changed(self,entry):
 
     def get_values(self):
         return {
-                'name': self.name_entry.get_text(),
+                'name': self.name_entry.get_text().strip(),
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
                 'load_metadata':self.load_meta_check.get_active(),
@@ -308,6 +321,7 @@ class BrowseDirectoryDialog(gtk.Dialog):
         self.vbox.pack_start(self.path_entry)
         self.recursive_button=gtk.CheckButton('Recurse sub-directories')
         self.recursive_button.set_active(True)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
 
         self.a_frame=gtk.Expander("Advanced Options")
         self.a_box=gtk.VBox()
@@ -326,10 +340,15 @@ class BrowseDirectoryDialog(gtk.Dialog):
         self.vbox.pack_start(self.a_frame)
 
         self.add_button("Cancel",gtk.RESPONSE_REJECT)
-        self.add_button("Browse",gtk.RESPONSE_ACCEPT)
+        self.browse_button=self.add_button("Browse",gtk.RESPONSE_ACCEPT)
         self.vbox.show_all()
         if value_dict:
             self.set_values(value_dict)
+        self.browse_button.set_sensitive(False)
+
+    def path_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.browse_button.set_sensitive(sensitive)
 
     def get_values(self):
         return {

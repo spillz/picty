@@ -404,10 +404,11 @@ class MainFrame(gtk.VBox):
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:
-                imageinfo.create_empty_file(name,prefs)
-                c=self.coll_set.add_localstore(name)
-                self.coll_combo.set_active(c.id)
-                return
+                if imageinfo.create_empty_file(name,prefs):
+                    c=self.coll_set.add_localstore(name)
+                    self.coll_combo.set_active(c.id)
+                    return
+                metadatadialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
         if old_id:
             self.coll_combo.set_active(old_id)
 

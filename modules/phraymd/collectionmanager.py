@@ -94,12 +94,14 @@ class CollectionSet(gobject.GObject):
 #            self.row_changed(*self.pi_from_id(id))
     def __delitem__(self,name):
         coll=self.collections[name]
-        if coll.type=='DEVICE':
-            for m in self.models:
-                m.coll_closed(name)
+        if coll.type=='DEVICE' and coll.is_open:
+            self.collection_closed(name)
         for m in self.models:
             m.coll_removed(name)
         del self.collections[name]
+        if coll.type=='DEVICE' and self.count('DEVICE')==0:
+            for m in self.models:
+                m.all_mounts_removed()
     def clear(self):
         for id in self.collections:
             del self[id]
@@ -134,6 +136,9 @@ class CollectionSet(gobject.GObject):
             c.load_metadata=True
             c.load_preview_icons=False
             c.store_thumbnails=False
+        if self.count('DEVICE')==0:
+            for m in self.models:
+                m.first_mount_added()
         self.collections[c.id]=c
         for m in self.models:
             m.coll_added(c.id)
@@ -228,16 +233,10 @@ class CollectionModel(gtk.GenericTreeModel):
     def coll_added(self,id):
         if self.model_type!='OPEN_SELECTOR':
             pi_data=self.pi_from_id(id)
-            if self.coll_set.collections[id].type=='DEVICE' and self.coll_set.count('DEVICE')==1:
-                print 'ADDING FIRST DEVICE',self.coll_set.collections,pi_data
-                #pos=self.coll_set.count('LOCALSTORE')+1+(self.model_type=='MENU')
-                self.row_deleted(pi_data[0])
             self.row_inserted(*pi_data)
     def coll_removed(self,id):
         if self.model_type!='OPEN_SELECTOR':
-            self.row_deleted(*self.pi_from_id(id)[0])
-            if self.coll_set.collections[id].type=='DEVICE' and self.coll_set.count('DEVICE')==0:
-                self.row_inserted(*self.pi_from_id('#no-devices'))
+            self.row_deleted(self.pi_from_id(id)[0])
     def coll_opened(self,id):
         if self.model_type=='OPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
@@ -245,9 +244,15 @@ class CollectionModel(gtk.GenericTreeModel):
             self.row_changed(*self.pi_from_id(id))
     def coll_closed(self,id):
         if self.model_type=='OPEN_SELECTOR':
-            self.row_deleted(*self.pi_from_id(id)[0])
+            self.row_deleted(self.pi_from_id(id)[0])
         else:
             self.row_changed(*self.pi_from_id(id))
+    def first_mount_added(self):
+        if self.model_type!='OPEN_SELECTOR':
+            self.row_deleted(self.pi_from_id('#no-devices')[0])
+    def all_mounts_removed(self):
+        if self.model_type!='OPEN_SELECTOR':
+            self.row_inserted(*self.pi_from_id('#no-devices'))
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
