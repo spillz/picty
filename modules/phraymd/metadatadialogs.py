@@ -134,7 +134,7 @@ class PathnameEntry(gtk.VBox):
 
 
 def file_dialog(title='Choose an Image',default=''):
-    fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FILE,
+    fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_OPEN,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
     if not default:
         default=os.environ['HOME']

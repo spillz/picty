@@ -1,6 +1,6 @@
 '''
 
-    phraymd - Web Upload (Flickr, Picasa, Facebook)
+    phraymd - Web Upload (Flickr, Picasa, Facebook etc)
     Copyright (C) 2009  Damien Moore
 
 License:
