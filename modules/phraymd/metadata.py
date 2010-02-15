@@ -119,7 +119,7 @@ def save_metadata_key(item,key,value):
 ##The conv functions take a key and return a string representation of the metadata OR if value!=None convert the string value to a set of (metadata_key,value) tag pairs
 
 def conv_date_taken(metaobject,keys,value=None):
-    if value!=None:
+    if value!=None: #todo: this should copy the local representation back to the image metadata
         return True
     date=None
 ###    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
@@ -127,6 +127,18 @@ def conv_date_taken(metaobject,keys,value=None):
 ###        date=datetime.strptime(date)
     if "Exif.Photo.DateTimeOriginal" in metaobject.exifKeys():
         date=metaobject["Exif.Photo.DateTimeOriginal"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+    elif "Exif.Photo.DateTimeDigitized" in metaobject.exifKeys(): #fallback to other datetime Exif keys
+        date=metaobject["Exif.Photo.DateTimeDigitized"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+    elif "Exif.Image.DateTimeOriginal" in metaobject.exifKeys():
+        date=metaobject["Exif.Image.DateTimeOriginal"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+    elif "Exif.Image.DateTime" in metaobject.exifKeys():
+        date=metaobject["Exif.Image.DateTime"]
         if type(date)==str:
             date=datetime.strptime(date)
     return date
