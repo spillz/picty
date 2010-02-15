@@ -28,6 +28,9 @@ import gtk
 import pyexiv2
 
 def file_dialog(title='Choose an Image',default=''):
+    '''
+    simple file selector dialog
+    '''
     fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_OPEN,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
     if not default:
@@ -42,7 +45,10 @@ def file_dialog(title='Choose an Image',default=''):
 
 
 def create_key_tree(key_list):
-    tree={}
+    '''
+    builds a tree structure (nested python dicts) from an underlying list of metadata keys
+    '''
+    tree={} #todo: use a sorted dict
     for key in key_list:
         sub_tree=tree
         key=key.split('.')
@@ -55,6 +61,13 @@ def create_key_tree(key_list):
     return tree
 
 class MetadataModel(gtk.TreeStore):
+    '''
+    TreeModel for image metadata
+    Copies metadata keys from the pyexiv2 ImageMetadata into a TreeStore for display in a TreeView
+
+    to be implemented: displaying all standard keys in the standard (not just the ones in the image)
+    methods for editing metadata then adding/removing/changing rows (notifies associated views)
+    '''
     def __init__(self,exiv2metadata=None):
         gtk.TreeStore.__init__(self,str,str,bool)
         self.exiv2metadata=exiv2metadata
@@ -95,7 +108,9 @@ class MetadataModel(gtk.TreeStore):
 
 class MetadataModel2(gtk.GenericTreeModel):
     '''
-    derives from gtk.GenericTreeModel allowing user interaction with image metadata as a gtk.TreeView
+    TreeModel for image metadata
+
+    This version derives from gtk.GenericTreeModel allowing user interaction with image metadata as a gtk.TreeView
     Most of the methods below are required for implementing gtk.TreeModel (see pygtk tutorial)
 
     to be implemented: displaying all standard keys in the standard (not just the ones in the image)
