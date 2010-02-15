@@ -26,7 +26,7 @@ photo importer
 in gnome:
     all devices are mounted into the filesystem
     an import source is a collection (typically a directory, if a device then  a directory mounted by gio gphoto interface)
-    the import destination is somewhere in the collection directory
+    the import destination is somewhere in the destination collection directory
     an import operation is a copy or move from source to destination
     the most basic import just copies all supported files across to a destination in the collection directory
     option to obey directory structure of source
