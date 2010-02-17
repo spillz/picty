@@ -57,9 +57,19 @@ class ImageBrowser(gtk.HBox):
     a widget designed to display a collection of images
     in an image collection.
     '''
+    # constants for selection modes (not used currently)
     MODE_NORMAL=1
     MODE_TAG=2
 
+    # various constants for XDS (Drag save) implementation
+    TARGET_TYPE_URI_LIST = 0
+    TARGET_TYPE_XDS = 1
+    TARGET_TYPE_IMAGE = 2
+    XDS_ATOM = gtk.gdk.atom_intern("XdndDirectSave0")
+    TEXT_ATOM = gtk.gdk.atom_intern("text/plain")
+    XDS_SUCCESS = "S"
+    XDS_FAILURE = "F"
+    XDS_ERROR = "E"
 
     ##todo: need signals to notify of collection changes, view changes
     ##also want to submit all changes to items, view or collection through the worker thread
@@ -147,20 +157,22 @@ class ImageBrowser(gtk.HBox):
         self.imarea.connect("key-press-event",self.key_press_signal)
         self.imarea.connect("key-release-event",self.key_press_signal)
 
-        target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
-        target_list=gtk.target_list_add_uri_targets(target_list,0)
+        target_list=[('image-filename', gtk.TARGET_SAME_APP, self.TARGET_TYPE_IMAGE)] #("XdndDirectSave0", 0, self.TARGET_TYPE_XDS),
+        target_list=gtk.target_list_add_uri_targets(target_list,self.TARGET_TYPE_URI_LIST)
+#        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
-                  target_list,
-                  gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
+                  target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
+                  #gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
 
         target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
-        target_list=gtk.target_list_add_uri_targets(target_list,0)
+        target_list=gtk.target_list_add_uri_targets(target_list,1)
         self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
                 target_list,
                 gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
 
         self.imarea.connect("drag-data-get",self.drag_get_signal)
-        ##self.imarea.connect("drag-begin", self.drag_begin_signal)
+        self.imarea.connect("drag-begin", self.drag_begin_signal)
+        self.imarea.connect("drag-end",self.drag_end_signal)
         self.imarea.connect("drag-data-received",self.drag_receive_signal)
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
 
@@ -324,20 +336,49 @@ class ImageBrowser(gtk.HBox):
         self.lock.release()
 
     def drag_begin_signal(self, widget, drag_context):
+#        drag_context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8,
+#                                              gtk.gdk.PROP_MODE_REPLACE,"a")
+#       NB: self.drag_item is set in the button_press callback instead of here
         pass
-#        self.drag_item=None
-#        x,y=self.imarea.get_pointer()
-#        print 'drag begin',x,y
-#        if not (0<=x<self.geo_width or 0<=y<self.geo_height):
-#            return False
-#        ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
-#        ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
-#        if 0<=ind<len(self.tm.view):
-#            self.drag_item=self.tm.view(ind)
-#            return True
-#        else:
-#            self.drag_item=None
-#            return False
+
+
+    def drag_end_signal(self, widget, drag_context):
+        self.drag_item=None
+#        drag_context.source_window.property_delete(self.XDS_ATOM) #FOR XDS
+
+    def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
+        '''callback triggered to set the selection_data payload
+        (viewer is the source of the drop)'''
+        print '**********************************'
+        print 'drag_get_sig info',info
+        print '**********************************'
+        if self.drag_item==None:
+            return
+        if info == self.TARGET_TYPE_IMAGE:
+            selection_data.set('image-filename', 8, self.drag_item.filename)
+        if info == self.TARGET_TYPE_XDS: #drag save is currently disabled (unnecessary?)
+            if self.XDS_ATOM in drag_context.targets:
+                typ, fmt, dest = drag_context.source_window.property_get(self.XDS_ATOM,self.TEXT_ATOM)
+                success=True
+                code = self.XDS_SUCCESS if success else self.XDS_ERROR
+                selection_data.set(selection_data.target, 8, code)
+            self.drag_item=None
+        if info == self.TARGET_TYPE_URI_LIST:
+            print 'uri list'
+            if not self.drag_item.selected:
+                uri=io.get_uri(self.drag_item.filename) #I don't know why, but nautilius expects uris enclosed in quotes
+                selection_data.set_uris([uri])
+                print 'set uri',uri
+            else:
+                uris=[]
+                i=0
+                while i<len(self.active_view):
+                    item=self.active_view(i)
+                    if item.selected:
+                        uri=io.get_uri(item.filename)
+                        uris.append(uri)
+                    i+=1
+                selection_data.set_uris(uris)
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''callback triggered to retrieve the selection_data payload
@@ -357,26 +398,6 @@ class ImageBrowser(gtk.HBox):
                 print 'dropped uris',uris
                 self.emit('uris-dropped',item,uris)
 
-    def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
-        '''callback triggered to set the selection_data payload
-        (viewer is the source of the drop)'''
-        if self.drag_item==None:
-            return
-        selection_data.set('image-filename', 8, self.drag_item.filename)
-        if not self.drag_item.selected:
-            uri=io.get_uri(self.drag_item.filename)
-            selection_data.set_uris([uri])
-        else:
-            uris=[]
-            i=0
-            while i<len(self.active_view):
-                item=self.active_view(i)
-                if item.selected:
-                    uri=io.get_uri(item.filename)
-                    uris.append(uri)
-                i+=1
-            selection_data.set_uris(uris)
-        self.drag_item=None
 
     def recalc_hover_ind(self,x,y):
         '''return the index of the item of the drawable coordinates (x,y)'''
