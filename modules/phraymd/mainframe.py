@@ -802,20 +802,26 @@ class MainFrame(gtk.VBox):
 
     def resize_browser_pane(self):
         w,h=self.hpane.window.get_size()
-        if self.hpane.get_position()<self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position():
-            w,h=self.hpane.window.get_size()
-            if w<=self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position():
+        if self.sidebar.get_property('visible'):
+            if self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position()>=w:
                 self.hpane.set_position(w/2)
             else:
                 self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position())
+        else:
+            if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
+                self.hpane.set_position(w/2)
+            else:
+                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
 
     def view_image(self,item,fullwindow=False):
+        visible=self.iv.get_property('visible')
         self.iv.show()
         self.iv.SetItem(item)
         self.is_iv_showing=True
         self.browser.update_geometry(True)
-        self.resize_browser_pane()
+        if not visible:
+            self.resize_browser_pane()
         if self.iv.item!=None:
             ind=self.browser.item_to_view_index(self.iv.item)
             self.browser.center_view_offset(ind)
