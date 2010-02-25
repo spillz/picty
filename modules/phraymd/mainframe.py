@@ -114,10 +114,6 @@ class MainFrame(gtk.VBox):
         self.tm=backend.Worker(self.browser,self.coll_set)
         self.browser.tm=self.tm
 
-        self.browser_box=gtk.VBox()
-        self.browser_box.show()
-        self.browser_box.pack_start(self.browser,True)
-
         self.neededitem=None
         self.iv=viewer.ImageViewer(self.tm,self.viewer_hover_cmds,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
@@ -190,7 +186,8 @@ class MainFrame(gtk.VBox):
 #        self.sidebar_menu_button.connect("clicked",self.activate_sidebar)
 #        self.sidebar_menu_button.show()
 
-        self.toolbar=gtk.Toolbar()
+        self.toolbar1=gtk.Toolbar()
+        self.toolbar2=gtk.Toolbar()
         def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
             toolbar.add(widget)
             if callback:
@@ -237,29 +234,30 @@ class MainFrame(gtk.VBox):
                 item.set_expand(True)
 #            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
         self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
-        add_item(self.toolbar,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
-        self.toolbar.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar,gtk.Label("Browsing: "),None,None,None)
-        add_widget(self.toolbar,self.coll_combo,None,None,"Switch the active collection, directory or device")
-        add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLOSE),self.close_collection,"Close Collection", "Close the collection (unsaved changes to metadata will still be present next time you open the collection)")
-        self.toolbar.add(gtk.SeparatorToolItem())
+        add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
+        self.toolbar1.add(gtk.SeparatorToolItem())
+        add_widget(self.toolbar1,gtk.Label("Browsing: "),None,None,None)
+        add_widget(self.toolbar1,self.coll_combo,None,None,"Switch the active collection, directory or device")
+        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLOSE),self.close_collection,"Close Collection", "Close the collection (unsaved changes to metadata will still be present next time you open the collection)")
+#        self.toolbar.add(gtk.SeparatorToolItem())
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
-        add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
-        add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
-        self.toolbar.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar,gtk.Label("Search: "),None,None,None)
+        add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
+        add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
+        self.toolbar2.add(gtk.SeparatorToolItem())
+        add_widget(self.toolbar2,gtk.Label("Search: "),None,None,None)
         if entry_no_icons:
-            add_widget(self.toolbar,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
-            add_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
+            add_widget(self.toolbar2,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
+            add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
         else:
-            add_widget(self.toolbar,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
-        self.toolbar.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar,gtk.Label("Sort: "),None,None,None)
-        add_widget(self.toolbar,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
+            add_widget(self.toolbar2,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
+        self.toolbar2.add(gtk.SeparatorToolItem())
+        add_widget(self.toolbar2,gtk.Label("Sort: "),None,None,None)
+        add_widget(self.toolbar2,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
-        add_item(self.toolbar,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
+        add_item(self.toolbar2,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
 
-        self.toolbar.show_all()
+        self.toolbar1.show_all()
+        self.toolbar2.show_all()
 
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,0,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,1,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
@@ -288,24 +286,37 @@ class MainFrame(gtk.VBox):
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
 
-        ##self.browser.show() #don't show the browser by default (it will be shown when a collection is activated)
-
         self.hpane=gtk.HPaned()
         self.hpane_ext=gtk.HPaned()
         self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
         self.sidebar.set_scrollable(True)
 
-        self.hpane_ext.add1(self.sidebar)
-        self.hpane_ext.add2(self.browser_box)
+        self.hpane_ext.add1(self.browser)
+        self.hpane_ext.add2(self.iv)
         self.hpane_ext.show()
-        self.hpane.add1(self.hpane_ext)
-        self.hpane.add2(self.iv)
-        self.hpane.show()
-        self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
-        self.pack_start(self.toolbar,False,False)
-        self.pack_start(self.hpane)
+        ##self.browser.show() #don't show the browser by default (it will be shown when a collection is activated)
+        self.browser_box=gtk.VBox()
+        self.browser_box.show()
+        self.browser_box.pack_start(self.toolbar2,False,False)
+        self.browser_box.pack_start(self.hpane_ext,True)
         self.browser_box.pack_start(self.status_bar,False)
+
+        self.hpane.add1(self.sidebar)
+        self.hpane.add2(self.browser_box)
+        self.hpane.show()
+        self.hpane_ext.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+
+#        self.hpane_ext.add1(self.sidebar)
+#        self.hpane_ext.add2(self.browser_box)
+#        self.hpane_ext.show()
+#        self.hpane.add1(self.hpane_ext)
+#        self.hpane.add2(self.iv)
+#        self.hpane.show()
+#        self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+
+        self.pack_start(self.toolbar1,False,False)
+        self.pack_start(self.hpane)
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
@@ -328,7 +339,7 @@ class MainFrame(gtk.VBox):
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
-        self.toolbar.connect_after("realize", self.coll_realized)
+        self.toolbar2.connect_after("realize", self.coll_realized)
 #        if self.active_collection==None:
 #            self.create_local_store(self.coll_combo)
 #        else:
@@ -742,7 +753,8 @@ class MainFrame(gtk.VBox):
                         if self.active_collection:
                             self.browser.show()
                         self.hpane_ext.show()
-                        self.toolbar.show()
+                        self.toolbar1.show()
+                        self.toolbar2.show()
                         self.info_bar.show()
                         self.is_iv_fullscreen=False
                         if self.is_fullscreen:
@@ -773,12 +785,14 @@ class MainFrame(gtk.VBox):
                             self.browser.show()
                         self.hpane_ext.show()
                         self.info_bar.show()
-                        self.toolbar.show()
+                        self.toolbar1.show()
+                        self.toolbar2.show()
                         self.is_iv_fullscreen=False
                     else:
                         self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
-                        self.toolbar.hide()
+                        self.toolbar1.hide()
+                        self.toolbar2.hide()
                         self.browser.hide()
                         self.info_bar.hide()
                         self.hpane_ext.hide()
@@ -800,18 +814,25 @@ class MainFrame(gtk.VBox):
         return True
 
 
+#    def resize_browser_pane(self):
+#        w,h=self.hpane.window.get_size()
+#        if self.sidebar.get_property('visible'):
+#            if self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position()>=w:
+#                self.hpane.set_position(w/2)
+#            else:
+#                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position())
+#        else:
+#            if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
+#                self.hpane.set_position(w/2)
+#            else:
+#                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+
     def resize_browser_pane(self):
-        w,h=self.hpane.window.get_size()
-        if self.sidebar.get_property('visible'):
-            if self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position()>=w:
-                self.hpane.set_position(w/2)
-            else:
-                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position())
+        w,h=self.hpane_ext.window.get_size()
+        if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
+            self.hpane_ext.set_position(w/2)
         else:
-            if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
-                self.hpane.set_position(w/2)
-            else:
-                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+            self.hpane_ext.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
 
     def view_image(self,item,fullwindow=False):
@@ -837,7 +858,8 @@ class MainFrame(gtk.VBox):
         if self.active_collection:
             self.browser.show()
         #self.hbox.show()
-        self.toolbar.show()
+        #self.toolbar1.show()
+        #self.toolbar2.show()
         self.hpane_ext.show()
         self.info_bar.show()
         self.is_iv_fullscreen=False
@@ -850,7 +872,8 @@ class MainFrame(gtk.VBox):
                 self.iv.ImageNormal()
                 if self.active_collection:
                     self.browser.show()
-                self.toolbar.show()
+                self.toolbar1.show()
+                self.toolbar2.show()
                 self.hpane_ext.show()
                 self.info_bar.show()
                 self.is_iv_fullscreen=False
@@ -863,7 +886,8 @@ class MainFrame(gtk.VBox):
                     self.is_fullscreen=True
                 self.iv.ImageFullscreen()
                 self.browser.hide()
-                self.toolbar.hide()
+                self.toolbar1.hide()
+                self.toolbar2.hide()
                 self.hpane_ext.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True

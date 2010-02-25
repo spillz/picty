@@ -1,0 +1,72 @@
+Tag (hex) 	Tag (dec) 	Key 	Type 	M. 	R. 	Min. bytes 	Max. bytes 	Tag description
+0x0000 	0 	Iptc.Envelope.ModelVersion 	Short 	Yes 	No 	2 	2 	A binary number identifying the version of the Information Interchange Model
+0x0005 	5 	Iptc.Envelope.Destination 	String 	No 	Yes 	0 	1024 	This DataSet is to accommodate some providers who require routing information above the appropriate OSI layers.
+0x0014 	20 	Iptc.Envelope.FileFormat 	Short 	Yes 	No 	2 	2 	A binary number representing the file format. The file format must be registered with IPTC or NAA with a unique number assigned to it. The information is used to route the data to the appropriate system and to allow the receiving system to perform the appropriate actions there to.
+0x0016 	22 	Iptc.Envelope.FileVersion 	Short 	Yes 	No 	2 	2 	A binary number representing the particular version of the File Format specified by <FileFormat> tag.
+0x001e 	30 	Iptc.Envelope.ServiceId 	String 	Yes 	No 	0 	10 	Identifies the provider and product
+0x0028 	40 	Iptc.Envelope.EnvelopeNumber 	String 	Yes 	No 	8 	8 	The characters form a number that will be unique for the date specified in <DateSent> tag and for the Service Identifier specified by <ServiceIdentifier> tag. If identical envelope numbers appear with the same date and with the same Service Identifier
+0x0032 	50 	Iptc.Envelope.ProductId 	String 	No 	Yes 	0 	32 	Allows a provider to identify subsets of its overall service. Used to provide receiving organisation data on which to select
+0x003c 	60 	Iptc.Envelope.EnvelopePriority 	String 	No 	No 	1 	1 	Specifies the envelope handling priority and not the editorial urgency (see <Urgency> tag). "1" indicates the most urgent
+0x0046 	70 	Iptc.Envelope.DateSent 	Date 	Yes 	No 	8 	8 	Uses the format CCYYMMDD (century
+0x0050 	80 	Iptc.Envelope.TimeSent 	Time 	No 	No 	11 	11 	Uses the format HHMMSS:HHMM where HHMMSS refers to local hour
+0x005a 	90 	Iptc.Envelope.CharacterSet 	Undefined 	No 	No 	0 	32 	This tag consisting of one or more control functions used for the announcement
+0x0064 	100 	Iptc.Envelope.UNO 	String 	No 	No 	14 	80 	This tag provide a globally unique identification for objects as specified in the IIM
+0x0078 	120 	Iptc.Envelope.ARMId 	Short 	No 	No 	2 	2 	The DataSet identifies the Abstract Relationship Method identifier (ARM) which is described in a document registered by the originator of the ARM with the IPTC and NAA organizations.
+0x007a 	122 	Iptc.Envelope.ARMVersion 	Short 	No 	No 	2 	2 	This tag consisting of a binary number representing the particular version of the ARM specified by tag <ARMId>.
+0x0000 	0 	Iptc.Application2.RecordVersion 	Short 	Yes 	No 	2 	2 	A binary number identifying the version of the Information Interchange Model
+0x0003 	3 	Iptc.Application2.ObjectType 	String 	No 	No 	3 	67 	The Object Type is used to distinguish between different types of objects within the IIM. The first part is a number representing a language independent international reference to an Object Type followed by a colon separator. The second part
+0x0004 	4 	Iptc.Application2.ObjectAttribute 	String 	No 	Yes 	4 	68 	The Object Attribute defines the nature of the object independent of the Subject. The first part is a number representing a language independent international reference to an Object Attribute followed by a colon separator. The second part
+0x0005 	5 	Iptc.Application2.ObjectName 	String 	No 	No 	0 	64 	Used as a shorthand reference for the object. Changes to exist-ing data
+0x0007 	7 	Iptc.Application2.EditStatus 	String 	No 	No 	0 	64 	Status of the object data
+0x0008 	8 	Iptc.Application2.EditorialUpdate 	String 	No 	No 	2 	2 	Indicates the type of update that this object provides to a previous object. The link to the previous object is made using the tags <ARMIdentifier> and <ARMVersion>
+0x000a 	10 	Iptc.Application2.Urgency 	String 	No 	No 	1 	1 	Specifies the editorial urgency of content and not necessarily the envelope handling priority (see tag <EnvelopePriority>). The "1" is most urgent
+0x000c 	12 	Iptc.Application2.Subject 	String 	No 	Yes 	13 	236 	The Subject Reference is a structured definition of the subject matter.
+0x000f 	15 	Iptc.Application2.Category 	String 	No 	No 	0 	3 	Identifies the subject of the object data in the opinion of the provider. A list of categories will be maintained by a regional registry
+0x0014 	20 	Iptc.Application2.SuppCategory 	String 	No 	Yes 	0 	32 	Supplemental categories further refine the subject of an object data. A supplemental category may include any of the recognised categories as used in tag <Category>. Otherwise
+0x0016 	22 	Iptc.Application2.FixtureId 	String 	No 	No 	0 	32 	Identifies object data that recurs often and predictably. Enables users to immediately find or recall such an object.
+0x0019 	25 	Iptc.Application2.Keywords 	String 	No 	Yes 	0 	64 	Used to indicate specific information retrieval words. It is expected that a provider of various types of data that are related in subject matter uses the same keyword
+0x001a 	26 	Iptc.Application2.LocationCode 	String 	No 	Yes 	3 	3 	Indicates the code of a country/geographical location referenced by the content of the object. Where ISO has established an appropriate country code under ISO 3166
+0x001b 	27 	Iptc.Application2.LocationName 	String 	No 	Yes 	0 	64 	Provides a full
+0x001e 	30 	Iptc.Application2.ReleaseDate 	Date 	No 	No 	8 	8 	Designates in the form CCYYMMDD the earliest date the provider intends the object to be used. Follows ISO 8601 standard.
+0x0023 	35 	Iptc.Application2.ReleaseTime 	Time 	No 	No 	11 	11 	Designates in the form HHMMSS:HHMM the earliest time the provider intends the object to be used. Follows ISO 8601 standard.
+0x0025 	37 	Iptc.Application2.ExpirationDate 	Date 	No 	No 	8 	8 	Designates in the form CCYYMMDD the latest date the provider or owner intends the object data to be used. Follows ISO 8601 standard.
+0x0026 	38 	Iptc.Application2.ExpirationTime 	Time 	No 	No 	11 	11 	Designates in the form HHMMSS:HHMM the latest time the provider or owner intends the object data to be used. Follows ISO 8601 standard.
+0x0028 	40 	Iptc.Application2.SpecialInstructions 	String 	No 	No 	0 	256 	Other editorial instructions concerning the use of the object data
+0x002a 	42 	Iptc.Application2.ActionAdvised 	String 	No 	No 	2 	2 	Indicates the type of action that this object provides to a previous object. The link to the previous object is made using tags <ARMIdentifier> and <ARMVersion>
+0x002d 	45 	Iptc.Application2.ReferenceService 	String 	No 	Yes 	0 	10 	Identifies the Service Identifier of a prior envelope to which the current object refers.
+0x002f 	47 	Iptc.Application2.ReferenceDate 	Date 	No 	Yes 	8 	8 	Identifies the date of a prior envelope to which the current object refers.
+0x0032 	50 	Iptc.Application2.ReferenceNumber 	String 	No 	Yes 	8 	8 	Identifies the Envelope Number of a prior envelope to which the current object refers.
+0x0037 	55 	Iptc.Application2.DateCreated 	Date 	No 	No 	8 	8 	Represented in the form CCYYMMDD to designate the date the intellectual content of the object data was created rather than the date of the creation of the physical representation. Follows ISO 8601 standard.
+0x003c 	60 	Iptc.Application2.TimeCreated 	Time 	No 	No 	11 	11 	Represented in the form HHMMSS:HHMM to designate the time the intellectual content of the object data current source material was created rather than the creation of the physical representation. Follows ISO 8601 standard.
+0x003e 	62 	Iptc.Application2.DigitizationDate 	Date 	No 	No 	8 	8 	Represented in the form CCYYMMDD to designate the date the digital representation of the object data was created. Follows ISO 8601 standard.
+0x003f 	63 	Iptc.Application2.DigitizationTime 	Time 	No 	No 	11 	11 	Represented in the form HHMMSS:HHMM to designate the time the digital representation of the object data was created. Follows ISO 8601 standard.
+0x0041 	65 	Iptc.Application2.Program 	String 	No 	No 	0 	32 	Identifies the type of program used to originate the object data.
+0x0046 	70 	Iptc.Application2.ProgramVersion 	String 	No 	No 	0 	10 	Used to identify the version of the program mentioned in tag <Program>.
+0x004b 	75 	Iptc.Application2.ObjectCycle 	String 	No 	No 	1 	1 	Used to identify the editorial cycle of object data.
+0x0050 	80 	Iptc.Application2.Byline 	String 	No 	Yes 	0 	32 	Contains name of the creator of the object data
+0x0055 	85 	Iptc.Application2.BylineTitle 	String 	No 	Yes 	0 	32 	A by-line title is the title of the creator or creators of an object data. Where used
+0x005a 	90 	Iptc.Application2.City 	String 	No 	No 	0 	32 	Identifies city of object data origin according to guidelines established by the provider.
+0x005c 	92 	Iptc.Application2.SubLocation 	String 	No 	No 	0 	32 	Identifies the location within a city from which the object data originates
+0x005f 	95 	Iptc.Application2.ProvinceState 	String 	No 	No 	0 	32 	Identifies Province/State of origin according to guidelines established by the provider.
+0x0064 	100 	Iptc.Application2.CountryCode 	String 	No 	No 	3 	3 	Indicates the code of the country/primary location where the intellectual property of the object data was created
+0x0065 	101 	Iptc.Application2.CountryName 	String 	No 	No 	0 	64 	Provides full
+0x0067 	103 	Iptc.Application2.TransmissionReference 	String 	No 	No 	0 	32 	A code representing the location of original transmission according to practices of the provider.
+0x0069 	105 	Iptc.Application2.Headline 	String 	No 	No 	0 	256 	A publishable entry providing a synopsis of the contents of the object data.
+0x006e 	110 	Iptc.Application2.Credit 	String 	No 	No 	0 	32 	Identifies the provider of the object data
+0x0073 	115 	Iptc.Application2.Source 	String 	No 	No 	0 	32 	Identifies the original owner of the intellectual content of the object data. This could be an agency
+0x0074 	116 	Iptc.Application2.Copyright 	String 	No 	No 	0 	128 	Contains any necessary copyright notice.
+0x0076 	118 	Iptc.Application2.Contact 	String 	No 	Yes 	0 	128 	Identifies the person or organisation which can provide further background information on the object data.
+0x0078 	120 	Iptc.Application2.Caption 	String 	No 	No 	0 	2000 	A textual description of the object data.
+0x007a 	122 	Iptc.Application2.Writer 	String 	No 	Yes 	0 	32 	Identification of the name of the person involved in the writing
+0x007d 	125 	Iptc.Application2.RasterizedCaption 	Undefined 	No 	No 	7360 	7360 	Contains the rasterized object data description and is used where characters that have not been coded are required for the caption.
+0x0082 	130 	Iptc.Application2.ImageType 	String 	No 	No 	2 	2 	Indicates the color components of an image.
+0x0083 	131 	Iptc.Application2.ImageOrientation 	String 	No 	No 	1 	1 	Indicates the layout of an image.
+0x0087 	135 	Iptc.Application2.Language 	String 	No 	No 	2 	3 	Describes the major national language of the object
+0x0096 	150 	Iptc.Application2.AudioType 	String 	No 	No 	2 	2 	Indicates the type of an audio content.
+0x0097 	151 	Iptc.Application2.AudioRate 	String 	No 	No 	6 	6 	Indicates the sampling rate in Hertz of an audio content.
+0x0098 	152 	Iptc.Application2.AudioResolution 	String 	No 	No 	2 	2 	Indicates the sampling resolution of an audio content.
+0x0099 	153 	Iptc.Application2.AudioDuration 	String 	No 	No 	6 	6 	Indicates the duration of an audio content.
+0x009a 	154 	Iptc.Application2.AudioOutcue 	String 	No 	No 	0 	64 	Identifies the content of the end of an audio object data
+0x00c8 	200 	Iptc.Application2.PreviewFormat 	Short 	No 	No 	2 	2 	A binary number representing the file format of the object data preview. The file format must be registered with IPTC or NAA organizations with a unique number assigned to it.
+0x00c9 	201 	Iptc.Application2.PreviewVersion 	Short 	No 	No 	2 	2 	A binary number representing the particular version of the object data preview file format specified in tag <PreviewFormat>.
+0x00ca 	202 	Iptc.Application2.Preview 	Undefined 	No 	No 	0 	256000 	Binary image preview data.

@@ -1,12 +1,12 @@
 Project todo list
 =================
 
-* DISCLAIMER: I expect this document will regularly get out of date
-* Nonetheless, the idea is to keep track of short-term plans (2-3 months)
-* As stuff is completed or plans change the list should be updated
-* This file will be in source control to keep track of its history
+* DISCLAIMER: I expect this document will regularly get out of date.
+* Nonetheless, the idea is to keep track of short-term plans (2-3 months).
+* As stuff is completed or plans change the list should be updated.
+* This file will be in source control to keep track of its history.
 
-* Update to pyexiv2, support XML (embedded in image and sidecars)
+* Update to pyexiv2 (DONE), support XML (embedded in image and sidecars)
 * Update the browser -- in particular improve the image overlay by
     * darkening background thumbnail
     * color the overlay area (a frame around the image)
@@ -21,7 +21,7 @@ Project todo list
 * Overhaul thumbnail support (e.g. allow user to store thumbs in custom
     cache location, support tumbler, use embedded image thumbnails and
     fallback to manual creation as necessary)
-* Extend collection support
+* Extend collection support to allow browsing of web-based stores
 * Move settings tab to a tabbed dialog available from the toolbar
 
 phraymd (c) 2010 Damien Moore

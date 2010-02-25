@@ -336,19 +336,27 @@ class ImageBrowser(gtk.HBox):
         self.lock.release()
 
     def drag_begin_signal(self, widget, drag_context):
+        '''
+        callback when user has started dragging one or more items in the browser's image area
+        '''
+#       NB: self.drag_item is set in the button_press callback instead of here
 #        drag_context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8,
 #                                              gtk.gdk.PROP_MODE_REPLACE,"a")
-#       NB: self.drag_item is set in the button_press callback instead of here
         pass
 
 
     def drag_end_signal(self, widget, drag_context):
+        '''
+        callback when user has finished dragging one or more items in the browser's image area
+        '''
         self.drag_item=None
 #        drag_context.source_window.property_delete(self.XDS_ATOM) #FOR XDS
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
-        '''callback triggered to set the selection_data payload
-        (viewer is the source of the drop)'''
+        '''
+        callback triggered to set the selection_data payload
+        (viewer is the source of the drop)
+        '''
         print '**********************************'
         print 'drag_get_sig info',info
         print '**********************************'
