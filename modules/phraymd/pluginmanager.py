@@ -93,8 +93,8 @@ class PluginManager():
         return a
     def callback_first(self,interface_name,*args):
         '''
-        for each plugin in self.plugins that defines the interface, runs the callback.
-        Used in the main app for interfaces that always return None
+        iterates over each plugin in self.plugins and runs the callback, stopping at the first
+        that returns True. Used in cases where there should be exactly one handler
         '''
         for name,plugin in self.plugins.iteritems():
             if plugin[0] and getattr(plugin[0],interface_name)(*args):

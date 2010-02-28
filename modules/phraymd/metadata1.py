@@ -33,30 +33,14 @@ import gtk
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
 
-class Exiv2Metadata(pyexiv2.ImageMetadata):
-    def __init__(self,filename):
-        pyexiv2.ImageMetadata.__init__(self,filename)
-    def __setitem__(self,key,value):
-        try:
-            pyexiv2.ImageMetadata.__setitem__(self,key,value)
-        except TypeError:
-            if key.startswith('Exif'):
-                value=pyexiv2.ExifTag(key,value)
-            elif key.startswith('Iptc'):
-                value=pyexiv2.IptcTag(key,value)
-            elif key.startswith('Xmp'):
-                value=pyexiv2.XmpTag(key,value)
-            pyexiv2.ImageMetadata.__setitem__(self,key,value)
-            print 'SET ITEM',key
-
 def load_metadata(item,filename=None,thumbnail=False):
     if item.meta==False:
         return
     try:
         if not filename:
             filename=item.filename
-        rawmeta = Exiv2Metadata(filename)
-        rawmeta.read()
+        rawmeta = pyexiv2.Image(filename)
+        rawmeta.readMetadata()
         item.meta=dict()
         get_exiv2_meta(item.meta,rawmeta)
         if thumbnail:
@@ -88,10 +72,10 @@ def save_metadata(item):
     if item.meta==False:
         return False
     try:
-        rawmeta = Exiv2Metadata(item.filename)
-        rawmeta.read()
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
         set_exiv2_meta(item.meta,rawmeta)
-        rawmeta.write()
+        rawmeta.writeMetadata()
         item.mark_meta_saved()
     except:
         print 'Error writing metadata for',item.filename
@@ -112,28 +96,28 @@ def copy_metadata(src_item,destination_file):
         return False
     try:
         print 'reading src_item metadata'
-        rawmeta_src = Exiv2Metadata(src_item.filename)
-        rawmeta_src.read()
+        rawmeta_src = pyexiv2.Image(src_item.filename)
+        rawmeta_src.readMetadata()
     except:
         print 'Error reading metadata for',src_item.filename
         return False
     try:
-        rawmeta_dest = Exiv2Metadata(destination_file)
-        rawmeta_dest.read()
-        for k in rawmeta_src.exif_keys:
+        rawmeta_dest = pyexiv2.Image(destination_file)
+        rawmeta_dest.readMetadata()
+        for k in rawmeta_src.exifKeys():
             try:
                 if k in appkeys:
                     rawmeta_dest[k]=rawmeta_src[k]
             except:
                 pass
-        for k in rawmeta_src.iptc_keys:
+        for k in rawmeta_src.iptcKeys():
             try:
                 if k in appkeys:
                     rawmeta_dest[k]=rawmeta_src[k]
             except:
                 pass
         set_exiv2_meta(src_item.meta,rawmeta_dest)
-        rawmeta_dest.write()
+        rawmeta_dest.writeMetadata()
     except:
         print 'Error changing metadata in destination file',destination_file
     return True
@@ -141,10 +125,10 @@ def copy_metadata(src_item,destination_file):
 
 def save_metadata_key(item,key,value):
     try:
-        rawmeta = Exiv2Metadata(item.filename)
-        rawmeta.read()
+        rawmeta = pyexiv2.Image(item.filename)
+        rawmeta.readMetadata()
         rawmeta[key]=value
-        rawmeta.write()
+        rawmeta.writeMetadata()
     except:
         print 'Error writing metadata for',item.filename
 
@@ -157,40 +141,36 @@ def conv_date_taken(metaobject,keys,value=None):
     if value!=None: #todo: this should copy the local representation back to the image metadata
         return True
     date=None
-###    if "Iptc.Application2.DateCreated" in metaobject.exif_keys and "Iptc.Application2.TimeCreated" in metaobject.exif_keys:
+###    if "Iptc.Application2.DateCreated" in metaobject.exifKeys() and "Iptc.Application2.TimeCreated" in metaobject.exifKeys():
 ###        date=str(metaobject["Iptc.Application2.DateCreated"])+' '+str(metaobject["Iptc.Application2.TimeCreated"])
 ###        date=datetime.strptime(date)
-    if "Exif.Photo.DateTimeOriginal" in metaobject.exif_keys:
-        date=metaobject["Exif.Photo.DateTimeOriginal"].value
+    if "Exif.Photo.DateTimeOriginal" in metaobject.exifKeys():
+        date=metaobject["Exif.Photo.DateTimeOriginal"]
         if type(date)==str:
             date=datetime.strptime(date)
-    elif "Exif.Photo.DateTimeDigitized" in metaobject.exif_keys: #fallback to other datetime Exif keys
-        date=metaobject["Exif.Photo.DateTimeDigitized"].value
+    elif "Exif.Photo.DateTimeDigitized" in metaobject.exifKeys(): #fallback to other datetime Exif keys
+        date=metaobject["Exif.Photo.DateTimeDigitized"]
         if type(date)==str:
             date=datetime.strptime(date)
-    elif "Exif.Image.DateTimeOriginal" in metaobject.exif_keys:
-        date=metaobject["Exif.Image.DateTimeOriginal"].value
+    elif "Exif.Image.DateTimeOriginal" in metaobject.exifKeys():
+        date=metaobject["Exif.Image.DateTimeOriginal"]
         if type(date)==str:
             date=datetime.strptime(date)
-    elif "Exif.Image.DateTime" in metaobject.exif_keys:
-        date=metaobject["Exif.Image.DateTime"].value
+    elif "Exif.Image.DateTime" in metaobject.exifKeys():
+        date=metaobject["Exif.Image.DateTime"]
         if type(date)==str:
             date=datetime.strptime(date)
     return date
 
 def conv_str(metaobject,keys,value=None):
     if value!=None:
-        print keys,value
-        if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!='':
-            if keys[0].startswith('Iptc'):
-                metaobject[keys[0]]=[value]
-            else:
-                metaobject[keys[0]]=value
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() or value!='':
+            metaobject[keys[0]]=value
         ##todo: change or empty other keys
         return True
     for k in keys:
         try:
-            val=metaobject[k].value
+            val=metaobject[k]
             return str(val)
         except:
             pass
@@ -198,16 +178,13 @@ def conv_str(metaobject,keys,value=None):
 
 def conv_int(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!=-1:
-            if keys[0].startswith('Iptc'):
-                metaobject[keys[0]]=[value]
-            else:
-                metaobject[keys[0]]=value
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() or value!=-1:
+            metaobject[keys[0]]=value
         ##todo: change or empty other keys
         return True
     for k in keys:
         try:
-            val=metaobject[k].value
+            val=metaobject[k]
             return int(val)
         except:
             pass
@@ -244,24 +221,19 @@ def tag_bind(tags,sep=' '):
 
 def conv_keywords(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.xmp_keys or keys[1] in metaobject.iptc_keys or len(value)>0:
-            metaobject[keys[0]]=value
-            metaobject[keys[1]]=value
+        if (keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys()) or len(value)>0:
+            metaobject["Iptc.Application2.Keywords"]=value
         return True
     try:
-        val=None
-        if keys[0] in metaobject:
-            val=metaobject[keys[1]].value
-        elif keys[1] in metaobject:
-            val=metaobject[keys[1]].value
-        if type(val)==str: ##todo: shouldn't need this check with the new pyexiv2 api
+        val=metaobject["Iptc.Application2.Keywords"]
+        if type(val)==str:
             return [val]
         return list(val)
     except:
         return None ##the fallback to UserComment is disabled for now
         try:
-            #parse 'abc "def ghi" fdg' as three tags in a list
-            val=metaobject["Exif.Photo.UserComment"].value ##TODO: apparently, this object is not a string, but a bytestream! Need to do conversion + encoding detection - YUK!
+            #parse 'abc "def ghi" fdg' as three tags -- need quote parsing
+            val=metaobject["Exif.Photo.UserComment"] ##TODO: This object is not a string, but a bytestream! Need to do conversion + encoding detection - YUK!
             vals=tag_split(val)
             return vals
         except:
@@ -269,22 +241,26 @@ def conv_keywords(metaobject,keys,value=None):
 
 def conv_rational(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys and len(value)>0:
+        if keys[0] in metaobject.iptcKeys() or keys[0] in metaobject.exifKeys() and len(value)>0:
             ##todo: change or empty other keys
             try:
                 if type(value)==str:
                     metaobject[keys[0]]=value
                     return True
                 if type(value)==tuple:
-                    metaobject[keys[0]]=pyexiv2.Rational(value[0],value[1])
+                    metaobject[keys[0]]='%i/%i'%value
                     return True
             except:
                 pass
         return True
     for k in keys:
         try:
-            val=metaobject[k].value
-            return (val.numerator,val.denominator)
+            val=metaobject[k]
+            try:
+                return (int(val[0]),int(val[1]))
+            except:
+                vals=str(val).split('/')
+                return (int(vals[0]),int(vals[1]))
         except:
             pass
     return None
@@ -297,6 +273,7 @@ def coords_as_rational(decimal):
     second=int((decimal-degree-minute/60)*3600*100000)
     print 'coords',degree,minute,second
     return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,100000))
+    print 'coords',degree,minute,second
 
 def coords_as_decimal(rational):
     if type(rational) in (list,tuple):
@@ -324,10 +301,10 @@ def conv_latlon(metaobject,keys,value=None):
         print 'wrote latlon'
     else:
         try:
-            rat_lat=metaobject[keys[0]].value
-            latref=metaobject[keys[1]].value
-            rat_lon=metaobject[keys[2]].value
-            lonref=metaobject[keys[3]].value
+            rat_lat=metaobject[keys[0]]
+            latref=metaobject[keys[1]]
+            rat_lon=metaobject[keys[2]]
+            lonref=metaobject[keys[3]]
             lat=(1.0 if latref=='N' else -1.0)*coords_as_decimal(rat_lat)
             lon=(1.0 if lonref=='E' else -1.0)*coords_as_decimal(rat_lon)
             return (lat,lon)
@@ -376,11 +353,11 @@ each entry in the tuple is itself a tuple containing:
 
 apptags=(
 ("DateTaken","Date Taken",False,conv_date_taken,None,None,date_as_sortable,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
-("Title","Title",True,conv_str,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",)),
-("ImageDescription","Image Description",True,conv_str,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
-("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-("Artist","Artist",True,conv_str,None,None,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist")),
-("Copyright","Copyright",True,conv_str,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+("Title","Title",True,conv_str,None,None,None,("Iptc.Application2.Headline",)),
+("ImageDescription","Image Description",True,conv_str,None,None,None,("Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
+("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Iptc.Application2.Keywords","Exif.Photo.UserComment")),
+("Artist","Artist",True,conv_str,None,None,None,("Iptc.Application2.Credit","Exif.Image.Artist")),
+("Copyright","Copyright",True,conv_str,None,None,None,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
 ("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",)),
 ("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
@@ -429,15 +406,12 @@ def get_exiv2_meta(app_meta,exiv2_meta):
             pass
 
 def set_exiv2_meta(app_meta,exiv2_meta):
-    print 'app_meta',app_meta
     for appkey in app_meta:
         try:
             data=apptags_dict[appkey]
-            data[2](exiv2_meta,data[6],app_meta[appkey]) ##todo: only set values that have actually changed?? e.g. could check data[1], but for e.g. orientation should be savable but data[1]=false
+            data[2](exiv2_meta,data[6],app_meta[appkey])
         except:
-            print 'Exiv2 set data failure',appkey
-            import traceback,sys
-            print traceback.format_exc(sys.exc_info()[2])
+            print 'exiv2 set data failure',appkey
 
 def app_key_from_string(key,string):
     fn=apptags_dict[key][4]
@@ -793,3 +767,4 @@ all_tags=(("Exif.Image.ProcessingSoftware","Ascii","The name and version of the 
 ("Exif.Iop.RelatedImageWidth","Long","Image width"),
 ("Exif.Iop.RelatedImageLength","Long","Image height"))
 '''
+

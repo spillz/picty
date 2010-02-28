@@ -51,6 +51,8 @@ except:
 from phraymd import settings
 
 settings.init() ##todo: make more of the settings module dependant on this call??
+settings.icon_file=icon_file
+settings.module_path=module_path
 
 from phraymd import mainframe
 

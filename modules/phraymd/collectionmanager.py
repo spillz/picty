@@ -27,15 +27,15 @@ import os.path
 import collections
 
 
-COMBO_ID=0
-COMBO_NAME=1
-COMBO_FONT_WGT=2
-COMBO_FONT_COLOR_SET=3
-COMBO_FONT_COLOR=4
-COMBO_PIXBUF=5
-COMBO_OPEN=6
+COLUMN_ID=0
+COLUMN_NAME=1
+COLUMN_FONT_WGT=2
+COLUMN_FONT_COLOR_SET=3
+COLUMN_FONT_COLOR=4
+COLUMN_PIXBUF=5
+COLUMN_OPEN=6
 
-def combo_cols(coll,index):
+def COLUMN_cols(coll,index):
     return [coll.type,coll.path,coll.collection,coll.icon_list,coll.pixbuf][index]
 
 def get_icon(icon_id_list):
@@ -277,7 +277,7 @@ class CollectionModel(gtk.GenericTreeModel):
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
-        return COMBO_OPEN+1
+        return COLUMN_OPEN+1
     def on_get_column_type(self, index):
         return [str,str,int,bool,str,gtk.gdk.Pixbuf,bool][index]
     def on_get_iter(self, path):
@@ -427,17 +427,17 @@ class CollectionCombo(gtk.VBox):
         cpb=gtk.CellRendererPixbuf()
         cpb.set_property("width",20) ##todo: don't hardcode the width
         self.combo.pack_start(cpb,False)
-        self.combo.add_attribute(cpb, 'pixbuf', COMBO_PIXBUF)
+        self.combo.add_attribute(cpb, 'pixbuf', COLUMN_PIXBUF)
         cpt=gtk.CellRendererText()
         self.combo.pack_start(cpt,False)
-        self.combo.add_attribute(cpt, 'text', COMBO_NAME)
-        self.combo.add_attribute(cpt, 'weight', COMBO_FONT_WGT)
-        self.combo.add_attribute(cpt, 'foreground-set', COMBO_FONT_COLOR_SET)
-        self.combo.add_attribute(cpt, 'foreground', COMBO_FONT_COLOR)
+        self.combo.add_attribute(cpt, 'text', COLUMN_NAME)
+        self.combo.add_attribute(cpt, 'weight', COLUMN_FONT_WGT)
+        self.combo.add_attribute(cpt, 'foreground-set', COLUMN_FONT_COLOR_SET)
+        self.combo.add_attribute(cpt, 'foreground', COLUMN_FONT_COLOR)
 
 #        cpto=gtk.CellRendererToggle()
 #        self.combo.pack_start(cpto,False)
-#        self.combo.add_attribute(cpto, 'active', COMBO_OPEN)
+#        self.combo.add_attribute(cpto, 'active', COLUMN_OPEN)
 
         self.combo.show()
         self.pack_start(self.combo)
@@ -447,7 +447,7 @@ class CollectionCombo(gtk.VBox):
         if iter==None:
             self.emit('collection-changed','')
             return
-        id=self.model[iter][COMBO_ID]
+        id=self.model[iter][COLUMN_ID]
         if id=='#add-dir':
             self.emit('add-dir')
         elif id=='#add-localstore':
@@ -460,13 +460,13 @@ class CollectionCombo(gtk.VBox):
         '''
         callback determining whether a row should appear as a separator in the combo
         '''
-        if self.model[iter][COMBO_ID].startswith('*'):
+        if self.model[iter][COLUMN_ID].startswith('*'):
             return True
         return False
     def get_choice(self):
         iter=self.combo.get_active_iter()
         if iter!=None:
-            return self.model[iter][COMBO_ID]
+            return self.model[iter][COLUMN_ID]
     def set_active(self,id):
         if id:
             self.combo.set_active_iter(self.model.create_tree_iter(id))

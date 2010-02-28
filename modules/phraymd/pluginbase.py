@@ -77,6 +77,12 @@ class Plugin(object):
         is required on shutdown, use the worker thread -- the app will wait on that thread without
         blocking the gui'''
         pass
+    def app_config_dialog(self):
+        '''
+        the user wants to configure app settings - the first plugin that can handle this event
+        should show a modal dialog and return True when done
+        '''
+        return False
     '''collection'''
     def collection_activated(self,collection):
         '''browser has been switched to a different collection'''

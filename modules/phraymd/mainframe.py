@@ -239,7 +239,8 @@ class MainFrame(gtk.VBox):
         add_widget(self.toolbar1,gtk.Label("Browsing: "),None,None,None)
         add_widget(self.toolbar1,self.coll_combo,None,None,"Switch the active collection, directory or device")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLOSE),self.close_collection,"Close Collection", "Close the collection (unsaved changes to metadata will still be present next time you open the collection)")
-#        self.toolbar.add(gtk.SeparatorToolItem())
+        self.toolbar1.add(gtk.SeparatorToolItem())
+        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_PREFERENCES),self.open_preferences,"Preferences","Open the global settings and configuration dialog")
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
         add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
         add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
@@ -575,6 +576,11 @@ class MainFrame(gtk.VBox):
     def activate_item(self,browser,ind,item):
         print 'activated',ind,item
         self.view_image(item)
+
+    def open_preferences(self,widget):
+        print 'preferences coming soon'
+        self.plugmgr.callback('app_config_dialog')
+
 
     def activate_sidebar(self,widget):
         if widget.get_active():
