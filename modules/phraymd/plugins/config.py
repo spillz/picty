@@ -33,11 +33,11 @@ from phraymd import collectionmanager
 
 class ConfigPlugin(pluginbase.Plugin):
     name='ConfigPlugin'
-    display_name='Configuration Sidebar'
+    display_name='Preferences Dialog'
     api_version='0.1.0'
-    version='0.1.0'
+    version='0.2.0'
     def __init__(self):
-        print 'INITIALIZING CONFIGURATION PLUGIN'
+        pass
 
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
