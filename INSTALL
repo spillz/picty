@@ -1,0 +1,56 @@
+Installing phraymd on a Linux-based System
+==========================================
+
+Dependencies
+============
+
+python(>=2.5)
+python-gtk2
+python-gnome2
+python-gnome2-desktop
+python-gnome2-extras
+python-pyinotify
+python-pyexiv2
+
+Create and Install a Debian Package
+===================================
+
+To create the package run as root:
+
+cd <phraymd src dir>
+dpkg-buildpackage -rfakeroot
+
+To install, run as root:
+
+dpkg -i ../phraymd*.deb
+
+Installing using your package manager
+=====================================
+
+You can also use checkinstall to create a package that is compatible with many
+linux package management systems (for example, RPM, Deb)
+
+Run the following as root:
+
+checkinstall --pkgversion=0.2 --maintainer="joebloggs@freesoftware" \
+    --pkgname=phraymd \
+    ./setup.py install --home=/usr  \
+    --install-purelib=/usr/share/phraymd
+
+You will prompted to supply additional information.
+
+This will create and install the package. You will be able to remove the
+package using standard tools
+
+Installing without a package manager
+====================================
+
+Run the following as root
+
+sudo ./setup.py install --no-compile --home=debian/phraymd/usr \
+    --install-purelib=debian/phraymd/usr/share/phraymd
+
+Note that installing in this way provides no mechanism for
+uninstalling.
+
+

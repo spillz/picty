@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='phraymd',
-      version='0.1.0',
+      version='0.2',
       description='phraymd Photo Manager',
       author='Damien Moore',
       author_email='damien.moore@excite.com',
