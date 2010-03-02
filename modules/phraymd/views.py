@@ -165,10 +165,10 @@ def text_descr(item):
     #print 'KEYWORDS:',len(val),val,type(val)
     if val:
         val=str(val)
-        if len(val)<30:
+        if len(val)<90:
             details=details+'\nTags: '+val
         else:
-            details=details+'\n'+val[:28]+'...'
+            details=details+'\n'+val[:88]+'...'
     return (header,details)
 
 
