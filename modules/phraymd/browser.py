@@ -120,6 +120,7 @@ class ImageBrowser(gtk.HBox):
         self.geo_ind_view_last=1
         self.hover_ind=-1
         self.command_highlight_ind=-1
+        self.command_highlight_bd=False
 
         self.imarea=gtk.DrawingArea()
         self.imarea.set_property("can-focus",True)
@@ -233,7 +234,6 @@ class ImageBrowser(gtk.HBox):
             elif event.keyval==65507: #control
                 self.redraw_view()
 
-
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
         left=(offset%self.geo_horiz_count)*(self.geo_thumbwidth+self.geo_pad)
@@ -241,7 +241,7 @@ class ImageBrowser(gtk.HBox):
         top=self.geo_ind_view_first*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count-int(self.geo_view_offset)
         top+=offset/self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad)
         top+=self.geo_pad/4
-        return self.hover_cmds.get_command(x,y,left,top,self.geo_pad/4)
+        return self.hover_cmds.get_command(x,y,left,top,self.geo_pad/6)
 
     def item_to_view_index(self,item):
         return self.active_view.find_item(item)
@@ -292,7 +292,7 @@ class ImageBrowser(gtk.HBox):
     def button_press(self,obj,event):
         '''callback for mouse button presses (handles selections, view double clicks,
             context menu right clicks, mouse overlay clicks)'''
-        print 'press',event.button,event.type,event.x,event.y
+        self.command_highlight_bd=False
         self.imarea.grab_focus()
         self.lock.acquire()
         ind=(int(self.geo_view_offset)+int(event.y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
@@ -317,6 +317,7 @@ class ImageBrowser(gtk.HBox):
                         if ind==self.pressed_ind and item==self.pressed_item and event.x<=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
                             if cmd.is_active(item,self.hover_ind==ind):
                                 cmd.action(cmd,self.pressed_item)
+                        self.redraw_view()
                     else:
                         if self.last_selected and event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                             ind=self.item_to_view_index(self.last_selected)
@@ -326,6 +327,11 @@ class ImageBrowser(gtk.HBox):
                             if item==self.pressed_item:
                                 self.select_item(self.pressed_ind)
                 self.button_press_block=False
+        elif item and event.button==1 and event.type==gtk.gdk.BUTTON_PRESS:
+            cmd=self.get_hover_command(ind,event.x,event.y)
+            if cmd>=0 and not event.state&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
+                self.command_highlight_bd=True
+                self.redraw_view()
         elif item and event.button==3 and event.type==gtk.gdk.BUTTON_RELEASE:
             self.emit("context-click-item",ind,item)
         if item and event.button==1 and event.type in (gtk.gdk.BUTTON_PRESS,gtk.gdk._2BUTTON_PRESS):
@@ -344,6 +350,9 @@ class ImageBrowser(gtk.HBox):
 #       NB: self.drag_item is set in the button_press callback instead of here
 #        drag_context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8,
 #                                              gtk.gdk.PROP_MODE_REPLACE,"a")
+        cmd=self.get_hover_command(self.hover_ind,event.x,event.y)
+        if cmd>0:
+            return True
         pass
 
 
@@ -392,7 +401,7 @@ class ImageBrowser(gtk.HBox):
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
         '''callback triggered to retrieve the selection_data payload
-        (viewer is the destination of the drop)'''
+        (browser is the destination of the drop)'''
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
         ind=max(0,min(len(self.active_view)-1,ind))
@@ -585,7 +594,7 @@ class ImageBrowser(gtk.HBox):
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
-        grey = colormap.alloc_color('grey')
+        grey = colormap.alloc_color(0x6000,0x6000,0x6000)
         gc_s = drawable.new_gc(foreground=grey,background=grey)
         white = colormap.alloc_color('white')
         gc_v = drawable.new_gc(foreground=white)
@@ -662,7 +671,7 @@ class ImageBrowser(gtk.HBox):
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     l=self.imarea.create_pango_layout('')
-                    l.set_markup('<b><big>'+a+'</big></b>\n'+b)
+                    l.set_markup('<b><big>'+a+'</big></b>\n<small>'+b+'</small>')
                     l.set_width((self.geo_thumbwidth+self.geo_pad)*pango.SCALE)
                     l.set_wrap(pango.WRAP_WORD_CHAR)
                     lx=int(x+self.geo_pad/4)
@@ -676,7 +685,7 @@ class ImageBrowser(gtk.HBox):
                     drawable.draw_layout(gc,lx,ly,l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
-                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/4)
+                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)
             i+=1
             x+=self.geo_thumbwidth+self.geo_pad
             if x+self.geo_thumbwidth+self.geo_pad>self.geo_width:

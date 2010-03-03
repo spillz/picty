@@ -107,7 +107,7 @@ class OverlayGroup:
             if t.is_active(item,hover_data):
                 drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx),int(y))
             offx+=t.icon.get_width()+xpad
-    def simple_render_with_highlight(self,highlight_ind,item,hover_data,drawable,gc,x,y,xpad):
+    def simple_render_with_highlight(self,highlight_ind,button_down,item,hover_data,drawable,gc,x,y,xpad):
         '''
         renders the tools horizontally across the already rendered image in the drawable
         hover_ind -- the number of the tool to highlight
@@ -122,13 +122,23 @@ class OverlayGroup:
         offx=0
         for i in xrange(len(self.tools)):
             t=self.tools[i]
+            adjx,adjy=0,0
             if t.is_active(item,hover_data):
                 if i==highlight_ind:
                     w,h=t.icon.get_width(),t.icon.get_height()
-                    highlight_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+8,h+8)
-                    highlight_pb.fill(0x9090c0a0)
-                    drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-4),int(y-4))
-                drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx),int(y))
+                    if button_down:
+                        highlight_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+8,h+8)
+                        highlight_pb.fill(0x404060a0)
+                        drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-4),int(y-4))
+                        highlight_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+6,h+6)
+                        highlight_pb.fill(0x606080a0)
+                        drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-3),int(y-3))
+                        adjx,adjy=1,1
+                    else:
+                        highlight_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+8,h+8)
+                        highlight_pb.fill(0x9090c0a0)
+                        drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-4),int(y-4))
+                drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx+adjx),int(y+adjy))
             offx+=t.icon.get_width()+xpad
     def get_command(self, x, y, offx, offy, xpad):
         left=offx
