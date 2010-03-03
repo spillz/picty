@@ -791,6 +791,8 @@ class MainFrame(gtk.VBox):
                             self.browser.show()
                         self.hpane_ext.show()
                         self.info_bar.show()
+                        if self.sidebar_toggle.get_active():
+                            self.sidebar.show()
                         self.toolbar1.show()
                         self.toolbar2.show()
                         self.is_iv_fullscreen=False
@@ -801,7 +803,7 @@ class MainFrame(gtk.VBox):
                         self.toolbar2.hide()
                         self.browser.hide()
                         self.info_bar.hide()
-                        self.hpane_ext.hide()
+                        self.sidebar.hide()
                         self.is_iv_fullscreen=True
                         if not self.is_fullscreen:
                             self.window.fullscreen()
@@ -880,7 +882,8 @@ class MainFrame(gtk.VBox):
                     self.browser.show()
                 self.toolbar1.show()
                 self.toolbar2.show()
-                self.hpane_ext.show()
+                if self.sidebar_toggle.get_active():
+                    self.sidebar.show()
                 self.info_bar.show()
                 self.is_iv_fullscreen=False
                 if self.is_fullscreen:
@@ -894,7 +897,7 @@ class MainFrame(gtk.VBox):
                 self.browser.hide()
                 self.toolbar1.hide()
                 self.toolbar2.hide()
-                self.hpane_ext.hide()
+                self.sidebar.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True
                 print self.window.get_size()

@@ -146,6 +146,8 @@ class ImageViewer(gtk.VBox):
         self.plugin_controller=None
         self.hover_cmds=hover_cmds
         self.mouse_hover=False
+        self.command_highlight_ind=-1
+        self.command_highlight_bd=False
 
         self.freeze_image_refresh=False
         self.change_block=False
@@ -174,6 +176,7 @@ class ImageViewer(gtk.VBox):
         self.imarea.add_events(gtk.gdk.KEY_RELEASE_MASK)
 
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
+        self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
         self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
         self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
@@ -282,6 +285,22 @@ class ImageViewer(gtk.VBox):
             if not self.mouse_hover:
                 self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
             self.mouse_hover=True
+            cmd=self.get_hover_command(event.x,event.y)
+            if self.command_highlight_ind!=cmd:
+                self.command_highlight_ind=cmd
+                self.redraw_view()
+
+    def mouse_motion_signal(self,obj,event):
+        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
+        if self.item!=None:
+            if not self.mouse_hover:
+                self.redraw_view()
+            self.mouse_hover=True
+            cmd=self.get_hover_command(event.x,event.y)
+            if self.command_highlight_ind!=cmd:
+                self.command_highlight_ind=cmd
+                self.redraw_view()
+
 
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
@@ -290,15 +309,23 @@ class ImageViewer(gtk.VBox):
         if self.item!=None:
             if self.mouse_hover:
                 self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+            cmd=-1
+            if self.command_highlight_ind!=cmd:
+                self.command_highlight_ind=cmd
+                self.redraw_view()
         self.mouse_hover=False
 
     def button_press(self,widget,event):
+        self.command_highlight_bd=False
         if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
             cmd=self.get_hover_command(event.x,event.y)
             if cmd>=0:
                 cmd=self.hover_cmds.tools[cmd]
                 if cmd.is_active(self.item,self.mouse_hover):
                     cmd.action(cmd,self.item)
+        if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_PRESS:
+            self.command_highlight_bd=True
+            self.redraw_view()
 
 
     def get_hover_command(self, x, y):
@@ -356,6 +383,5 @@ class ImageViewer(gtk.VBox):
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
         if drew_image and not self.plugin_controller:
-            self.hover_cmds.simple_render(self.item,self.mouse_hover,drawable,gc,4,4,4)
+            self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
-
