@@ -135,14 +135,22 @@ def get_relevance(item):
     return item.relevance
 
 def text_descr(item):
-    ##TODO: tidy this up using functions above
     try:
         header=item.meta['Title']
     except:
         header=get_fname(item)
     details=''
+    val=get_keyword(item)
+    if val:
+        val=str(val)
+        if len(val)<90:
+            details+='Tags: '+val
+        else:
+            details+=val[:88]+'...'
     val=get_ctime(item)
     if val>datetime.datetime(1900,1,1):
+        if details and not details.endswith('\n'):
+            details+='\n'
         details+='Date: '+str(val)
 #    else:
 #        details+='Mod: '+str(get_mtime(item))
@@ -160,15 +168,9 @@ def text_descr(item):
     if val:
         exposure+=' iso%s'%(val,)
     if exposure:
-        details+='\n'+exposure
-    val=get_keyword(item)
-    #print 'KEYWORDS:',len(val),val,type(val)
-    if val:
-        val=str(val)
-        if len(val)<90:
-            details=details+'\nTags: '+val
-        else:
-            details=details+'\n'+val[:88]+'...'
+        if details and not details.endswith('\n'):
+            details+='\n'
+        details+=exposure
     return (header,details)
 
 
