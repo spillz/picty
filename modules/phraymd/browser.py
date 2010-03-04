@@ -670,19 +670,25 @@ class ImageBrowser(gtk.HBox):
             if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
-                    l=self.imarea.create_pango_layout('')
-                    l.set_markup('<b><big>'+a+'</big></b>\n<small>'+b+'</small>')
-                    l.set_width((self.geo_thumbwidth+self.geo_pad)*pango.SCALE)
-                    l.set_wrap(pango.WRAP_WORD_CHAR)
-                    lx=int(x+self.geo_pad/4)
-                    ly=max(y+30,int(y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4))
-                    w,h=l.get_pixel_size()
-                    overlay_height=int(y+self.geo_pad/2+thumbheight+(self.geo_thumbheight-thumbheight)/2-ly)
-                    if overlay_height>0:
-                        overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,thumbwidth,overlay_height)
-                        overlay_pb.fill(0x0000007f)
-                        drawable.draw_pixbuf(None,overlay_pb,0,0,x+self.geo_pad/2+(self.geo_thumbwidth-thumbwidth)/2,ly,-1,-1)
-                    drawable.draw_layout(gc,lx,ly,l,white)
+                    if a or b:
+                        l=self.imarea.create_pango_layout('')
+                        if a and b:
+                            l.set_markup('<b><big>'+a+'</big></b>\n<small>'+b+'</small>')
+                        elif a:
+                            l.set_markup('<b><big>'+a+'</big></b>')
+                        elif b:
+                            l.set_markup('<small>'+b+'</small>')
+                        l.set_width((self.geo_thumbwidth+self.geo_pad)*pango.SCALE)
+                        l.set_wrap(pango.WRAP_WORD_CHAR)
+                        lx=int(x+self.geo_pad/4)
+                        ly=max(y+30,int(y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4))
+                        w,h=l.get_pixel_size()
+                        overlay_height=int(y+self.geo_pad/2+thumbheight+(self.geo_thumbheight-thumbheight)/2-ly)
+                        if overlay_height>0:
+                            overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,thumbwidth,overlay_height)
+                            overlay_pb.fill(0x0000007f)
+                            drawable.draw_pixbuf(None,overlay_pb,0,0,x+self.geo_pad/2+(self.geo_thumbwidth-thumbwidth)/2,ly,-1,-1)
+                        drawable.draw_layout(gc,lx,ly,l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
                 self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)

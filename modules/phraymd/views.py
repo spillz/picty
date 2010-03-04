@@ -37,6 +37,7 @@ import datetime
 import pluginmanager
 import simple_parser as sp
 import metadata
+import settings
 
 
 def get_mtime(item):
@@ -135,42 +136,51 @@ def get_relevance(item):
     return item.relevance
 
 def text_descr(item):
-    try:
-        header=item.meta['Title']
-    except:
-        header=get_fname(item)
+    header=''
+    if settings.overlay_show_title:
+        try:
+            header=item.meta['Title']
+        except:
+            header=get_fname(item)
     details=''
-    val=get_keyword(item)
-    if val:
-        val=str(val)
-        if len(val)<90:
-            details+='Tags: '+val
-        else:
-            details+=val[:88]+'...'
-    val=get_ctime(item)
-    if val>datetime.datetime(1900,1,1):
-        if details and not details.endswith('\n'):
-            details+='\n'
-        details+='Date: '+str(val)
+    if settings.overlay_show_path:
+        details+=os.path.split(item.filename)[0]
+    if settings.overlay_show_tags:
+        val=get_keyword(item)
+        if val:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            val=str(val)
+            if len(val)<90:
+                details+='Tags: '+val
+            else:
+                details+=val[:88]+'...'
+    if settings.overlay_show_date:
+        val=get_ctime(item)
+        if val>datetime.datetime(1900,1,1):
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+='Date: '+str(val)
 #    else:
 #        details+='Mod: '+str(get_mtime(item))
-    val=get_focal(item)
-    exposure=u''
-    if val:
-        exposure+='%imm '%(int(val),)
-    val=get_aperture(item)
-    if val:
-        exposure+='f/%3.1f'%(val,)
-    val=get_speed_str(item)
-    if val:
-        exposure+=' %ss'%(val,)
-    val=get_iso_str(item)
-    if val:
-        exposure+=' iso%s'%(val,)
-    if exposure:
-        if details and not details.endswith('\n'):
-            details+='\n'
-        details+=exposure
+    if settings.overlay_show_exposure:
+        val=get_focal(item)
+        exposure=u''
+        if val:
+            exposure+='%imm '%(int(val),)
+        val=get_aperture(item)
+        if val:
+            exposure+='f/%3.1f'%(val,)
+        val=get_speed_str(item)
+        if val:
+            exposure+=' %ss'%(val,)
+        val=get_iso_str(item)
+        if val:
+            exposure+=' iso%s'%(val,)
+        if exposure:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+=exposure
     return (header,details)
 
 

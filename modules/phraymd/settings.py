@@ -28,7 +28,7 @@ import gtk
 maemo=False
 
 release_version='0.2.0' #this is the version number of the released program
-version='0.4.1' #version is saved to data and configuration files
+version='0.4.2' #version is saved to data and configuration files
 
 plugins_disabled=[]
 
@@ -74,6 +74,13 @@ settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
 data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
 cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
 
+overlay_show_title=True
+overlay_show_path=False
+overlay_show_tags=True
+overlay_show_date=True
+overlay_show_exposure=True
+
+
 collections_dir=os.path.join(data_dir,'collections')
 if not os.path.exists(collections_dir):
     os.makedirs(collections_dir)
@@ -108,12 +115,19 @@ def save():
         cPickle.dump(layout,f,-1)
         cPickle.dump(custom_launchers,f,-1)
         cPickle.dump(plugins_disabled,f,-1)
+        cPickle.dump(overlay_show_title,f,-1)
+        cPickle.dump(overlay_show_path,f,-1)
+        cPickle.dump(overlay_show_tags,f,-1)
+        cPickle.dump(overlay_show_date,f,-1)
+        cPickle.dump(overlay_show_exposure,f,-1)
     finally:
         f.close()
 
 
 def load():
-    global version, precache_count, custom_launchers, user_tag_info, places, layout, active_collection_file, legacy_image_dirs, plugins_disabled
+    global version, precache_count, custom_launchers, user_tag_info, places, layout, \
+        active_collection_file, legacy_image_dirs, plugins_disabled, \
+        overlay_show_title,overlay_show_path,overlay_show_tags,overlay_show_date,overlay_show_exposure
     try:
         f=open(conf_file,'rb')
     except:
@@ -147,6 +161,12 @@ def load():
                 places=cPickle.load(f)
         if file_version>='0.3.2':
             plugins_disabled=cPickle.load(f)
+        if file_version>='0.4.2':
+            overlay_show_title=cPickle.load(f)
+            overlay_show_path=cPickle.load(f)
+            overlay_show_tags=cPickle.load(f)
+            overlay_show_date=cPickle.load(f)
+            overlay_show_exposure=cPickle.load(f)
     except:
         pass
     finally:

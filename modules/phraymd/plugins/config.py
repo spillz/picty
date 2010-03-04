@@ -89,6 +89,7 @@ class ConfigPanel(gtk.Dialog):
             return panel
 
         page(nb,"About",AboutBox())
+        page(nb,"General",GeneralBox())
         page(nb,"Collections",CollectionsBox(plugin))
         page(nb,"Plugins",PluginBox())
         page(nb,"Tools",ToolsBox())
@@ -208,6 +209,34 @@ class ToolsBox(gtk.VBox):
                     del settings.custom_launchers[mime]
                 break
         self.model.remove(iter)
+
+class GeneralBox(gtk.HBox):
+    def __init__(self):
+        gtk.HBox.__init__(self)
+        a_frame=gtk.Frame("Overlay")
+        b_frame=gtk.Frame("Cache")
+        a_box=gtk.VBox()
+        b_box=gtk.VBox()
+        c_box=gtk.VBox()
+        a_frame.add(a_box)
+        def box_add_check(box,text,var_name):
+            button=gtk.CheckButton(text)
+            button.set_active(settings.__dict__[var_name])
+            button.connect("toggled",self.toggle_check,var_name)
+            box.pack_start(button,False)
+            return button
+        box_add_check(a_box,'Show title','overlay_show_title')
+        box_add_check(a_box,'Show path','overlay_show_path')
+        box_add_check(a_box,'Show tags','overlay_show_tags')
+        box_add_check(a_box,'Show date and time','overlay_show_date')
+        box_add_check(a_box,'Show exposure details','overlay_show_exposure')
+        self.pack_start(b_box,False)
+        self.pack_start(a_frame,False)
+        self.pack_start(c_box,False)
+        self.show_all()
+
+    def toggle_check(self,widget,var_name):
+        settings.__dict__[var_name]=widget.get_active()
 
 
 class CollectionsBox(gtk.HBox):
