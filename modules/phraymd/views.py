@@ -523,7 +523,7 @@ class Index():
         dup.sort_key_text=self.sort_key_text
         dup.filter_tree=self.filter_tree
         dup.filter_text=self.filter_text
-        dup.collection=collection
+        dup.collection=self.collection
         dup.items[:]=self.items[:]
         return dup
     def set_filter(self,expr):
