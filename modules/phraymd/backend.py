@@ -684,6 +684,46 @@ class MapImagesJob(WorkerJob):
             self.restart=False
             self.im_count=0
 
+
+
+class RotateThumbJob(WorkerJob):
+    def __init__(self,worker,collection,browser,left=True,limit_to_view=True):
+        WorkerJob.__init__(self,'ROTATETHUMBS',830,worker,collection,browser)
+        self.pos=0
+        self.cancel=False
+        self.limit_to_view=limit_to_view
+        self.left=left
+        self.view=self.collection.get_active_view()
+        self.rotate_count=0
+
+    def __call__(self):
+        jobs=self.worker.jobs
+        collection=self.collection
+        i=self.pos
+        if self.limit_to_view:
+            listitems=self.view
+        else:
+            listitems=self.collection
+        while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            item=listitems(i)
+            if item.selected:
+                rotated=True
+                if self.left:
+                    imagemanip.rotate_left(item,self.collection)
+                else:
+                    imagemanip.rotate_right(item,self.collection)
+                idle_add(self.browser.update_status,1.0*i/len(listitems),'Rotating selected images')
+            i+=1
+        if i<len(listitems) and not self.cancel:
+            self.pos=i
+        else:
+            idle_add(self.browser.update_status,1.0*i/len(listitems),'Rotating selected images')
+            idle_add(self.browser.refresh_view,self.collection)
+            self.pos=0
+            self.cancel=False
+            return True
+        return False
+
 SELECT=0
 DESELECT=1
 INVERT_SELECT=2
@@ -1147,6 +1187,12 @@ class Worker:
     def request_thumbnails(self,itemlist):
         if not self.jobs.has_job(job_class=ThumbnailJob,collection=self.active_collection):
             self.queue_job(ThumbnailJob,itemlist)
+
+    def rotate_selected_thumbs(self,left=True):
+        self.queue_job(RotateThumbJob,left)
+
+    def recreate_thumb(self,item):
+        self.queue_job(RecreateThumbJob,[item])
 
     def recreate_thumb(self,item):
         self.queue_job(RecreateThumbJob,[item])

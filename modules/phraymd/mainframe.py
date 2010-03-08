@@ -699,6 +699,12 @@ class MainFrame(gtk.VBox):
     def select_recreate_thumb(self,widget):
         self.tm.recreate_selected_thumbs()
 
+    def select_rotate_left(self,widget):
+        self.tm.rotate_selected_thumbs(True)
+
+    def select_rotate_right(self,widget):
+        self.tm.rotate_selected_thumbs(False)
+
     def filter_text_changed(self,widget):
         if self.active_collection!=None:
             self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
@@ -944,36 +950,52 @@ class MainFrame(gtk.VBox):
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
             return
 
+        rootmenu=gtk.Menu()
+
         launch_menu=gtk.Menu()
         for app in io.app_info_get_all_for_type(itype):
             menu_add(launch_menu,app.get_name(),self.mime_open,app,None)
 
-        smenu=gtk.Menu()
+        smenu=rootmenu
         launch_item=gtk.MenuItem("Open with")
         launch_item.show()
         launch_item.set_submenu(launch_menu)
         smenu.append(launch_item)
 
+        fmenu_item=gtk.MenuItem("File Operations")
+        fmenu=gtk.Menu()
+        menu_add(fmenu,"_Copy...",self.select_copy)
+        menu_add(fmenu,"_Move...",self.select_move)
+        menu_add(fmenu,"_Delete",self.select_delete)
+        fmenu_item.set_submenu(fmenu)
+        rootmenu.append(fmenu_item)
+
+        rmenu_item=gtk.MenuItem("Rotate")
+        rmenu=gtk.Menu()
+        menu_add(rmenu,"Anti-clockwise",self.select_rotate_left)
+        menu_add(rmenu,"Clockwise",self.select_rotate_left)
+        rmenu_item.set_submenu(rmenu)
+        rootmenu.append(rmenu_item)
+
         menu_add(smenu,"Show All _Selected",self.select_show)
-        menu_add(smenu,"_Copy Selection...",self.select_copy)
-        menu_add(smenu,"_Move Selection...",self.select_move)
-        menu_add(smenu,"_Delete Selection...",self.select_delete)
         menu_add(smenu,"Add _Tags",self.select_keyword_add)
         menu_add(smenu,"_Remove Tags",self.select_keyword_remove)
         menu_add(smenu,"Set Descriptive _Info",self.select_set_info)
         menu_add(smenu,"Re_load Metadata",self.select_reload_metadata)
         menu_add(smenu,"Recreate Thumb_nails",self.select_recreate_thumb)
+
         #menu_add(smenu,"_Batch Manipulation",self.select_batch)
 
-        smenu_item=gtk.MenuItem("Selected")
-        smenu_item.show()
-        smenu_item.set_submenu(smenu)
-        menu_item=gtk.MenuItem("This Image")
-        menu_item.show()
-        menu_item.set_submenu(menu)
-        rootmenu=gtk.Menu()
-        rootmenu.append(smenu_item)
-        rootmenu.append(menu_item)
+#        smenu_item=gtk.MenuItem("Selected")
+#        smenu_item.show()
+#        smenu_item.set_submenu(smenu)
+#        rootmenu.append(smenu_item)
+
+#        menu_item=gtk.MenuItem("This Image")
+#        menu_item.show()
+#        menu_item.set_submenu(menu)
+#        rootmenu.append(menu_item)
+
         rootmenu.append(gtk.SeparatorMenuItem())
         menu_add(rootmenu,"Select _All",self.select_all)
         menu_add(rootmenu,"Select _None",self.select_none)

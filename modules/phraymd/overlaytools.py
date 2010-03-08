@@ -136,7 +136,7 @@ class OverlayGroup:
                         adjx,adjy=1,1
                     else:
                         highlight_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+8,h+8)
-                        highlight_pb.fill(0x9090c0a0)
+                        highlight_pb.fill(0xa0a0f0a0)
                         drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-4),int(y-4))
                 drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx+adjx),int(y+adjy))
             offx+=t.icon.get_width()+xpad

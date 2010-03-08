@@ -518,9 +518,9 @@ class ImageBrowser(gtk.HBox):
         self.geo_thumbwidth=128
         self.geo_thumbheight=128
         if settings.maemo:
-            self.geo_pad=20
+            self.geo_pad=16
         else:
-            self.geo_pad=30
+            self.geo_pad=32
         self.geo_view_offset=0
         self.geo_screen_offset=0
         self.geo_ind_view_first=0
@@ -594,8 +594,10 @@ class ImageBrowser(gtk.HBox):
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
-        grey = colormap.alloc_color(0x6000,0x6000,0x6000)
+        grey = colormap.alloc_color(0x5000,0x5000,0x5000)
+        lgrey = colormap.alloc_color(0x8900,0x8900,0x8900)
         gc_s = drawable.new_gc(foreground=grey,background=grey)
+        gc_h = drawable.new_gc(foreground=lgrey,background=lgrey)
         white = colormap.alloc_color('white')
         gc_v = drawable.new_gc(foreground=white)
         colormap=drawable.get_colormap()
@@ -612,7 +614,10 @@ class ImageBrowser(gtk.HBox):
             self.hover_ind=self.recalc_hover_ind(mx,my)
         else:
             self.hover_ind=-1
-
+        if self.hover_ind>=0:
+            hover_item=self.active_view(self.hover_ind)
+        else:
+            hover_item=None
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         display_space=True
         imgind=self.geo_ind_view_first
@@ -631,14 +636,17 @@ class ImageBrowser(gtk.HBox):
                 if key_mods&(gtk.gdk.SHIFT_MASK|gtk.gdk.CONTROL_MASK):
                     if self.last_selected:
                         if key_mods&gtk.gdk.SHIFT_MASK:
-                            drawable.draw_rectangle(gc_g, True, int(x+self.geo_pad/16), int(y+self.geo_pad/16),
-                                int(self.geo_thumbwidth+self.geo_pad*7/8), int(self.geo_thumbheight+self.geo_pad*7/8))
+                            drawable.draw_rectangle(gc_g, True, int(x), int(y),
+                                int(self.geo_thumbwidth+self.geo_pad), int(self.geo_thumbheight+self.geo_pad))
                         else:
-                            drawable.draw_rectangle(gc_r, True, int(x+self.geo_pad/16), int(y+self.geo_pad/16),
-                                int(self.geo_thumbwidth+self.geo_pad*7/8), int(self.geo_thumbheight+self.geo_pad*7/8))
+                            drawable.draw_rectangle(gc_r, True, int(x), int(y),
+                                int(self.geo_thumbwidth+self.geo_pad), int(self.geo_thumbheight+self.geo_pad))
+            if hover_item==item or self.command_highlight_ind<0 and item.selected and hover_item and hover_item.selected:
+                drawable.draw_rectangle(gc_h, True, int(x+2), int(y+2),
+                    int(self.geo_thumbwidth+self.geo_pad-4), int(self.geo_thumbheight+self.geo_pad-4))
             if item.selected:
-                drawable.draw_rectangle(gc_s, True, int(x+self.geo_pad/8), int(y+self.geo_pad/8),
-                    int(self.geo_thumbwidth+self.geo_pad*3/4), int(self.geo_thumbheight+self.geo_pad*3/4))
+                drawable.draw_rectangle(gc_s, True, int(x+5), int(y+5),
+                    int(self.geo_thumbwidth+self.geo_pad-10), int(self.geo_thumbheight+self.geo_pad-10))
 #           todo: come up with a scheme for highlighting images
             if item==self.focal_item:
                 try:
