@@ -1,3 +1,45 @@
+phraymd (0.2a2) karmic; urgency=low
+
+  * Non-maintainer upload.
+  * features:
+    * icon refresh -- thanks yeKcim
+    * new config dialog (replaces config tab in sidebar)
+    * batch rotate selection of images
+    * improvements to browser usability (OSD text, OSD hints, context menu simplification for selections)
+    * preferences for customizing the text overlay in the viewer window
+    * implement basic support for XMP (if pyexiv 0.2 is present)
+    * split toolbar into two: collection and browser specific
+  * bug fixes:
+    * attempting to access browse window sizing info before browser has displayed caused traceback
+    * search filters based on the current view caused app to hang
+    * improved pane resizing algorithm after image is opened for viewing
+    * drag and drop now works in nautilus (copies files)
+    * use fallbacks if DateTimeOriginal Exif key is missing
+  * Based on rev381 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Mon, 08 Mar 2010 22:29:44 -0500
+
+phraymd (0.2a1) karmic; urgency=low
+
+  * First release of 0.2 series of phraymd
+  * Overhaul of the backend
+    * multiple collection handling
+    * improved threaded job handling
+    * simple collection switching in a collection combo on the toolbar
+    * dialogs for adding new collections or browing folders
+  * Bug fixes for search features (many thanks to contributor Stuart)
+  * Based on rev 361 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Fri, 12 Feb 2010 23:18:15 -0500
+
+phraymd (0.1.0a13) karmic; urgency=low
+
+  * thumbnail images extracted from image metadata are rotated correctly (and don't hang the program)
+  * import plugin browsing defaults vary with mount type (ghoto vs filestore). this should ensure the browse should work without the need to check boxes.
+  * Based on rev 343 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sun, 20 Dec 2009 14:28:02 -0500
+
 phraymd (0.1.0a12) karmic; urgency=low
 
   * Use time.sleep after idle_add on the backend thread to improve UI responsiveness during collection scan and other intensive ops
