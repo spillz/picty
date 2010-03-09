@@ -308,14 +308,6 @@ class MainFrame(gtk.VBox):
         self.hpane.show()
         self.hpane_ext.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
-#        self.hpane_ext.add1(self.sidebar)
-#        self.hpane_ext.add2(self.browser_box)
-#        self.hpane_ext.show()
-#        self.hpane.add1(self.hpane_ext)
-#        self.hpane.add2(self.iv)
-#        self.hpane.show()
-#        self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
-
         self.pack_start(self.toolbar1,False,False)
         self.pack_start(self.hpane)
         self.pack_start(self.info_bar,False)
@@ -330,38 +322,9 @@ class MainFrame(gtk.VBox):
         dbusserver.start()
         self.tm.start()
 
-#        if self.active_collection!=None:
-#            self.browser.active_collection=self.active_collection
-#            self.browser.active_view=self.active_collection.get_active_view()
-#            self.browser.active_view.sort_key_text=self.sort_order.get_active_text()
-#            self.browser.active_view.key_cb=imageinfo.sort_keys[self.sort_order.get_active_text()]
-#            self.tm.set_active_collection(self.active_collection)
-#            self.tm.load_collection('')
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
-        self.toolbar2.connect_after("realize", self.coll_realized)
-#        if self.active_collection==None:
-#            self.create_local_store(self.coll_combo)
-#        else:
-#            self.browser.show()
-#            coll=self.active_collection
-#            self.coll_combo.set_active(coll.id)
-#            self.tm.set_active_collection(coll)
-#            self.browser.active_collection=coll
-#            self.browser.active_view=coll.get_active_view()
-#            sort_model=self.sort_order.get_model()
-#            for i in xrange(len(sort_model)):
-#                if self.browser.active_view.sort_key_text==sort_model[i][0]:
-#                    self.sort_order.set_active(i)
-#                    break
-#            self.sort_toggle.set_active(self.browser.active_view.reverse)
-#            if not coll.is_open:
-#                self.tm.load_collection('')
-##            self.browser.refresh_view()
-#            self.filter_entry.set_text(self.active_collection.get_active_view().filter_text)
-
-    def coll_realized(self, widget):
         coll=self.active_collection
         if coll==None:
             self.create_local_store(self.coll_combo)
@@ -476,7 +439,7 @@ class MainFrame(gtk.VBox):
         if not coll.is_open:
             self.tm.load_collection('')
         self.browser.show()
-        self.browser.refresh_view()
+##        self.browser.refresh_view()
         pluginmanager.mgr.callback('collection_activated',coll)
 
     def close_collection(self,widget):
@@ -741,7 +704,7 @@ class MainFrame(gtk.VBox):
 #        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
 #        widget.set_active(self.browser.active_view.reverse)
 #        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
-        self.browser.refresh_view()
+            self.browser.refresh_view()
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
