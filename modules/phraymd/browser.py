@@ -609,6 +609,10 @@ class ImageBrowser(gtk.HBox):
 
         drawable.set_background(black)
 
+        mouse_loc=self.imarea.get_pointer()
+        self.hover_ind=self.recalc_hover_ind(*mouse_loc)
+        self.command_highlight_ind=self.get_hover_command(self.hover_ind,*mouse_loc)
+
         (mx,my)=self.imarea.get_pointer()
         if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
             self.hover_ind=self.recalc_hover_ind(mx,my)
@@ -686,7 +690,7 @@ class ImageBrowser(gtk.HBox):
                             l.set_markup('<b><big>'+a+'</big></b>')
                         elif b:
                             l.set_markup('<small>'+b+'</small>')
-                        l.set_width((self.geo_thumbwidth+self.geo_pad)*pango.SCALE)
+                        l.set_width((self.geo_thumbwidth+self.geo_pad*3/4)*pango.SCALE)
                         l.set_wrap(pango.WRAP_WORD_CHAR)
                         lx=int(x+self.geo_pad/4)
                         ly=max(y+30,int(y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4))
