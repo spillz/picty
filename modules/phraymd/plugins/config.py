@@ -349,7 +349,7 @@ class PluginBox(gtk.VBox):
 class AboutBox(gtk.VBox):
     def __init__(self):
         gtk.VBox.__init__(self,False,10)
-        pb=gtk.gdk.pixbuf_new_from_file(settings.icon_file)
+        pb=gtk.gdk.pixbuf_new_from_file(settings.splash_file)
         pb=pb.scale_simple(128,128,gtk.gdk.INTERP_BILINEAR)
         icon=gtk.image_new_from_pixbuf(pb)
         phraymd=gtk.Label()

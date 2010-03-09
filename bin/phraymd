@@ -29,9 +29,11 @@ filename=os.path.abspath(__file__)
 if filename=='/usr/bin/phraymd':
     module_path='/usr/share/phraymd'
     icon_file='/usr/share/pixmaps/phraymd.png'
+    splash_file='/usr/share/phraymd/icons/phraymd-polaroids-and-frame.png'
 else:
     module_path=os.path.join(os.path.split(os.path.split(filename)[0])[0],'modules')
     icon_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'desktop/phraymd.png')
+    splash_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'icons/phraymd-polaroids-and-frame.png')
 print 'running phraymd with module path',module_path
 sys.path.insert(0,module_path)
 
@@ -52,6 +54,7 @@ from phraymd import settings
 
 settings.init() ##todo: make more of the settings module dependant on this call??
 settings.icon_file=icon_file
+settings.splash_file=splash_file
 settings.module_path=module_path
 
 from phraymd import mainframe
