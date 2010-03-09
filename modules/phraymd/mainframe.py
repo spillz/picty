@@ -904,7 +904,7 @@ class MainFrame(gtk.VBox):
         menu_add(menu,'Delete Image',self.delete_item,item)
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
-        if not item.selected:
+        if self.browser.command_highlight_ind>=0 or not item.selected:
             menu.append(gtk.SeparatorMenuItem())
             menu_add(menu,"Select _All",self.select_all)
             menu_add(menu,"Select _None",self.select_none)
