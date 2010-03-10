@@ -141,7 +141,7 @@ def text_descr(item):
         try:
             header=item.meta['Title']
         except:
-            header=get_fname(item)
+            header=os.path.split(item.filename)[1]
     details=''
     if settings.overlay_show_path:
         details+=os.path.split(item.filename)[0]
