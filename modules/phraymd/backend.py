@@ -422,7 +422,7 @@ class WalkDirectoryJob(WorkerJob):
                 r=p.rfind('.')
                 if r<=0:
                     continue
-                fullpath=os.path.normcase(os.path.join(root, p))
+                fullpath=os.path.join(root, p)
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
@@ -521,7 +521,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 r=p.rfind('.')
                 if r<=0:
                     continue
-                fullpath=os.path.normcase(os.path.join(root, p))
+                fullpath=os.path.join(root, p)
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
