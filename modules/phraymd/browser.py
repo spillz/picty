@@ -672,10 +672,12 @@ class ImageBrowser(gtk.HBox):
                 adjx=self.geo_pad/2+(128-thumbwidth)/2
                 drawable.draw_pixbuf(gc, item.thumb, 0, 0,int(x+adjx),int(y+adjy))
             elif item.cannot_thumb:
+                (thumbwidth,thumbheight)=(0,0)
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_fail, 0, 0,int(x+adjx),int(y+adjy))
             else:
+                (thumbwidth,thumbheight)=(0,0)
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
