@@ -177,12 +177,13 @@ class ImageBrowser(gtk.HBox):
         self.imarea.connect("drag-begin", self.drag_begin_signal)
         self.imarea.connect("drag-end",self.drag_end_signal)
         self.imarea.connect("drag-data-received",self.drag_receive_signal)
+        self.imarea.connect("drag-motion",self.drag_motion_signal)
+        self.imarea.connect("drag-leave",self.drag_leave_signal)
         #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
 
         self.imarea.show()
         self.vscroll.show()
         self.imarea.grab_focus()
-
 
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         if self.hover_ind<0:
@@ -417,6 +418,11 @@ class ImageBrowser(gtk.HBox):
                 print 'dropped uris',uris
                 self.emit('uris-dropped',item,uris)
 
+    def drag_motion_signal(self,widget, drag_context, x, y, timestamp):
+        self.redraw_view() ##todo: could do some calcs to see if anything actually needs to be redrawn
+
+    def drag_leave_signal(widget, drag_context, timestamp):
+        self.redraw_view()
 
     def recalc_hover_ind(self,x,y):
         '''return the index of the item of the drawable coordinates (x,y)'''
