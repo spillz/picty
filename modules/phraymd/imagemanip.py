@@ -293,6 +293,8 @@ def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
+        if io.get_mime_type(item.filename)=='image/x-adobe-dng': ##for extraction with dcraw
+            raise TypeError
         image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
         print 'opened image',item.filename,image
 #        parsed version
