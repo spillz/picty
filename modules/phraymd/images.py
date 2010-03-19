@@ -40,17 +40,13 @@ class Item(list):
         list.__init__(self,[filename])
         self.filename=filename
         self.mtime=mtime
-        self.thumbsize=(0,0)
         self.thumb=None
         self.thumburi=None
-        self.meta=None
-        self.thumbrgba=False
         self.qview=None
-        self.qview_size=None
         self.image=None
-        self.cannot_thumb=False
-        self.selected=False
         self.meta_changed=False
+        self.meta=None ##a copy of self.meta will be stored as self.meta_backup if self.meta_changed is True
+        self.selected=False
         self.relevance=0
     def key(self):
         return 1
@@ -92,34 +88,20 @@ class Item(list):
         return self.meta_changed
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
-        del odict['thumbsize']
-        del odict['thumb']
-        del odict['thumbrgba']
+        if odict['thumb']:
+            odict['thumb']=None
         del odict['qview']
-        del odict['qview_size']
         del odict['image']
         del odict['selected']
         del odict['relevance']
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
-        self.thumbsize=None
         self.thumb=None
-        self.thumbrgba=False
         self.qview=None
-        self.qview_size=None
         self.image=None
         self.selected=False
         self.relevance=0
-        #todo: eventually delete this -- for legacy support to prevent loading loading keyword metadata as a tuple
-        try:
-            self.meta['Keywords']=list(self.meta['Keywords'])
-        except:
-            pass
-        try:
-            self.meta_backup['Keywords']=list(self.meta_backup['Keywords'])
-        except:
-            pass
 
 def toggle_tags(item,tags,collection=None):
     try:

@@ -377,7 +377,7 @@ class ImageViewer(gtk.VBox):
             drawable.draw_pixbuf(gc,self.item.qview,0,0,x,y)
             drew_image=True
         elif self.item and self.item.thumb:
-            (iw,ih)=self.item.thumbsize
+            iw,ih=self.item.thumb.get_width(),self.item.thumb.get_height()
             x=(self.geo_width-iw)/2
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)

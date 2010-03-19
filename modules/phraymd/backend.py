@@ -228,7 +228,7 @@ class ThumbnailJob(WorkerJob):
             if item.thumb:
                 continue
             if not imagemanip.load_thumb(item):
-                if not item.cannot_thumb and not imagemanip.has_thumb(item):
+                if item.thumb!=False and not imagemanip.has_thumb(item):
                     self.cu_job_queue.append(item)
                     continue
             i+=1
@@ -438,11 +438,11 @@ class WalkDirectoryJob(WorkerJob):
                         if collection.load_metadata:
                             imagemanip.load_metadata(item,collection,get_thumbnail=collection.load_embedded_thumbs)
                             if collection.load_embedded_thumbs and not item.thumb:
-                                item.cannot_thumb=True
+                                item.thumb=False
                         elif collection.load_preview_icons:
                             imagemanip.load_thumb_from_preview_icon(item)
                             if not item.thumb:
-                                item.cannot_thumb=True
+                                item.thumb=False
                         self.browser.lock.acquire()
                         collection.add(item)
                         self.browser.lock.release()
@@ -995,7 +995,6 @@ class VerifyImagesJob(WorkerJob):
                 item.mtime=mtime
                 item.image=None
                 item.qview=None
-                item.qview_size=None
                 imagemanip.load_metadata(item,collection)
                 item.thumb=None
                 item.thumburi=None

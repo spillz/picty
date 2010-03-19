@@ -351,10 +351,8 @@ class ImageBrowser(gtk.HBox):
 #       NB: self.drag_item is set in the button_press callback instead of here
 #        drag_context.source_window.property_change(self.XDS_ATOM, self.TEXT_ATOM, 8,
 #                                              gtk.gdk.PROP_MODE_REPLACE,"a")
-        cmd=self.get_hover_command(self.hover_ind,event.x,event.y)
-        if cmd>0:
+        if self.command_highlight_ind>=0:
             return True
-        pass
 
 
     def drag_end_signal(self, widget, drag_context):
@@ -418,10 +416,10 @@ class ImageBrowser(gtk.HBox):
                 print 'dropped uris',uris
                 self.emit('uris-dropped',item,uris)
 
-    def drag_motion_signal(self,widget, drag_context, x, y, timestamp):
+    def drag_motion_signal(self, widget, drag_context, x, y, timestamp):
         self.redraw_view() ##todo: could do some calcs to see if anything actually needs to be redrawn
 
-    def drag_leave_signal(widget, drag_context, timestamp):
+    def drag_leave_signal(self, widget, drag_context, timestamp):
         self.redraw_view()
 
     def recalc_hover_ind(self,x,y):
@@ -660,7 +658,8 @@ class ImageBrowser(gtk.HBox):
 #           todo: come up with a scheme for highlighting images
             if item==self.focal_item:
                 try:
-                    (thumbwidth,thumbheight)=self.active_view(i).thumbsize
+                    th=self.active_view(i).thumb
+                    (thumbwidth,thumbheight)=th.get_width(),th.get_height()
                     adjy=self.geo_pad/2+(128-thumbheight)/2-3
                     adjx=self.geo_pad/2+(128-thumbwidth)/2-3
                     drawable.draw_rectangle(gc_v, True, int(x+adjx), int(y+adjy), thumbwidth+6, thumbheight+6)
@@ -669,15 +668,16 @@ class ImageBrowser(gtk.HBox):
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
             fail_item=False
             #print item,item.meta,item.thumb,item.cannot_thumb
-            if not item.thumb and not item.cannot_thumb:
+            if item.thumb==None:
                 if not imagemanip.load_thumb(item):
                     request_thumbs=True
             if item.thumb:
-                (thumbwidth,thumbheight)=self.active_view(i).thumbsize
+                th=self.active_view(i).thumb
+                (thumbwidth,thumbheight)=th.get_width(),th.get_height()
                 adjy=self.geo_pad/2+(128-thumbheight)/2
                 adjx=self.geo_pad/2+(128-thumbwidth)/2
                 drawable.draw_pixbuf(gc, item.thumb, 0, 0,int(x+adjx),int(y+adjy))
-            elif item.cannot_thumb:
+            elif item.thumb==False:
                 (thumbwidth,thumbheight)=(0,0)
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2

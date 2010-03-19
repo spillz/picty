@@ -101,7 +101,6 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
         if result:
             if item.thumb and get_thumbnail:
                 item.thumb=orient_pixbuf(item.thumb,item.meta)
-                item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
             if item.meta!=meta:
                 pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
         return result
@@ -227,7 +226,6 @@ def cache_image(item):
         olditem=memimages.pop(0)
         if olditem!=item:
             olditem.image=None
-            olditem.qview_size=(0,0)
             olditem.qview=None
 
 
@@ -238,7 +236,6 @@ def cache_thumb(item):
     memthumbs.append(item)
     if len(memthumbs)>settings.max_memthumbs:
         olditem=memthumbs.pop(0)
-        olditem.thumbsize=(0,0)
         olditem.thumb=None
 
 
@@ -429,7 +426,6 @@ def delete_thumb(item):
     '''
     if item.thumb:
         item.thumb=None
-        item.thumbsize=None
     if item.thumburi:
         os.remove(item.thumburi)
         thumburi=thumb_factory.lookup(uri,int(item.mtime))
@@ -444,7 +440,7 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
     if no thumbnail is present it will be create
     interrupt_fn - callback that returns False if job should be interrupted
     remove_old - if the item name has changed, removes the old thumbnail
-    affects mtime, thumb, thumburi, thumbsize, cannot_thumb members of item
+    affects mtime, thumb, thumburi members of item
     '''
     item.mtime=io.get_mtime(item.filename)
     if item.thumburi:
@@ -486,7 +482,6 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
             item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
             if item.thumb:
-                item.thumbsize=(width,height)
                 item.thumb=thumb_pb
                 cache_thumb(item)
             return True
@@ -501,11 +496,11 @@ def make_thumb(item,interrupt_fn=None,force=False):
     create a thumbnail from the original image using either PIL or dcraw
     interrupt_fn = callback that returns False if routine should cancel (not implemented)
     force = True if thumbnail should be recreated even if already present
-    affects cannot_thumb, thumb, thumburi and thumbsize members of item
+    affects thumb, thumburi members of item
     '''
     if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
         if not force:
-            item.cannot_thumb=True
+            item.thumb=False
             return
         print 'forcing thumbnail creation'
         uri = io.get_uri(item.filename)
@@ -558,9 +553,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
             raise TypeError
     except:
         print 'creating FAILED thumbnail',item
-        item.thumbsize=(0,0)
-        item.thumb=None
-        item.cannot_thumb=True ##TODO: check if this is used anywhere -- try to remove
+        item.thumb=False
         thumb_factory.create_failed_thumbnail(item.filename,int(item.mtime))
         return False
     width=thumb_pb.get_width()
@@ -568,8 +561,6 @@ def make_thumb(item,interrupt_fn=None,force=False):
     uri = io.get_uri(item.filename)
     thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
     item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
-    item.cannot_thumb=False
-    item.thumbsize=(width,height)
     item.thumb=thumb_pb
     cache_thumb(item)
     return True
@@ -578,7 +569,7 @@ def make_thumb(item,interrupt_fn=None,force=False):
 def load_thumb_from_preview_icon(item):
     '''
     try to load a thumbnail embbeded in a picture using gio provided method g_preview_icon_data
-    affects thumbnail, thumbsize members of item
+    affects thumb member of item
     '''
     try:
         print 'loading thumb from preview icon',item.filename
@@ -591,7 +582,6 @@ def load_thumb_from_preview_icon(item):
         h=pb.get_height()
         a=max(128,w,h) ##todo: remove hardcoded sizes
         item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
-        item.thumbsize=(item.thumb.get_width(),item.thumb.get_height())
         return True
     except:
         import sys
@@ -605,7 +595,7 @@ def load_thumb_from_preview_icon(item):
 def load_thumb(item):
     '''
     load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
-    affects thumbnail, thumburi, thumbsize members of item
+    affects thumbnail, thumburi members of item
     '''
     ##todo: could also try extracting the thumb from the image
     ## would not need to make the thumb in that case
@@ -636,7 +626,6 @@ def load_thumb(item):
     except:
         image=None
     if image!=None:
-        item.thumbsize=(image.get_width(),image.get_height())
         item.thumb=image
         cache_thumb(item)
         return True

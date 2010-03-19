@@ -28,7 +28,12 @@ import gtk
 maemo=False
 
 release_version='0.2.0' #this is the version number of the released program
-version='0.4.2' #version is saved to data and configuration files
+version='0.5.0' #version is saved to data and configuration files
+#version notes:
+# 0.5.0
+#  * dropped compatibility with Keyword stored as tuple
+#  * dropped thumbsize, qview_size, thumbrgba, cannot_thumb members of image
+
 
 plugins_disabled=[]
 

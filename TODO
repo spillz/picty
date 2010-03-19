@@ -6,22 +6,29 @@ Project todo list
 * As stuff is completed or plans change the list should be updated.
 * This file will be in source control to keep track of its history.
 
-* Update to pyexiv2 (DONE), support XML (embedded in image and sidecars)
-* Update the browser -- in particular improve the image overlay by
-    * darkening background thumbnail
-    * color the overlay area (a frame around the image)
-    * use visual hints when hovering over buttons
-    * make the text customizable (e.g. ability to show full path)
+* Overhaul image class, metadata and image handling
+   * track file attributes (file size, image dimensions, mtime, presence of thumbnails)
+   * mimetype/store specific handler for metadata read/write and image processing
+
+* Support for XMP sidecars (for images that don't support metadata read/write)
+
+* Update the browser
+    * be more consistent with user theme (colors, look and feel)
     * size and align text better
+    * improve keyboard navigation
+
 * Padding and alignment tweaks to most of the dialog areas
+
 * Progress bar messages don't always disapper (e.g. job cancelled)
     and messages not always useful
+
 * Zoom/Loupe tool in the fullsize view (on the backend, make image loading
     more readily interruptable and pre-load draft images as necessary for speed)
+
 * Overhaul thumbnail support (e.g. allow user to store thumbs in custom
     cache location, support tumbler, use embedded image thumbnails and
     fallback to manual creation as necessary)
+
 * Extend collection support to allow browsing of web-based stores
-* Move settings tab to a tabbed dialog available from the toolbar
 
 phraymd (c) 2010 Damien Moore
