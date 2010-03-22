@@ -711,7 +711,7 @@ class ImageBrowser(gtk.HBox):
                         drawable.draw_layout(gc,lx,ly,l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
-                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)
+                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind if self.hover_ind==i else -1,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)
             i+=1
             x+=self.geo_thumbwidth+self.geo_pad
             if x+self.geo_thumbwidth+self.geo_pad>self.geo_width:
