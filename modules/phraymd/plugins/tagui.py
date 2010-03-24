@@ -350,10 +350,13 @@ class TagFrame(gtk.VBox):
                         menu_add(menu,"Remov_e from Selected Images",self.remove_tag_from_browser_selection)
                         menu_add(menu,"Show _Matches in Current View",self.tag_activate_view)
                     if self.model[row_path][self.M_TYPE]==2:
+                        menu_add(menu,"_Sort Category",self.sort_category)
                         menu_add(menu,"_Delete Category",self.remove_category)
                         menu_add(menu,"Re_name Category",self.rename_category)
                     if self.model[row_path][self.M_PIXBUF]!=None:
                         menu_add(menu,"Remove _Icon",self.remove_bitmap)
+                else:
+                    menu_add(menu,"_Sort",self.sort_category)
             if row_path[0]==1:
                 if len(row_path)>1:
                     if self.model[row_path][self.M_TYPE]==3:
@@ -507,7 +510,16 @@ class TagFrame(gtk.VBox):
                 dest_iter=self.model.insert(dest_iter,rownum,row)
             else:
                 print 'appending',row,rownum
-                dest_iter=self.model.append(dest_iter,row)
+                it=self.model.iter_children(dest_iter)
+                it=None
+                n=self.model.iter_n_children(dest_iter)
+                for i in range(n):
+                    it=self.model.iter_nth_child(dest_iter,i)
+                    if self.model[it][self.M_DISP].lower()>row[self.M_DISP].lower():
+                        dest_iter=self.model.insert(dest_iter,i,row)
+                        break
+                if i==n:
+                    dest_iter=self.model.append(dest_iter,row)
             row=self.model[dest_iter]
             print 'dest',dest_iter
             if row[self.M_TYPE]==3:
@@ -524,17 +536,37 @@ class TagFrame(gtk.VBox):
         copy(iter_node,dest_iter,rownum)
         self.model.remove(iter_node)
 
-    def sort_category(self,iter):
-        '''sort alphabetically by name the child rows of iter'''
+    def sort_category(self,widget,iter):
+        '''menu callback to sort alphabetically by tag name the child rows of iter'''
+        #implements a crude bubble search (if I remember my algorithms correctly)
         i=0
         names=[]
-        for it in self.iter_children(iter):
-            names.append((self.model[iter][self.M_DISP],i))
-            i+=1
-        sort(names)
-        for i in range(len(names)):
-            '''sort items'''
-            pass
+        basepath=self.model.get_path(iter)
+        it=self.model.iter_children(iter)
+        while it:
+            path=self.model.get_path(it)
+            itn=self.model.iter_next(it)
+            if itn:
+                pathn=self.model.get_path(itn)
+                if self.model[path][self.M_DISP].lower()>self.model[pathn][self.M_DISP].lower():
+                    self.model.swap(it,itn)
+                    i-=1
+                else:
+                    i+=1
+                if i<=0:
+                    i=0
+                iter=self.model.get_iter(basepath)
+                print 'sorting index',i
+                if i<self.model.iter_n_children(iter)-1:
+                    it=self.model.iter_nth_child(iter,i)
+                else:
+                    print 'done'
+                    break
+            else:
+                print 'no valid iter'
+                break
+        print 'aborted'
+
 
     def get_checked_tags(self):
         return [it[self.M_KEY] for it in self.iter_all() if it[self.M_TYPE]==3 and it[self.M_CHECK]]
@@ -758,7 +790,10 @@ class TagFrame(gtk.VBox):
                     print row
                     print k
                     print self.user_tags
-        for k in tag_cloud.tags:
+        tag_cloud_list=[(t.lower(),t) for t in tag_cloud.tags]
+        tag_cloud_list.sort()
+        tag_cloud_list=[t[1] for t in tag_cloud_list]
+        for k in tag_cloud_list:
             if k in self.user_tags:
                 path=self.user_tags[k].get_path()
                 if path:
