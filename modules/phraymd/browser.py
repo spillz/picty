@@ -704,7 +704,7 @@ class ImageBrowser(gtk.HBox):
                         ly=max(y+30,int(y+self.geo_pad+self.geo_thumbheight-l.get_pixel_size()[1]-self.geo_pad/4))
                         w,h=l.get_pixel_size()
                         overlay_height=int(y+self.geo_pad/2+thumbheight+(self.geo_thumbheight-thumbheight)/2-ly)
-                        if overlay_height>0:
+                        if overlay_height>0 and thumbwidth>0:
                             overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,thumbwidth,overlay_height)
                             overlay_pb.fill(0x0000007f)
                             drawable.draw_pixbuf(None,overlay_pb,0,0,x+self.geo_pad/2+(self.geo_thumbwidth-thumbwidth)/2,ly,-1,-1)
