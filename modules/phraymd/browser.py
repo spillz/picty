@@ -693,11 +693,13 @@ class ImageBrowser(gtk.HBox):
                     if a or b:
                         l=self.imarea.create_pango_layout('')
                         if a and b:
-                            l.set_markup('<b><big>'+a+'</big></b>\n<small>'+b+'</small>')
+#                            l.set_markup('<span size="6000">'+'w'*25+'</span>')
+#                            print 'layout pixel size smaller',l.get_pixel_size()
+                            l.set_markup('<b><span size="9000">'+a+'</span></b>\n<span size="7000">'+b+'</span>')
                         elif a:
-                            l.set_markup('<b><big>'+a+'</big></b>')
+                            l.set_markup('<b><span size="9000">'+a+'</span></b>')
                         elif b:
-                            l.set_markup('<small>'+b+'</small>')
+                            l.set_markup('<span size="7000">'+b+'</span>')
                         l.set_width((self.geo_thumbwidth+self.geo_pad*3/4)*pango.SCALE)
                         l.set_wrap(pango.WRAP_WORD_CHAR)
                         lx=int(x+self.geo_pad/4)
