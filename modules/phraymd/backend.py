@@ -596,8 +596,9 @@ class BuildViewJob(WorkerJob):
         self.browser.lock.acquire()
         if i==0:
             if self.sort_key:
-                view.key_cb=imageinfo.sort_keys[self.sort_key]
                 view.sort_key_text=self.sort_key
+            if view.sort_key_text:
+                view.key_cb=imageinfo.sort_keys[view.sort_key_text]
             view.filters=None
             filter_text=self.filter_text.strip()
             if filter_text.startswith('lastview&'):
@@ -621,7 +622,7 @@ class BuildViewJob(WorkerJob):
                 self.browser.lock.acquire()
                 view.add_item(item)
                 self.browser.lock.release()
-                if i-lastrefresh>200:
+                if i-lastrefresh>20:
                     lastrefresh=i
                     idle_add(self.browser.refresh_view,self.collection)
                     idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
