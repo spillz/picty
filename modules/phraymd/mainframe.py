@@ -731,6 +731,8 @@ class MainFrame(gtk.VBox):
                         self.toolbar1.show()
                         self.toolbar2.show()
                         self.info_bar.show()
+                        if self.sidebar_toggle.get_active():
+                            self.sidebar.show()
                         self.is_iv_fullscreen=False
                         if self.is_fullscreen:
                             self.window.unfullscreen()
