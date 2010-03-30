@@ -147,6 +147,7 @@ def save_metadata(item):
     save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
     '''
     if metadata.save_metadata(item):
+        item.mtime=io.get_mtime(item.filename) ##todo: this and the next line should be a method of the image class
         update_thumb_date(item)
         return True
     return False
@@ -157,6 +158,7 @@ def save_metadata_key(item,key,value):
     sets the metadata key to value and saves the change in the image
     '''
     if metadata.save_metadata_key(item,key,value):
+        item.mtime=io.get_mtime(item.filename)
         update_thumb_date(item)
         return True
     return False
@@ -444,13 +446,14 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
     '''
     item.mtime=io.get_mtime(item.filename)
     if item.thumburi:
+        oldthumburi=item.thumburi
         if not item.thumb:
             load_thumb(item)
         uri = io.get_uri(item.filename)
         thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
-        if remove_old:
-            io.remove_file(item.thumburi)
         item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+        if remove_old and oldthumburi!=item.thumburi:
+            io.remove_file(oldthumburi)
         return True
     return make_thumb(item,interrupt_fn)
 
