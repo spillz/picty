@@ -426,8 +426,7 @@ class ImageBrowser(gtk.HBox):
         '''return the index of the item of the drawable coordinates (x,y)'''
         ind=(int(self.geo_view_offset)+int(y))/(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count
         ind+=min(self.geo_horiz_count,int(x)/(self.geo_thumbwidth+self.geo_pad))
-        ind=max(0,min(len(self.active_view)-1,ind))
-        if x>=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
+        if ind<0 or ind>len(self.active_view)-1 or x>=(self.geo_thumbheight+self.geo_pad)*self.geo_horiz_count:
             ind=-1
         return ind
 

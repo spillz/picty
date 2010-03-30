@@ -191,17 +191,13 @@ class BatchMetaDialog(gtk.Dialog):
         table = gtk.Table(rows=rows, columns=3, homogeneous=False)
         self.item=item
         r=0
-        print item.meta
         for k,v in tags:
             try:
-                print k,v
                 val=metadata.app_key_to_string(k,item.meta[k])
                 if not val:
                     val=''
-                print 'item',k,val
             except:
                 val=''
-                print 'item err',k,val
             self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()

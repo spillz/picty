@@ -173,11 +173,12 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.thread_refresh()
     def t_collection_item_metadata_changed(self,collection,item,meta_before):
         '''item metadata has changed'''
-        self.tagframe.tag_cloud[collection].update(item,meta_before)
-        i=collection.get_active_view().find_item(item)
-        if i>0:
-            self.tagframe.tag_cloud_view[collection.get_active_view()].update(item,meta_before)
-        self.thread_refresh()
+        if collection!=None:
+            self.tagframe.tag_cloud[collection].update(item,meta_before)
+            i=collection.get_active_view().find_item(item)
+            if i>=0:
+                self.tagframe.tag_cloud_view[collection.get_active_view()].update(item,meta_before)
+            self.thread_refresh()
     def t_collection_item_added_to_view(self,collection,view,item):
         '''item in collection was added to view'''
         self.tagframe.tag_cloud_view[view].add(item)
