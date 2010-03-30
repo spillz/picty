@@ -622,7 +622,7 @@ class BuildViewJob(WorkerJob):
                 self.browser.lock.acquire()
                 view.add_item(item)
                 self.browser.lock.release()
-                if i-lastrefresh>20:
+                if i-lastrefresh>200:
                     lastrefresh=i
                     idle_add(self.browser.refresh_view,self.collection)
                     idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
