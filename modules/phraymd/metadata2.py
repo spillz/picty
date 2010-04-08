@@ -20,11 +20,11 @@ License:
 '''
 
 '''
-metadata.py
+metadata2.py
 
 This module describes the subset of exif, iptc and xmp metadata used by the program
-and provides a dictionary to handle conversion between exiv2 formats and the internal
-representation
+and provides a dictionary to handle conversion between pyexiv2 formats and the internal
+representation (works with pyexiv2 version 0.2 and later)
 '''
 
 import pyexiv2

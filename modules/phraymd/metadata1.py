@@ -20,14 +20,14 @@ License:
 '''
 
 '''
-metadata.py
+metadata1.py
 
 This module describes the subset of exif, iptc and xmp metadata used by the program
-and provides a dictionary to handle conversion between exiv2 formats and the internal
-representation
+and provides a dictionary to handle conversion between pyexiv2 formats and the internal
+representation (works with pyexiv2 versions 0.1.x)
 '''
 
-import pyexiv2
+import pyexiv2_alt as pyexiv2 ##hacked pyexiv2 module to workaround bug for rational sequences (e.g. GPS coords)
 import gtk
 ##todo: reimplement for xmp support
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
