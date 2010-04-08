@@ -1,3 +1,27 @@
+phraymd (0.2a5) karmic; urgency=low
+
+  * features
+    * tweak font sizing of OSD text (should be customizable and/or grab from theme
+    * sorting in tag pane (automatically sort uncategorized tags, sort dragged tags and right click sort option)
+  * bug fixes
+    * more accurate tag pane counts
+    * don't highlight last image if mouse located beyond the last image position
+    * thumbs are updated correctly after metadata is changed (avoids thumb recreation after restart)
+    * correctly sort the browser view based on last setting at startup
+    * sidebar toggle would get out of sync with sidebar state
+    * save OSD button should not highlight unless mouse is over it
+    * force browser redraw to avoid rendering glitch when dragging items into the browser pane
+    * temporary fix for correctly displaying DNGs
+  * Based on rev399 of lp:phraymd    
+
+ -- Damien Moore <damienlmoore@gmail.com>  Tue, 30 Mar 2010 22:33:57 -0400
+
+phraymd (0.2a4) karmic; urgency=low
+
+  * Aaargh... build failure on 0.2a3
+
+ -- Damien Moore <damienlmoore@gmail.com>  Tue, 09 Mar 2010 22:47:48 -0500
+
 phraymd (0.2a3) karmic; urgency=low
 
   * Replaced app icon (thanks again yeKcim)
