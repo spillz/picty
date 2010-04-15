@@ -357,9 +357,9 @@ class MainFrame(gtk.VBox):
             old_id=self.active_collection.id
         dialog=metadatadialogs.BrowseDirectoryDialog()
         response=dialog.run()
+        prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
-            prefs=dialog.get_values()
             path=prefs['image_dirs'][0]
             self.coll_set.add_directory(path,prefs)
             self.coll_combo.set_active(path)
@@ -373,9 +373,9 @@ class MainFrame(gtk.VBox):
             old_id=self.active_collection.id
         dialog=metadatadialogs.AddLocalStoreDialog()
         response=dialog.run()
+        prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
-            prefs=dialog.get_values()
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:
