@@ -26,12 +26,12 @@ The ubuntu packages required to run this project are:
 
 python-gtk2
 python-gnome2
-python-gnome2-desktop
-python-gnome2-extras
 python-pyexiv2
 python-pyinotify
 
 (python v2.5-2.6 is assumed, the program may work with other versions, but may not)
+
+recommended packages: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
 
 RUNNING PHRAYMD
 ===============

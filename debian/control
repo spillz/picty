@@ -8,7 +8,7 @@ Homepage: https://launchpad.net/phraymd
 
 Package: phraymd
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-pyinotify, python-pyexiv2, python-gtk2, python-gnome2, python-gnome2-desktop, python-gnome2-extras
+Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-pyinotify, python-pyexiv2, python-gtk2, python-gnome2
 Recommends: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
 Description: phraymd Photo Manager
  phraymd, pronounced "framed", is a python-based gnome-centric photo manager providing
