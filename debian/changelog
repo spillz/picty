@@ -1,8 +1,8 @@
-phraymd (0.2a6) hardy intrepid jaunty karmic lucid; urgency=low
+phraymd (0.2a6) karmic; urgency=low
 
   * bug-fixes
     * pyexiv2 0.2 partial support now works
-    * collection creation dialogs work correctly on latest lucid packages
+    * collection creation dialogs work correctly on latest ubuntu lucid packages
   * Based on rev404 of lp:phraymd
 
  -- Damien Moore <damienlmoore@gmail.com>  Thu, 15 Apr 2010 21:29:52 -0400
