@@ -21,7 +21,13 @@ License:
 
 '''
 
-##nasty hack needed because osmgpsmap is in the wrong place
+def log_err(message): ##todo: this belongs in the logger module and should be used universally (although not with this specific implementation)
+    print 'Map Plugin:',message
+    import sys,traceback
+    print traceback.format_exc(sys.exc_info()[2])
+
+
+##nasty hack needed because osmgpsmap is in the wrong place on older ubuntu versions
 import sys
 sys.path.append('/usr/local/lib/python2.5/site-packages/gtk-2.0')
 sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
@@ -38,18 +44,34 @@ from phraymd import pluginbase
 
 try:
     import osmgpsmap
-    map_source=(
-    #('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID),
-    #('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE),
-    #('Google Satellite Quad',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE_QUAD),
-    ('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE,'mapsforfree'),
-    #('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP),
-    ('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
-    ('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
-    ('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'))
+    if '__version__' in dir(osmgpsmap) and osmgpsmap.__version__>='0.4.0':
+        map_source=(
+        ('Maps for Free',osmgpsmap.SOURCE_MAPS_FOR_FREE,'mapsforfree'),
+        ('Open Street Map',osmgpsmap.SOURCE_OPENSTREETMAP,'openstreetmap'),
+        ('Open Street Map Renderer',osmgpsmap.SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
+        ('Virtual Earth Hybrid',osmgpsmap.SOURCE_VIRTUAL_EARTH_HYBRID,'virtualearthhybrid'),
+        ('Virtual Earth Satellite',osmgpsmap.SOURCE_VIRTUAL_EARTH_SATELLITE,'virtualearthsatellite'),
+        ('Virtual Earth Street',osmgpsmap.SOURCE_VIRTUAL_EARTH_STREET,'virtualearthstreet'),
+        ('Open Aerial Map',osmgpsmap.SOURCE_OPENAERIALMAP,'openaerialmap'),
+        ('Yahoo Hybrid',osmgpsmap.SOURCE_YAHOO_HYBRID,'yahoohybrid'),
+        ('Yahoo Satellite',osmgpsmap.SOURCE_YAHOO_SATELLITE,'yahoosatellite'),
+        ('Yahoo Street',osmgpsmap.SOURCE_YAHOO_STREET,'yahoostreet'),
+        ('Google Hybrid',osmgpsmap.SOURCE_GOOGLE_HYBRID,'googlehybrid'),
+        ('Google Satellite',osmgpsmap.SOURCE_GOOGLE_SATELLITE,'googlesatellite'),
+        ('Google Street',osmgpsmap.SOURCE_GOOGLE_STREET,'googlestreet'),
+        )
+    else:
+        map_source=(
+        ('Maps for Free',osmgpsmap.MAP_SOURCE_MAPS_FOR_FREE,'mapsforfree'),
+        ('Open Street Map',osmgpsmap.MAP_SOURCE_OPENSTREETMAP,'openstreetmap'),
+        ('Open Street Map Renderer',osmgpsmap.MAP_SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
+        ('Virtual Earth Satellite',osmgpsmap.MAP_SOURCE_VIRTUAL_EARTH_SATTELITE,'virtualearthsatellite'),
+        ('Open Aerial Map',osmgpsmap.MAP_SOURCE_OPENAERIALMAP,'openaerialmap'),
+        ('Google Hybrid',osmgpsmap.MAP_SOURCE_GOOGLE_HYBRID,'googlehybrid'),
+        ('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE,'googlesatellite'),
+        )
 except:
-    map_source=tuple()
-
+    log_err('ERROR CREATING MAP SOURCES')
 
 gtk.gdk.threads_init()
 
@@ -57,7 +79,7 @@ class MapPlugin(pluginbase.Plugin):
     name='MapSidebar'
     display_name='Map Sidebar'
     api_version='0.1.0'
-    version='0.1.0'
+    version='0.1.1'
     def __init__(self):
         print 'INITIALIZED MAP SIDEBAR PLUGIN'
     def plugin_init(self,mainframe,app_init):
@@ -70,9 +92,14 @@ class MapPlugin(pluginbase.Plugin):
             f=open(os.path.join(settings.data_dir,'map-places'),'rb')
             version=cPickle.load(f)
             places=cPickle.load(f)
+            print 'MAP PLUGIN VERSION',version
+            if version>='0.1.1':
+                source=cPickle.load(f)
+                print 'SETTING PREFERRED SOURCE',source
+                self.mapframe.set_preferred_source(source)
             f.close()
         except:
-            print 'Map Plugin: No map-places file found'
+            log_err('No map-places file found')
         self.mapframe.set_places(places)
         self.mapframe.show_all()
         self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Map"))
@@ -82,19 +109,15 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe.update_map_items()
     ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
     def plugin_shutdown(self,app_shutdown=False):
-        print 'Map Plugin: saving map places'
-        f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
-        cPickle.dump(self.version,f,-1)
-        cPickle.dump(self.mapframe.get_places(),f,-1)
-        f.close()
         try:
             print 'Map Plugin: saving map places'
             f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
             cPickle.dump(self.version,f,-1)
             cPickle.dump(self.mapframe.get_places(),f,-1)
+            cPickle.dump(self.mapframe.get_source(),f,-1)
             f.close()
         except:
-            print 'Map Plugin: Error saving map places'
+            log_err('Error saving map places')
         self.mapframe.destroy()
         del self.mapframe
 
@@ -120,7 +143,7 @@ class MapFrame(gtk.VBox):
         for s in map_source:
             self.source_combo.append_text(s[0])
         self.source_combo.connect("changed",self.set_source_signal)
-        self.source_combo.set_active(1)
+        self.source_combo.set_active(1) ##open street map by default
 
         zoom_in_button = gtk.Button(stock=gtk.STOCK_ZOOM_IN)
         zoom_in_button.connect('clicked', self.zoom_in_clicked)
@@ -154,6 +177,23 @@ class MapFrame(gtk.VBox):
         self.pack_start(hbox_place, False)
         self.update_map_items()
 
+    def set_preferred_source(self,source_id):
+        ind=0
+        for s in map_source:
+            if s[2]==source_id:
+                print 'setting map source',source_id
+                self.source_combo.set_active(ind)
+                return
+            ind+=1
+
+    def get_source(self):
+        if self.source_combo.get_active()>=0:
+            print 'map source',map_source[self.source_combo.get_active()][2]
+            return map_source[self.source_combo.get_active()][2]
+        else:
+            print 'no map source'
+            return None
+
     def set_places(self,places):
         self.places=places
         self.places_combo.get_model().clear()
@@ -164,38 +204,42 @@ class MapFrame(gtk.VBox):
         return self.places
 
     def set_source_signal(self,widget):
-            if self.osm:
+        if self.osm:
 #                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
-                ll=self.osm.screen_to_geographic(0,0)
-                place=(ll[0],ll[1],self.osm.get_property('zoom'))
-                print 'NEW MAP PLACE',place
-                self.osm_box.remove(self.osm)
-                self.osm.destroy()
-            else:
-                place=None
+            ll=self.osm.screen_to_geographic(0,0)
+            place=(ll[0],ll[1],self.osm.get_property('zoom'))
+            print 'NEW MAP PLACE',place
+            self.osm_box.remove(self.osm)
+            self.osm.destroy()
+        else:
+            place=None
 ##                place=(0.0,0.0,1)
+        if '__version__' in dir(osmgpsmap) and osmgpsmap.__version__>='0.4.0':
+            self.osm = osmgpsmap.GpsMap(
+                tile_cache=os.path.join(settings.cache_dir,'maps/')+map_source[widget.get_active()][2],
+                map_source=map_source[widget.get_active()][1],
+            )
+        else:
             self.osm = osmgpsmap.GpsMap(
                 tile_cache=os.path.join(settings.cache_dir,'maps/')+map_source[widget.get_active()][2],
                 tile_cache_is_full_path=True,
                 repo_uri=map_source[widget.get_active()][1],
             )
-            self.osm.connect('button-release-event', self.map_clicked)
-            self.osm.connect('button-press-event', self.map_clicked)
-            target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
-            self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
-                    gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
-            self.osm.connect("drag-data-received",self.drag_receive_signal)
-            self.osm_box.pack_start(self.osm)
-            self.osm_box.show_all()
-            if place:
-                self.osm.set_mapcenter(*place) #todo: this causes an assertion - why?
-                self.update_map_items()
+        self.osm.connect('button-release-event', self.map_clicked)
+        self.osm.connect('button-press-event', self.map_clicked)
+        target_list=[('image-filename', gtk.TARGET_SAME_APP, 1)]
+        self.osm.drag_dest_set(gtk.DEST_DEFAULT_ALL, target_list,
+                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+        self.osm.connect("drag-data-received",self.drag_receive_signal)
+        self.osm_box.pack_start(self.osm)
+        self.osm_box.show_all()
+        if place:
+            self.osm.set_mapcenter(*place) #todo: this causes an assertion - why?
+            self.update_map_items()
 
     def add_place_signal(self,widget):
         place=self.places_combo.get_active_text()
-        print 'adding new place',place,'to',self.places
         if place not in self.places:
-            print 'adding new place to combo'
             self.places_combo.append_text(place)
         self.places[place]=(self.osm.get_property('latitude'),
             self.osm.get_property('longitude'),self.osm.get_property('zoom'))
