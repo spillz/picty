@@ -325,10 +325,9 @@ class MainFrame(gtk.VBox):
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
-        self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show)
+        self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show) ##this is a bit of a hack to ensure the main window shows before a collection is activated or the user is prompted to create a new one
 
     def on_show(self,widget):
-        print '*******************************show!!!'
         self.sort_toggle.disconnect(self.show_sig_id)
         coll=self.active_collection
         if coll==None:
