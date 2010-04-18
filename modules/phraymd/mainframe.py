@@ -325,12 +325,18 @@ class MainFrame(gtk.VBox):
         self.coll_combo.connect("collection-changed",self.collection_changed)
         self.coll_combo.connect("add-dir",self.browse_dir_collection)
         self.coll_combo.connect("add-localstore",self.create_local_store)
+        self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show)
+
+    def on_show(self,widget):
+        print '*******************************show!!!'
+        self.sort_toggle.disconnect(self.show_sig_id)
         coll=self.active_collection
         if coll==None:
             self.create_local_store(self.coll_combo)
         else:
             self.coll_combo.set_active(coll.id)
             self.collection_changed(self.coll_combo,coll.id)
+
 
     def destroy(self,event):
         for coll in self.coll_set:
