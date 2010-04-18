@@ -30,6 +30,8 @@ representation
 import pyexiv2
 
 if '__version__' in dir(pyexiv2) and pyexiv2.__version__>='0.2':
+    print 'Using pyexiv2 version',pyexiv2.__version__
     from metadata2 import *
 else:
+    print 'Using pyexiv2 version 0.1.x'
     from metadata1 import *

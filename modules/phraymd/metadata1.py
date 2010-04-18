@@ -45,15 +45,17 @@ def load_metadata(item,filename=None,thumbnail=False):
         get_exiv2_meta(item.meta,rawmeta)
         if thumbnail:
             try:
-                ttype,tdata=rawmeta.getThumbnailData()
-                pbloader = gtk.gdk.PixbufLoader() ##todo: gtk stuff doesn't belong here -- shift it to image manip (i.e. just return the binary data)
-                pbloader.write(tdata)
-                pb=pbloader.get_pixbuf()
-                pbloader.close()
-                w=pb.get_width()
-                h=pb.get_height()
-                a=max(128,w,h)
-                item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+                previews = metadata.previews
+                if previews:
+                    preview = previews[-1]
+                    pbloader = gtk.gdk.PixbufLoader()
+                    pbloader.write(preview.data)
+                    pb = pbloader.get_pixbuf()
+                    pbloader.close()
+                    w=pb.get_width()
+                    h=pb.get_height()
+                    a=max(128,w,h)
+                    item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
             except:
                 print 'Load thumbnail failed',item.filename
                 import traceback,sys
@@ -266,14 +268,11 @@ def conv_rational(metaobject,keys,value=None):
     return None
 
 def coords_as_rational(decimal):
-    print 'converting coords to rational',decimal
     decimal=abs(decimal)
     degree=int(decimal)
     minute=int((decimal-degree)*60)
-    second=int((decimal-degree-minute/60)*3600*100000)
-    print 'coords',degree,minute,second
-    return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,100000))
-    print 'coords',degree,minute,second
+    second=int((decimal-degree)*3600-minute*60)
+    return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,1))
 
 def coords_as_decimal(rational):
     if type(rational) in (list,tuple):

@@ -60,6 +60,8 @@ def load_metadata(item,filename=None,thumbnail=False):
         get_exiv2_meta(item.meta,rawmeta)
         if thumbnail:
             try:
+                previews = rawmeta.previews
+                thumb=previews[-1]
                 ttype,tdata=rawmeta.getThumbnailData()
                 pbloader = gtk.gdk.PixbufLoader() ##todo: gtk stuff doesn't belong here -- shift it to image manip (i.e. just return the binary data)
                 pbloader.write(tdata)
@@ -179,7 +181,6 @@ def conv_date_taken(metaobject,keys,value=None):
 
 def conv_str(metaobject,keys,value=None):
     if value!=None:
-        print keys,value
         if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!='':
             if keys[0].startswith('Iptc'):
                 metaobject[keys[0]]=[value]
@@ -189,7 +190,10 @@ def conv_str(metaobject,keys,value=None):
         return True
     for k in keys:
         try:
-            val=metaobject[k].value
+            if k.startswith('Iptc'):
+                val=metaobject[k].values[0]
+            else:
+                val=metaobject[k].value
             return str(val)
         except:
             pass
@@ -206,7 +210,10 @@ def conv_int(metaobject,keys,value=None):
         return True
     for k in keys:
         try:
-            val=metaobject[k].value
+            if k.startswith('Iptc'):
+                val=metaobject[k].values[0]
+            else:
+                val=metaobject[k].value
             return int(val)
         except:
             pass
@@ -249,10 +256,10 @@ def conv_keywords(metaobject,keys,value=None):
         return True
     try:
         val=None
-        if keys[0] in metaobject:
-            val=metaobject[keys[1]].value
-        elif keys[1] in metaobject:
-            val=metaobject[keys[1]].value
+        if keys[0] in metaobject.xmp_keys:
+            val=metaobject[keys[0]].value
+        elif keys[1] in metaobject.iptc_keys:
+            val=metaobject[keys[1]].values
         if type(val)==str: ##todo: shouldn't need this check with the new pyexiv2 api
             return [val]
         return list(val)
@@ -289,13 +296,11 @@ def conv_rational(metaobject,keys,value=None):
     return None
 
 def coords_as_rational(decimal):
-    print 'converting coords to rational',decimal
     decimal=abs(decimal)
     degree=int(decimal)
     minute=int((decimal-degree)*60)
-    second=int((decimal-degree-minute/60)*3600*100000)
-    print 'coords',degree,minute,second
-    return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,100000))
+    second=int((decimal-degree)*3600-minute*60)
+    return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,1))
 
 def coords_as_decimal(rational):
     if type(rational) in (list,tuple):
@@ -320,7 +325,6 @@ def conv_latlon(metaobject,keys,value=None):
         metaobject[keys[1]]=latref
         metaobject[keys[2]]=rat_lon
         metaobject[keys[3]]=lonref
-        print 'wrote latlon'
     else:
         try:
             rat_lat=metaobject[keys[0]].value
