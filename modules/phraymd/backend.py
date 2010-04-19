@@ -436,7 +436,7 @@ class WalkDirectoryJob(WorkerJob):
                 if collection.find(item)<0:
                     if not collection.verify_after_walk:
                         if collection.load_metadata:
-                            imagemanip.load_metadata(item,collection,get_thumbnail=collection.load_embedded_thumbs)
+                            imagemanip.load_metadata(item,None,get_thumbnail=collection.load_embedded_thumbs)
                             if collection.load_embedded_thumbs and not item.thumb:
                                 item.thumb=False
                         elif collection.load_preview_icons:
@@ -976,7 +976,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                imagemanip.load_metadata(item,collection) ##todo: check if exists already
+                imagemanip.load_metadata(item,None) ##todo: check if exists already
                 time.sleep(0.005)
                 self.browser.lock.acquire()
                 collection.add(item)
@@ -996,7 +996,7 @@ class VerifyImagesJob(WorkerJob):
                 item.mtime=mtime
                 item.image=None
                 item.qview=None
-                imagemanip.load_metadata(item,collection)
+                imagemanip.load_metadata(item,None)
                 item.thumb=None
                 item.thumburi=None
                 self.browser.lock.acquire()

@@ -92,20 +92,17 @@ def orient_image(image,meta):
 
 
 def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
-    if collection:
-        if item.meta:
-            meta=item.meta.copy()
-        else:
-            meta=item.meta
-        result=metadata.load_metadata(item,filename,get_thumbnail)
-        if result:
-            if item.thumb and get_thumbnail:
-                item.thumb=orient_pixbuf(item.thumb,item.meta)
-            if item.meta!=meta:
-                pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
-        return result
+    if item.meta:
+        meta=item.meta.copy()
     else:
-        return metadata.load_metadata(item,filename)
+        meta=item.meta
+    result=metadata.load_metadata(item,filename,get_thumbnail)
+    if result:
+        if item.thumb and get_thumbnail:
+            item.thumb=orient_pixbuf(item.thumb,item.meta)
+        if collection!=None and item.meta!=meta:
+            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
+    return result
 
 def rotate_left(item,collection=None):
     '''
