@@ -71,6 +71,7 @@ try:
         ('Google Satellite',osmgpsmap.MAP_SOURCE_GOOGLE_SATTELITE,'googlesatellite'),
         )
 except:
+    map_source=tuple()
     log_err('ERROR CREATING MAP SOURCES')
 
 gtk.gdk.threads_init()
