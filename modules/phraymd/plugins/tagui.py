@@ -150,8 +150,8 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
-        self.mainframe.browser.connect("tag-row-dropped",self.tag_dropped_in_browser)
-        self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+        self.mainframe.connect("tag-row-dropped",self.tag_dropped_in_browser)
+        self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
         print 'Tag Plugin: Saving tag layout'
         try:
@@ -199,7 +199,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def thread_refresh(self):
         if not self.block_refresh:
             gobject.idle_add(self.tagframe.start_refresh_timer)
-    def tag_dropped_in_browser(self,browser,item,tag_widget,path):
+    def tag_dropped_in_browser(self,mainframe,browser,item,tag_widget,path):
         print 'Tag Plugin: dropped',tag_widget,path
         tags=self.tagframe.get_tags(path)
         if not item.selected:
@@ -227,7 +227,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
         self.tagframe.tag_cloud_view[view]=TagCloud()
-    def view_rebuild_complete(self,browser):
+    def view_rebuild_complete(self,mainframe,browser):
         self.tagframe.refresh()
     def load_user_tags(self,filename):
         pass
@@ -272,7 +272,6 @@ class TagFrame(gtk.VBox):
         self.tag_cloud_view={}
         self.mainframe=mainframe
         self.worker=mainframe.tm
-        self.browser=mainframe.browser
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
 ##        self.sort_model=gtk.TreeModelSort(self.model)
 ##        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
@@ -454,11 +453,11 @@ class TagFrame(gtk.VBox):
             self.worker.keyword_edit(keyword_string,True)
 
     def tag_mode_toggle_signal(self, button):
-        if button.get_active():
-            self.browser.mode=self.browser.MODE_TAG
-        else:
-            self.browser.mode=self.browser.MODE_NORMAL
-        self.browser.imarea.grab_focus()
+#        if button.get_active():
+#            self.mainframe.active_browser().mode=self.browser.MODE_TAG
+#        else:
+#            self.mainframe.active_browser().mode=self.browser.MODE_NORMAL
+        self.mainframe.active_browser().imarea.grab_focus()
 
     def tag_selected_signal(self, button):
         tags=self.get_checked_tags()
@@ -467,7 +466,7 @@ class TagFrame(gtk.VBox):
             keyword_string+='"%s" '%(t,)
         if keyword_string:
             self.worker.keyword_edit(keyword_string)
-        self.browser.grab_focus()
+        self.mainframe.active_browser().grab_focus()
 
     def iter_all_children(self,iter_node):
         '''iterate all rows from iter_node and their children'''

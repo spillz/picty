@@ -1098,8 +1098,7 @@ class DirectoryUpdateJob(WorkerJob):
 
 
 class Worker:
-    def __init__(self,browser,coll_set):
-        self.browser=browser # the browser widget
+    def __init__(self,coll_set):
         self.coll_set=coll_set
         self.jobs=WorkerJobQueue()
         self.event=threading.Event()
@@ -1151,14 +1150,14 @@ class Worker:
         return self.active_collection
 
     def get_default_job_tuple(self):
-        return (self,self.active_collection,self.browser)
+        return (self,self.active_collection,self.active_collection.browser)
 
     def queue_job_instance(self,job_instance):
         self.jobs.add(job_instance)
         self.event.set()
 
     def queue_job(self,job_class,*extra_args):
-        self.jobs.add(job_class(self,self.active_collection,self.browser,*extra_args))
+        self.jobs.add(job_class(self,self.active_collection,self.active_collection.browser,*extra_args))
         self.event.set()
 
     def kill_jobs_by_class(self,job_class):
@@ -1175,7 +1174,7 @@ class Worker:
         self.queue_job(WalkDirectoryJob,collection)
 
     def quit(self):
-        sj=QuitJob(self,None,self.browser)
+        sj=QuitJob(self,None,self.active_collection.browser)
         self.queue_job_instance(sj)
         while self.thread.isAlive(): ##todo: replace this with a notification
             time.sleep(0.1)
@@ -1233,7 +1232,7 @@ class Worker:
     def deferred_dir_update(self):
         self.dirlock.acquire()
         log.info('Deferred directory monitor event')
-        self.queue_job_instance(DirectoryUpdateJob(self,None,self.browser,self.deferred_dir_update_queue[:])) #queue a verify job since we won't get individual image removal notifications
+        self.queue_job_instance(DirectoryUpdateJob(self,None,self.active_collection.browser,self.deferred_dir_update_queue[:])) #queue a verify job since we won't get individual image removal notifications
 
         del self.deferred_dir_update_queue[:]
         self.dirtimer=None
@@ -1255,7 +1254,7 @@ class Worker:
         if isdir:
             log.debug('directory changed '+path+' '+action)
             if action in ('MOVED_FROM','DELETE'):
-                self.queue_job_instance(VerifyImagesJob(self,collection,self.browser)) #queue a verify job since we won't get individual image removal notifications
+                self.queue_job_instance(VerifyImagesJob(self,collection,self.active_collection.browser)) #queue a verify job since we won't get individual image removal notifications
                 return
         #valid file or a moved directory, so queue the update
         #(modify and create notifications are

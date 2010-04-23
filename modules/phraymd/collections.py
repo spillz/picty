@@ -225,6 +225,7 @@ class Collection2():
         self.views=[]  #a view is a sorted subset of the collection (i.e. database notion of a view)
         self.active_view=None
 
+        self.browser=None
 
     def copy(self):
         dup=Collection2([])

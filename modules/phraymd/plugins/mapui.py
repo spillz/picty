@@ -104,9 +104,10 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe.set_places(places)
         self.mapframe.show_all()
         self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Map"))
-        self.mainframe.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+# FIX THIS!!
+        self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
 
-    def view_rebuild_complete(self,browser):
+    def view_rebuild_complete(self,mainframe,browser):
         self.mapframe.update_map_items()
     ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
     def plugin_shutdown(self,app_shutdown=False):

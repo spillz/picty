@@ -62,14 +62,26 @@ class MainFrame(gtk.VBox):
     '''
     this is the main widget box containing all of the gui widgets
     '''
+    __gsignals__={
+        'activate-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
+        'context-click-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
+        'view-changed':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,)),
+        'view-rebuild-complete':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,)),
+        'status-updated':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_FLOAT,gobject.TYPE_GSTRING)),
+        'tag-row-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),
+        'uris-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT))
+        }
+
     def __init__(self,window):
         gtk.VBox.__init__(self)
         self.lock=threading.Lock()
+        self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         self.volume_monitor=io.VolumeMonitor()
         self.volume_monitor.connect_after("mount-added",self.mount_added)
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)
         self.coll_set=collectionmanager.CollectionSet()
         self.coll_combo=collectionmanager.CollectionCombo(self.coll_set.add_model('MENU'))
+        self.active_collection=None
         self.collections_init()
 
         ##plugin-todo: instantiate plugins
@@ -80,7 +92,6 @@ class MainFrame(gtk.VBox):
         ##todo: this has to be registered after instantiation of browser.
         def show_on_hover(item,hover):
             return hover
-        self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
@@ -110,26 +121,18 @@ class MainFrame(gtk.VBox):
             self.viewer_hover_cmds.register_tool(*tool)
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_hover_cmds)
 
-        self.browser=browser.ImageBrowser(self.hover_cmds) ##todo: create thread manager here and assign to the browser
-        self.tm=backend.Worker(self.browser,self.coll_set)
-        self.browser.tm=self.tm
+        self.browser_nb=gtk.Notebook()
+        self.browser_nb.set_show_tabs(False)
+        self.browser_nb.show()
+        self.browser_nb.connect("switch-page",self.set_active_browser)
+
+        self.tm=backend.Worker(self.coll_set)
 
         self.neededitem=None
         self.iv=viewer.ImageViewer(self.tm,self.viewer_hover_cmds,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
-
-        self.browser.connect("activate-item",self.activate_item)
-        self.browser.connect("context-click-item",self.popup_item)
-        self.browser.connect("status-updated",self.update_status)
-        self.browser.connect("view-changed",self.view_changed)
-##        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
-
-        self.browser.add_events(gtk.gdk.KEY_PRESS_MASK)
-        self.browser.add_events(gtk.gdk.KEY_RELEASE_MASK)
-        self.browser.connect("key-press-event",self.key_press_signal)
-        self.browser.connect("key-release-event",self.key_press_signal)
 
         self.info_bar=gtk.Label('Loading.... please wait')
         self.info_bar.show()
@@ -292,7 +295,7 @@ class MainFrame(gtk.VBox):
         self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
         self.sidebar.set_scrollable(True)
 
-        self.hpane_ext.add1(self.browser)
+        self.hpane_ext.add1(self.browser_nb)
         self.hpane_ext.add2(self.iv)
         self.hpane_ext.show()
 
@@ -306,7 +309,7 @@ class MainFrame(gtk.VBox):
         self.hpane.add1(self.sidebar)
         self.hpane.add2(self.browser_box)
         self.hpane.show()
-        self.hpane_ext.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+        self.hpane_ext.set_position(150)#self.browser.geo_thumbwidth+2*self.browser.geo_pad
 
         self.pack_start(self.toolbar1,False,False)
         self.pack_start(self.hpane)
@@ -328,6 +331,11 @@ class MainFrame(gtk.VBox):
         self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show) ##this is a bit of a hack to ensure the main window shows before a collection is activated or the user is prompted to create a new one
 
     def on_show(self,widget):
+        ##open last used collection or
+        ##todo: device or directory specified at command line.
+        if settings.active_collection_file:
+            self.active_collection=self.coll_set[settings.active_collection_file]
+            self.coll_combo.set_active(settings.active_collection_file)
         self.sort_toggle.disconnect(self.show_sig_id)
         coll=self.active_collection
         if coll==None:
@@ -340,7 +348,7 @@ class MainFrame(gtk.VBox):
     def destroy(self,event):
         for coll in self.coll_set:
             if coll.is_open:
-                sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
+                sj=backend.SaveCollectionJob(self.tm,coll,coll.browser)
                 sj.priority=1050
                 self.tm.queue_job_instance(sj)
         try:
@@ -354,6 +362,47 @@ class MainFrame(gtk.VBox):
         return False
 
 
+    def add_browser(self,collection):
+        c=collection
+        c.browser=browser.ImageBrowser(self.hover_cmds) ##todo: create thread manager here and assign to the browser
+        c.browser.tm=self.tm
+        c.browser.active_collection=c
+        c.browser.active_view=c.get_active_view()
+        c.browser.connect("activate-item",self.activate_item)
+        c.browser.connect("context-click-item",self.popup_item)
+        c.browser.connect("status-updated",self.update_status)
+        c.browser.connect("view-changed",self.view_changed)
+##        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
+
+        c.browser.add_events(gtk.gdk.KEY_PRESS_MASK)
+        c.browser.add_events(gtk.gdk.KEY_RELEASE_MASK)
+        c.browser.connect("key-press-event",self.key_press_signal,c.browser)
+        c.browser.connect("key-release-event",self.key_press_signal,c.browser)
+        c.browser.show_all()
+
+        browser_signals=['activate-item','context-click-item','view-changed',
+            'view-rebuild-complete','status-updated','tag-row-dropped','uris-dropped']
+
+        for sig in browser_signals:
+            c.browser.connect(sig,self.browser_signal_notify,sig)
+
+        tab_label=gtk.HBox()
+        tab_label.pack_start(gtk.Label(c.name))
+        cbut=gtk.Button(label="")
+        cbut.set_relief(gtk.RELIEF_NONE)
+        cbut.set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
+        cbut.connect("clicked",self.close_collection)
+        tab_label.pack_start(cbut)
+        tab_label.show_all()
+        self.browser_nb.append_page(c.browser,tab_label)
+        self.browser_nb.set_current_page(self.browser_nb.page_num(c.browser))
+        if self.browser_nb.get_n_pages()>1:
+            self.browser_nb.set_show_tabs(True)
+        self.browser_nb.set_tab_reorderable(c.browser,True)
+
+    def browser_signal_notify(self,*args):
+        print args
+        self.emit(args[-1],*args[:-1])
 
     def browse_dir_collection(self,combo):
         #prompt for path
@@ -402,23 +451,18 @@ class MainFrame(gtk.VBox):
         ##3/ local directory if specified as a command line args
         ##set and open active collection (by default the last used localstore, otherwise
 
-        ##open last used collection or
-        ##todo: device or directory specified at command line.
-        print 'active_collection_file 4',settings.active_collection_file
-        if settings.active_collection_file:
-            self.active_collection=self.coll_set[settings.active_collection_file]
-            self.coll_combo.set_active(settings.active_collection_file)
-        else:
-            self.active_collection=None
+    def set_active_browser(self,notebook,page,page_num):
+        print '######page changed######'
+        if page_num>=0:
+            browser=self.browser_nb.get_nth_page(page_num)
+            id=browser.active_collection.id
+            self.coll_combo.set_active(id)
 
 
-    def collection_changed(self,combo,id):
+    def collection_changed(self,widget,id):
         if not id:
             self.active_collection=None
             self.tm.set_active_collection(None)
-            self.browser.active_collection=None
-            self.browser.active_view=None
-            self.browser.hide()
             self.filter_entry.set_text('')
             self.sort_order.set_active(-1)
             self.sort_toggle.set_active(False)
@@ -428,35 +472,55 @@ class MainFrame(gtk.VBox):
         print 'changing to coll set with id',id,coll
         self.active_collection=coll
         self.tm.set_active_collection(coll)
-        self.browser.active_collection=coll
-        self.browser.active_view=coll.get_active_view()
-
-        sort_model=self.sort_order.get_model()
-        for i in xrange(len(sort_model)):
-            if self.browser.active_view.sort_key_text==sort_model[i][0]:
-                self.sort_order.set_active(i)
-                break
-        self.sort_toggle.set_active(self.browser.active_view.reverse)
-        self.filter_entry.set_text(self.browser.active_view.filter_text)
 
         if coll.filename:
             settings.active_collection_file=coll.filename
-        if not coll.is_open:
+        if not coll.browser:
+            self.add_browser(coll)
             self.tm.load_collection('')
-        self.browser.show()
-##        self.browser.refresh_view()
+###        self.browser.refresh_view()
+        else:
+            ind=self.browser_nb.get_current_page()
+            need_ind=self.browser_nb.page_num(coll.browser)
+            if ind!=need_ind:
+                self.browser_nb.set_current_page(need_ind)
+
+        sort_model=self.sort_order.get_model()
+        for i in xrange(len(sort_model)):
+            if self.active_browser().active_view.sort_key_text==sort_model[i][0]:
+                self.sort_order.set_active(i)
+                break
+        self.sort_toggle.set_active(self.active_browser().active_view.reverse)
+        self.filter_entry.set_text(self.active_browser().active_view.filter_text)
+        self.view_changed(self.active_browser())
+
         pluginmanager.mgr.callback('collection_activated',coll)
 
     def close_collection(self,widget):
-        coll=self.active_collection
+        browser=self.active_browser()
+        coll=browser.active_collection
+        ind=self.browser_nb.page_num(browser)
+        if ind>=0:
+            print 'CLOSED page',ind
+            self.browser_nb.remove_page(ind)
+            if self.browser_nb.get_n_pages()<2:
+                self.browser_nb.set_show_tabs(False)
         if coll==None:
             return
+        coll.browser=None
         if not coll.is_open:
             return
-        sj=backend.SaveCollectionJob(self.tm,coll,self.browser)
+        sj=backend.SaveCollectionJob(self.tm,coll,coll.browser)
         sj.priority=1050
         self.tm.queue_job_instance(sj)
-        self.coll_combo.set_active(None)
+        ind=self.browser_nb.get_current_page()
+        print 'switched to page',ind,
+        if ind>=0:
+            browser=self.browser_nb.get_nth_page(ind)
+            print browser,browser.active_collection.id
+            self.coll_combo.set_active(browser.active_collection.id)
+        else:
+            self.coll_combo.set_active(None)
 
 #    def collection_opened(self,collection): ##callback used by worker thread
 #        collection.is_open=True
@@ -475,7 +539,7 @@ class MainFrame(gtk.VBox):
         self.coll_set.remove(path)
         print 'removed',collection,collection.filename
         if collection.is_open:
-            sj=backend.SaveCollectionJob(self.tm,collection,self.browser)
+            sj=backend.SaveCollectionJob(self.tm,collection,collection.browser)
             sj.priority=1050
             self.tm.queue_job_instance(sj)
         self.plugmgr.callback('media_disconnected',collection.id)
@@ -523,8 +587,8 @@ class MainFrame(gtk.VBox):
         layout=dict()
         ##layout['window size']=self.window.get_size()
         ##layout['window maximized']=self.window.get_size()
-        layout['sort order']=self.sort_order.get_active_text()
-        layout['sort direction']=self.browser.active_view.reverse
+#        layout['sort order']=self.sort_order.get_active_text()
+#        layout['sort direction']=self.browser.active_view.reverse
         layout['collection']={}
         for c in self.coll_set.iter_coll():
             layout['collection'][c.id]={
@@ -555,7 +619,18 @@ class MainFrame(gtk.VBox):
             self.sidebar.show()
         else:
             self.sidebar.hide()
-        self.browser.grab_focus()
+        self.browser_focus()
+
+    def browser_focus(self):
+        if self.browser_nb.get_current_page()>=0:
+            self.browser_nb.get_nth_page(self.browser_nb.get_current_page()).grab_focus()
+
+    def active_browser(self):
+        if self.browser_nb.get_current_page()>=0:
+            return self.browser_nb.get_nth_page(self.browser_nb.get_current_page())
+        else:
+            return None
+
 
     def selection_popup(self,widget):
         self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
@@ -603,7 +678,10 @@ class MainFrame(gtk.VBox):
 
     def view_changed(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
-        self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(self.browser.active_view)))
+        if browser:
+            self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(browser.active_view)))
+        else:
+            self.info_bar.set_label('No collection open')
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -650,16 +728,18 @@ class MainFrame(gtk.VBox):
         fcd.destroy()
         return sel_dir
 
+
+
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.browser.active_view,sel_dir,self.update_status)
+        fileops.worker.copy(self.active_browser().active_view,sel_dir,self.update_status)
 
     def select_move(self,widget):
         sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.browser.active_view,sel_dir,self.update_status)
+        fileops.worker.move(self.active_browser().active_view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.browser.active_collection,self.browser.active_view,self.update_status)
+        fileops.worker.delete(self.active_browser().active_collection,self.active_browser().active_view,self.update_status)
 
     def select_reload_metadata(self,widget):
         self.tm.reload_selected_metadata()
@@ -678,11 +758,11 @@ class MainFrame(gtk.VBox):
             self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
 
     def set_filter_text(self,widget):
-        self.browser.grab_focus()
+        self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        print 'set filter_text',self.active_collection!=None,self.browser.active_view!=None
-        if self.active_collection!=None and self.browser.active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
+        print 'set filter_text',self.active_collection!=None,self.active_browser().active_view!=None
+        if self.active_collection!=None and self.active_browser().active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
             self.tm.rebuild_view(key,filter_text)
 
     def clear_filter(self,widget):
@@ -690,10 +770,10 @@ class MainFrame(gtk.VBox):
         self.set_filter_text(widget)
 
     def set_sort_key(self,widget):
-        self.browser.grab_focus()
+        self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        if self.active_collection!=None and self.browser.active_view!=None and (self.browser.active_view.sort_key_text!=key):
+        if self.active_collection!=None and self.active_browser().active_view!=None and (self.active_browser().active_view.sort_key_text!=key):
             self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):
@@ -709,7 +789,7 @@ class MainFrame(gtk.VBox):
 #        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
 #        widget.set_active(self.browser.active_view.reverse)
 #        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
-            self.browser.refresh_view()
+            self.active_browser().refresh_view()
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
@@ -721,17 +801,17 @@ class MainFrame(gtk.VBox):
             self.status_bar.hide()
         self.status_bar.set_text(message)
 
-    def key_press_signal(self,obj,event):
+    def key_press_signal(self,obj,event,browser):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
-                fileops.worker.delete(self.browser.active_view,self.update_status)
+                fileops.worker.delete(self.active_browser().active_view,self.update_status)
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
                         if self.active_collection:
-                            self.browser.show()
+                            self.active_browser().show()
                         self.hpane_ext.show()
                         self.toolbar1.show()
                         self.toolbar2.show()
@@ -752,8 +832,8 @@ class MainFrame(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
-                self.browser.active_view.reverse=not self.browser.active_view.reverse
-                self.browser.refresh_view()
+                self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
+                self.active_browser().refresh_view()
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
@@ -764,7 +844,7 @@ class MainFrame(gtk.VBox):
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
                         if self.active_collection:
-                            self.browser.show()
+                            self.active_browser().show()
                         self.hpane_ext.show()
                         self.info_bar.show()
                         if self.sidebar_toggle.get_active():
@@ -777,24 +857,24 @@ class MainFrame(gtk.VBox):
                         self.iv.ImageFullscreen()
                         self.toolbar1.hide()
                         self.toolbar2.hide()
-                        self.browser.hide()
+                        self.active_browser().hide()
                         self.info_bar.hide()
                         self.sidebar.hide()
                         self.is_iv_fullscreen=True
                         if not self.is_fullscreen:
                             self.window.fullscreen()
                             self.is_fullscreen=True
-                self.browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
+                self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
             elif event.keyval==65361: #left
                 if self.iv.item:
-                    ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.browser.active_view)>ind>0:
-                        self.view_image(self.browser.active_view(ind-1))
+                    ind=self.active_browser().item_to_view_index(self.iv.item)
+                    if len(self.active_browser().active_view)>ind>0:
+                        self.view_image(self.active_browser().active_view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
-                    ind=self.browser.item_to_view_index(self.iv.item)
-                    if len(self.browser.active_view)-1>ind>=0:
-                        self.view_image(self.browser.active_view(ind+1))
+                    ind=self.active_browser().item_to_view_index(self.iv.item)
+                    if len(self.active_browser().active_view)-1>ind>=0:
+                        self.view_image(self.active_browser().active_view(ind+1))
         return True
 
 
@@ -813,34 +893,36 @@ class MainFrame(gtk.VBox):
 
     def resize_browser_pane(self):
         w,h=self.hpane_ext.window.get_size()
-        if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
+        if self.active_browser().geo_thumbwidth+2*self.active_browser().geo_pad>=w:
             self.hpane_ext.set_position(w/2)
         else:
-            self.hpane_ext.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
+            self.hpane_ext.set_position(self.active_browser().geo_thumbwidth+2*self.active_browser().geo_pad)
 
 
     def view_image(self,item,fullwindow=False):
+        browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()
         self.iv.SetItem(item)
         self.is_iv_showing=True
-        self.browser.update_geometry(True)
+        browser.update_geometry(True)
         if not visible:
             self.resize_browser_pane()
         if self.iv.item!=None:
-            ind=self.browser.item_to_view_index(self.iv.item)
-            self.browser.center_view_offset(ind)
-        self.browser.update_scrollbar()
-        self.browser.update_required_thumbs()
-        self.browser.refresh_view()
-        self.browser.focal_item=item
-        self.browser.grab_focus()
+            ind=browser.item_to_view_index(self.iv.item)
+            browser.center_view_offset(ind)
+        browser.update_scrollbar()
+        browser.update_required_thumbs()
+        browser.refresh_view()
+        browser.focal_item=item
+        browser.grab_focus()
 
     def hide_image(self):
+        browser=self.active_browser()
         self.iv.hide()
         self.iv.ImageNormal()
         if self.active_collection:
-            self.browser.show()
+            self.active_browser().show()
         #self.hbox.show()
         #self.toolbar1.show()
         #self.toolbar2.show()
@@ -848,14 +930,15 @@ class MainFrame(gtk.VBox):
         self.info_bar.show()
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
-        self.browser.grab_focus()
+        browser.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
+        browser=self.active_browser()
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             if self.is_iv_fullscreen:
                 self.iv.ImageNormal()
                 if self.active_collection:
-                    self.browser.show()
+                    browser.show()
                 self.toolbar1.show()
                 self.toolbar2.show()
                 if self.sidebar_toggle.get_active():
@@ -870,14 +953,14 @@ class MainFrame(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
                 self.iv.ImageFullscreen()
-                self.browser.hide()
+                browser.hide()
                 self.toolbar1.hide()
                 self.toolbar2.hide()
                 self.sidebar.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True
                 print self.window.get_size()
-            self.browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
+            browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
     def popup_item(self,browser,ind,item):
         ##todo: neeed to create a custom signal to hook into
@@ -911,7 +994,7 @@ class MainFrame(gtk.VBox):
         menu_add(menu,'Delete Image',self.delete_item,item)
         menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
         menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
-        if self.browser.command_highlight_ind>=0 or not item.selected:
+        if browser.command_highlight_ind>=0 or not item.selected:
             menu.append(gtk.SeparatorMenuItem())
             menu_add(menu,"Select _All",self.select_all)
             menu_add(menu,"Select _None",self.select_none)
@@ -984,7 +1067,7 @@ class MainFrame(gtk.VBox):
         if uri:
             app_cmd.launch_uris([uri])
         else:
-            app_cmd.launch_uris([io.get_uri(item.filename) for item in self.browser.active_view.get_selected_items()])
+            app_cmd.launch_uris([io.get_uri(item.filename) for item in browser.active_view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template
@@ -1017,7 +1100,7 @@ class MainFrame(gtk.VBox):
         if orient!=orient_backup:
             item.thumb=None
             self.tm.recreate_thumb(item)
-        self.browser.redraw_view()
+        browser.redraw_view()
 
     def launch_item(self,widget,item):
         uri=io.get_uri(item.filename)
@@ -1049,27 +1132,31 @@ class MainFrame(gtk.VBox):
 
     def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
+        browser=self.active_browser()
         imagemanip.rotate_left(item,self.active_collection)
-        self.browser.update_required_thumbs()
+        browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
     def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
+        browser=self.active_browser()
         imagemanip.rotate_right(item,self.active_collection)
-        self.browser.update_required_thumbs()
+        browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
     def delete_item(self,widget,item):
-        fileops.worker.delete(self.browser.active_collection,[item],None,False)
-        ind=self.browser.active_view.find_item(item)
+        browser=self.active_browser()
+        fileops.worker.delete(browser.active_collection,[item],None,False)
+        ind=browser.active_view.find_item(item)
         if ind>=0:
-            self.browser.active_view.del_item(item)
+            browser.active_view.del_item(item)
             if self.is_iv_showing:
-                ind=min(ind,len(self.browser.active_view)-1)
-                self.view_image(self.browser.active_view(ind))
+                ind=min(ind,len(browser.active_view)-1)
+                self.view_image(browser.active_view(ind))
         elif self.is_iv_showing:
             self.hide_image()
-        self.browser.refresh_view()
+        browser.refresh_view()
 
+gobject.type_register(MainFrame)
