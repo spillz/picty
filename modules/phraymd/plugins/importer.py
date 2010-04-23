@@ -55,7 +55,7 @@ import re
 import gtk
 import gobject
 
-from phraymd import metadatadialogs
+from phraymd import dialogs
 from phraymd import settings
 from phraymd import pluginbase
 from phraymd import pluginmanager
@@ -305,7 +305,7 @@ class ImportPlugin(pluginbase.Plugin):
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
         self.vbox=gtk.VBox()
-#        self.import_source_entry=metadatadialogs.PathnameEntry('',
+#        self.import_source_entry=dialogs.PathnameEntry('',
 #            "From Path","Choose Import Source Directory")
 #        self.vbox.pack_start(self.import_source_entry,False)
         self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'))
@@ -317,7 +317,7 @@ class ImportPlugin(pluginbase.Plugin):
                            (gtk.Button("View"),False,"clicked",self.dest_view)],
                             "To: ")
 #        self.vm=io.VolumeMonitor()
-#        self.import_source_combo=metadatadialogs.PathnameCombo("","Import from","Select directory to import from",volume_monitor=self.vm,directory=True)
+#        self.import_source_combo=dialogs.PathnameCombo("","Import from","Select directory to import from",volume_monitor=self.vm,directory=True)
 #        self.vbox.pack_start(self.import_source_combo,False)
         ##SETTINGS
 
@@ -338,7 +338,7 @@ class ImportPlugin(pluginbase.Plugin):
         self.import_frame=gtk.Expander("Advanced Import Options")
         self.import_box=gtk.VBox()
         self.import_frame.add(self.import_box)
-        self.base_dir_entry=metadatadialogs.PathnameEntry('', ##self.mainframe.tm.collection.image_dirs[0]
+        self.base_dir_entry=dialogs.PathnameEntry('', ##self.mainframe.tm.collection.image_dirs[0]
             "To Path","Choose import directory")
         self.import_box.pack_start(self.base_dir_entry,False)
 

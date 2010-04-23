@@ -28,7 +28,7 @@ import Image
 from phraymd import imagemanip
 from phraymd import settings
 from phraymd import pluginbase
-from phraymd import metadatadialogs
+from phraymd import dialogs
 from phraymd import metadata
 
 class ImageWriterPlugin(pluginbase.Plugin):
@@ -95,15 +95,15 @@ class ImageWriterPlugin(pluginbase.Plugin):
         if not path:
             filename=os.path.join(os.path.split(item.filename)[0],name)
         if os.path.exists(filename):
-            if metadatadialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+filename+"?",("_Cancel","_Overwrite"),1)==0:
+            if dialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+filename+"?",("_Cancel","_Overwrite"),1)==0:
                 return
         try:
             self.item.image.save(filename)
         except:
-            metadatadialogs.prompt_dialog("Save Failed","Could not save image\n"+filename,("_OK",),1)
+            dialogs.prompt_dialog("Save Failed","Could not save image\n"+filename,("_OK",),1)
             return
         if not metadata.copy_metadata(self.item,filename):
-            metadatadialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+filename,("_OK",),1)
+            dialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+filename,("_OK",),1)
         self.reset()
     def write_cancel_callback(self,widget):
         self.reset(True)

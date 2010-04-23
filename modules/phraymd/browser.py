@@ -46,7 +46,7 @@ gtk.gdk.threads_init()
 import settings
 import viewer
 import backend
-import metadatadialogs
+import dialogs
 import pluginmanager
 import imageinfo
 import io

@@ -137,8 +137,8 @@ class FlickrService(UploadServiceBase):
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret)
         (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='write')
         if not self.token:
-            from phraymd import metadatadialogs
-            result=metadatadialogs.prompt_dialog('Allow Flickr Access','phraymd has opened a Flickr application authentication page in your web browser. Please give phraymd access to your flickr account accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
+            from phraymd import dialogs
+            result=dialogs.prompt_dialog('Allow Flickr Access','phraymd has opened a Flickr application authentication page in your web browser. Please give phraymd access to your flickr account accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
 
     def t_login(self):
         try:

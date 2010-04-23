@@ -41,7 +41,7 @@ gtk.gdk.threads_init()
 import settings
 import viewer
 import backend
-import metadatadialogs
+import dialogs
 import register_icons
 import browser
 import pluginmanager
@@ -408,7 +408,7 @@ class MainFrame(gtk.VBox):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=metadatadialogs.BrowseDirectoryDialog()
+        dialog=dialogs.BrowseDirectoryDialog()
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
@@ -424,7 +424,7 @@ class MainFrame(gtk.VBox):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=metadatadialogs.AddLocalStoreDialog()
+        dialog=dialogs.AddLocalStoreDialog()
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
@@ -436,7 +436,7 @@ class MainFrame(gtk.VBox):
                     c=self.coll_set.add_localstore(name)
                     self.coll_combo.set_active(c.id)
                     return
-                metadatadialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
+                dialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
         if old_id:
             self.coll_combo.set_active(old_id)
 
@@ -696,7 +696,7 @@ class MainFrame(gtk.VBox):
     def select_set_info(self,widget):
         item=imageinfo.Item('stub',None)
         item.meta={}
-        dialog=metadatadialogs.BatchMetaDialog(item)
+        dialog=dialogs.BatchMetaDialog(item)
         response=dialog.run()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
@@ -1127,7 +1127,7 @@ class MainFrame(gtk.VBox):
             print 'no known command for ',item.filename,' mimetype',mime
 
     def edit_item(self,widget,item):
-        self.dlg=metadatadialogs.MetaDialog(item,self.active_collection)
+        self.dlg=dialogs.MetaDialog(item,self.active_collection)
         self.dlg.show()
 
     def rotate_item_left(self,widget,item):
