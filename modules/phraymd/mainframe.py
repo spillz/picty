@@ -391,7 +391,7 @@ class MainFrame(gtk.VBox):
         cbut=gtk.Button(label="")
         cbut.set_relief(gtk.RELIEF_NONE)
         cbut.set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
-        cbut.connect("clicked",self.close_collection)
+        cbut.connect("clicked",self.close_collection,c.browser)
         tab_label.pack_start(cbut)
         tab_label.show_all()
         self.browser_nb.append_page(c.browser,tab_label)
@@ -496,8 +496,9 @@ class MainFrame(gtk.VBox):
 
         pluginmanager.mgr.callback('collection_activated',coll)
 
-    def close_collection(self,widget):
-        browser=self.active_browser()
+    def close_collection(self,widget,browser=None):
+        if not browser:
+            browser=self.active_browser()
         coll=browser.active_collection
         ind=self.browser_nb.page_num(browser)
         if ind>=0:
