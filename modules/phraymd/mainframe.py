@@ -401,7 +401,6 @@ class MainFrame(gtk.VBox):
         self.browser_nb.set_tab_reorderable(c.browser,True)
 
     def browser_signal_notify(self,*args):
-        print args
         self.emit(args[-1],*args[:-1])
 
     def browse_dir_collection(self,combo):
