@@ -188,7 +188,6 @@ class ImporterImportJob(backend.WorkerJob):
         jobs=self.worker.jobs
         worker=self.worker
         pluginmanager.mgr.suspend_collection_events(self.collection_dest)
-        browser=self.browser
         i=self.countpos
         if not self.collection_dest.is_open or not self.collection_src.is_open:
             gobject.idle_add(self.plugin.import_cancelled)
@@ -257,17 +256,21 @@ class ImporterImportJob(backend.WorkerJob):
                     print 'recreating thumbnail on import for',item.filename
                     imagemanip.make_thumb(item)
             imagemanip.update_thumb_date(item)
-            browser.lock.acquire()
+            if self.browser:
+                self.browser.lock.acquire()
             print 'importing item',item.filename,'to',collection.filename
             collection.add(item)
-            browser.lock.release()
+            if self.browser:
+                self.browser.lock.release()
             ##todo: log success
             i+=1
-            gobject.idle_add(browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
-            gobject.idle_add(browser.refresh_view)
+            if self.browser:
+                gobject.idle_add(self.browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
+                gobject.idle_add(self.browser.refresh_view)
         self.countpos=i
         if len(self.items)==0 or self.stop:
-            gobject.idle_add(browser.update_status,2,'Import Complete')
+            if self.browser:
+                gobject.idle_add(self.browser.update_status,2,'Import Complete')
             gobject.idle_add(self.plugin.import_completed)
             pluginmanager.mgr.resume_collection_events(self.collection)
             self.collection_src=None
@@ -397,13 +400,13 @@ class ImportPlugin(pluginbase.Plugin):
         id=self.src_combo.get_active()
         if id:
             self.mainframe.coll_combo.set_active(id)
-        self.mainframe.browser.imarea.grab_focus() ##todo: add mainframe method "restore_focus"
+        self.mainframe.grab_focus() ##todo: add mainframe method "restore_focus"
 
     def dest_view(self,button):
         id=self.dest_combo.get_active()
         if id:
             self.mainframe.coll_combo.set_active(id)
-        self.mainframe.browser.imarea.grab_focus()
+        self.mainframe.grab_focus() ##todo: add mainframe method "restore_focus"
 
     def src_changed(self,combo,id):
         if combo.get_active_coll()==None:
@@ -475,9 +478,9 @@ class ImportPlugin(pluginbase.Plugin):
         else:
             return
         if not coll_src.is_open:
-            cj=backend.LoadCollectionJob(self.mainframe.tm,coll_src,self.mainframe.browser)
+            cj=backend.LoadCollectionJob(self.mainframe.tm,coll_src,None)
             self.mainframe.tm.queue_job_instance(cj)
-        ij=ImporterImportJob(self.mainframe.tm,None,self.mainframe.browser,self,coll_src,coll_dest,params)
+        ij=ImporterImportJob(self.mainframe.tm,None,coll_dest.browser,self,coll_src,coll_dest,params)
         self.mainframe.tm.queue_job_instance(ij)
         self.cancel_button.set_sensitive(True)
         self.start_import_all_button.set_sensitive(False)

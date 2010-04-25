@@ -117,8 +117,7 @@ class CollectionSet(gobject.GObject):
         coll=self.collections[name]
         if coll.type=='DEVICE' and coll.is_open:
             self.collection_closed(name)
-        for m in self.models:
-            m.coll_removed(name)
+        self.collection_removed(c.id)
         del self.collections[name]
         if coll.type=='DEVICE' and self.count('DEVICE')==0:
             for m in self.models:
@@ -161,8 +160,7 @@ class CollectionSet(gobject.GObject):
             for m in self.models:
                 m.first_mount_added()
         self.collections[c.id]=c
-        for m in self.models:
-            m.coll_added(c.id)
+        self.collection_added(c.id)
         return c
     def add_localstore(self,col_name,prefs=None):
         '''
@@ -184,8 +182,7 @@ class CollectionSet(gobject.GObject):
         else:
             c.load_header_only('')
         self.collections[col_path]=c
-        for m in self.models:
-            m.coll_added(c.id)
+        self.collection_added(c.id)
         return c
     def add_directory(self,path,prefs=None):
         c=collections.Collection2()
@@ -205,14 +202,21 @@ class CollectionSet(gobject.GObject):
 
         c.add_view()
         self.collections[path]=c
-        for m in self.models:
-            m.coll_added(c.id)
+        self.collection_added(c.id)
         return c
     def remove(self,id):
         coll=self[id]
         del self[id]
         return coll
+    def collection_added(self,id):
+        for m in self.models:
+            m.coll_added(id)
+    def collection_removed(self,id):
+        for m in self.models:
+            m.coll_removed(id)
     def collection_opened(self,id):
+        for m in self.models:
+            m.coll_opening(id)
         self[id].is_open=True
         for m in self.models:
             m.coll_opened(id)
@@ -220,12 +224,13 @@ class CollectionSet(gobject.GObject):
         if id not in self.collections:
             return
         for m in self.models:
-            m.coll_closed(id)
+            m.coll_closing(id)
         c=self[id]
         c.is_open=False
+        for m in self.models:
+            m.coll_closed(id)
         if c.type=='DIRECTORY':
             self.remove(id)
-
     def init_localstores(self):
         for col_file in settings.get_collection_files():
             self.add_localstore(col_file)
@@ -245,6 +250,8 @@ class CollectionModel(gtk.GenericTreeModel):
         self.model_type=model_type
         if model_type=='OPEN_SELECTOR':
             self.view_iter=self.view_iter_open_selector
+        if model_type=='UNOPEN_SELECTOR':
+            self.view_iter=self.view_iter_unopen_selector
         if model_type=='SELECTOR':
             self.view_iter=self.view_iter_selector
         if model_type=='MENU':
@@ -253,26 +260,31 @@ class CollectionModel(gtk.GenericTreeModel):
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
         if self.model_type!='OPEN_SELECTOR':
-            pi_data=self.pi_from_id(id)
-            self.row_inserted(*pi_data)
+            self.row_inserted(*self.pi_from_id(id))
     def coll_removed(self,id):
         if self.model_type!='OPEN_SELECTOR':
+            self.row_deleted(self.pi_from_id(id)[0])
+    def coll_opening(self,id):
+        if self.model_type=='UNOPEN_SELECTOR':
             self.row_deleted(self.pi_from_id(id)[0])
     def coll_opened(self,id):
         if self.model_type=='OPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
-        else:
+        elif self.model_type in ['SELECTOR','MENU']:
             self.row_changed(*self.pi_from_id(id))
-    def coll_closed(self,id):
+    def coll_closing(self,id):
         if self.model_type=='OPEN_SELECTOR':
             self.row_deleted(self.pi_from_id(id)[0])
-        else:
+        elif self.model_type in ['SELECTOR','MENU']:
             self.row_changed(*self.pi_from_id(id))
+    def coll_closed(self,id):
+        if self.model_type=='UNOPEN_SELECTOR':
+            self.row_inserted(*self.pi_from_id(id))
     def first_mount_added(self):
-        if self.model_type!='OPEN_SELECTOR':
+        if self.model_type not in ('OPEN_SELECTOR','UNOPEN_SELECTOR'):
             self.row_deleted(self.pi_from_id('#no-devices')[0])
     def all_mounts_removed(self):
-        if self.model_type!='OPEN_SELECTOR':
+        if self.model_type not in ('OPEN_SELECTOR','UNOPEN_SELECTOR'):
             self.row_inserted(*self.pi_from_id('#no-devices'))
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
@@ -388,6 +400,15 @@ class CollectionModel(gtk.GenericTreeModel):
                     yield id
                     i+=1
             tcount+=1
+    def view_iter_unopen_selector(self):
+        '''
+        this iterator defines the rows of the collection model
+        and adds items for separators, collections, but not menu options
+        '''
+        for t in self.coll_set.types:
+            for id in self.coll_set.iter_id(t):
+                if not self.coll_set[id].is_open:
+                    yield id
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
         return self.get_path(iter),iter
@@ -480,8 +501,28 @@ class CollectionCombo(gtk.VBox):
             return
         return self.model.coll_set[coll_id]
 
-
 gobject.type_register(CollectionCombo)
+
+
+class UnopenedCollectionList(gtk.TreeView):
+    def __init__(self,model):
+        gtk.TreeView.__init__(self,model)
+        cpb=gtk.CellRendererPixbuf()
+        cpb.set_property("width",20) ##todo: don't hardcode the width
+        tvc=gtk.TreeViewColumn(None,cpb,pixbuf=COLUMN_PIXBUF)
+        self.append_column(tvc)
+        cpt=gtk.CellRendererText()
+        tvc=gtk.TreeViewColumn(None,cpt,text=COLUMN_NAME)
+        self.append_column(tvc)
+
+
+
+class StartPage(gtk.VBox):
+    def __init__(self,coll_set):
+        gtk.VBox.__init__(self)
+        self.coll_list=UnopenedCollectionList(coll_set.add_model('UNOPEN_SELECTOR'))
+        self.pack_start(self.coll_list,False,False)
+        self.show_all()
 
 
 

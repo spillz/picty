@@ -84,6 +84,7 @@ class MainFrame(gtk.VBox):
         self.active_collection=None
         self.collections_init()
 
+
         ##plugin-todo: instantiate plugins
         self.plugmgr=pluginmanager.mgr
         self.plugmgr.instantiate_all_plugins()
@@ -125,6 +126,9 @@ class MainFrame(gtk.VBox):
         self.browser_nb.set_show_tabs(False)
         self.browser_nb.show()
         self.browser_nb.connect("switch-page",self.set_active_browser)
+
+        self.startpage=collectionmanager.StartPage(self.coll_set)
+        self.browser_nb.append_page(self.startpage,gtk.Label('Open'))
 
         self.tm=backend.Worker(self.coll_set)
 
@@ -387,12 +391,15 @@ class MainFrame(gtk.VBox):
             c.browser.connect(sig,self.browser_signal_notify,sig)
 
         tab_label=gtk.HBox()
-        tab_label.pack_start(gtk.Label(c.name))
+        tab_label.pack_start(gtk.image_new_from_pixbuf(c.pixbuf),False,False)
+        tab_label.pack_start(gtk.Label(c.name),False,False)
         cbut=gtk.Button(label="")
         cbut.set_relief(gtk.RELIEF_NONE)
         cbut.set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
+        sizex,sizey=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
+        cbut.set_size_request(3*sizex/2,3*sizey/2)
         cbut.connect("clicked",self.close_collection,c.browser)
-        tab_label.pack_start(cbut)
+        tab_label.pack_start(cbut,False,False)
         tab_label.show_all()
         self.browser_nb.append_page(c.browser,tab_label)
         self.browser_nb.set_current_page(self.browser_nb.page_num(c.browser))
@@ -451,12 +458,13 @@ class MainFrame(gtk.VBox):
         ##set and open active collection (by default the last used localstore, otherwise
 
     def set_active_browser(self,notebook,page,page_num):
-        print '######page changed######'
         if page_num>=0:
-            browser=self.browser_nb.get_nth_page(page_num)
-            id=browser.active_collection.id
-            self.coll_combo.set_active(id)
-
+            page=self.browser_nb.get_nth_page(page_num)
+            print 'set active page',page
+            if page==self.startpage:
+                self.coll_combo.set_active(None)
+            else:
+                self.coll_combo.set_active(page.active_collection.id)
 
     def collection_changed(self,widget,id):
         if not id:
@@ -678,10 +686,11 @@ class MainFrame(gtk.VBox):
 
     def view_changed(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
-        if browser:
-            self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(browser.active_view)))
-        else:
-            self.info_bar.set_label('No collection open')
+        if browser==self.active_browser():
+            if browser!=None:
+                self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(browser.active_view)))
+            else:
+                self.info_bar.set_label('No collection open')
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
