@@ -80,7 +80,6 @@ class MainFrame(gtk.VBox):
         self.volume_monitor.connect_after("mount-added",self.mount_added)
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)
         self.coll_set=collectionmanager.CollectionSet()
-        self.coll_combo=collectionmanager.CollectionCombo(self.coll_set.add_model('MENU'))
         self.active_collection=None
         self.collections_init()
 
@@ -125,10 +124,13 @@ class MainFrame(gtk.VBox):
         self.browser_nb=gtk.Notebook()
         self.browser_nb.set_show_tabs(False)
         self.browser_nb.show()
-        self.browser_nb.connect("switch-page",self.set_active_browser)
 
-        self.startpage=collectionmanager.StartPage(self.coll_set)
-        self.browser_nb.append_page(self.startpage,gtk.Label('Open'))
+        self.startpage=collectionmanager.CollectionStartPage(self.coll_set)
+        self.startpage.connect("collection-open",self.collection_open_cb)
+        self.startpage.connect("collection-new",self.create_local_store)
+        self.startpage.connect("folder-open",self.browse_dir_collection)
+
+        self.browser_nb.append_page(self.startpage,gtk.image_new_from_stock(gtk.STOCK_ADD,gtk.ICON_SIZE_MENU))
 
         self.tm=backend.Worker(self.coll_set)
 
@@ -194,7 +196,6 @@ class MainFrame(gtk.VBox):
 #        self.sidebar_menu_button.show()
 
         self.toolbar1=gtk.Toolbar()
-        self.toolbar2=gtk.Toolbar()
         def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
             toolbar.add(widget)
             if callback:
@@ -242,30 +243,26 @@ class MainFrame(gtk.VBox):
 #            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
         self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
         add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
-        self.toolbar1.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar1,gtk.Label("Browsing: "),None,None,None)
-        add_widget(self.toolbar1,self.coll_combo,None,None,"Switch the active collection, directory or device")
-        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLOSE),self.close_collection,"Close Collection", "Close the collection (unsaved changes to metadata will still be present next time you open the collection)")
-        self.toolbar1.add(gtk.SeparatorToolItem())
+#        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_OPEN),self.activate_starttab,"Open Collection","Open a photo collection")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_PREFERENCES),self.open_preferences,"Preferences","Open the global settings and configuration dialog")
+        self.toolbar1.add(gtk.SeparatorToolItem())
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
-        add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
-        add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
-        self.toolbar2.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar2,gtk.Label("Search: "),None,None,None)
+        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
+        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
+        self.toolbar1.add(gtk.SeparatorToolItem())
+        add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
         if entry_no_icons:
-            add_widget(self.toolbar2,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
-            add_item(self.toolbar2,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
+            add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
         else:
-            add_widget(self.toolbar2,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
-        self.toolbar2.add(gtk.SeparatorToolItem())
-        add_widget(self.toolbar2,gtk.Label("Sort: "),None,None,None)
-        add_widget(self.toolbar2,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
+        self.toolbar1.add(gtk.SeparatorToolItem())
+        add_widget(self.toolbar1,gtk.Label("Sort: "),None,None,None)
+        add_widget(self.toolbar1,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
-        add_item(self.toolbar2,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
+        add_item(self.toolbar1,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
 
         self.toolbar1.show_all()
-        self.toolbar2.show_all()
 
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,0,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,1,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
@@ -306,7 +303,6 @@ class MainFrame(gtk.VBox):
         ##self.browser.show() #don't show the browser by default (it will be shown when a collection is activated)
         self.browser_box=gtk.VBox()
         self.browser_box.show()
-        self.browser_box.pack_start(self.toolbar2,False,False)
         self.browser_box.pack_start(self.hpane_ext,True)
         self.browser_box.pack_start(self.status_bar,False)
 
@@ -329,30 +325,33 @@ class MainFrame(gtk.VBox):
         dbusserver.start()
         self.tm.start()
 
-        self.coll_combo.connect("collection-changed",self.collection_changed)
-        self.coll_combo.connect("add-dir",self.browse_dir_collection)
-        self.coll_combo.connect("add-localstore",self.create_local_store)
+        self.browser_nb.connect("switch-page",self.browser_page_switch)
+        self.browser_nb.connect("page-reordered",self.browser_page_reorder)
+
         self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show) ##this is a bit of a hack to ensure the main window shows before a collection is activated or the user is prompted to create a new one
 
     def on_show(self,widget):
+        self.sort_toggle.disconnect(self.show_sig_id)
         ##open last used collection or
         ##todo: device or directory specified at command line.
+        id=None
         if settings.active_collection_file:
-            self.active_collection=self.coll_set[settings.active_collection_file]
-            self.coll_combo.set_active(settings.active_collection_file)
-        self.sort_toggle.disconnect(self.show_sig_id)
-        coll=self.active_collection
-        if coll==None:
-            self.create_local_store(self.coll_combo)
+            c=self.coll_set[settings.active_collection_file]
+            if c!=None:
+                id=c.id
+        if not id:
+            self.create_local_store(None)
         else:
-            self.coll_combo.set_active(coll.id)
-            self.collection_changed(self.coll_combo,coll.id)
+            print 'opening collection',id
+            self.collection_open(c.id)
 
+    def activate_starttab(self,button):
+        pass #todo: look for the starttab in the browser notebook. if not found, add it.
 
     def destroy(self,event):
         for coll in self.coll_set:
             if coll.is_open:
-                sj=backend.SaveCollectionJob(self.tm,coll,coll.browser)
+                sj=backend.SaveCollectionJob(self.tm,coll,self)
                 sj.priority=1050
                 self.tm.queue_job_instance(sj)
         try:
@@ -398,14 +397,15 @@ class MainFrame(gtk.VBox):
         cbut.set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
         sizex,sizey=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
         cbut.set_size_request(3*sizex/2,3*sizey/2)
-        cbut.connect("clicked",self.close_collection,c.browser)
+        cbut.connect("clicked",self.collection_close,c.browser)
         tab_label.pack_start(cbut,False,False)
         tab_label.show_all()
-        self.browser_nb.append_page(c.browser,tab_label)
+        self.browser_nb.insert_page(c.browser,tab_label,self.browser_nb.get_n_pages()-1)
         self.browser_nb.set_current_page(self.browser_nb.page_num(c.browser))
         if self.browser_nb.get_n_pages()>1:
             self.browser_nb.set_show_tabs(True)
         self.browser_nb.set_tab_reorderable(c.browser,True)
+        return c.browser
 
     def browser_signal_notify(self,*args):
         self.emit(args[-1],*args[:-1])
@@ -422,9 +422,7 @@ class MainFrame(gtk.VBox):
         if response==gtk.RESPONSE_ACCEPT:
             path=prefs['image_dirs'][0]
             self.coll_set.add_directory(path,prefs)
-            self.coll_combo.set_active(path)
-        else:
-            self.coll_combo.set_active(old_id)
+            self.collection_open(path)
 
     def create_local_store(self,combo):
         #prompt name and path
@@ -441,11 +439,9 @@ class MainFrame(gtk.VBox):
             if len(name)>0 and len(image_dir)>0:
                 if imageinfo.create_empty_file(name,prefs):
                     c=self.coll_set.add_localstore(name)
-                    self.coll_combo.set_active(c.id)
+                    self.collection_open(c.id)
                     return
                 dialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
-        if old_id:
-            self.coll_combo.set_active(old_id)
 
     def collections_init(self):
         ##now fill the collection manager with
@@ -457,16 +453,19 @@ class MainFrame(gtk.VBox):
         ##3/ local directory if specified as a command line args
         ##set and open active collection (by default the last used localstore, otherwise
 
-    def set_active_browser(self,notebook,page,page_num):
+    def browser_page_reorder(self,notebook,page,page_num):
+        if page_num==self.browser_nb.get_n_pages()-1:
+            self.browser_nb.reorder_child(page,page_num-1)
+
+    def browser_page_switch(self,notebook,page,page_num):
+        id=None
         if page_num>=0:
             page=self.browser_nb.get_nth_page(page_num)
-            print 'set active page',page
             if page==self.startpage:
-                self.coll_combo.set_active(None)
+                id=None
             else:
-                self.coll_combo.set_active(page.active_collection.id)
+                id=page.active_collection.id
 
-    def collection_changed(self,widget,id):
         if not id:
             self.active_collection=None
             self.tm.set_active_collection(None)
@@ -476,40 +475,68 @@ class MainFrame(gtk.VBox):
             return
 
         coll=self.coll_set[id]
-        print 'changing to coll set with id',id,coll
         self.active_collection=coll
         self.tm.set_active_collection(coll)
 
         if coll.filename:
             settings.active_collection_file=coll.filename
-        if not coll.browser:
-            self.add_browser(coll)
-            self.tm.load_collection('')
-###        self.browser.refresh_view()
-        else:
-            ind=self.browser_nb.get_current_page()
-            need_ind=self.browser_nb.page_num(coll.browser)
-            if ind!=need_ind:
-                self.browser_nb.set_current_page(need_ind)
+#        ind=self.browser_nb.get_current_page()
+#        need_ind=self.browser_nb.page_num(coll.browser)
+#        if ind!=need_ind:
+#            self.browser_nb.set_current_page(need_ind)
 
         sort_model=self.sort_order.get_model()
         for i in xrange(len(sort_model)):
-            if self.active_browser().active_view.sort_key_text==sort_model[i][0]:
+            if page.active_view.sort_key_text==sort_model[i][0]:
+                self.sort_order.handler_block_by_func(self.set_sort_key)
                 self.sort_order.set_active(i)
+                self.sort_order.handler_unblock_by_func(self.set_sort_key)
                 break
-        self.sort_toggle.set_active(self.active_browser().active_view.reverse)
-        self.filter_entry.set_text(self.active_browser().active_view.filter_text)
-        self.view_changed(self.active_browser())
+        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
+        self.sort_toggle.set_active(page.active_view.reverse)
+        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
+        self.filter_entry.set_text(page.active_view.filter_text)
+        self.view_changed2(page)
 
         pluginmanager.mgr.callback('collection_activated',coll)
+        page.grab_focus()
 
-    def close_collection(self,widget,browser=None):
+
+    def collection_open_cb(self,widget,id):
+        self.collection_open(id)
+
+    def collection_open(self,id):
+        c=self.coll_set[id]
+        if c!=None:
+            browser=self.add_browser(c)
+            j=backend.LoadCollectionJob(self.tm,c,browser)
+            self.tm.queue_job_instance(j)
+
+#    def collection_changed(self,widget,id):
+#        if id==None:
+#            ##add start page if not already persent
+#            page=self.startpage
+#            num=self.browser_nb.page_num(page)
+#            if num<0:
+#                self.browser_nb.append_page(page)
+#        else:
+#            coll=self.coll_set[id]
+#            if coll!=None:
+#                page=coll.browser
+#            else:
+#                print 'ERROR! unknown collection with id',id
+#                return
+#            if page==None:
+#                self.add_browser(coll)
+#                self.tm.load_collection(coll)
+#        self.browser_nb.set_current_page(self.browser_nb.page_num(page))
+
+    def collection_close(self,widget,browser=None):
         if not browser:
             browser=self.active_browser()
         coll=browser.active_collection
         ind=self.browser_nb.page_num(browser)
         if ind>=0:
-            print 'CLOSED page',ind
             self.browser_nb.remove_page(ind)
             if self.browser_nb.get_n_pages()<2:
                 self.browser_nb.set_show_tabs(False)
@@ -518,25 +545,9 @@ class MainFrame(gtk.VBox):
         coll.browser=None
         if not coll.is_open:
             return
-        sj=backend.SaveCollectionJob(self.tm,coll,coll.browser)
+        sj=backend.SaveCollectionJob(self.tm,coll,self)
         sj.priority=1050
         self.tm.queue_job_instance(sj)
-        ind=self.browser_nb.get_current_page()
-        print 'switched to page',ind,
-        if ind>=0:
-            browser=self.browser_nb.get_nth_page(ind)
-            print browser,browser.active_collection.id
-            self.coll_combo.set_active(browser.active_collection.id)
-        else:
-            self.coll_combo.set_active(None)
-
-#    def collection_opened(self,collection): ##callback used by worker thread
-#        collection.is_open=True
-#        self.browser.refresh_view()
-#
-#    def collection_closed(self,collection): ##callback used by worker thread
-#        collection.is_open=False
-#        self.browser.refresh_view()
 
     def mount_added(self,monitor,name,icon_names,path):
         coll=self.coll_set.add_mount(path,name,icon_names)
@@ -547,7 +558,7 @@ class MainFrame(gtk.VBox):
         self.coll_set.remove(path)
         print 'removed',collection,collection.filename
         if collection.is_open:
-            sj=backend.SaveCollectionJob(self.tm,collection,collection.browser)
+            sj=backend.SaveCollectionJob(self.tm,collection,self)
             sj.priority=1050
             self.tm.queue_job_instance(sj)
         self.plugmgr.callback('media_disconnected',collection.id)
@@ -565,7 +576,6 @@ class MainFrame(gtk.VBox):
         pass
 
     def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
-        print 'sidebar callback'
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
 
     def set_layout(self,layout):
@@ -610,7 +620,6 @@ class MainFrame(gtk.VBox):
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane_ext.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
-        print 'RETRIEVED LAYOUT',layout
         return layout
 
     def activate_item(self,browser,ind,item):
@@ -688,9 +697,16 @@ class MainFrame(gtk.VBox):
         '''refresh the info bar (status bar that displays number of images etc)'''
         if browser==self.active_browser():
             if browser!=None:
-                self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.active_collection),self.active_collection.numselected,len(browser.active_view)))
+                self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
             else:
                 self.info_bar.set_label('No collection open')
+
+    def view_changed2(self,browser):
+        '''refresh the info bar (status bar that displays number of images etc)'''
+        if browser!=None:
+            self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
+        else:
+            self.info_bar.set_label('No collection open')
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -737,8 +753,6 @@ class MainFrame(gtk.VBox):
         fcd.destroy()
         return sel_dir
 
-
-
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
         fileops.worker.copy(self.active_browser().active_view,sel_dir,self.update_status)
@@ -779,6 +793,8 @@ class MainFrame(gtk.VBox):
         self.set_filter_text(widget)
 
     def set_sort_key(self,widget):
+        if self.active_browser() in (None,self.startpage):
+            return
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
@@ -823,7 +839,6 @@ class MainFrame(gtk.VBox):
                             self.active_browser().show()
                         self.hpane_ext.show()
                         self.toolbar1.show()
-                        self.toolbar2.show()
                         self.info_bar.show()
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
@@ -859,13 +874,11 @@ class MainFrame(gtk.VBox):
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
                         self.toolbar1.show()
-                        self.toolbar2.show()
                         self.is_iv_fullscreen=False
                     else:
                         self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
                         self.toolbar1.hide()
-                        self.toolbar2.hide()
                         self.active_browser().hide()
                         self.info_bar.hide()
                         self.sidebar.hide()
@@ -934,7 +947,6 @@ class MainFrame(gtk.VBox):
             self.active_browser().show()
         #self.hbox.show()
         #self.toolbar1.show()
-        #self.toolbar2.show()
         self.hpane_ext.show()
         self.info_bar.show()
         self.is_iv_fullscreen=False
@@ -949,7 +961,6 @@ class MainFrame(gtk.VBox):
                 if self.active_collection:
                     browser.show()
                 self.toolbar1.show()
-                self.toolbar2.show()
                 if self.sidebar_toggle.get_active():
                     self.sidebar.show()
                 self.info_bar.show()
@@ -964,7 +975,6 @@ class MainFrame(gtk.VBox):
                 self.iv.ImageFullscreen()
                 browser.hide()
                 self.toolbar1.hide()
-                self.toolbar2.hide()
                 self.sidebar.hide()
                 self.info_bar.hide()
                 self.is_iv_fullscreen=True

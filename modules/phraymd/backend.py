@@ -343,29 +343,32 @@ class LoadCollectionJob(WorkerJob):
         self.collection_file=''
         return True
 
-class CloseCollectionJob(WorkerJob):
-    def __init__(self,worker,collection,browser,save=True):
-        WorkerJob.__init__(self,'CLOSECOLLECTION',775,worker,collection,browser)
-        self.save=save
+#class CloseCollectionJob(WorkerJob):
+#    def __init__(self,worker,collection,browser,save=True):
+#        WorkerJob.__init__(self,'CLOSECOLLECTION',775,worker,collection,browser)
+#        self.save=save
+#
+#    def __call__(self):
+#        self.worker.jobs.clear(None,self.collection,self)
+#        idle_add(self.browser.update_status,0.5,'Closing Collection '+self.collection.name)
+#        if self.filename:
+#            self.collection.filename=self.filename
+#        log.info('Closing '+str(self.collection.filename))
+#        self.collection.end_monitor()
+#        self.collection.save()
+#        idle_add(self.browser.update_status,1.5,'Closed Collection'%(i,len(self.superset)))
+#        pluginmanager.mgr.callback_collection('t_collection_closed',self.collection)
+#        return True
 
-    def __call__(self):
-        self.worker.jobs.clear(None,self.collection,self)
-        if self.filename:
-            self.collection.filename=self.filename
-        log.info('Closing '+str(self.collection.filename))
-        self.collection.end_monitor()
-        self.collection.save()
-        pluginmanager.mgr.callback_collection('t_collection_closed',self.collection)
-        return True
 
-
-class SaveCollectionJob(WorkerJob):
-    def __init__(self,worker,collection,browser,filename=''):
-        WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,browser)
+class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack that the "browser" argument is the mainframe, and mainframe must have an update_status member taking 3 args
+    def __init__(self,worker,collection,mainframe,filename=''):
+        WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,mainframe)
         self.filename=filename
 
     def __call__(self):
         self.worker.jobs.clear(None,self.collection,self)
+        idle_add(self.browser.update_status,None,0.5,'Closing Collection '+self.collection.name)
         if self.filename:
             self.collection.filename=self.filename
         log.info('Saving '+str(self.collection.filename))
@@ -373,7 +376,8 @@ class SaveCollectionJob(WorkerJob):
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)
-        gobject.idle_add(self.worker.coll_set.collection_closed,self.collection.id)
+        idle_add(self.worker.coll_set.collection_closed,self.collection.id)
+        idle_add(self.browser.update_status,None,1.5,'Closed Collection')
         return True
 
 
@@ -1163,9 +1167,9 @@ class Worker:
     def kill_jobs_by_class(self,job_class):
         self.jobs.clear_by_job_class(job_class)
 
-    def save_collection(self,filename):
-        self.queue_job(SaveCollectionJob,filename)
-
+#    def save_collection(self,filename): ##TODO: DO NOT USE!!
+#        self.queue_job(SaveCollectionJob,filename)
+#
     def load_collection(self,filename):
         self.queue_job(LoadCollectionJob,filename)
 
@@ -1174,7 +1178,7 @@ class Worker:
         self.queue_job(WalkDirectoryJob,collection)
 
     def quit(self):
-        sj=QuitJob(self,None,self.active_collection.browser)
+        sj=QuitJob(self,None,None)
         self.queue_job_instance(sj)
         while self.thread.isAlive(): ##todo: replace this with a notification
             time.sleep(0.1)

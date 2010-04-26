@@ -507,6 +507,7 @@ gobject.type_register(CollectionCombo)
 class UnopenedCollectionList(gtk.TreeView):
     def __init__(self,model):
         gtk.TreeView.__init__(self,model)
+        self.set_headers_visible(False)
         cpb=gtk.CellRendererPixbuf()
         cpb.set_property("width",20) ##todo: don't hardcode the width
         tvc=gtk.TreeViewColumn(None,cpb,pixbuf=COLUMN_PIXBUF)
@@ -517,13 +518,90 @@ class UnopenedCollectionList(gtk.TreeView):
 
 
 
-class StartPage(gtk.VBox):
+class CollectionStartPage(gtk.VBox):
+    __gsignals__={
+        'collection-open':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user selects a collection to open
+        'collection-new':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user wants to create a new collection
+        'folder-open':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user wants to browse a local directory as a collection
+        }
     def __init__(self,coll_set):
         gtk.VBox.__init__(self)
+
+        h=gtk.Label()
+        h.set_markup("<b>What would you like to do?</b>")
+
+        b1=gtk.VBox()
+        l=gtk.Label("Open an existing collection or device")
+        b1.pack_start(l,False)
+        open_button=gtk.Button("_Open")
+        open_button.connect("clicked",self.open_collection)
         self.coll_list=UnopenedCollectionList(coll_set.add_model('UNOPEN_SELECTOR'))
-        self.pack_start(self.coll_list,False,False)
+        self.coll_list.connect("row-activated",self.open_collection_by_activation)
+        self.coll_list.connect("cursor-changed",self.open_possible,open_button)
+        sel=self.coll_list.get_selection()
+        model,iter=sel.get_selected()
+        if not iter:
+            open_button.set_sensitive(False)
+
+        scrolled_window = gtk.ScrolledWindow()
+        scrolled_window.add(self.coll_list)
+        scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
+        b1.pack_start(scrolled_window,True)
+        hb=gtk.HButtonBox()
+        hb.pack_start(open_button,True,False)
+        b1.pack_start(hb,False,False)
+
+        b2=gtk.VBox()
+        l=gtk.Label("Create a new collection")
+        b2.pack_start(l)
+        hb=gtk.HButtonBox()
+        new_store_button=gtk.Button("_New Collection...")
+        new_store_button.connect("clicked",self.new_store)
+        hb.pack_start(new_store_button,True,False)
+        b2.pack_start(hb,False,False)
+
+        b3=gtk.VBox()
+        l=gtk.Label("Browse images in a local directory")
+        b3.pack_start(l)
+        hb=gtk.HButtonBox()
+        new_dir_button=gtk.Button("_Browse Folder...")
+        new_dir_button.connect("clicked",self.new_dir)
+        hb.pack_start(new_dir_button,True,False)
+        b3.pack_start(hb,False,False)
+
+        self.set_spacing(30)
+        self.pack_start(h,False)
+        self.pack_start(b1)
+        self.pack_start(b2,False)
+        self.pack_start(b3,False)
         self.show_all()
 
+    def open_collection_by_activation(self, treeview, path, view_column):
+        model=self.coll_list.get_model()
+        self.emit("collection-open",model[path][COLUMN_ID])
+
+    def open_possible(self,treeview,open_button):
+        sel=self.coll_list.get_selection()
+        model,iter=sel.get_selected()
+        if not iter:
+            open_button.set_sensitive(False)
+        else:
+            open_button.set_sensitive(True)
+
+    def open_collection(self,button):
+        sel=self.coll_list.get_selection()
+        if not sel:
+            return
+        model,iter=sel.get_selected()
+        self.emit("collection-open",model[iter][COLUMN_ID])
+
+    def new_store(self,button):
+        self.emit("collection-new")
+
+    def new_dir(self,button):
+        self.emit("folder-open")
+
+gobject.type_register(CollectionStartPage)
 
 
 '''
