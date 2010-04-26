@@ -117,7 +117,7 @@ class CollectionSet(gobject.GObject):
         coll=self.collections[name]
         if coll.type=='DEVICE' and coll.is_open:
             self.collection_closed(name)
-        self.collection_removed(c.id)
+        self.collection_removed(coll.id)
         del self.collections[name]
         if coll.type=='DEVICE' and self.count('DEVICE')==0:
             for m in self.models:
