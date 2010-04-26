@@ -1103,6 +1103,7 @@ class MainFrame(gtk.VBox):
     def save_item(self,widget,item):
         if item.meta_changed:
             imagemanip.save_metadata(item)
+        self.active_browser().redraw_view()
 
     def revert_item(self,widget,item):
         if not item.meta_changed:
@@ -1119,7 +1120,7 @@ class MainFrame(gtk.VBox):
         if orient!=orient_backup:
             item.thumb=None
             self.tm.recreate_thumb(item)
-        browser.redraw_view()
+        self.active_browser().redraw_view()
 
     def launch_item(self,widget,item):
         uri=io.get_uri(item.filename)
