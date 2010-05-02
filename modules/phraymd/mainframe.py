@@ -340,7 +340,7 @@ class MainFrame(gtk.VBox):
             if c!=None:
                 id=c.id
         if not id:
-            self.create_local_store(None)
+            self.create_local_store(None,True)
         else:
             print 'opening collection',id
             self.collection_open(c.id)
@@ -424,12 +424,17 @@ class MainFrame(gtk.VBox):
             self.coll_set.add_directory(path,prefs)
             self.collection_open(path)
 
-    def create_local_store(self,combo):
+    def create_local_store(self,combo,first_start=False):
         #prompt name and path
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
         dialog=dialogs.AddLocalStoreDialog()
+        if first_start:
+            prefs=dialog.get_values()
+            prefs['name']='main'
+            prefs['image_dirs']=os.path.join(os.environ['$HOME'],'Pictures')
+            dialog.set_values(prefs)
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
@@ -508,6 +513,9 @@ class MainFrame(gtk.VBox):
     def collection_open(self,id):
         c=self.coll_set[id]
         if c!=None:
+            if c.browser!=None:
+                self.browser_nb.set_current_page(self.browser_nb.page_num(c.browser))
+                return
             browser=self.add_browser(c)
             j=backend.LoadCollectionJob(self.tm,c,browser)
             self.tm.queue_job_instance(j)
@@ -543,6 +551,8 @@ class MainFrame(gtk.VBox):
         if coll==None:
             return
         coll.browser=None
+        browser.active_collection=None
+        browser.active_view=None
         if not coll.is_open:
             return
         sj=backend.SaveCollectionJob(self.tm,coll,self)
@@ -623,11 +633,9 @@ class MainFrame(gtk.VBox):
         return layout
 
     def activate_item(self,browser,ind,item):
-        print 'activated',ind,item
         self.view_image(item)
 
     def open_preferences(self,widget):
-        print 'preferences coming soon'
         self.plugmgr.callback('app_config_dialog')
 
 
@@ -840,6 +848,7 @@ class MainFrame(gtk.VBox):
                         self.hpane_ext.show()
                         self.toolbar1.show()
                         self.info_bar.show()
+                        self.browser_nb.show()
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
                         self.is_iv_fullscreen=False
@@ -867,10 +876,9 @@ class MainFrame(gtk.VBox):
                             self.is_fullscreen=False
                         self.view_image(self.iv.item)
                         self.iv.ImageNormal()
-                        if self.active_collection:
-                            self.active_browser().show()
                         self.hpane_ext.show()
                         self.info_bar.show()
+                        self.browser_nb.show()
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
                         self.toolbar1.show()
@@ -879,8 +887,8 @@ class MainFrame(gtk.VBox):
                         self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
                         self.toolbar1.hide()
-                        self.active_browser().hide()
                         self.info_bar.hide()
+                        self.browser_nb.hide()
                         self.sidebar.hide()
                         self.is_iv_fullscreen=True
                         if not self.is_fullscreen:
@@ -958,8 +966,7 @@ class MainFrame(gtk.VBox):
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             if self.is_iv_fullscreen:
                 self.iv.ImageNormal()
-                if self.active_collection:
-                    browser.show()
+                self.browser_nb.show()
                 self.toolbar1.show()
                 if self.sidebar_toggle.get_active():
                     self.sidebar.show()
@@ -973,7 +980,7 @@ class MainFrame(gtk.VBox):
                     self.window.fullscreen()
                     self.is_fullscreen=True
                 self.iv.ImageFullscreen()
-                browser.hide()
+                self.browser_nb.hide()
                 self.toolbar1.hide()
                 self.sidebar.hide()
                 self.info_bar.hide()

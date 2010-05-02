@@ -90,7 +90,7 @@ class ConfigPanel(gtk.Dialog):
 
         page(nb,"About",AboutBox())
         page(nb,"General",GeneralBox())
-        page(nb,"Collections",CollectionsBox(plugin))
+#        page(nb,"Collections",CollectionsBox(plugin))
         page(nb,"Plugins",PluginBox())
         page(nb,"Tools",ToolsBox())
         self.add_button("_Close",gtk.RESPONSE_ACCEPT)
@@ -250,21 +250,45 @@ class CollectionsBox(gtk.HBox):
         self.pack_start(vbox_left, False)
         self.pack_start(vbox_right)
 
-        self.model=plugin.mainframe.coll_set.add_model('SELECTOR')
+        self.model=plugin.mainframe.coll_set.add_model('LOCALSTORE_SELECTOR')
         self.view=gtk.TreeView(self.model)
         name=gtk.CellRendererText()
         name.set_property("editable",True)
         self.view.append_column(gtk.TreeViewColumn('Collections',name,text=collectionmanager.COLUMN_NAME,weight=collectionmanager.COLUMN_FONT_WGT))
         vbox_left.pack_start(self.view,True)
 
-        hbox=gtk.HBox()
+        hbox=gtk.ButtonBox()
         add_button = gtk.Button(stock=gtk.STOCK_ADD)
-#        add_button.connect('clicked', self.add_signal)
+        add_button.connect('clicked', self.add_signal)
         delete_button = gtk.Button(stock=gtk.STOCK_REMOVE)
-#        delete_button.connect('clicked', self.delete_signal)
+        delete_button.connect('clicked', self.delete_signal)
         hbox.pack_start(add_button,False)
         hbox.pack_start(delete_button,False)
 #        vbox_left.pack_start(hbox,False)
+
+    def add_signal(self, widget):
+        name=self.plugin.mainframe.entry_dialog('New Collection','Name:')
+        if not name:
+            return
+        coll_dir=settings.user_add_dir()
+        if len(coll_dir)>0:
+            if imageinfo.create_empty_file(name,coll_dir):
+                self.model.append((name,400))
+
+    def delete_signal(self, widget):
+        sel=self.view.get_selection()
+        model,iter=sel.get_selected()
+        if iter==None:
+            return
+        name=self.model[iter][0]
+        if name==settings.active_collection:
+            return
+        try:
+            os.remove(os.path.join(settings.collections_dir,name))
+        except:
+            return
+        self.model.remove(iter)
+
 
 
 #    def name_edited_signal(self, cellrenderertext, path, new_text):
@@ -287,30 +311,6 @@ class CollectionsBox(gtk.HBox):
 #        self.model[path][0]=new_text
 #
 #
-#    def add_signal(self, widget):
-#        name=self.plugin.mainframe.entry_dialog('New Collection','Name:')
-#        if not name:
-#            return
-#        coll_dir=settings.user_add_dir()
-#        if len(coll_dir)>0:
-#            if imageinfo.create_empty_file(name,coll_dir):
-#                self.model.append((name,400))
-#
-#    def delete_signal(self, widget):
-#        sel=self.view.get_selection()
-#        if not sel:
-#            return
-#        model,iter=sel.get_selected()
-#        if iter==None:
-#            return
-#        name=self.model[iter][0]
-#        if name==settings.active_collection:
-#            return
-#        try:
-#            os.remove(os.path.join(settings.collections_dir,name))
-#        except:
-#            return
-#        self.model.remove(iter)
 
 
 class PluginBox(gtk.VBox):

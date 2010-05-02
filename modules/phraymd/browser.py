@@ -461,7 +461,7 @@ class ImageBrowser(gtk.HBox):
 
     def refresh_view(self,collection=None):
         '''update geometry, scrollbars, redraw the thumbnail view'''
-        if collection and collection!=self.active_collection:
+        if collection==None or collection!=self.active_collection:
             return
         self.emit('view-changed')
         self.update_geometry()

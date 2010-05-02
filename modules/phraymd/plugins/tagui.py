@@ -767,7 +767,10 @@ class TagFrame(gtk.VBox):
 
     def refresh(self):
         collection=self.worker.active_collection
-        view=collection.get_active_view()
+        if collection==None:
+            view=None
+        else:
+            view=collection.get_active_view()
         try:
             tag_cloud=self.tag_cloud[collection].copy() ##todo: should be using a lock here
         except KeyError:

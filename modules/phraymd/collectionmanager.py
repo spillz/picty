@@ -64,6 +64,8 @@ class CollectionSet(gobject.GObject):
         self.collections={}
         self.types=['LOCALSTORE','DEVICE','DIRECTORY']
         self.models=[]
+        self.dir_image=self.get_icon([gtk.STOCK_DIRECTORY])
+
     def add_model(self,model_type='SELECTOR'):   ##todo: remove model
         m=CollectionModel(self,model_type)
         self.models.append(m)
@@ -254,37 +256,49 @@ class CollectionModel(gtk.GenericTreeModel):
             self.view_iter=self.view_iter_unopen_selector
         if model_type=='SELECTOR':
             self.view_iter=self.view_iter_selector
+        if model_type=='ACTIVATOR':
+            self.view_iter=self.view_iter_activator
         if model_type=='MENU':
             self.view_iter=self.view_iter_menu
+        if model_type=='LOCALSTORE_SELECTOR':
+            self.view_iter=self.view_iter_localstore_selector
         for r in self.view_iter():
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
+        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
+            return
         if self.model_type!='OPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
     def coll_removed(self,id):
+        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
+            return
         if self.model_type!='OPEN_SELECTOR':
             self.row_deleted(self.pi_from_id(id)[0])
     def coll_opening(self,id):
         if self.model_type=='UNOPEN_SELECTOR':
             self.row_deleted(self.pi_from_id(id)[0])
     def coll_opened(self,id):
+        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
+            return
         if self.model_type=='OPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
-        elif self.model_type in ['SELECTOR','MENU']:
+        elif self.model_type in ('SELECTOR','MENU','ACTIVATOR'):
             self.row_changed(*self.pi_from_id(id))
     def coll_closing(self,id):
+        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
+            return
         if self.model_type=='OPEN_SELECTOR':
             self.row_deleted(self.pi_from_id(id)[0])
-        elif self.model_type in ['SELECTOR','MENU']:
+        elif self.model_type in ('SELECTOR','MENU','ACTIVATOR'):
             self.row_changed(*self.pi_from_id(id))
     def coll_closed(self,id):
         if self.model_type=='UNOPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
     def first_mount_added(self):
-        if self.model_type not in ('OPEN_SELECTOR','UNOPEN_SELECTOR'):
+        if self.model_type not in ('SELECTOR','MENU'):
             self.row_deleted(self.pi_from_id('#no-devices')[0])
     def all_mounts_removed(self):
-        if self.model_type not in ('OPEN_SELECTOR','UNOPEN_SELECTOR'):
+        if self.model_type in ('SELECTOR','MENU'):
             self.row_inserted(*self.pi_from_id('#no-devices'))
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
@@ -334,15 +348,15 @@ class CollectionModel(gtk.GenericTreeModel):
     '''
     def as_row(self,id):
         label_dict={
-            '#add-localstore':'New Collection...',
-            '#no-devices':'No Devices Connected',
-            '#add-dir':'Browse a Local Directory...',
+            '#add-localstore':('New Collection...',None),
+            '#no-devices':('No Devices Connected',None),
+            '#add-dir':('Open a Local Directory...',self.coll_set.dir_image),
 
         }
         if id.startswith('*'):
             return [id,'',800,False,'black',None,False]
         if id.startswith('#'):
-            return [id,label_dict[id],400,False,'black',None,False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
+            return [id,label_dict[id][0],400,False,'black',label_dict[id][1],False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
         ci=self.coll_set.collections[id]
         if ci.is_open:
             return [id,ci.name,800,False,'brown',ci.pixbuf,True]
@@ -369,8 +383,8 @@ class CollectionModel(gtk.GenericTreeModel):
             tcount+=1
     def view_iter_selector(self):
         '''
-        this iterator defines the rows of the collection model
-        and adds items for separators, collections, but not menu options
+        returns an iterator over all collections
+        and adds separators between collection types but no menu options
         '''
         tcount=0
         i=0
@@ -384,10 +398,19 @@ class CollectionModel(gtk.GenericTreeModel):
             if t=='DEVICE' and i==0:
                 yield '#no-devices'
             tcount+=1
+    def view_iter_activator(self):
+        '''
+        returns an iterator over all collections
+        plus an additional option to browser a directory
+        '''
+        for t in self.coll_set.types:
+            for id in self.coll_set.iter_id(t):
+                yield id
+        yield '#add-dir'
     def view_iter_open_selector(self):
         '''
-        this iterator defines the rows of the collection model
-        and adds items for separators, collections, but not menu options
+        returns an iterator over the open collections
+        and adds separators between collection types
         '''
         tcount=0
         i=0
@@ -402,8 +425,8 @@ class CollectionModel(gtk.GenericTreeModel):
             tcount+=1
     def view_iter_unopen_selector(self):
         '''
-        this iterator defines the rows of the collection model
-        and adds items for separators, collections, but not menu options
+        returns an iterator over the closed collections
+        and adds separators between collection types
         '''
         for t in self.coll_set.types:
             for id in self.coll_set.iter_id(t):
@@ -412,8 +435,6 @@ class CollectionModel(gtk.GenericTreeModel):
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
         return self.get_path(iter),iter
-
-
 
 ##Combo entries
 
@@ -513,7 +534,7 @@ class UnopenedCollectionList(gtk.TreeView):
         tvc=gtk.TreeViewColumn(None,cpb,pixbuf=COLUMN_PIXBUF)
         self.append_column(tvc)
         cpt=gtk.CellRendererText()
-        tvc=gtk.TreeViewColumn(None,cpt,text=COLUMN_NAME)
+        tvc=gtk.TreeViewColumn(None,cpt,text=COLUMN_NAME,foreground_set=COLUMN_FONT_COLOR_SET,foreground=COLUMN_FONT_COLOR)
         self.append_column(tvc)
 
 
@@ -531,11 +552,11 @@ class CollectionStartPage(gtk.VBox):
         h.set_markup("<b>What would you like to do?</b>")
 
         b1=gtk.VBox()
-        l=gtk.Label("Open an existing collection or device")
+        l=gtk.Label("Open an existing collection, directory or device")
         b1.pack_start(l,False)
         open_button=gtk.Button("_Open")
         open_button.connect("clicked",self.open_collection)
-        self.coll_list=UnopenedCollectionList(coll_set.add_model('UNOPEN_SELECTOR'))
+        self.coll_list=UnopenedCollectionList(coll_set.add_model('ACTIVATOR'))
         self.coll_list.connect("row-activated",self.open_collection_by_activation)
         self.coll_list.connect("cursor-changed",self.open_possible,open_button)
         sel=self.coll_list.get_selection()
@@ -547,9 +568,9 @@ class CollectionStartPage(gtk.VBox):
         scrolled_window.add(self.coll_list)
         scrolled_window.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
         b1.pack_start(scrolled_window,True)
-        hb=gtk.HButtonBox()
-        hb.pack_start(open_button,True,False)
-        b1.pack_start(hb,False,False)
+#        hb=gtk.HButtonBox()
+#        hb.pack_start(open_button,True,False)
+#        b1.pack_start(hb,False,False)
 
         b2=gtk.VBox()
         l=gtk.Label("Create a new collection")
@@ -560,25 +581,29 @@ class CollectionStartPage(gtk.VBox):
         hb.pack_start(new_store_button,True,False)
         b2.pack_start(hb,False,False)
 
-        b3=gtk.VBox()
-        l=gtk.Label("Browse images in a local directory")
-        b3.pack_start(l)
-        hb=gtk.HButtonBox()
-        new_dir_button=gtk.Button("_Browse Folder...")
-        new_dir_button.connect("clicked",self.new_dir)
-        hb.pack_start(new_dir_button,True,False)
-        b3.pack_start(hb,False,False)
+#        b3=gtk.VBox()
+#        l=gtk.Label("Browse images in a local directory")
+#        b3.pack_start(l)
+#        hb=gtk.HButtonBox()
+#        new_dir_button=gtk.Button("_Browse Folder...")
+#        new_dir_button.connect("clicked",self.new_dir)
+#        hb.pack_start(new_dir_button,True,False)
+#        b3.pack_start(hb,False,False)
 
         self.set_spacing(30)
         self.pack_start(h,False)
         self.pack_start(b1)
         self.pack_start(b2,False)
-        self.pack_start(b3,False)
+#        self.pack_start(b3,False)
         self.show_all()
 
     def open_collection_by_activation(self, treeview, path, view_column):
         model=self.coll_list.get_model()
-        self.emit("collection-open",model[path][COLUMN_ID])
+        id=model[path][COLUMN_ID]
+        if id=='#add-dir':
+            self.emit("folder-open")
+        else:
+            self.emit("collection-open",id)
 
     def open_possible(self,treeview,open_button):
         sel=self.coll_list.get_selection()
@@ -593,7 +618,11 @@ class CollectionStartPage(gtk.VBox):
         if not sel:
             return
         model,iter=sel.get_selected()
-        self.emit("collection-open",model[iter][COLUMN_ID])
+        id=model[iter][COLUMN_ID]
+        if id=='#add-dir':
+            self.emit("folder-open")
+        else:
+            self.emit("collection-open",id)
 
     def new_store(self,button):
         self.emit("collection-new")
