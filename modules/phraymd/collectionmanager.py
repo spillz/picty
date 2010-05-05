@@ -25,7 +25,7 @@ import settings
 import os.path
 
 import collections
-
+import io
 
 COLUMN_ID=0
 COLUMN_NAME=1
@@ -101,7 +101,9 @@ class CollectionSet(gobject.GObject):
             return
         if isinstance(name,gtk.TreeIter):
             name=self.get_user_data(name)
-        return self.collections[name]
+        if name in self.collections:
+            return self.collections[name]
+        return None
 #    def __setitem__(self,name,value):
 #        if isinstance(name,gtk.TreeIter):
 #            id=self.get_user_data(name)
@@ -115,12 +117,15 @@ class CollectionSet(gobject.GObject):
 #            self.row_inserted(*self.pi_from_id(id))
 #        else:
 #            self.row_changed(*self.pi_from_id(id))
-    def __delitem__(self,name):
+    def __delitem__(self,name,delete_cache_file=True):
         coll=self.collections[name]
         if coll.type=='DEVICE' and coll.is_open:
             self.collection_closed(name)
         self.collection_removed(coll.id)
         del self.collections[name]
+        if coll.type=='LOCALSTORE':
+            print 'deleteing localstore',coll.filename
+            io.remove_file(coll.filename)
         if coll.type=='DEVICE' and self.count('DEVICE')==0:
             for m in self.models:
                 m.all_mounts_removed()
@@ -534,7 +539,7 @@ class UnopenedCollectionList(gtk.TreeView):
         tvc=gtk.TreeViewColumn(None,cpb,pixbuf=COLUMN_PIXBUF)
         self.append_column(tvc)
         cpt=gtk.CellRendererText()
-        tvc=gtk.TreeViewColumn(None,cpt,text=COLUMN_NAME,foreground_set=COLUMN_FONT_COLOR_SET,foreground=COLUMN_FONT_COLOR)
+        tvc=gtk.TreeViewColumn(None,cpt,text=COLUMN_NAME,weight=COLUMN_FONT_WGT,foreground_set=COLUMN_FONT_COLOR_SET,foreground=COLUMN_FONT_COLOR)
         self.append_column(tvc)
 
 
@@ -543,6 +548,7 @@ class CollectionStartPage(gtk.VBox):
     __gsignals__={
         'collection-open':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user selects a collection to open
         'collection-new':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user wants to create a new collection
+        'collection-context-menu':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user has right clicked on a collection in the list
         'folder-open':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user wants to browse a local directory as a collection
         }
     def __init__(self,coll_set):
@@ -559,6 +565,8 @@ class CollectionStartPage(gtk.VBox):
         self.coll_list=UnopenedCollectionList(coll_set.add_model('ACTIVATOR'))
         self.coll_list.connect("row-activated",self.open_collection_by_activation)
         self.coll_list.connect("cursor-changed",self.open_possible,open_button)
+        self.coll_list.add_events(gtk.gdk.BUTTON_MOTION_MASK)
+        self.coll_list.connect("button-release-event",self.context_menu)
         sel=self.coll_list.get_selection()
         model,iter=sel.get_selected()
         if not iter:
@@ -596,6 +604,13 @@ class CollectionStartPage(gtk.VBox):
         self.pack_start(b2,False)
 #        self.pack_start(b3,False)
         self.show_all()
+
+    def context_menu(self,widget,event):
+        if event.button==3:
+            (row_path,tvc,tvc_x,tvc_y)=self.coll_list.get_path_at_pos(event.x, event.y)
+            if row_path:
+                id=self.coll_list.get_model()[row_path][COLUMN_ID]
+                self.emit('collection-context-menu',id)
 
     def open_collection_by_activation(self, treeview, path, view_column):
         model=self.coll_list.get_model()

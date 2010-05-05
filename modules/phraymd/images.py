@@ -115,7 +115,6 @@ def toggle_tags(item,tags,collection=None):
         new_tags=list(tags_kw)
         all_present=reduce(bool.__and__,[t in tags_kw_lower for t in tags_lower],True)
         if all_present:
-            print 'removing tags',new_tags,tags_kw_lower,tags_lower
             j=0
             while j<len(new_tags):
                 if tags_kw_lower[j] in tags_lower:

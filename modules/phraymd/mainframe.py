@@ -128,6 +128,7 @@ class MainFrame(gtk.VBox):
         self.startpage=collectionmanager.CollectionStartPage(self.coll_set)
         self.startpage.connect("collection-open",self.collection_open_cb)
         self.startpage.connect("collection-new",self.create_local_store)
+        self.startpage.connect("collection-context-menu",self.collection_context_menu)
         self.startpage.connect("folder-open",self.browse_dir_collection)
 
         self.browser_nb.append_page(self.startpage,gtk.image_new_from_stock(gtk.STOCK_ADD,gtk.ICON_SIZE_MENU))
@@ -507,9 +508,6 @@ class MainFrame(gtk.VBox):
         page.grab_focus()
 
 
-    def collection_open_cb(self,widget,id):
-        self.collection_open(id)
-
     def collection_open(self,id):
         c=self.coll_set[id]
         if c!=None:
@@ -538,6 +536,49 @@ class MainFrame(gtk.VBox):
 #                self.add_browser(coll)
 #                self.tm.load_collection(coll)
 #        self.browser_nb.set_current_page(self.browser_nb.page_num(page))
+
+    def collection_open_cb(self,widget,id):
+        self.collection_open(id)
+
+    def collection_close_cb(self,widget,coll_id):
+        c=self.coll_set[coll_id]
+        if c!=None:
+            if c.browser!=None:
+                self.collection_close(widget,c.browser)
+
+    def collection_delete_cb(self,widget,coll_id):
+        c=self.coll_set[coll_id]
+        if c!=None and c.browser==None and not c.is_open:
+            del self.coll_set[coll_id]
+
+    def collection_properties_cb(self,widget,coll_id):
+        c=self.coll_set[coll_id]
+        if c!=None:
+            dialog=dialogs.PrefDialog(c.get_prefs())
+            response=dialog.run()
+            prefs=dialog.get_values()
+            dialog.destroy()
+            if response==gtk.RESPONSE_ACCEPT:
+                print 'PREFERENCE DIALOG: made some changes'
+
+    def collection_context_menu(self,widget,coll_id):
+        menu=gtk.Menu()
+        def menu_add(menu,text,callback,*args):
+            item=gtk.MenuItem(text)
+            item.connect("activate",callback,*args)
+            menu.append(item)
+            item.show()
+        c=self.coll_set[coll_id]
+        if c==None:
+            return
+        menu_add(menu,"Open",self.collection_open_cb,coll_id)
+        if c.is_open:
+            menu_add(menu,"Close",self.collection_close_cb,coll_id)
+        if c!=None and c.type=="LOCALSTORE" and not c.is_open:
+            menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
+        menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
+        if len(menu.get_children())>0:
+            menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def collection_close(self,widget,browser=None):
         if not browser:

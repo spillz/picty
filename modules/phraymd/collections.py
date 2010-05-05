@@ -185,7 +185,7 @@ class Collection(list):
         self.image_dirs=[]
 
 
-col_prefs=('image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+col_prefs=('name','image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
             'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
 
 class Collection2():
@@ -369,8 +369,7 @@ class Collection2():
                 self.image_dirs=cPickle.load(f)
             elif version>='0.4.1':
                 d=cPickle.load(f)
-                for k in d:
-                    self.__dict__[k]=d[k]
+                self.set_prefs(d)
             if version>='0.4.0':
                 self.items=cPickle.load(f)
             else:
@@ -403,9 +402,7 @@ class Collection2():
             print 'failed to open collection',self.filename,'for write'
             return False
         cPickle.dump(settings.version,f,-1)
-        d={}
-        for p in col_prefs:
-            d[p]=self.__dict__[p]
+        d=self.get_prefs()
         cPickle.dump(d,f,-1)
         cPickle.dump(self.items,f,-1)
         f.close()
@@ -418,6 +415,15 @@ class Collection2():
                 v.empty()
     def __len__(self):
         return len(self.items)
+    def set_prefs(self,prefs):
+        for p in col_prefs:
+            if p in prefs:
+                self.__dict__[p]=prefs[p]
+    def get_prefs(self):
+        prefs={}
+        for p in col_prefs:
+            prefs[p]=self.__dict__[p]
+        return prefs
 
 
 def create_empty_file(filename,prefs,overwrite_if_exists=False):

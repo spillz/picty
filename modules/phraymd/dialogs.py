@@ -307,6 +307,8 @@ class AddLocalStoreDialog(gtk.Dialog):
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
+
+
 class BrowseDirectoryDialog(gtk.Dialog):
     def __init__(self,value_dict=None):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
@@ -361,6 +363,147 @@ class BrowseDirectoryDialog(gtk.Dialog):
         self.load_meta_check.set_active(val_dict['load_metadata'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+
+class LocalStorePrefBox(gtk.VBox):
+    def __init__(self,value_dict=None):
+        gtk.VBox.__init__(self)
+        box,self.name_entry=box_add(self,[(gtk.Entry(),True,None)],'Collection Name: ')
+        self.path_entry=PathnameEntry('','Path to Images: ','Choose a Directory',directory=True)
+        self.pack_start(self.path_entry)
+        self.name_entry.connect("changed",self.name_changed)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
+
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(False)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.recursive_button,False)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
+
+        self.pack_start(self.a_frame)
+
+        self.show_all()
+        if value_dict:
+            self.set_values(value_dict)
+#        self.create_button.set_sensitive(False)
+
+    def path_changed(self,entry):
+        sensitive=len(self.name_entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.create_button.set_sensitive(sensitive)
+
+    def name_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.create_button.set_sensitive(sensitive)
+
+#    def path_changed(self,entry):
+
+    def get_values(self):
+        return {
+                'name': self.name_entry.get_text().strip(),
+                'image_dirs': [self.path_entry.get_path()],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
+
+    def set_values(self,val_dict):
+        print 'SETTING',val_dict
+        self.name_entry.set_text(val_dict['name'])
+        if len(val_dict['image_dirs'])>0:
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recursive_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+#        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+
+
+class DirectoryPrefBox(gtk.VBox):
+    def __init__(self,value_dict=None):
+        gtk.VBox.__init__(self)
+        self.path_entry=PathnameEntry('','Path: ','Choose a Directory',directory=True)
+        self.pack_start(self.path_entry)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
+
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(True)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
+
+        self.pack_start(self.recursive_button)
+        self.pack_start(self.a_frame)
+
+        self.show_all()
+        if value_dict:
+            self.set_values(value_dict)
+
+    def path_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+#        self.browse_button.set_sensitive(sensitive)
+
+    def get_values(self):
+        return {
+                'image_dirs': [self.path_entry.get_path()],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
+
+    def set_values(self,val_dict):
+        if len(val_dict['image_dirs'])>0:
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recurse_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+
+collection_pref_ui={
+'LOCALSTORE': LocalStorePrefBox,
+'DEVICE': DirectoryPrefBox,
+'DIRECTORY': DirectoryPrefBox
+}
+
+class PrefDialog(gtk.Dialog):
+    def __init__(self,prefs,type='LOCALSTORE'):
+        gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
+        self.set_title('Collection Preferences')
+        self.pref_box=collection_pref_ui[type]()
+        self.vbox.pack_start(self.pref_box)
+        self.add_button("_Cancel",gtk.RESPONSE_REJECT)
+        self.ok_button=self.add_button("_Accept Changes",gtk.RESPONSE_ACCEPT)
+        self.ok_button.set_sensitive(False)
+        self.vbox.show()
+        if prefs:
+            self.set_values(prefs)
+
+    def get_values(self):
+        return self.pref_box.get_values()
+
+    def set_values(self,val_dict):
+        self.pref_box.set_values(val_dict)
+
 
 class MetaDialog(gtk.Dialog):
     def __init__(self,item,collection):

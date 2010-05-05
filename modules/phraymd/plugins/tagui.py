@@ -506,10 +506,8 @@ class TagFrame(gtk.VBox):
         def copy(iter_node,dest_iter,rownum=None):
             row=list(self.model[iter_node])
             if rownum!=None:
-                print 'inserting',row,rownum
                 dest_iter=self.model.insert(dest_iter,rownum,row)
             else:
-                print 'appending',row,rownum
                 it=self.model.iter_children(dest_iter)
                 it=None
                 n=self.model.iter_n_children(dest_iter)
@@ -521,7 +519,6 @@ class TagFrame(gtk.VBox):
                 if i==n:
                     dest_iter=self.model.append(dest_iter,row)
             row=self.model[dest_iter]
-            print 'dest',dest_iter
             if row[self.M_TYPE]==3:
                 self.user_tags[row[self.M_KEY]]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
             iter_node=self.model.iter_children(iter_node)
@@ -556,16 +553,12 @@ class TagFrame(gtk.VBox):
                 if i<=0:
                     i=0
                 iter=self.model.get_iter(basepath)
-                print 'sorting index',i
                 if i<self.model.iter_n_children(iter)-1:
                     it=self.model.iter_nth_child(iter,i)
                 else:
-                    print 'done'
                     break
             else:
-                print 'no valid iter'
                 break
-        print 'aborted'
 
 
     def get_checked_tags(self):
