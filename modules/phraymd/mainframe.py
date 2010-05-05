@@ -586,9 +586,12 @@ class MainFrame(gtk.VBox):
         coll=browser.active_collection
         ind=self.browser_nb.page_num(browser)
         if ind>=0:
+            cur_page_ind=self.browser_nb.get_current_page()
             self.browser_nb.remove_page(ind)
             if self.browser_nb.get_n_pages()<2:
                 self.browser_nb.set_show_tabs(False)
+            if cur_page_ind!=self.browser_nb.get_n_pages():
+                self.browser_nb.set_current_page(0)
         if coll==None:
             return
         coll.browser=None
