@@ -210,10 +210,6 @@ sort_keys_str={
         'Relevance':get_relevance
         }
 
-
-
-
-
 def mtime_filter(l,r,item):
     val=get_mtime(item)
     if criteria[0]<=val<=criteria[1]:

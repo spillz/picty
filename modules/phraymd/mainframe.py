@@ -110,7 +110,7 @@ class MainFrame(gtk.VBox):
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Close',self.close_viewer,show_on_hover,gtk.STOCK_CLOSE,'Main','Hides the image viewer'),
-                        ('Show in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_LEAVE_FULLSCREEN,'Main','Center the image in the browser'),
+                        ('Show in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_FIND,'Main','Center the image in the browser'),
                         ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
                         ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
                         ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
