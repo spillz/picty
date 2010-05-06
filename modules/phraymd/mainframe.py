@@ -868,7 +868,7 @@ class MainFrame(gtk.VBox):
             self.status_bar.hide()
         self.status_bar.set_text(message)
 
-    def key_press_signal(self,obj,event,browser):
+    def key_press_signal(self,obj,event,browser=None):
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
                 fileops.worker.delete(self.active_browser().active_view,self.update_status)

@@ -34,13 +34,14 @@ class CropPlugin(pluginbase.Plugin):
     version='0.1.0'
     def __init__(self):
         self.crop_mode=False
+        self.crop_anchor=(0,0)
         self.crop_dimensions=(0,0,0,0)
         self.dragging=False
     def plugin_init(self,mainframe,app_init):
         self.viewer=mainframe.iv
 
-        self.aspect_label=gtk.Label("Aspect Ratio")
-        self.aspect_entry=gtk.Entry()
+        self.aspect_label=gtk.Label("Constraints")
+        self.aspect_entry=gtk.ComboBoxEntry()
         self.aspect_entry.connect("changed",self.crop_aspect)
         self.ok_button=gtk.Button("Cro_p")
         self.ok_button.connect("clicked",self.crop_do_callback)
@@ -86,6 +87,7 @@ class CropPlugin(pluginbase.Plugin):
     def crop_cancel_callback(self,widget):
         self.reset(True)
     def reset(self,shutdown=False):
+        self.crop_anchor=(0,0)
         self.crop_dimensions=(0,0,0,0)
         self.crop_mode=False
         self.item=None
@@ -119,6 +121,7 @@ class CropPlugin(pluginbase.Plugin):
         if event.button==1:
             self.dragging=True
             x,y=self.viewer_to_image(event.x,event.y)
+            self.crop_anchor=(x,y)
             self.crop_dimensions=(x,y,x,y)
             self.viewer.redraw_view()
 
@@ -128,7 +131,9 @@ class CropPlugin(pluginbase.Plugin):
         if event.button==1 and self.dragging:
             self.dragging=False
             x,y=self.viewer_to_image(event.x,event.y)
-            self.crop_dimensions=(self.crop_dimensions[0],self.crop_dimensions[1],x,y)
+            X=(self.crop_anchor[0],x)
+            Y=(self.crop_anchor[1],y)
+            self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
             self.viewer.redraw_view()
 
     def mouse_motion_signal(self,obj,event):
@@ -137,7 +142,9 @@ class CropPlugin(pluginbase.Plugin):
             return
         if self.dragging:
             x,y=self.viewer_to_image(event.x,event.y)
-            self.crop_dimensions=(self.crop_dimensions[0],self.crop_dimensions[1],x,y)
+            X=(self.crop_anchor[0],x)
+            Y=(self.crop_anchor[1],y)
+            self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
             self.viewer.redraw_view()
 
     def viewer_relinquish_control(self):
@@ -152,12 +159,45 @@ class CropPlugin(pluginbase.Plugin):
         x,y,w,h=self.crop_dimensions
         w-=x
         h-=y
-        x+=(self.viewer.imarea.window.get_size()[0]-self.item.qview.get_width())/2
-        y+=(self.viewer.imarea.window.get_size()[1]-self.item.qview.get_height())/2
+        W,H=self.viewer.imarea.window.get_size()
+        x+=(W-self.item.qview.get_width())/2
+        y+=(H-self.item.qview.get_height())/2
+
+        #block out the background in red
         fill_gc=drawable.new_gc()
         fill_gc.set_function(gtk.gdk.OR)
         colormap=drawable.get_colormap()
         red= colormap.alloc('red')
         fill_gc.set_foreground(red)
         fill_gc.set_background(red)
-        drawable.draw_rectangle(fill_gc,True,x,y,w,h)
+        drawable.draw_rectangle(fill_gc,True,0,0,W,y)
+        drawable.draw_rectangle(fill_gc,True,0,y,x,y+h)
+        drawable.draw_rectangle(fill_gc,True,x+w,y,W,y+h)
+        drawable.draw_rectangle(fill_gc,True,0,y+h,W,H)
+
+        #draw drag handles
+        handle_gc=drawable.new_gc()
+        hlen=10
+        vlen=10
+        colormap=drawable.get_colormap()
+        white= colormap.alloc('white')
+        handle_gc.set_foreground(white)
+        handle_gc.set_background(white)
+        handle_gc.set_line_attributes(3,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
+        x=int(x)-1
+        y=int(y)-1
+        #top left
+        drawable.draw_line(handle_gc,x,y,x+hlen,y)
+        drawable.draw_line(handle_gc,x,y,x,y+vlen)
+
+        #top right
+        drawable.draw_line(handle_gc,x+w,y,x+w-hlen,y)
+        drawable.draw_line(handle_gc,x+w,y,x+w,y+vlen)
+
+        #bottom left
+        drawable.draw_line(handle_gc,x,y+h,x+hlen,y+h)
+        drawable.draw_line(handle_gc,x,y+h,x,y+h-vlen)
+
+        #bottom right
+        drawable.draw_line(handle_gc,x+w,y+h,x+w-hlen,y+h)
+        drawable.draw_line(handle_gc,x+w,y+h,x+w,y+h-vlen)

@@ -367,9 +367,6 @@ class ImageBrowser(gtk.HBox):
         callback triggered to set the selection_data payload
         (viewer is the source of the drop)
         '''
-        print '**********************************'
-        print 'drag_get_sig info',info
-        print '**********************************'
         if self.drag_item==None:
             return
         if info == self.TARGET_TYPE_IMAGE:
