@@ -194,6 +194,7 @@ class ImageViewer(gtk.VBox):
         self.imarea.set_size_request(128,96)
         self.imarea.show()
         self.item=None
+        self.collection=None
         self.ImageNormal()
 
     def plugin_request_control(self,plugin,force=False):
@@ -260,12 +261,13 @@ class ImageViewer(gtk.VBox):
     def ImageLoaded(self,item):
         pass
 
-    def SetItem(self,item):
+    def SetItem(self,item,collection=None):
         if not self.request_plugin_release():
             return False
         if not pluginmanager.mgr.callback_all_until_false('viewer_item_opening',item):
             return False
         self.item=item
+        self.collection=collection
         self.il.set_item(item,(self.geo_width,self.geo_height))
 #        self.UpdateMetaTable(item)
         if self.imarea.window:
@@ -344,7 +346,7 @@ class ImageViewer(gtk.VBox):
 
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         cmd=self.get_hover_command(x, y)
-        if cmd>0:
+        if cmd>=0:
             cmd=self.hover_cmds[cmd]
             tooltip.set_text(cmd.tooltip)
             return True

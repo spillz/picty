@@ -109,6 +109,8 @@ class MainFrame(gtk.VBox):
         self.viewer_hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_LARGE_TOOLBAR)
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
+                        ('Close',self.close_viewer,show_on_hover,gtk.STOCK_CLOSE,'Main','Hides the image viewer'),
+                        ('Show in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_LEAVE_FULLSCREEN,'Main','Center the image in the browser'),
                         ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
                         ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
                         ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
@@ -617,18 +619,6 @@ class MainFrame(gtk.VBox):
             self.tm.queue_job_instance(sj)
         self.plugmgr.callback('media_disconnected',collection.id)
 
-    def add_dir(self,name,path):
-        pass
-
-    def remove_dir(self,name):
-        pass
-
-    def add_localstore(self,coll_file):
-        pass
-
-    def remove_localstore(self,coll_file):
-        pass
-
     def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
 
@@ -972,12 +962,43 @@ class MainFrame(gtk.VBox):
         else:
             self.hpane_ext.set_position(self.active_browser().geo_thumbwidth+2*self.active_browser().geo_pad)
 
+    def close_viewer(self,widget,item):
+        self.hide_image()
+
+    def show_viewed_item(self,widget,item):
+        b=self.active_browser()
+        if b!=self.startpage and b.active_collection!=None and self.iv.collection==b.active_collection:
+            b.update_geometry(True)
+#            if not visible:
+#                self.resize_b_pane()
+            if self.iv.item!=None:
+                ind=b.item_to_view_index(self.iv.item)
+                b.center_view_offset(ind)
+            b.update_scrollbar()
+            b.update_required_thumbs()
+            b.refresh_view()
+            b.focal_item=item
+            b.grab_focus()
+
+#
+#            if ind>=0:
+#                print  'centering on',ind
+#                b.update_geometry(True)
+#                b.redraw_view()
+#                browser.update_geometry(True)
+##                browser.center_view_offset(ind)
+#                browser.update_scrollbar()
+#                browser.update_required_thumbs()
+#                browser.refresh_view()
+#                browser.focal_item=item
+#                browser.grab_focus()
+
 
     def view_image(self,item,fullwindow=False):
         browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()
-        self.iv.SetItem(item)
+        self.iv.SetItem(item,browser.active_collection)
         self.is_iv_showing=True
         browser.update_geometry(True)
         if not visible:

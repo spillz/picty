@@ -448,7 +448,7 @@ class ImageBrowser(gtk.HBox):
 
     def redraw_view(self,collection=None):
         '''redraw the view without recomputing geometry or changing position'''
-        if collection and collection!=self.active_collection:
+        if collection!=None and collection!=self.active_collection:
             return
 #        self.refresh_view()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
