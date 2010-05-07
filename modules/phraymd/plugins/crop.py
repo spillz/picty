@@ -36,6 +36,8 @@ class CropPlugin(pluginbase.Plugin):
         self.crop_mode=False
         self.crop_anchor=(0,0)
         self.crop_dimensions=(0,0,0,0)
+        self.move_mode=False
+        self.hover_zone=0
         self.dragging=False
     def plugin_init(self,mainframe,app_init):
         self.viewer=mainframe.iv
@@ -87,9 +89,11 @@ class CropPlugin(pluginbase.Plugin):
     def crop_cancel_callback(self,widget):
         self.reset(True)
     def reset(self,shutdown=False):
+        self.hover_zone=0
         self.crop_anchor=(0,0)
         self.crop_dimensions=(0,0,0,0)
         self.crop_mode=False
+        self.move_mode=False
         self.item=None
         self.viewer.image_box.remove(self.crop_bar)
         self.viewer.imarea.disconnect(self.press_handle)
@@ -121,8 +125,26 @@ class CropPlugin(pluginbase.Plugin):
         if event.button==1:
             self.dragging=True
             x,y=self.viewer_to_image(event.x,event.y)
-            self.crop_anchor=(x,y)
-            self.crop_dimensions=(x,y,x,y)
+            x0,y0,x1,y1=self.crop_dimensions
+            if self.hover_zone==5:
+                self.move_mode=True
+                x=x1
+                y=y1
+                self.crop_anchor=(x0,y0)
+            elif self.hover_zone==1:
+                self.crop_anchor=(x1,y1)
+            elif self.hover_zone==2:
+                self.crop_anchor=(x0,y1)
+            elif self.hover_zone==3:
+                self.crop_anchor=(x1,y0)
+            elif self.hover_zone==4:
+                self.crop_anchor=(x0,y0)
+            else:
+                self.crop_anchor=(x,y)
+            X=(self.crop_anchor[0],x)
+            Y=(self.crop_anchor[1],y)
+            self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
+            self.hover_zone=0
             self.viewer.redraw_view()
 
     def button_release(self,widget,event):
@@ -131,9 +153,19 @@ class CropPlugin(pluginbase.Plugin):
         if event.button==1 and self.dragging:
             self.dragging=False
             x,y=self.viewer_to_image(event.x,event.y)
-            X=(self.crop_anchor[0],x)
-            Y=(self.crop_anchor[1],y)
-            self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
+            if not self.move_mode:
+                X=(self.crop_anchor[0],x)
+                Y=(self.crop_anchor[1],y)
+                self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
+                self.viewer.redraw_view()
+            else:
+                x0,y0,x1,y1=self.crop_dimensions
+                X=(x0+x1)/2
+                Y=(y0+y1)/2
+                dx=max(-x0,min(x-X,self.item.qview.get_width()-x1))
+                dy=max(-y0,min(y-Y,self.item.qview.get_height()-y1))
+                self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
+            self.move_mode=False
             self.viewer.redraw_view()
 
     def mouse_motion_signal(self,obj,event):
@@ -142,10 +174,37 @@ class CropPlugin(pluginbase.Plugin):
             return
         if self.dragging:
             x,y=self.viewer_to_image(event.x,event.y)
-            X=(self.crop_anchor[0],x)
-            Y=(self.crop_anchor[1],y)
-            self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
+            if not self.move_mode:
+                X=(self.crop_anchor[0],x)
+                Y=(self.crop_anchor[1],y)
+                self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
+            else:
+                x0,y0,x1,y1=self.crop_dimensions
+                X=(x0+x1)/2
+                Y=(y0+y1)/2
+                dx=max(-x0,min(x-X,self.item.qview.get_width()-x1))
+                dy=max(-y0,min(y-Y,self.item.qview.get_height()-y1))
+                self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
             self.viewer.redraw_view()
+        else:
+            mx,my=self.viewer_to_image(event.x,event.y)
+            old_zone=self.hover_zone
+            x0,y0,x1,y1=self.crop_dimensions
+            radx=max(min(8,(x1-x0)/3),1)
+            rady=max(min(8,(y1-y0)/3),1)
+            hover_zone_pts=(
+            (1,x0,y0),
+            (2,x1,y0),
+            (3,x0,y1),
+            (4,x1,y1),
+            (5,(x0+x1)/2,(y0+y1)/2)
+            )
+            for z,x,y in hover_zone_pts:
+                self.hover_zone=z*(1.0*abs(mx-x)/radx+1.0*abs(my-y)/rady<=1)
+                if self.hover_zone:
+                    break
+            if old_zone!=self.hover_zone:
+                self.viewer.redraw_view()
 
     def viewer_relinquish_control(self):
         #user has cancelled the view of the current item, plugin must cancel open operations
@@ -176,28 +235,57 @@ class CropPlugin(pluginbase.Plugin):
         drawable.draw_rectangle(fill_gc,True,0,y+h,W,H)
 
         #draw drag handles
-        handle_gc=drawable.new_gc()
-        hlen=10
-        vlen=10
+        hlen=min(10,(w-1)/3)
+        vlen=min(10,(h-1)/3)
         colormap=drawable.get_colormap()
+        grey= colormap.alloc('grey')
         white= colormap.alloc('white')
-        handle_gc.set_foreground(white)
-        handle_gc.set_background(white)
+        handle_gc=drawable.new_gc()
+        hhandle_gc=drawable.new_gc()
+        handle_gc.set_foreground(grey)
+        handle_gc.set_background(grey)
         handle_gc.set_line_attributes(3,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
+        hhandle_gc.set_foreground(white)
+        hhandle_gc.set_background(white)
+        hhandle_gc.set_line_attributes(3,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
         x=int(x)-1
         y=int(y)-1
         #top left
-        drawable.draw_line(handle_gc,x,y,x+hlen,y)
-        drawable.draw_line(handle_gc,x,y,x,y+vlen)
+        if self.hover_zone==1:
+            drawable.draw_line(hhandle_gc,x,y,x+hlen,y)
+            drawable.draw_line(hhandle_gc,x,y,x,y+vlen)
+        else:
+            drawable.draw_line(handle_gc,x,y,x+hlen,y)
+            drawable.draw_line(handle_gc,x,y,x,y+vlen)
 
         #top right
-        drawable.draw_line(handle_gc,x+w,y,x+w-hlen,y)
-        drawable.draw_line(handle_gc,x+w,y,x+w,y+vlen)
+        if self.hover_zone==2:
+            drawable.draw_line(hhandle_gc,x+w,y,x+w-hlen,y)
+            drawable.draw_line(hhandle_gc,x+w,y,x+w,y+vlen)
+        else:
+            drawable.draw_line(handle_gc,x+w,y,x+w-hlen,y)
+            drawable.draw_line(handle_gc,x+w,y,x+w,y+vlen)
 
         #bottom left
-        drawable.draw_line(handle_gc,x,y+h,x+hlen,y+h)
-        drawable.draw_line(handle_gc,x,y+h,x,y+h-vlen)
+        if self.hover_zone==3:
+            drawable.draw_line(hhandle_gc,x,y+h,x+hlen,y+h)
+            drawable.draw_line(hhandle_gc,x,y+h,x,y+h-vlen)
+        else:
+            drawable.draw_line(handle_gc,x,y+h,x+hlen,y+h)
+            drawable.draw_line(handle_gc,x,y+h,x,y+h-vlen)
 
         #bottom right
-        drawable.draw_line(handle_gc,x+w,y+h,x+w-hlen,y+h)
-        drawable.draw_line(handle_gc,x+w,y+h,x+w,y+h-vlen)
+        if self.hover_zone==4:
+            drawable.draw_line(hhandle_gc,x+w,y+h,x+w-hlen,y+h)
+            drawable.draw_line(hhandle_gc,x+w,y+h,x+w,y+h-vlen)
+        else:
+            drawable.draw_line(handle_gc,x+w,y+h,x+w-hlen,y+h)
+            drawable.draw_line(handle_gc,x+w,y+h,x+w,y+h-vlen)
+
+        #center
+        if self.hover_zone==5:
+            drawable.draw_line(hhandle_gc,x+w/2-hlen/2,y+h/2,x+w/2+hlen/2,y+h/2) ##todo: an alternative would be too render a highlight over the whole image
+            drawable.draw_line(hhandle_gc,x+w/2,y+h/2-vlen/2,x+w/2,y+h/2+vlen/2)
+        else:
+            drawable.draw_line(handle_gc,x+w/2-hlen/2,y+h/2,x+w/2+hlen/2,y+h/2) ##todo: an alternative would be too render a highlight over the whole image
+            drawable.draw_line(handle_gc,x+w/2,y+h/2-vlen/2,x+w/2,y+h/2+vlen/2)
