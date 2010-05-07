@@ -58,16 +58,19 @@ class RotatePlugin(pluginbase.Plugin):
         self.rotate_bar.pack_start(self.cancel_button,False)
         self.rotate_bar.pack_start(self.ok_button,False)
         self.rotate_bar.show_all()
+
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
         if self.rotate_mode:
             self.reset(app_shutdown)
+
     def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
         shortcut_commands.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_commands.default_active_callback,'phraymd-image-rotate','Rotate or straighten this image',43)
+
     def rotate_button_callback(self,cmd,item):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
@@ -77,12 +80,15 @@ class RotatePlugin(pluginbase.Plugin):
         self.viewer.image_box.pack_start(self.rotate_bar,False)
         self.viewer.image_box.reorder_child(self.rotate_bar,0)
         self.item=item
+
     def rotate_do_callback(self,widget):
-        self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.ANTIALIAS,True)
+        self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.BILINEAR,True)
         self.reset()
+
     def rotate_cancel_callback(self,widget):
         if self.rotate_mode:
             self.reset()
+
     def reset(self,shutdown=False):
         self.rotate_mode=False
         self.item=None
@@ -91,24 +97,51 @@ class RotatePlugin(pluginbase.Plugin):
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.refresh_view()
+
     def rotate_adjust(self,adjustment):
         if not self.rotate_mode:
             return
         self.viewer.refresh_view()
+
     def viewer_release(self,force=False):
         self.reset(True)
         return True
+
     def t_viewer_sizing(self,size,zoom,item):
         if not self.rotate_mode:
             return
         if size!=self.cur_size or not self.unrotated_screen_image:
             self.unrotated_screen_image=item.image.copy()
             self.unrotated_screen_image.thumbnail(size)
-        if self.angle_adjust.get_value()!=0.0:
-            print 'CALCULATING ROTATION ',self.angle_adjust.get_value()
-            image=self.unrotated_screen_image.rotate(-self.angle_adjust.get_value(),Image.NEAREST,expand=True)
-            image.thumbnail(size)
-            item.qview=imagemanip.image_to_pixbuf(image)
+        image=self.unrotated_screen_image.rotate(-self.angle_adjust.get_value(),Image.NEAREST,expand=True)
+        image.thumbnail(size)
+        item.qview=imagemanip.image_to_pixbuf(image)
         self.cur_size=size
         self.cur_zoom=zoom
         return True
+
+    def viewer_render_end(self,drawable,gc,item):
+        if not self.rotate_mode:
+            return
+        W,H=self.viewer.imarea.window.get_size()
+
+        #draw drag handles
+        colormap=drawable.get_colormap()
+        white= colormap.alloc('white')
+        handle_gc=drawable.new_gc()
+        handle_gc.set_function(gtk.gdk.XOR)
+        handle_gc.set_foreground(white)
+        handle_gc.set_background(white)
+
+        grid_size=40
+        len_grid_x=int(W/grid_size)
+        len_grid_y=int(H/grid_size)
+
+        for i in range(len_grid_x):
+            drawable.draw_line(handle_gc,i*grid_size+grid_size/2,0,i*grid_size+grid_size/2,H)
+
+        for i in range(len_grid_y):
+            drawable.draw_line(handle_gc,0,i*grid_size+grid_size/2,W,i*grid_size+grid_size/2)
+
+
+
