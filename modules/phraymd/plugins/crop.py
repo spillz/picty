@@ -190,8 +190,8 @@ class CropPlugin(pluginbase.Plugin):
             mx,my=self.viewer_to_image(event.x,event.y)
             old_zone=self.hover_zone
             x0,y0,x1,y1=self.crop_dimensions
-            radx=max(min(8,(x1-x0)/3),1)
-            rady=max(min(8,(y1-y0)/3),1)
+            radx=max(min(15,(x1-x0)/3),1)
+            rady=max(min(15,(y1-y0)/3),1)
             hover_zone_pts=(
             (1,x0,y0),
             (2,x1,y0),
@@ -235,8 +235,9 @@ class CropPlugin(pluginbase.Plugin):
         drawable.draw_rectangle(fill_gc,True,0,y+h,W,H)
 
         #draw drag handles
-        hlen=min(10,(w-1)/3)
-        vlen=min(10,(h-1)/3)
+        hlen=min(17,(w-1)/3)
+        vlen=min(17,(h-1)/3)
+        thickness=3 #max(2,int((hlen+vlen)/6))
         colormap=drawable.get_colormap()
         grey= colormap.alloc('grey')
         white= colormap.alloc('white')
@@ -244,10 +245,10 @@ class CropPlugin(pluginbase.Plugin):
         hhandle_gc=drawable.new_gc()
         handle_gc.set_foreground(grey)
         handle_gc.set_background(grey)
-        handle_gc.set_line_attributes(3,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
+        handle_gc.set_line_attributes(thickness,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
         hhandle_gc.set_foreground(white)
         hhandle_gc.set_background(white)
-        hhandle_gc.set_line_attributes(3,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
+        hhandle_gc.set_line_attributes(thickness,gtk.gdk.LINE_SOLID,gtk.gdk.CAP_ROUND,gtk.gdk.JOIN_BEVEL)
         x=int(x)-1
         y=int(y)-1
         #top left
