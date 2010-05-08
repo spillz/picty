@@ -42,11 +42,11 @@ class RotatePlugin(pluginbase.Plugin):
         self.cur_size=None
         self.cur_zoom=None
 
-        self.angle_adjust=gtk.Adjustment(0,-180,180,0.01,0.1,0.1)
-        self.angle_adjust.connect("value-changed",self.rotate_adjust)
-        self.slider=gtk.HScale(self.angle_adjust)
+        self.angle_adjustment=gtk.Adjustment(0,-180,180,0.01,0.1,0.1)
+        self.angle_adjustment.connect("value-changed",self.rotate_adjust)
+        self.slider=gtk.HScale(self.angle_adjustment)
         self.slider.set_draw_value(False)
-        self.angle_entry=gtk.SpinButton(self.angle_adjust,0.0,2)
+        self.angle_entry=gtk.SpinButton(self.angle_adjustment,0.0,2)
         self.ok_button=gtk.Button("_Rotate")
         self.ok_button.connect("clicked",self.rotate_do_callback)
         self.cancel_button=gtk.Button("_Cancel")
@@ -82,7 +82,7 @@ class RotatePlugin(pluginbase.Plugin):
         self.item=item
 
     def rotate_do_callback(self,widget):
-        self.item.image=self.item.image.rotate(-self.angle_adjust.get_value(),Image.BILINEAR,True)
+        self.item.image=self.item.image.rotate(-self.angle_adjustment.get_value(),Image.BILINEAR,True)
         self.reset()
 
     def rotate_cancel_callback(self,widget):
@@ -95,6 +95,7 @@ class RotatePlugin(pluginbase.Plugin):
         self.unrotated_screen_image=None
         self.viewer.image_box.remove(self.rotate_bar)
         self.viewer.plugin_release(self)
+        self.angle_adjustment.set_value(0)
         if not shutdown:
             self.viewer.refresh_view()
 
@@ -113,7 +114,7 @@ class RotatePlugin(pluginbase.Plugin):
         if size!=self.cur_size or not self.unrotated_screen_image:
             self.unrotated_screen_image=item.image.copy()
             self.unrotated_screen_image.thumbnail(size)
-        image=self.unrotated_screen_image.rotate(-self.angle_adjust.get_value(),Image.NEAREST,expand=True)
+        image=self.unrotated_screen_image.rotate(-self.angle_adjustment.get_value(),Image.NEAREST,expand=True)
         image.thumbnail(size)
         item.qview=imagemanip.image_to_pixbuf(image)
         self.cur_size=size
@@ -127,13 +128,13 @@ class RotatePlugin(pluginbase.Plugin):
 
         #draw drag handles
         colormap=drawable.get_colormap()
-        white= colormap.alloc('white')
+        white= colormap.alloc_color('white')
         handle_gc=drawable.new_gc()
         handle_gc.set_function(gtk.gdk.XOR)
         handle_gc.set_foreground(white)
         handle_gc.set_background(white)
 
-        grid_size=40
+        grid_size=min(max(40,W/12),W)
         len_grid_x=int(W/grid_size)
         len_grid_y=int(H/grid_size)
 
