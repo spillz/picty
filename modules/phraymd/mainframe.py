@@ -83,6 +83,20 @@ class MainFrame(gtk.VBox):
         self.active_collection=None
         self.collections_init()
 
+        print 'SETTING RC STRING'
+        ## thank you to tadeboro http://www.gtkforums.com/post-10694.html#10694
+        gtk.rc_parse_string ('''
+                    style "tab-close-button-style"
+                    {
+                      GtkWidget::focus-padding = 0
+                      GtkWidget::focus-line-width = 0
+                      xthickness = 0
+                      ythickness = 0
+                    }
+                    widget "*.tab-close-button" style "tab-close-button-style"
+                    ''');
+        ##
+        print 'SET RC STRING'
 
         ##plugin-todo: instantiate plugins
         self.plugmgr=pluginmanager.mgr
@@ -393,13 +407,13 @@ class MainFrame(gtk.VBox):
             c.browser.connect(sig,self.browser_signal_notify,sig)
 
         tab_label=gtk.HBox()
+        tab_label.set_spacing(5)
         tab_label.pack_start(gtk.image_new_from_pixbuf(c.pixbuf),False,False)
         tab_label.pack_start(gtk.Label(c.name),False,False)
-        cbut=gtk.Button(label="")
+        cbut=gtk.Button()
+        cbut.set_name("tab-close-button")
         cbut.set_relief(gtk.RELIEF_NONE)
         cbut.set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
-        sizex,sizey=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)
-        cbut.set_size_request(3*sizex/2,3*sizey/2)
         cbut.connect("clicked",self.collection_close,c.browser)
         tab_label.pack_start(cbut,False,False)
         tab_label.show_all()
