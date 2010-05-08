@@ -124,7 +124,7 @@ class MainFrame(gtk.VBox):
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Close',self.close_viewer,show_on_hover,gtk.STOCK_CLOSE,'Main','Hides the image viewer'),
-                        ('Show in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_FIND,'Main','Center the image in the browser'),
+                        ('Locate in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_HOME,'Main','Locate the image in the browser'),
                         ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
                         ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
                         ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
@@ -981,38 +981,29 @@ class MainFrame(gtk.VBox):
 
     def show_viewed_item(self,widget,item):
         b=self.active_browser()
-        if b!=self.startpage and b.active_collection!=None and self.iv.collection==b.active_collection:
-            b.update_geometry(True)
-#            if not visible:
-#                self.resize_b_pane()
-            if self.iv.item!=None:
-                ind=b.item_to_view_index(self.iv.item)
-                b.center_view_offset(ind)
+        if b!=self.iv.browser:
+            ind=self.browser_nb.page_num(self.iv.browser)
+            if ind<0:
+                return
+            self.browser_nb.set_current_page(ind)
+        b=self.iv.browser
+        b.update_geometry(True)
+        if self.iv.item!=None:
+            ind=b.item_to_view_index(self.iv.item)
+            if ind<0:
+                return
+            b.center_view_offset(ind)
             b.update_scrollbar()
             b.update_required_thumbs()
-            b.refresh_view()
             b.focal_item=item
-            b.grab_focus()
-
-#
-#            if ind>=0:
-#                print  'centering on',ind
-#                b.update_geometry(True)
-#                b.redraw_view()
-#                browser.update_geometry(True)
-##                browser.center_view_offset(ind)
-#                browser.update_scrollbar()
-#                browser.update_required_thumbs()
-#                browser.refresh_view()
-#                browser.focal_item=item
-#                browser.grab_focus()
+            b.refresh_view()
 
 
     def view_image(self,item,fullwindow=False):
         browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()
-        self.iv.SetItem(item,browser.active_collection)
+        self.iv.SetItem(item,browser)
         self.is_iv_showing=True
         browser.update_geometry(True)
         if not visible:
@@ -1030,15 +1021,28 @@ class MainFrame(gtk.VBox):
         browser=self.active_browser()
         self.iv.hide()
         self.iv.ImageNormal()
-        if self.active_collection:
-            self.active_browser().show()
-        #self.hbox.show()
-        #self.toolbar1.show()
-        self.hpane_ext.show()
+        self.browser_nb.show()
+        self.toolbar1.show()
+        if self.sidebar_toggle.get_active():
+            self.sidebar.show()
         self.info_bar.show()
         self.is_iv_fullscreen=False
-        self.is_iv_showing=False
+        if self.is_fullscreen:
+            self.window.unfullscreen()
+            self.is_fullscreen=False
         browser.grab_focus()
+
+
+#        self.iv.ImageNormal()
+#        if self.active_collection:
+#            self.active_browser().show()
+#        #self.hbox.show()
+#        #self.toolbar1.show()
+#        self.hpane_ext.show()
+#        self.info_bar.show()
+#        self.is_iv_fullscreen=False
+#        self.is_iv_showing=False
+#        browser.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
         browser=self.active_browser()
