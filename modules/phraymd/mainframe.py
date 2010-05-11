@@ -179,9 +179,14 @@ class MainFrame(gtk.VBox):
 
 
         try:
-            self.filter_entry.set_icon_from_stock(gtk.STOCK_CLEAR)
+            self.filter_entry.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,gtk.STOCK_CLEAR)
             self.filter_entry.connect("icon-press",self.clear_filter)
+            entry_no_icons=False
         except:
+            print 'ERROR SETTING FILTER ENTRY'
+            import sys,traceback
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
             entry_no_icons=True
         #self.filter_entry.set_width_chars(40)
 
@@ -840,11 +845,10 @@ class MainFrame(gtk.VBox):
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.get_text()
-        print 'set filter_text',self.active_collection!=None,self.active_browser().active_view!=None
         if self.active_collection!=None and self.active_browser().active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
             self.tm.rebuild_view(key,filter_text)
 
-    def clear_filter(self,widget):
+    def clear_filter(self,widget,*args):
         self.filter_entry.set_text('')
         self.set_filter_text(widget)
 
@@ -889,8 +893,8 @@ class MainFrame(gtk.VBox):
             elif event.keyval==65307: #escape
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        self.view_image(self.iv.item)
                         self.iv.ImageNormal()
+                        self.view_image(self.iv.item)
                         if self.active_collection:
                             self.active_browser().show()
                         self.hpane_ext.show()
@@ -919,11 +923,11 @@ class MainFrame(gtk.VBox):
                 if self.iv.item:
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
+                        self.iv.ImageNormal()
                         if self.is_fullscreen:
                             self.window.unfullscreen()
                             self.is_fullscreen=False
                         self.view_image(self.iv.item)
-                        self.iv.ImageNormal()
                         self.hpane_ext.show()
                         self.info_bar.show()
                         self.browser_nb.show()
@@ -932,8 +936,8 @@ class MainFrame(gtk.VBox):
                         self.toolbar1.show()
                         self.is_iv_fullscreen=False
                     else:
-                        self.view_image(self.iv.item)
                         self.iv.ImageFullscreen()
+                        self.view_image(self.iv.item)
                         self.toolbar1.hide()
                         self.info_bar.hide()
                         self.browser_nb.hide()
@@ -1019,8 +1023,8 @@ class MainFrame(gtk.VBox):
 
     def hide_image(self):
         browser=self.active_browser()
-        self.iv.hide()
         self.iv.ImageNormal()
+        self.iv.hide()
         self.browser_nb.show()
         self.toolbar1.show()
         if self.sidebar_toggle.get_active():
