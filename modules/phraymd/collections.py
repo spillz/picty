@@ -22,6 +22,7 @@ License:
 ##standard imports
 import bisect
 import datetime
+import os
 import os.path
 import re
 import datetime
@@ -188,6 +189,7 @@ class Collection(list):
 col_prefs=('name','image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
             'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
 
+
 class Collection2():
     '''defines a sorted collection of Items with
     callbacks to plugins when the contents of the collection change'''
@@ -198,7 +200,6 @@ class Collection2():
         self.name=name #name displayed to the user
         self.pixbuf=pixbuf #icon to display in the interface (maybe need more than one size)
         self.id=id #unique id of the collection
-        self.filename=None #filename of the cache file, if it exists -- for a localstore, normally this is [collection path]/[name]
         self.is_open=False #set by the owner to specify whether this collection is open or closed
         self.numselected=0 #number of items in the collection with a "selected" state
 
@@ -232,7 +233,6 @@ class Collection2():
         dup.items=self.items[:]
         dup.numselected=self.numselected
         dup.image_dirs=self.image_dirs[:]
-        dup.filename=self.filename
         dup.verify_after_walk=self.verify_after_walk
         dup.load_metadata=self.load_metadata
         dup.load_embedded_thumbs=self.load_embedded_thumbs
@@ -246,7 +246,6 @@ class Collection2():
         self.items[:]=dup.items[:]
         self.numselected=dup.numselected
         self.image_dirs=dup.image_dirs[:]
-        self.filename=dup.filename
         self.verify_after_walk=dup.verify_after_walk
         self.load_metadata=dup.load_metadata
         self.load_embedded_thumbs=dup.load_embedded_thumbs
@@ -325,13 +324,16 @@ class Collection2():
             self.active_view=view
     def get_active_view(self):
         return self.active_view
-    def load_header_only(self,filename=''):
+    def pref_file(self):
+        return os.path.join(os.path.join(settings.collections_dir,self.name),'prefs')
+    def data_file(self):
+        return os.path.join(os.path.join(settings.collections_dir,self.name),'data')
+    def load_prefs(self):
         try:
-            if not filename:
-                filename=self.filename
-            if not filename:
-                return False
-            f=open(filename,'rb')
+            col_dir=os.path.join(settings.collections_dir,self.name)
+            if os.path.isfile(col_dir):
+                return self.legacy_open(col_dir,False)
+            f=open(self.pref_file(),'rb')
             version=cPickle.load(f)
             if version<'0.3.0':
                 self.image_dirs=settings.legacy_image_dirs
@@ -339,8 +341,7 @@ class Collection2():
                 self.image_dirs=cPickle.load(f)
             elif version>='0.4.1':
                 d=cPickle.load(f)
-                for k in d:
-                    self.__dict__[k]=d[k]
+                self.set_prefs(d)
             return True
         except:
             import traceback,sys
@@ -349,35 +350,36 @@ class Collection2():
             print tb_text
             self.empty()
             return False
-    def open(self,filename=''):  ##todo: put all of the legacy cruft elsewhere
+    def save_prefs(self):
+        try: ##todo: use "with"
+            f=open(self.pref_file(),'wb')
+            cPickle.dump(settings.version,f,-1)
+            d=self.get_prefs()
+            cPickle.dump(d,f,-1)
+            f.close()
+            return True
+        except:
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print "Error Loading Collection Preference File",self.filename
+            print tb_text
+            return False
+    def open(self):
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument
         '''
+        col_dir=os.path.join(settings.collections_dir,self.name)
         if self.is_open:
             return True
-        print 'loading collection',filename,self.filename
         try:
-            if not filename:
-                filename=self.filename
-            if not filename: ##if no filename, there's nothing to load (scan instead)
-                return True
-            f=open(filename,'rb')
+            if os.path.isfile(col_dir):
+                return self.legacy_open(col_dir)
+            if not self.load_prefs():
+                return False
+            f=open(self.data_file(),'rb')
             version=cPickle.load(f)
-            if version<'0.3.0':
-                self.image_dirs=settings.legacy_image_dirs
-            elif version<='0.4.0':
-                self.image_dirs=cPickle.load(f)
-            elif version>='0.4.1':
-                d=cPickle.load(f)
-                self.set_prefs(d)
-            if version>='0.4.0':
+            if version>='0.5':
                 self.items=cPickle.load(f)
-            else:
-                f.close()
-                c=Collection([])
-                c.load(filename)
-                self.items[:]=c[:]
-            self.filename=filename
             self.numselected=0
             return True
         except:
@@ -391,21 +393,30 @@ class Collection2():
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
+        print 'started close',self.name
         if not self.is_open:
             return True
-        if not self.filename: ##no filename assumed to be a temporary collection
+        if self.type!='LOCALSTORE':
             return False
-        print 'saving collection',self.filename,self.image_dirs
+        print 'starting close',self.name
         try:
-            f=open(self.filename,'wb')
+            col_dir=os.path.join(settings.collections_dir,self.name)
+            print 'closing',col_dir
+            if os.path.isfile(col_dir):
+                print 'removing',col_dir
+                os.remove(col_dir)
+            if not os.path.exists(col_dir):
+                print 'make dir',col_dir
+                os.makedirs(col_dir)
+            self.save_prefs()
+            f=open(self.data_file(),'wb')
+            cPickle.dump(settings.version,f,-1)
+            cPickle.dump(self.items,f,-1)
+            f.close()
+            self.empty()
         except:
-            print 'failed to open collection',self.filename,'for write'
+            print 'failed to close and save collection',self.filename,'for write'
             return False
-        cPickle.dump(settings.version,f,-1)
-        d=self.get_prefs()
-        cPickle.dump(d,f,-1)
-        cPickle.dump(self.items,f,-1)
-        f.close()
         return True
     def empty(self,empty_views=True):
         del self.items[:]
@@ -424,21 +435,67 @@ class Collection2():
         for p in col_prefs:
             prefs[p]=self.__dict__[p]
         return prefs
+    def legacy_open(self,filename='',load_items=True):  ##todo: put all of the legacy cruft elsewhere
+        '''
+        load the collection from a binary pickle file identified by the pathname in the filename argument
+        '''
+        if self.is_open:
+            return True
+        print 'loading legacy collection',filename
+        try:
+            if not filename:
+                return False
+            if not filename: ##if no filename, there's nothing to load (scan instead)
+                return True
+            f=open(filename,'rb')
+            version=cPickle.load(f)
+            if version<'0.3.0':
+                self.image_dirs=settings.legacy_image_dirs
+            elif version<='0.4.0':
+                self.image_dirs=cPickle.load(f)
+            elif version>='0.4.1':
+                d=cPickle.load(f)
+                self.set_prefs(d)
+            if load_items:
+                if version>='0.4.0':
+                        self.items=cPickle.load(f)
+                else:
+                    f.close()
+                    c=Collection([])
+                    c.load(filename)
+                    self.items[:]=c[:]
+            self.numselected=0
+            return True
+        except:
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print "Error Loading Collection",filename
+            print tb_text
+            self.empty()
+            return False
 
 
-def create_empty_file(filename,prefs,overwrite_if_exists=False):
-    fullpath=os.path.join(settings.collections_dir,filename)
+
+def create_empty_collection(name,prefs,overwrite_if_exists=False):
+    col_dir=os.path.join(settings.collections_dir,name)
+    pref_file=os.path.join(os.path.join(settings.collections_dir,name),'prefs')
+    data_file=os.path.join(os.path.join(settings.collections_dir,name),'data')
     if not overwrite_if_exists:
-        if os.path.exists(fullpath):
+        if os.path.exists(col_dir):
             return False
     try:
-        f=open(fullpath,'wb')
+        if not os.path.exists(col_dir):
+            os.makedirs(col_dir)
+        f=open(pref_file,'wb')
         cPickle.dump(settings.version,f,-1)
         d={}
         for p in col_prefs:
             if p in prefs:
                 d[p]=prefs[p]
         cPickle.dump(d,f,-1)
+        f.close()
+        f=open(data_file,'wb')
+        cPickle.dump(settings.version,f,-1)
         cPickle.dump([],f,-1) #empty list of items
         f.close()
     except:

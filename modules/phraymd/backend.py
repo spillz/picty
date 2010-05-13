@@ -330,7 +330,7 @@ class LoadCollectionJob(WorkerJob):
         collection=self.collection
         log.info('Loading collection '+self.collection_file)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
-        if collection.open(self.collection_file):
+        if collection.open():
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.start_monitor(self.worker.directory_change_notify)
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))

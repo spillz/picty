@@ -360,7 +360,6 @@ def image_to_pixbuf(im):
     return pixbuf
 
 
-
 def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size image to view (maybe abstract the common features)
     '''
     resize the fullsize PIL Image item.image and return the result in item.qview

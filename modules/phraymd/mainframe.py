@@ -464,7 +464,7 @@ class MainFrame(gtk.VBox):
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:
-                if imageinfo.create_empty_file(name,prefs):
+                if imageinfo.create_empty_collection(name,prefs):
                     c=self.coll_set.add_localstore(name)
                     self.collection_open(c.id)
                     return
