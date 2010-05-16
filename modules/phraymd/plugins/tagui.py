@@ -400,7 +400,7 @@ class TagFrame(gtk.VBox):
         if rename_response==2:
             return
         self.model[iter][self.M_KEY]=k
-        self.model[iter][self.M_DISP]=k
+        self.model[iter][self.M_DISP]=k.replace('&','&amp;')
         try:
             self.user_tags[k]=self.user_tags[old_key]
             del self.user_tags[old_key]
@@ -432,7 +432,7 @@ class TagFrame(gtk.VBox):
             return
         try:
             self.model[iter][self.M_KEY]=k
-            self.model[iter][self.M_DISP]='<b>%s</b>'%(k,)
+            self.model[iter][self.M_DISP]='<b>%s</b>'%(k.replace('&','&amp;'),)
         except:
             pass
 
@@ -780,7 +780,7 @@ class TagFrame(gtk.VBox):
             row=self.model[path]
             if row[self.M_TYPE]==3:
                 try:
-                    row[self.M_DISP]=k+' (0)'
+                    row[self.M_DISP]=k.replace('&','&amp;')+' (0)'
                 except:
                     print 'ERROR'
                     print row
@@ -794,15 +794,15 @@ class TagFrame(gtk.VBox):
                 path=self.user_tags[k].get_path()
                 if path:
                     try:
-                        self.model[path][self.M_DISP]=k+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k])
+                        self.model[path][self.M_DISP]=k.replace('&','&amp;')+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k])
                     except:
-                        self.model[path][self.M_DISP]=k+' (0/%i)'%(tag_cloud.tags[k],)
+                        self.model[path][self.M_DISP]=k.replace('&','&amp;')+' (0/%i)'%(tag_cloud.tags[k],)
             else:
                 path=self.model.get_iter((1,))
                 try:
-                    self.model.append(path,(3,k,None,k+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k],),False,''))
+                    self.model.append(path,(3,k,None,k.replace('&','&amp;')+' (%i/%i)'%(tag_cloud_view.tags[k],tag_cloud.tags[k],),False,''))
                 except:
-                    self.model.append(path,(3,k,None,k+' (0/%i)'%(tag_cloud.tags[k],),False,''))
+                    self.model.append(path,(3,k,None,k.replace('&','&amp;')+' (0/%i)'%(tag_cloud.tags[k],),False,''))
         self.tv.expand_row((0,),False)
         self.tv.expand_row((1,),False)
 
