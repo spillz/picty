@@ -187,7 +187,7 @@ class CollectionSet(gobject.GObject):
             for p in prefs:
                 c.__dict__[p]=prefs[p]
         else:
-            c.load_header_only('')
+            c.load_prefs()
         self.collections[col_path]=c
         self.collection_added(c.id)
         return c
