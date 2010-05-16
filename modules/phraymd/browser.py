@@ -686,7 +686,10 @@ class ImageBrowser(gtk.HBox):
             if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
+                    print item,a,b
                     if a or b:
+                        a=a.replace('&','&amp;')
+                        b=b.replace('&','&amp;')
                         l=self.imarea.create_pango_layout('')
                         if a and b:
 #                            l.set_markup('<span size="6000">'+'w'*25+'</span>')
