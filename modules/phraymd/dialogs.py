@@ -128,7 +128,9 @@ class PathnameEntry(gtk.VBox):
         if path:
             self.path_entry.set_text(path)
     def get_path(self):
-        return self.path_entry.get_text()
+        path=self.path_entry.get_text()
+        path=path if path=='/' else path.rstrip('/')
+        return path
     def set_path(self,path):
         self.path_entry.set_text(path)
 
