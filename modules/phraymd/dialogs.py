@@ -398,11 +398,11 @@ class LocalStorePrefBox(gtk.VBox):
 
     def path_changed(self,entry):
         sensitive=len(self.name_entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
-        self.create_button.set_sensitive(sensitive)
+#        self.create_button.set_sensitive(sensitive)
 
     def name_changed(self,entry):
         sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
-        self.create_button.set_sensitive(sensitive)
+#        self.create_button.set_sensitive(sensitive)
 
 #    def path_changed(self,entry):
 
@@ -493,7 +493,7 @@ class PrefDialog(gtk.Dialog):
         self.vbox.pack_start(self.pref_box)
         self.add_button("_Cancel",gtk.RESPONSE_REJECT)
         self.ok_button=self.add_button("_Accept Changes",gtk.RESPONSE_ACCEPT)
-        self.ok_button.set_sensitive(False)
+#        self.ok_button.set_sensitive(False)
         self.vbox.show()
         if prefs:
             self.set_values(prefs)

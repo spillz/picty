@@ -362,17 +362,14 @@ class LoadCollectionJob(WorkerJob):
 
 
 class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack that the "browser" argument is the mainframe, and mainframe must have an update_status member taking 3 args
-    def __init__(self,worker,collection,mainframe,filename=''):
+    def __init__(self,worker,collection,mainframe):
         WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,mainframe)
-        self.filename=filename
 
     def __call__(self):
         self.worker.jobs.clear(None,self.collection,self)
         idle_add(self.browser.update_status,None,0.5,'Closing Collection '+self.collection.name)
-        if self.filename:
-            self.collection.filename=self.filename
-        log.info('Saving '+str(self.collection.filename))
-        print 'started save job on',self.collection.filename
+        log.info('Saving '+str(self.collection.id))
+        print 'started save job on',self.collection.id
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)

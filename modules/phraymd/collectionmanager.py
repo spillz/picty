@@ -123,9 +123,18 @@ class CollectionSet(gobject.GObject):
             self.collection_closed(name)
         self.collection_removed(coll.id)
         del self.collections[name]
-        if coll.type=='LOCALSTORE':
-            print 'deleteing localstore',coll.filename
-            io.remove_file(coll.filename)
+        if coll.type=='LOCALSTORE' and delete_cache_file:
+            col_dir=os.path.join(settings.collections_dir,coll.name)
+            try:
+                if os.path.isdir(col_dir):
+                    os.rmdir(col_dir)
+                elif os.path.isfile(col_dir):
+                    io.remove_file(col_dir)
+            except IOError:
+                print 'Error removing collection data files in',col_dir
+                import sys,traceback
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                print tb_text
         if coll.type=='DEVICE' and self.count('DEVICE')==0:
             for m in self.models:
                 m.all_mounts_removed()
@@ -172,20 +181,18 @@ class CollectionSet(gobject.GObject):
     def add_localstore(self,col_name,prefs=None):
         '''
         add a localstore collection to the collection set
-        - col_file is the name of the collection (and is also used to set the filename of the collection cache file)
+        - col_name is the name of the collection (and is also used to set the filename of the collection cache file)
         - prefs is a dictionary containing the preferences for the colleciton, if None they will be loaded from the collection cache file
         '''
         c=collections.Collection2()
         col_path=os.path.join(settings.collections_dir,col_name)
-        c.filename=col_path
         c.name=col_name
         c.id=col_path
         c.type='LOCALSTORE'
         c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK]) ##todo: let user choose an icon
         c.add_view()
         if prefs!=None:
-            for p in prefs:
-                c.__dict__[p]=prefs[p]
+            c.set_prefs(prefs)
         else:
             c.load_prefs()
         self.collections[col_path]=c
@@ -193,7 +200,6 @@ class CollectionSet(gobject.GObject):
         return c
     def add_directory(self,path,prefs=None):
         c=collections.Collection2()
-        c.filename=''
         c.name=os.path.split(path)[1]
         c.id=path
         c.type='DIRECTORY'
@@ -211,6 +217,34 @@ class CollectionSet(gobject.GObject):
         self.collections[path]=c
         self.collection_added(c.id)
         return c
+    def change_prefs(self,coll,new_prefs):
+        if coll.is_open:
+            return False #can't change open collections (too much potential for errors)
+        old_prefs=coll.get_prefs()
+        if new_prefs==old_prefs:
+            return False #nothing has changed
+        if new_prefs['name']!=coll.name:
+            print 'renaming collection'
+            new_path=os.path.join(settings.collections_dir,new_prefs['name'])
+            old_path=os.path.join(settings.collections_dir,coll.name)
+            if os.path.exists(new_path):
+                print 'Error: collection with this name already exists'
+                return False
+            os.rename(old_path,new_path)
+            self.collection_removed(coll.id)
+            del self.collections[coll.id]
+            coll.id=new_path
+            coll.name=new_prefs['name']
+            self.collections[coll.id]=coll
+            self.collection_added(coll.id)
+        del new_prefs['name']
+        del old_prefs['name']
+        if new_prefs!=old_prefs:
+            new_prefs['name']=coll.name
+            coll.set_prefs(new_prefs)
+            coll.save_prefs()
+        return True
+
     def remove(self,id):
         coll=self[id]
         del self[id]
@@ -218,6 +252,9 @@ class CollectionSet(gobject.GObject):
     def collection_added(self,id):
         for m in self.models:
             m.coll_added(id)
+    def collection_changed(self,id):
+        for m in self.models:
+            m.coll_changed(id)
     def collection_removed(self,id):
         for m in self.models:
             m.coll_removed(id)

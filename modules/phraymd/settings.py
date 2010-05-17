@@ -91,7 +91,7 @@ if not os.path.exists(collections_dir):
     os.makedirs(collections_dir)
 
 active_collection=None
-active_collection_file=''
+active_collection_id=''
 default_collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
 legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
 legacy_collection_file2=os.path.join(data_dir,'collection')
@@ -108,14 +108,14 @@ legacy_image_dirs=[]
 
 
 def save():
-    global version, precache_count, custom_launchers, user_tag_info, places, active_collection_file
+    global version, precache_count, custom_launchers, user_tag_info, places, active_collection_id
     try:
         f=open(conf_file,'wb')
     except:
         return False
     try:
         cPickle.dump(version,f,-1)
-        cPickle.dump(active_collection_file,f,-1)
+        cPickle.dump(active_collection_id,f,-1)
         cPickle.dump(precache_count,f,-1)
         cPickle.dump(layout,f,-1)
         cPickle.dump(custom_launchers,f,-1)
@@ -131,7 +131,7 @@ def save():
 
 def load():
     global version, precache_count, custom_launchers, user_tag_info, places, layout, \
-        active_collection_file, legacy_image_dirs, plugins_disabled, \
+        active_collection_id, legacy_image_dirs, plugins_disabled, \
         overlay_show_title,overlay_show_path,overlay_show_tags,overlay_show_date,overlay_show_exposure
     try:
         f=open(conf_file,'rb')
@@ -144,7 +144,7 @@ def load():
     try:
         file_version=cPickle.load(f)
         if file_version>='0.3.2':
-            active_collection_file=cPickle.load(f)
+            active_collection_id=cPickle.load(f)
         if file_version<'0.3.0':
             legacy_image_dirs=cPickle.load(f)
         if file_version<='0.3.1':
@@ -191,16 +191,16 @@ def user_add_dir():
 
 
 def init():
-    global image_dirs, active_collection_file
+    global image_dirs, active_collection_id
     load()
-    print 'active_collection_file 0',active_collection_file
-    if not active_collection_file or not os.path.exists(active_collection_file):
+    print 'active_collection_id 0',active_collection_id
+    if not active_collection_id or not os.path.exists(active_collection_id):
         try:
-            print 'active_collection_file 1',active_collection_file
-            active_collection_file=os.path.join(collections_dir,get_collection_files()[0])
-            print 'active_collection_file 2',active_collection_file
+            print 'active_collection_id 1',active_collection_id
+            active_collection_id=os.path.join(collections_dir,get_collection_files()[0])
+            print 'active_collection_id 2',active_collection_id
         except:
-            active_collection_file=''
+            active_collection_id=''
 #    if not os.path.exists(active_collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
 #        image_dirs=user_add_dir()
 #        if len(image_dirs)==0:

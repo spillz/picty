@@ -139,6 +139,7 @@ class MainFrame(gtk.VBox):
 
         self.browser_nb=gtk.Notebook()
         self.browser_nb.set_show_tabs(False)
+        self.browser_nb.set_scrollable(True)
         self.browser_nb.show()
 
         self.startpage=collectionmanager.CollectionStartPage(self.coll_set)
@@ -176,7 +177,6 @@ class MainFrame(gtk.VBox):
         self.filter_entry.connect("activate",self.set_filter_text)
         self.filter_entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
-
 
         try:
             self.filter_entry.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,gtk.STOCK_CLEAR)
@@ -277,7 +277,7 @@ class MainFrame(gtk.VBox):
             add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
             add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
         else:
-            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression")
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression",True)
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Sort: "),None,None,None)
         add_widget(self.toolbar1,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
@@ -357,8 +357,8 @@ class MainFrame(gtk.VBox):
         ##open last used collection or
         ##todo: device or directory specified at command line.
         id=None
-        if settings.active_collection_file:
-            c=self.coll_set[settings.active_collection_file]
+        if settings.active_collection_id:
+            c=self.coll_set[settings.active_collection_id]
             if c!=None:
                 id=c.id
         if not id:
@@ -505,8 +505,8 @@ class MainFrame(gtk.VBox):
         self.active_collection=coll
         self.tm.set_active_collection(coll)
 
-        if coll.filename:
-            settings.active_collection_file=coll.filename
+        if coll.type=='LOCALSTORE':
+            settings.active_collection_id=coll.id
 #        ind=self.browser_nb.get_current_page()
 #        need_ind=self.browser_nb.page_num(coll.browser)
 #        if ind!=need_ind:
@@ -574,13 +574,18 @@ class MainFrame(gtk.VBox):
 
     def collection_properties_cb(self,widget,coll_id):
         c=self.coll_set[coll_id]
-        if c!=None:
-            dialog=dialogs.PrefDialog(c.get_prefs())
-            response=dialog.run()
-            prefs=dialog.get_values()
-            dialog.destroy()
-            if response==gtk.RESPONSE_ACCEPT:
-                print 'PREFERENCE DIALOG: made some changes'
+        if c==None:
+            return
+        if c.browser!=None or c.is_open:
+            return
+        old_prefs=c.get_prefs().copy()
+        dialog=dialogs.PrefDialog(c.get_prefs())
+        response=dialog.run()
+        prefs=dialog.get_values()
+        dialog.destroy()
+        if response==gtk.RESPONSE_ACCEPT:
+            print 'ACCEPTED PREF CHANGE'
+            self.coll_set.change_prefs(c,prefs)
 
     def collection_context_menu(self,widget,coll_id):
         menu=gtk.Menu()
@@ -597,7 +602,8 @@ class MainFrame(gtk.VBox):
             menu_add(menu,"Close",self.collection_close_cb,coll_id)
         if c!=None and c.type=="LOCALSTORE" and not c.is_open:
             menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
-        menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
+        if c!=None and c.browser==None and not c.is_open:
+            menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
         if len(menu.get_children())>0:
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 

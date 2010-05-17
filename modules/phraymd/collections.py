@@ -330,6 +330,8 @@ class Collection2():
         return os.path.join(os.path.join(settings.collections_dir,self.name),'data')
     def load_prefs(self):
         try:
+            if self.type!='LOCALSTORE':
+                return True #nothing to load
             col_dir=os.path.join(settings.collections_dir,self.name)
             if os.path.isfile(col_dir):
                 return self.legacy_open(col_dir,False)
@@ -346,12 +348,14 @@ class Collection2():
         except:
             import traceback,sys
             tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection",self.filename
+            print "Error Loading Collection"
             print tb_text
             self.empty()
             return False
     def save_prefs(self):
         try: ##todo: use "with"
+            if self.type!='LOCALSTORE':
+                return True
             f=open(self.pref_file(),'wb')
             cPickle.dump(settings.version,f,-1)
             d=self.get_prefs()
@@ -361,13 +365,15 @@ class Collection2():
         except:
             import traceback,sys
             tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection Preference File",self.filename
+            print "Error Loading Collection Preference File"
             print tb_text
             return False
     def open(self):
         '''
-        load the collection from a binary pickle file identified by the pathname in the filename argument
+        load the collection from a binary pickle file
         '''
+        if self.type!='LOCALSTORE':
+            return True
         col_dir=os.path.join(settings.collections_dir,self.name)
         if self.is_open:
             return True
@@ -385,7 +391,7 @@ class Collection2():
         except:
             import traceback,sys
             tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection",self.filename
+            print "Error Loading Collection",self.name
             print tb_text
             self.empty()
             return False
@@ -393,6 +399,8 @@ class Collection2():
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
+        if self.type!='LOCALSTORE':
+            return True
         print 'started close',self.name
         if not self.is_open:
             return True
@@ -415,7 +423,7 @@ class Collection2():
             f.close()
             self.empty()
         except:
-            print 'failed to close and save collection',self.filename,'for write'
+            print 'failed to close and save collection',self.name,'for write'
             return False
         return True
     def empty(self,empty_views=True):
@@ -445,8 +453,6 @@ class Collection2():
         try:
             if not filename:
                 return False
-            if not filename: ##if no filename, there's nothing to load (scan instead)
-                return True
             f=open(filename,'rb')
             version=cPickle.load(f)
             if version<'0.3.0':
