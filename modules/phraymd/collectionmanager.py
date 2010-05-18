@@ -571,6 +571,7 @@ class UnopenedCollectionList(gtk.TreeView):
     def __init__(self,model):
         gtk.TreeView.__init__(self,model)
         self.set_headers_visible(False)
+        self.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_NONE)
         cpb=gtk.CellRendererPixbuf()
         cpb.set_property("width",20) ##todo: don't hardcode the width
         tvc=gtk.TreeViewColumn(None,cpb,pixbuf=COLUMN_PIXBUF)
