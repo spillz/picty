@@ -637,7 +637,7 @@ class MainFrame(gtk.VBox):
     def mount_removed(self,monitor,name,icon_names,path):
         collection=self.coll_set[path]
         self.coll_set.remove(path)
-        print 'removed',collection,collection.filename
+        print 'removed',collection,collection.id
         if collection.is_open:
             sj=backend.SaveCollectionJob(self.tm,collection,self)
             sj.priority=1050

@@ -256,11 +256,11 @@ class ImporterImportJob(backend.WorkerJob):
                     print 'recreating thumbnail on import for',item.filename
                     imagemanip.make_thumb(item)
             imagemanip.update_thumb_date(item)
-            if self.browser:
+            if self.browser!=None:
                 self.browser.lock.acquire()
-            print 'importing item',item.filename,'to',collection.filename
+            print 'importing item',item.filename,'to',collection.id
             collection.add(item)
-            if self.browser:
+            if self.browser!=None:
                 self.browser.lock.release()
             ##todo: log success
             i+=1
