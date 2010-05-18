@@ -124,17 +124,7 @@ class CollectionSet(gobject.GObject):
         self.collection_removed(coll.id)
         del self.collections[name]
         if coll.type=='LOCALSTORE' and delete_cache_file:
-            col_dir=os.path.join(settings.collections_dir,coll.name)
-            try:
-                if os.path.isdir(col_dir):
-                    os.rmdir(col_dir)
-                elif os.path.isfile(col_dir):
-                    io.remove_file(col_dir)
-            except IOError:
-                print 'Error removing collection data files in',col_dir
-                import sys,traceback
-                tb_text=traceback.format_exc(sys.exc_info()[2])
-                print tb_text
+            coll.delete_files()
         if coll.type=='DEVICE' and self.count('DEVICE')==0:
             for m in self.models:
                 m.all_mounts_removed()

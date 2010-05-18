@@ -443,6 +443,25 @@ class Collection2():
         for p in col_prefs:
             prefs[p]=self.__dict__[p]
         return prefs
+    def delete_files(self):
+        col_dir=os.path.join(settings.collections_dir,self.name)
+        try:
+            if os.path.isdir(col_dir):
+                for root, dirs, files in os.walk(col_dir, topdown=False):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
+                os.rmdir(col_dir)
+            elif os.path.isfile(col_dir):
+                io.remove_file(col_dir)
+            return True
+        except IOError:
+            print 'Error removing collection data files in',col_dir
+            import sys,traceback
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
     def legacy_open(self,filename='',load_items=True):  ##todo: put all of the legacy cruft elsewhere
         '''
         load the collection from a binary pickle file identified by the pathname in the filename argument

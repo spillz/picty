@@ -340,10 +340,8 @@ class MainFrame(gtk.VBox):
         self.connect("destroy", self.destroy)
         self.plugmgr.init_plugins(self)
 
-
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
-        print 'HPANE EXT POSITION',self.hpane_ext.get_position()
 
         dbusserver.start()
         self.tm.start()
@@ -465,6 +463,7 @@ class MainFrame(gtk.VBox):
         prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
+            prefs['name']=prefs['name'].replace('/','').strip()
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:
