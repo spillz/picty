@@ -1,3 +1,34 @@
+phraymd (0.3a1) lucid; urgency=low
+
+  * collections now display as "tabs"
+  * the right most tab is a collection management tab displaying the list of available collections/devices
+  * the management tab offers a right click context menu (open, close, delete, properties). 
+  * add ability to change collection properties (and fix various collection related bugs that arose from the recent changes)
+  * new browser OSD buttons: "close" and "locate in browser"
+  * rotate plugin: 
+    * draw gridlines over the image 
+    * bug fix: image does not redraw if angle is set to zero
+    * reset angle after use
+  * crop plugin:
+    * render background red 
+    * draggable handles of the crop area
+  * other bug fixes: 
+    * tag pane and browser OSD text renders tags with ampersands correctly (must be escaped for pango to render correctly)
+  * based on rev440 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Mon, 17 May 2010 21:35:50 -0400
+
+phraymd (0.2a7) karmic; urgency=low
+
+  * pyexiv2 0.2 compatibility bug fixes
+  * map plugin: osmgpsmap v0.4+ compatibility bug fixes
+  * map plugin: remmber last used map source
+  * tag plugin: tag counts in tag treeview should be correct (at least more often)
+  * revert to yeKcim's other icon
+  * Based on rev413 of lp:phraymd
+
+ -- Damien Moore <damienlmoore@gmail.com>  Sun, 18 Apr 2010 23:40:37 -0400
+
 phraymd (0.2a6) karmic; urgency=low
 
   * bug-fixes
