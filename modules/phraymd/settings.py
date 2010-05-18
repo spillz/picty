@@ -114,6 +114,10 @@ def save():
     try:
         f=open(conf_file,'wb')
     except:
+        print 'Error saving settings'
+        import sys,traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print tb_text
         return False
     try:
         cPickle.dump(version,f,-1)

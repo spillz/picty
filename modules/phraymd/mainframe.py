@@ -343,6 +343,7 @@ class MainFrame(gtk.VBox):
 
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
+        print 'HPANE EXT POSITION',self.hpane_ext.get_position()
 
         dbusserver.start()
         self.tm.start()
@@ -381,6 +382,9 @@ class MainFrame(gtk.VBox):
             settings.save()
         except:
             print 'Error saving settings'
+            import sys,traceback
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
         self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         print 'main frame destroyed'
@@ -667,7 +671,7 @@ class MainFrame(gtk.VBox):
         for i in range(self.sidebar.get_n_pages()):
             if layout['sidebar tab']==self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(i)):
                 self.sidebar.set_current_page(i)
-                self.hpane_ext.set_position(layout['sidebar width'])
+                self.hpane.set_position(layout['sidebar width'])
                 break
 
     def get_layout(self):
@@ -687,7 +691,7 @@ class MainFrame(gtk.VBox):
 #            layout['viewer width']=self.hpane.get_position()
 #            layout['viewed item']=self.iv.item.filename
         layout['sidebar active']=self.sidebar.get_property("visible")
-        layout['sidebar width']=self.hpane_ext.get_position()
+        layout['sidebar width']=self.hpane.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
         return layout
 
