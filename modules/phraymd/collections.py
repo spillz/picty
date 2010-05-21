@@ -263,7 +263,9 @@ class Collection2():
         try:
             self.numselected+=item.selected
             ind=bisect.bisect_left(self.items,item)
-            if self.items[ind]==item:
+            if len(self.items)>ind>0 and self.items[ind]==item:
+                print '#1',self.items[ind]
+                print '#2',item
                 raise LookupError
             self.items.insert(ind,item)
             pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
@@ -272,7 +274,10 @@ class Collection2():
                     v.add_item(item)
             return True
         except LookupError:
-            print 'WARNING: tried to add',item,'to collection',self.id,'but an item with this id was already present'
+            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
             return False
     def find(self,item):
         '''
