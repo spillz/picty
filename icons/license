@@ -21,6 +21,19 @@ LICENSE:
 SOURCES AND EXCEPTIONS
 ======================
 
+map.svg
+    adapted from image created by Haltiamieli and downloaded from
+    http://commons.wikimedia.org/wiki/File:Laurasia-Gondwana_fi.svg
+
+    This image is a derivative work of the following images:
+
+        * File:Laurasia-Gondwana.svg licensed with Cc-by-3.0
+              o 2008-08-15T17:34:29Z Lenny222 519x435 (25417 Bytes) {{Information |Description= |Source= |Date= |Author= |Permission= |other_versions= }}
+              o 2008-08-14T22:03:48Z Lenny222 519x435 (25397 Bytes) {{Information |Description= |Source= |Date= |Author=Lennart Kudling |Permission= |other_versions= }}
+              o 2008-08-14T21:55:30Z Lenny222 519x435 (24066 Bytes) {{Information |Description={{en|1=SVG version of Image:Laurasia-Gondwana.png}} |Source=Own work by uploader |Author=[[User:Lenny222|Lenny222]] |Date=2008-08-14 |Permission= |other_versions= }} [[Category:Maps]]
+
+    Uploaded with derivativeFX
+
 sidebar.svg, phraymd-sidebar.png:
     Based on Application-default-icon.svg‎ (SVG file, nominally 48 × 48 pixels, file size: 15 KB)
     An icon from the GNOME-colors 2.5 icon theme.
@@ -35,6 +48,10 @@ sidebar.svg, phraymd-sidebar.png:
     in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See version 2
     and version 3 of the GNU General Public License for more details.
+
+web-upload.svg, import.svg:
+    Adapted from gnome-colors 5.5.1 icon theme
+    using camera.svg, applications-internet.svg, gtk-save.svg
 
 phraymd-polaroids-and-frame.png:
     (c) 2010 yeKcim

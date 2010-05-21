@@ -42,6 +42,7 @@ from phraymd import imageinfo
 from phraymd import settings
 from phraymd import pluginbase
 
+
 try:
     import osmgpsmap
     if '__version__' in dir(osmgpsmap) and osmgpsmap.__version__>='0.4.0':
@@ -86,7 +87,9 @@ class MapPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
+        panel=mainframe.float_mgr.add_panel('Map','Show or hide the map panel (use it to view or set the location of your images)','phraymd-map')
         self.mapframe=MapFrame(self.worker)
+        panel.vbox.pack_start(self.mapframe)
         places={'Home':(0.0,0.0,1)}
         try:
             print 'Map Plugin: loading map-places file'
@@ -102,14 +105,11 @@ class MapPlugin(pluginbase.Plugin):
         except:
             log_err('No map-places file found')
         self.mapframe.set_places(places)
-        self.mapframe.show_all()
-        self.mainframe.sidebar.append_page(self.mapframe,gtk.Label("Map"))
-# FIX THIS!!
+        ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
         self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
 
     def view_rebuild_complete(self,mainframe,browser):
         self.mapframe.update_map_items()
-    ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
     def plugin_shutdown(self,app_shutdown=False):
         try:
             print 'Map Plugin: saving map places'
@@ -120,6 +120,8 @@ class MapPlugin(pluginbase.Plugin):
             f.close()
         except:
             log_err('Error saving map places')
+
+        self.mainframe.float_mgr.remove_panel('Map')
         self.mapframe.destroy()
         del self.mapframe
 
@@ -127,7 +129,7 @@ class MapPlugin(pluginbase.Plugin):
 
 class MapFrame(gtk.VBox):
     def __init__(self,worker):
-        gtk.VBox.__init__(self,False, 0)
+        gtk.VBox.__init__(self)
         hbox = gtk.HBox(False, 0)
         self.worker=worker
 
@@ -178,6 +180,7 @@ class MapFrame(gtk.VBox):
 
         self.pack_start(hbox_place, False)
         self.update_map_items()
+        self.show_all()
 
     def set_preferred_source(self,source_id):
         ind=0

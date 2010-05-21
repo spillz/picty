@@ -73,7 +73,9 @@ class UploadPlugin(pluginbase.Plugin):
         self.viewport=gtk.Viewport()
         self.scrolled_window.add(self.viewport)
 
-        self.vbox=gtk.VBox()
+        self.dialog=self.mainframe.float_mgr.add_panel('Web Upload','Show or hide the web upload panel (use it to upload photos to web services such as flickr and picasa)','phraymd-web-upload')
+        self.vbox=self.dialog.vbox
+
         self.service_box=hbox_group([(self.service_label,False),(self.service_combo,True,False)])
 
         self.warning_label=gtk.Label("THIS PLUGIN HAS NOT BEEN WELL TESTED - USE AT YOUR OWN RISK")
@@ -82,7 +84,7 @@ class UploadPlugin(pluginbase.Plugin):
         self.vbox.pack_start(self.scrolled_window,True)
         self.scrolled_window.add_with_viewport(self.warning_label)
         self.vbox.show_all()
-        self.mainframe.sidebar.append_page(self.vbox,gtk.Label("Web Upload"))
+#        self.mainframe.sidebar.append_page(self.vbox,gtk.Label("Web Upload"))
 
     def plugin_shutdown(self,app_shutdown):
         for s in self.services:
@@ -91,6 +93,7 @@ class UploadPlugin(pluginbase.Plugin):
                 self.services[s][1]=None
         del self.services
         if not app_shutdown:
+            self.mainframe.float_mgr.remove_panel('Web Upload')
             self.vbox.destroy()
             del self.vbox
 

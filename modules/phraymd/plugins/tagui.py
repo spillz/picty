@@ -267,11 +267,16 @@ class TagFrame(gtk.VBox):
     M_PIXPATH=5 #path to pixbuf
     def __init__(self,mainframe,user_tag_info):
         gtk.VBox.__init__(self)
+        self.set_spacing(5)
         self.user_tags={}
         self.tag_cloud={} ##these are updated on the worker thread, be careful about accessing on the main thread (should use locks)
         self.tag_cloud_view={}
         self.mainframe=mainframe
         self.worker=mainframe.tm
+        label=gtk.Label()
+        label.set_markup("<b>Tags</b>")
+        label.set_alignment(0.05,0)
+        #self.pack_start(label,False)
         self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
 ##        self.sort_model=gtk.TreeModelSort(self.model)
 ##        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
@@ -286,7 +291,7 @@ class TagFrame(gtk.VBox):
         toggle.connect("toggled",self.toggle_signal)
         tvc_check=gtk.TreeViewColumn(None,toggle,active=self.M_CHECK)
         ##gtk.CellRendererText
-        self.tv.append_column(tvc_check)
+#        self.tv.append_column(tvc_check)
         self.tv.append_column(tvc_bitmap)
         self.tv.append_column(tvc_text)
         self.tv.enable_model_drag_dest([('tag-tree-row', gtk.TARGET_SAME_WIDGET, 0),
@@ -306,9 +311,9 @@ class TagFrame(gtk.VBox):
         self.pack_start(scrolled_window)
 
         button_box = gtk.HButtonBox()
-        tag_sel_button= gtk.Button('_Apply Checked Tags')
+        tag_sel_button= gtk.Button('_Add Tags')
         tag_sel_button.connect("clicked",self.tag_selected_signal)
-        tag_sel_button.set_tooltip_text('Applies checked tags above to the selected images in the view')
+        tag_sel_button.set_tooltip_text('Adds selected tags above to the selected images in the view')
         button_box.pack_start(tag_sel_button)
 #        tag_mode_button= gtk.ToggleButton('Tag Mode')
 #        tag_mode_button.connect("toggled",self.tag_mode_toggle_signal)

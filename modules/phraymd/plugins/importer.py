@@ -388,10 +388,14 @@ class ImportPlugin(pluginbase.Plugin):
 #        self.import_frame.hide()
 #        self.import_action_box.hide()
 
-        self.mainframe.sidebar.append_page(self.scrolled_window,gtk.Label("Import"))
+        self.dialog=self.mainframe.float_mgr.add_panel('Import','Show or hide the import panel (use it to import photos from cameras or local folders)','phraymd-import')
+        self.dialog.vbox.pack_start(self.scrolled_window)
+
+        #self.mainframe.sidebar.append_page(self.scrolled_window,gtk.Label("Import"))
 
     def plugin_shutdown(self,app_shutdown):
         if not app_shutdown:
+            self.mainframe.float_mgr.remove_panel('Import')
             self.scrolled_window.destroy()
             del self.import_job
             ##todo: delete references to widgets

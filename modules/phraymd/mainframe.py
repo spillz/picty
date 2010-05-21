@@ -50,6 +50,8 @@ import io
 import overlaytools
 import dbusserver
 import collectionmanager
+import floats
+from widget_tools import *
 
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
@@ -82,6 +84,7 @@ class MainFrame(gtk.VBox):
         self.coll_set=collectionmanager.CollectionSet()
         self.active_collection=None
         self.collections_init()
+        self.float_mgr=floats.FloatingPanelManager(self)
 
         print 'SETTING RC STRING'
         ## thank you to tadeboro http://www.gtkforums.com/post-10694.html#10694
@@ -218,50 +221,6 @@ class MainFrame(gtk.VBox):
 #        self.sidebar_menu_button.show()
 
         self.toolbar1=gtk.Toolbar()
-        def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
-            toolbar.add(widget)
-            if callback:
-                widget.connect("clicked", callback)
-            if tooltip:
-                widget.set_tooltip_text(tooltip)
-            if label:
-                widget.set_label(label)
-            if expand:
-                widget.set_expand(True)
-        def add_widget(toolbar,widget,callback,label=None,tooltip=None,expand=False):
-            item=gtk.ToolItem()
-            item.add(widget)
-            toolbar.add(item)
-            if callback:
-                widget.connect("clicked", callback)
-            if tooltip:
-                widget.set_tooltip_text(tooltip)
-            if label:
-                item.set_label(label)
-            if expand:
-                item.set_expand(True)
-        def set_item(widget,callback,label,tooltip):
-            if callback:
-                widget.connect("clicked", callback)
-            if tooltip:
-                widget.set_tooltip_text(tooltip)
-            if label:
-                widget.set_label(label)
-            return widget
-        def add_frame(toolbar,label,items,expand=False):
-            item=gtk.ToolItem()
-            frame=gtk.Frame(label)
-            box=gtk.HBox()
-            item.add(frame)
-            frame.add(box)
-            for i in items:
-                if len(i)==5:
-                    box.pack_start(set_item(*i[:4]),i[4])
-                else:
-                    box.pack_start(set_item(*i))
-            toolbar.add(item)
-            if expand:
-                item.set_expand(True)
 #            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
         self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
         add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
@@ -274,16 +233,16 @@ class MainFrame(gtk.VBox):
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
         if entry_no_icons:
-            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the collection that match the expression",True)
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression",True)
             add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
         else:
-            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in that collection the match the expression",True)
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression",True)
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Sort: "),None,None,None)
         add_widget(self.toolbar1,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
         add_item(self.toolbar1,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
-
+        self.toolbar1.add(gtk.SeparatorToolItem())
         self.toolbar1.show_all()
 
 ##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,0,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
@@ -317,6 +276,7 @@ class MainFrame(gtk.VBox):
         self.hpane_ext=gtk.HPaned()
         self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
         self.sidebar.set_scrollable(True)
+        #self.sidebar.set_show_tabs(False)
 
         self.hpane_ext.add1(self.browser_nb)
         self.hpane_ext.add2(self.iv)
