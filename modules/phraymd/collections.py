@@ -260,12 +260,20 @@ class Collection2():
         '''
         add an item to the collection and notify plugin
         '''
-        self.numselected+=item.selected
-        bisect.insort(self.items,item)
-        pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
-        if add_to_view:
-            for v in self.views:
-                v.add_item(item)
+        try:
+            self.numselected+=item.selected
+            ind=bisect.bisect_left(self.items,item)
+            if self.items[ind]==item:
+                raise LookupError
+            self.items.insert(ind,item)
+            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
+            if add_to_view:
+                for v in self.views:
+                    v.add_item(item)
+            return True
+        except LookupError:
+            print 'WARNING: tried to add',item,'to collection',self.id,'but an item with this id was already present'
+            return False
     def find(self,item):
         '''
         find an item in the collection and return its index

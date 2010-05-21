@@ -143,10 +143,15 @@ class ImageBrowser(gtk.HBox):
         self.imarea.connect("realize",self.realize_signal)
         self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
+
+        self.mouse_hover=False
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
-        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
-        self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
+        self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
+        self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
+        self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
+        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
+
         self.scrolladj.connect("value-changed",self.scroll_signal)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.scroll_signal_pane)
@@ -429,6 +434,8 @@ class ImageBrowser(gtk.HBox):
 
     def mouse_motion_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
+        if not self.mouse_hover:
+            return
         ind=self.recalc_hover_ind(event.x,event.y)
         cmd=self.get_hover_command(ind,event.x,event.y)
         if self.hover_ind!=ind or self.command_highlight_ind!=cmd:
@@ -438,10 +445,18 @@ class ImageBrowser(gtk.HBox):
 
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
+        print 'MOUSE LEAVING BROWSER'
+        self.mouse_hover=False
         if self.hover_ind>=0:
             self.command_highlight_ind=-1
             self.hover_ind=-1
+            print 'redraw request'
             self.redraw_view()
+
+    def mouse_enter_signal(self,obj,event):
+        '''callback when mouse leaves the viewer area (hides image overlays)'''
+        self.mouse_hover=True
+#        self.redraw_view()
 
     def redraw_view(self,collection=None):
         '''redraw the view without recomputing geometry or changing position'''
@@ -609,19 +624,21 @@ class ImageBrowser(gtk.HBox):
 
         drawable.set_background(black)
 
-        mouse_loc=self.imarea.get_pointer()
-        self.hover_ind=self.recalc_hover_ind(*mouse_loc)
-        self.command_highlight_ind=self.get_hover_command(self.hover_ind,*mouse_loc)
+        hover_item=None
+        if self.mouse_hover:
+            mouse_loc=self.imarea.get_pointer()
+            self.hover_ind=self.recalc_hover_ind(*mouse_loc)
+            self.command_highlight_ind=self.get_hover_command(self.hover_ind,*mouse_loc)
 
-        (mx,my)=self.imarea.get_pointer()
-        if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
-            self.hover_ind=self.recalc_hover_ind(mx,my)
-        else:
-            self.hover_ind=-1
-        if self.hover_ind>=0:
-            hover_item=self.active_view(self.hover_ind)
-        else:
-            hover_item=None
+            (mx,my)=self.imarea.get_pointer()
+            if 0<=mx<drawable.get_size()[0] and 0<=my<drawable.get_size()[1]:
+                self.hover_ind=self.recalc_hover_ind(mx,my)
+            else:
+                self.hover_ind=-1
+            if self.hover_ind>=0:
+                hover_item=self.active_view(self.hover_ind)
+            else:
+                hover_item=None
         ##TODO: USE draw_drawable to shift screen for small moves in the display (scrolling)
         display_space=True
         imgind=self.geo_ind_view_first
@@ -683,7 +700,7 @@ class ImageBrowser(gtk.HBox):
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
-            if self.hover_ind==i or item.meta_changed or item.selected or fail_item:
+            if self.mouse_hover and self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=imageinfo.text_descr(item)
                     print item,a,b
