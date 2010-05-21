@@ -152,9 +152,9 @@ def name_item(item,dest_base_dir,naming_scheme):
 naming_schemes=[
     ("<ImageName>","<ImageName>",False),
     ("<Year>/<Month>/<ImageName>","<Year>/<Month>/<ImageName>",True),
-    ("<Year>/<Month>/<DateTime>-<ImageName>","<Year>/<Month>/<DateTime>-<ImageName>",True),
-    ("<Year>/<Month>/<Day>/<ImageName>","<Year>/<Month>/<Day>/<ImageName>",True),
-    ("<Year>/<Month>/<Day>/<DateTime>-<ImageName>","<Year>/<Month>/<Day>/<DateTime>-<ImageName>",True),
+    ("<Y>/<M>/<DateTime>-<ImageName>","<Year>/<Month>/<DateTime>-<ImageName>",True),
+    ("<Y>/<M>/<Day>/<ImageName>","<Year>/<Month>/<Day>/<ImageName>",True),
+    ("<Y>/<M>/<Day>/<DateTime>-<ImageName>","<Year>/<Month>/<Day>/<DateTime>-<ImageName>",True),
     ]
 
 def altname(pathname):
@@ -308,6 +308,7 @@ class ImportPlugin(pluginbase.Plugin):
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
         self.vbox=gtk.VBox()
+        self.vbox.set_spacing(5)
 #        self.import_source_entry=dialogs.PathnameEntry('',
 #            "From Path","Choose Import Source Directory")
 #        self.vbox.pack_start(self.import_source_entry,False)
@@ -389,6 +390,7 @@ class ImportPlugin(pluginbase.Plugin):
 #        self.import_action_box.hide()
 
         self.dialog=self.mainframe.float_mgr.add_panel('Import','Show or hide the import panel (use it to import photos from cameras or local folders)','phraymd-import')
+        self.dialog.set_default_size(450,300)
         self.dialog.vbox.pack_start(self.scrolled_window)
 
         #self.mainframe.sidebar.append_page(self.scrolled_window,gtk.Label("Import"))
