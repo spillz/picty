@@ -143,7 +143,9 @@ class Item(list):
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
         old=self.meta
-        self.meta=PickledDict(meta)
+##PICKLED DICT
+#        self.meta=PickledDict(meta)
+        self.meta=meta
         pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
@@ -160,8 +162,9 @@ class Item(list):
         return odict
     def __setstate__(self,d):
         self.__dict__.update(d)   # update attributes
-        if type(self.meta)==dict:
-            self.meta=PickledDict(self.meta)
+##PICKLED DICT
+#        if type(self.meta)==dict:
+#            self.meta=PickledDict(self.meta)
         self.thumb=None
         self.qview=None
         self.image=None

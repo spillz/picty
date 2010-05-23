@@ -98,8 +98,9 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
         meta=item.meta
     result=metadata.load_metadata(item,filename,get_thumbnail)
     if result:
-        if isinstance(item.meta,dict):
-            item.meta=imageinfo.PickledDict(item.meta)
+##PICKLED DICT
+#        if isinstance(item.meta,dict):
+#            item.meta=imageinfo.PickledDict(item.meta)
         if item.thumb and get_thumbnail:
             item.thumb=orient_pixbuf(item.thumb,item.meta)
         if collection!=None and item.meta!=meta:

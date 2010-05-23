@@ -787,7 +787,9 @@ class EditMetaDataJob(WorkerJob):
         self.mode=mode
         self.scope=scope
         self.keyword_string=keyword_string
-        self.meta=imageinfo.PickledDict(meta)
+        self.meta=meta
+##PICKLED DICT
+#        self.meta=imageinfo.PickledDict(meta)
 
     def __call__(self):
         collection=self.collection
