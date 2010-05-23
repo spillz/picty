@@ -76,7 +76,8 @@ def save_metadata(item):
     try:
         rawmeta = pyexiv2.Image(item.filename)
         rawmeta.readMetadata()
-        set_exiv2_meta(item.meta,rawmeta)
+        meta=item.meta.copy()
+        set_exiv2_meta(meta,rawmeta)
         rawmeta.writeMetadata()
         item.mark_meta_saved()
     except:

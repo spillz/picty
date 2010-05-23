@@ -94,7 +94,8 @@ def save_metadata(item):
     try:
         rawmeta = Exiv2Metadata(item.filename)
         rawmeta.read()
-        set_exiv2_meta(item.meta,rawmeta)
+        meta=item.meta.copy()
+        set_exiv2_meta(meta,rawmeta)
         rawmeta.write()
         item.mark_meta_saved()
     except:

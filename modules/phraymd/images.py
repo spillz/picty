@@ -28,10 +28,73 @@ import datetime
 import os.path
 import re
 import datetime
+import cPickle
+import cStringIO
 
 ##phraymd imports
 import pluginmanager
 import io
+
+
+class PickledDict(object):
+    def __init__(self,val=None):
+        if isinstance(val,PickledDict):
+            self.value=val.value
+        else:
+            if val:
+                d=dict(val)
+            else:
+                d={}
+            self.pickle(d)
+    def depickle(self):
+        f=cStringIO.StringIO(self.value)
+        return cPickle.load(f)
+    def pickle(self,dictionary):
+        f=cStringIO.StringIO()
+        cPickle.dump(dictionary,f)
+        self.value=f.getvalue()
+    def __getitem__(self,key):
+        return self.depickle()[key]
+    def __setitem__(self,key,value):
+        d=self.depickle()
+        d[key]=value
+        self.pickle(d)
+    def __delitem__(self,key):
+        d=self.depickle()
+        del d[key]
+        self.pickle(d)
+    def __iter__(self):
+        d=self.depickle()
+        yield d.__iter__()
+    def clear(self):
+        d={}
+        self.pickle(d)
+    def set_dict(self,dictionary):
+        self.pickle(dictionary)
+    def get_dict(self):
+        return self.depickle()
+    def copy(self):
+        return self.depickle()
+    def items(self):
+        d=self.depickle()
+        return d.items()
+    def iteritems(self):
+        d=self.depickle()
+        return d.iteritems()
+    def iterkeys(self):
+        d=self.depickle()
+        return d.iterkeys()
+    def itervalues(self):
+        d=self.depickle()
+        return d.itervalues()
+    def pop(self,key):
+        d=self.depickle()
+        return d.pop(key)
+    def popitem(self):
+        d=self.depickle()
+        return d.popitem()
+
+
 
 class Item(list):
     '''An item is a class describing an image, including filename, pixbuf representations and related metadata'''
@@ -80,7 +143,7 @@ class Item(list):
             self.meta_backup=self.meta.copy()
             self.meta_changed=True
         old=self.meta
-        self.meta=meta
+        self.meta=PickledDict(meta)
         pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
@@ -95,8 +158,10 @@ class Item(list):
         del odict['selected']
         del odict['relevance']
         return odict
-    def __setstate__(self,dict):
-        self.__dict__.update(dict)   # update attributes
+    def __setstate__(self,d):
+        self.__dict__.update(d)   # update attributes
+        if type(self.meta)==dict:
+            self.meta=PickledDict(self.meta)
         self.thumb=None
         self.qview=None
         self.image=None
