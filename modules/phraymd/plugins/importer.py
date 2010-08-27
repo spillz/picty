@@ -499,7 +499,8 @@ class ImportPlugin(pluginbase.Plugin):
         sidebar.set_current_page(sidebar.page_num(self.scrolled_window))
         self.mainframe.sidebar_toggle.set_active(True)
         self.src_combo.set_active(uri)
-        self.dest_combo.set_active(self.mainframe.active_collection.id)
+        if self.mainframe.active_collection!=None:
+            self.dest_combo.set_active(self.mainframe.active_collection.id)
 #        if self.src_combo.get_editable():
 #            self.import_source_combo.set_path(io.get_path_from_uri(uri))
 

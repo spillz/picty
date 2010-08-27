@@ -327,7 +327,7 @@ class CollectionModel(gtk.GenericTreeModel):
         if self.model_type=='UNOPEN_SELECTOR':
             self.row_inserted(*self.pi_from_id(id))
     def first_mount_added(self):
-        if self.model_type not in ('SELECTOR','MENU'):
+        if self.model_type in ('SELECTOR','MENU'):
             self.row_deleted(self.pi_from_id('#no-devices')[0])
     def all_mounts_removed(self):
         if self.model_type in ('SELECTOR','MENU'):
