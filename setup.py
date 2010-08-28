@@ -16,6 +16,8 @@ setup(name='phraymd',
         ('share/pixmaps',['desktop/phraymd.png']),
         ('share/dbus-1/services',['desktop/org.spillz.phraymd.service']),
         ('share/phraymd/icons',['icons/phraymd-image-crop.png','icons/phraymd-image-write.png','icons/phraymd-rotate-right.png',
-            'icons/phraymd-image-rotate.png','icons/phraymd-rotate-left.png','icons/phraymd-sidebar.png','icons/phraymd-polaroids-and-frame.png'])
+            'icons/phraymd-image-rotate.png','icons/phraymd-rotate-left.png','icons/phraymd-sidebar.png',
+            'icons/phraymd-polaroids-and-frame.png','icons/phraymd-import.png','icons/phraymd-web-upload.png'
+            'icons/phraymd-map.png'])
         ]
      )

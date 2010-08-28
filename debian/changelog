@@ -1,3 +1,11 @@
+phraymd (0.3a4) lucid; urgency=low
+
+  * bug fix: snafu with icons on 0.3a3 release
+  * in this version map, upload and import plugins are contained in separate windows instead of the sidebar
+  * based on rev 452 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Fri, 27 Aug 2010 20:36:21 -0400
+
 phraymd (0.3a3) lucid; urgency=low
 
   * bug fix: device handling (connected devices would fail to open)
