@@ -1,3 +1,18 @@
+phraymd (0.3a3) lucid; urgency=low
+
+  * bug fix: device handling (connected devices would fail to open)
+  * based on rev450 of lp:phraymd
+ -- damien <damienlmoore@gmail.com>  Fri, 27 Aug 2010 19:15:54 -0400
+
+phraymd (0.3a2) lucid; urgency=low
+
+  * bug fixes:
+    * breakage of importer
+    * deleting collection actually deletes it
+    * remember sidebar width between sessions
+
+ -- damien <damienlmoore@gmail.com>  Tue, 18 May 2010 18:30:37 -0400
+
 phraymd (0.3a1) lucid; urgency=low
 
   * collections now display as "tabs"
