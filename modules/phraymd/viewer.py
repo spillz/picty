@@ -33,7 +33,6 @@ gtk.gdk.threads_init()
 
 import settings
 import imagemanip
-import imageinfo
 import pluginmanager
 import metadata
 
@@ -112,7 +111,7 @@ class ImageLoader:
                 imagemanip.load_metadata(item) ##todo: 2nd arg = collection
             if not item.image:
                 def interrupt_cb():
-                    return self.item.filename==item.filename
+                    return self.item.uid==item.uid
                 imagemanip.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
                 gobject.idle_add(self.viewer.ImageLoaded,item)
                 if not item.image:
@@ -157,7 +156,7 @@ class ImageViewer(gtk.VBox):
         self.image_box.show()
 
         self.vpane=gtk.VPaned()
-        self.vpane.add1(self.image_box) ##plugins can add widgets wiith add2
+        self.vpane.add1(self.image_box) ##plugins can add widgets with add2
         self.pack_start(self.vpane)
         self.vpane.show()
 
@@ -253,7 +252,7 @@ class ImageViewer(gtk.VBox):
             return
         if item.image==False:
             return
-        if item.filename==self.item.filename:
+        if item.uid==self.item.uid:
             self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
         else:
             print 'sized wrong item'

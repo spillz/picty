@@ -1,100 +1,8 @@
 '''
-
-    phraymd
-    Copyright (C) 2009  Damien Moore
-
-License:
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+legacy item class
 '''
 
-'''
-this module defines the image item (Item) class and related functions
-'''
-
-##standard imports
-import datetime
-import os.path
-import re
-import datetime
-import cPickle
-import cStringIO
-
-##phraymd imports
-import pluginmanager
-import io
-
-
-class PickledDict(object):
-    def __init__(self,val=None):
-        if isinstance(val,PickledDict):
-            self.value=val.value
-        else:
-            if val:
-                d=dict(val)
-            else:
-                d={}
-            self.pickle(d)
-    def depickle(self):
-        f=cStringIO.StringIO(self.value)
-        return cPickle.load(f)
-    def pickle(self,dictionary):
-        f=cStringIO.StringIO()
-        cPickle.dump(dictionary,f)
-        self.value=f.getvalue()
-    def __getitem__(self,key):
-        return self.depickle()[key]
-    def __setitem__(self,key,value):
-        d=self.depickle()
-        d[key]=value
-        self.pickle(d)
-    def __delitem__(self,key):
-        d=self.depickle()
-        del d[key]
-        self.pickle(d)
-    def __iter__(self):
-        d=self.depickle()
-        yield d.__iter__()
-    def clear(self):
-        d={}
-        self.pickle(d)
-    def set_dict(self,dictionary):
-        self.pickle(dictionary)
-    def get_dict(self):
-        return self.depickle()
-    def copy(self):
-        return self.depickle()
-    def items(self):
-        d=self.depickle()
-        return d.items()
-    def iteritems(self):
-        d=self.depickle()
-        return d.iteritems()
-    def iterkeys(self):
-        d=self.depickle()
-        return d.iterkeys()
-    def itervalues(self):
-        d=self.depickle()
-        return d.itervalues()
-    def pop(self,key):
-        d=self.depickle()
-        return d.pop(key)
-    def popitem(self):
-        d=self.depickle()
-        return d.popitem()
-
-
+import baseobjects
 
 class Item(list):
     '''An item is a class describing an image, including filename, pixbuf representations and related metadata'''
@@ -170,106 +78,15 @@ class Item(list):
         self.image=None
         self.selected=False
         self.relevance=0
-
-def toggle_tags(item,tags,collection=None):
-    try:
-        tags_lower=[t.lower() for t in tags]
-        meta=item.meta.copy()
-        try:
-            tags_kw=meta['Keywords']
-        except:
-            tags_kw=[]
-        tags_kw_lower=[t.lower() for t in tags_kw]
-        new_tags=list(tags_kw)
-        all_present=reduce(bool.__and__,[t in tags_kw_lower for t in tags_lower],True)
-        if all_present:
-            j=0
-            while j<len(new_tags):
-                if tags_kw_lower[j] in tags_lower:
-                    new_tags.pop(j)
-                    tags_kw_lower.pop(j)
-                else:
-                    j+=1
-        else:
-            for j in range(len(tags)):
-                if tags_lower[j] not in tags_kw_lower:
-                    new_tags.append(tags[j])
-        if len(new_tags)==0:
-            try:
-                del meta['Keywords']
-            except:
-                pass
-        else:
-            meta['Keywords']=new_tags
-        item.set_meta(meta,collection)
-    except:
-        pass
-
-def add_tags(item,tags):
-    try:
-        tags_lower=[t.lower() for t in tags]
-        meta=item.meta.copy()
-        try:
-            tags_kw=meta['Keywords']
-        except:
-            tags_kw=[]
-        tags_kw_lower=[t.lower() for t in tags_kw]
-        new_tags=list(tags_kw)
-        for j in range(len(tags)):
-            if tags_lower[j] not in tags_kw_lower:
-                new_tags.append(tags[j])
-        if len(new_tags)==0:
-            try:
-                del meta['Keywords']
-            except:
-                pass
-        else:
-            meta['Keywords']=new_tags
-        item.set_meta(meta)
-    except:
-        pass
-
-def remove_tags(item,tags):
-    try:
-        tags_lower=[t.lower() for t in tags]
-        meta=item.meta.copy()
-        tags_kw=list(meta['Keywords'])
-        tags_kw_lower=[t.lower() for t in tags_kw]
-        new_tags=[]
-        for j in range(len(tags_kw)):
-            if tags_kw_lower[j] not in tags_lower:
-                new_tags.append(tags_kw[j])
-        if len(new_tags)==0:
-            del meta['Keywords']
-        else:
-            meta['Keywords']=new_tags
-        item.set_meta(meta)
-    except:
-        pass
-
-def set_tags(item,tags):
-    try:
-        meta=item.meta.copy()
-        meta['Keywords']=tags
-        item.set_meta(meta)
-    except:
-        pass
-
-def get_coords(item):
-    '''retrieve a pair of latitude longitude coordinates in degrees from item'''
-    try:
-        return item.meta['LatLon']
-    except:
-        return None
-
-def set_coords(item,lat,lon):
-    '''set the latitude and longitude in degrees to the item's exif metadata'''
-    item.set_meta_key('LatLon',(lat,lon))
-
-def item_in_region(item,lat0,lon0,lat1,lon1):
-    '''returns true if the item's geolocation is contained in the rectangular region (lat0,lon0),(lat1,lon1)'''
-    c=get_coords(item)
-    if c and lat1<=c[0]<=lat0 and lon0<=c[1]<=lon1:
-            return True
-    return False
-
+    def convert(self):
+        item=baseobjects.Item(self.filename)
+        item.mtime=self.mtime
+        item.thumb=self.thumb
+        item.thumburi=self.thumburi
+        item.qview=self.qview
+        item.image=self.image
+        item.meta_changed=self.meta_changed
+        item.meta=self.meta
+        item.selected=self.selected
+        item.relevance=self.relevance
+        return item

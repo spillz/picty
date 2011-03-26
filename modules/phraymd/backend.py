@@ -37,7 +37,8 @@ import bisect
 
 ##phraymd imports
 import settings
-import imageinfo
+import baseobjects
+import viewsupport
 import imagemanip
 import monitor
 import pluginmanager
@@ -309,7 +310,7 @@ class ReloadMetadataJob(WorkerJob):
             if view.del_item(item):
                 item.meta=None
                 imagemanip.load_metadata(item,self.collection)
-                log.info('reloaded metadata for '+item.filename)
+                log.info('reloaded metadata for '+item.uid)
                 view.add_item(item)
             self.browser.lock.release()
         if len(self.queue)==0:
@@ -330,6 +331,7 @@ class LoadCollectionJob(WorkerJob):
         collection=self.collection
         log.info('Loading collection '+self.collection_file)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
+        print 'OPENING COLLECTION',collection.id,collection.type
         if collection.open():
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.start_monitor(self.worker.directory_change_notify)
@@ -433,8 +435,10 @@ class WalkDirectoryJob(WorkerJob):
                 if os.path.isdir(fullpath):
                     log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
-                item=imageinfo.Item(fullpath,mtime)
+                item=baseobjects.Item(fullpath)
+                item.mtime=mtime
                 if collection.find(item)<0:
+                    print 'found new item',item.uid
                     if not collection.verify_after_walk:
                         if collection.load_metadata:
                             imagemanip.load_metadata(item,None,get_thumbnail=collection.load_embedded_thumbs)
@@ -532,7 +536,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 if os.path.isdir(fullpath):
                     log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
-                item=imageinfo.Item(fullpath,mtime)
+                item=baseobjects.Item(fullpath,mtime)
                 if collection.find(item)<0:
                     self.browser.lock.acquire()
                     imagemanip.load_metadata(item) ##todo: check if exists already
@@ -599,7 +603,7 @@ class BuildViewJob(WorkerJob):
             if self.sort_key:
                 view.sort_key_text=self.sort_key
             if view.sort_key_text:
-                view.key_cb=imageinfo.sort_keys[view.sort_key_text]
+                view.key_cb=viewsupport.sort_keys[view.sort_key_text]
             view.filters=None
             filter_text=self.filter_text.strip()
             if filter_text.startswith('lastview&'):
@@ -663,7 +667,7 @@ class MapImagesJob(WorkerJob):
             listitems=collection
         while i<len(listitems) and jobs.ishighestpriority(self) and self.im_count<self.max_images and not self.cancel:
             item=listitems(i)
-            if imageinfo.item_in_region(item,*self.region):
+            if baseobjects.item_in_region(item,*self.region):
                 imagemanip.load_thumb(item)
                 if item.thumb:
                     log.debug('Map plugin: found item '+str(item)+' with coordinates onscreen')
@@ -854,7 +858,7 @@ class EditMetaDataJob(WorkerJob):
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
                 if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
-                    imageinfo.toggle_tags(item,tags,collection)
+                    baseobjects.toggle_tags(item,tags,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
@@ -976,6 +980,7 @@ class VerifyImagesJob(WorkerJob):
             if i%20==0:
                 idle_add(self.browser.update_status,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
             if item.meta==None:
+                print 'verify loading metadata',item.uid
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -985,14 +990,16 @@ class VerifyImagesJob(WorkerJob):
                 collection.add(item)
                 self.browser.lock.release()
                 idle_add(self.browser.refresh_view,self.collection)
-            if not os.path.exists(item.filename) or os.path.isdir(item.filename) or item.filename!=io.get_true_path(item.filename):  ##todo: what if mimetype or size changed?
+            if not os.path.exists(item.uid) or os.path.isdir(item.uid) or item.uid!=io.get_true_path(item.uid):  ##todo: what if mimetype or size changed?
+                print 'verify delete missing item',item.uid
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
                 idle_add(self.browser.refresh_view,self.collection)
                 continue
-            mtime=io.get_mtime(item.filename)
+            mtime=io.get_mtime(item.uid)
             if mtime!=item.mtime:
+                print 'verify mtime changed',item.uid,item.mtime,mtime
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -1083,7 +1090,8 @@ class DirectoryUpdateJob(WorkerJob):
                             self.browser.lock.release()
                             idle_add(self.browser.refresh_view,self.collection)
                     else:
-                        item=imageinfo.Item(fullpath,io.get_mtime(fullpath))
+                        item=baseobjects.Item(fullpath)
+                        item.mtime=io.get_mtime(fullpath)
                         imagemanip.load_metadata(item,collection)
                         self.browser.lock.acquire()
                         collection.add(item)

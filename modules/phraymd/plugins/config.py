@@ -28,7 +28,7 @@ import os
 from phraymd import settings
 from phraymd import pluginbase
 from phraymd import pluginmanager
-from phraymd import imageinfo
+from phraymd import baseobjects
 from phraymd import collectionmanager
 
 class ConfigPlugin(pluginbase.Plugin):
@@ -272,7 +272,7 @@ class CollectionsBox(gtk.HBox):
             return
         coll_dir=settings.user_add_dir()
         if len(coll_dir)>0:
-            if imageinfo.create_empty_file(name,coll_dir):
+            if baseobjects.create_empty_file(name,coll_dir):
                 self.model.append((name,400))
 
     def delete_signal(self, widget):

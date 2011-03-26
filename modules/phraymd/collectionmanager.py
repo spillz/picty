@@ -24,8 +24,11 @@ import gobject
 import settings
 import os.path
 
-import collections
+import baseobjects
 import io
+
+import localstorebin
+import localstoredb
 
 COLUMN_ID=0
 COLUMN_NAME=1
@@ -43,6 +46,29 @@ def get_icon(icon_id_list):
     ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
     return None if not ii else ii.load_icon()
 
+def filter_selector(model, iter):
+    id = model.get_value(iter, COLUMN_ID)
+    return not id.startswith('#')
+
+def filter_open_selector(model,iter):
+    id = model.get_value(iter, COLUMN_ID)
+    open = model.get_value(iter, COLUMN_OPEN)
+    return not id.startswith('#') and open
+
+def filter_unopen_selector(model,iter):
+    id = model.get_value(iter, COLUMN_ID)
+    open = model.get_value(iter, COLUMN_OPEN)
+    return not id.startswith('#') and not open
+
+def filter_activator(model,iter):
+    return True
+
+filter_funcs={
+'OPEN_SELECTOR':filter_open_selector,        #shows only the open collections
+'UNOPEN_SELECTOR':filter_unopen_selector, #shows only the unopened collections
+'SELECTOR':filter_selector,      #shows both open and unopen collections
+'ACTIVATOR':filter_activator            #shows both open and unopen collections, separators and availability of devices
+}
 
 class CollectionSet(gobject.GObject):
     '''
@@ -62,14 +88,16 @@ class CollectionSet(gobject.GObject):
     '''
     def __init__(self):
         self.collections={}
-        self.types=['LOCALSTORE','DEVICE','DIRECTORY']
-        self.models=[]
+        self.types=[c for c in baseobjects.registered_collection_classes]
+        self.model=CollectionModel(self)
         self.dir_image=self.get_icon([gtk.STOCK_DIRECTORY])
 
-    def add_model(self,model_type='SELECTOR'):   ##todo: remove model
-        m=CollectionModel(self,model_type)
-        self.models.append(m)
+    def add_model(self,filter_type=None):
+        m=self.model.filter_new()
+        m.set_visible_func(filter_funcs[filter_type]) ##todo: define filter_funcs
+        m.coll_set=self
         return m
+
     def __iter__(self):
         '''
         iterator yielding all open collections
@@ -77,6 +105,7 @@ class CollectionSet(gobject.GObject):
         for id,c in self.collections.iteritems():
             if c.is_open:
                 yield c
+
     def iter_id(self,ctype=None):
         '''
         iterator yielding the unique id of all collections
@@ -84,6 +113,7 @@ class CollectionSet(gobject.GObject):
         for id,c in self.collections.iteritems():
             if not ctype or c.type==ctype:
                 yield id
+
     def iter_coll(self,ctype=None):
         '''
         iterates over the open collections yielding the collection matching ctype
@@ -92,6 +122,7 @@ class CollectionSet(gobject.GObject):
             if not ctype or c.type==ctype:
 #                if c.is_open:
                     yield c
+
     def __getitem__(self,name):
         '''
         if name is an id returns the collection
@@ -104,33 +135,18 @@ class CollectionSet(gobject.GObject):
         if name in self.collections:
             return self.collections[name]
         return None
-#    def __setitem__(self,name,value):
-#        if isinstance(name,gtk.TreeIter):
-#            id=self.get_user_data(name)
-#        if isinstance(name,str):
-#            id=name
-#        if not isinstance(value,Collection):
-#             raise ValueError("CollectionSet Error: invalid value "+str(value))
-#        added=True if id not in self.collections else False
-#        self.collections[id]=value
-#        if added:
-#            self.row_inserted(*self.pi_from_id(id))
-#        else:
-#            self.row_changed(*self.pi_from_id(id))
+
     def __delitem__(self,name,delete_cache_file=True):
         coll=self.collections[name]
-        if coll.type=='DEVICE' and coll.is_open:
-            self.collection_closed(name)
         self.collection_removed(coll.id)
         del self.collections[name]
-        if coll.type=='LOCALSTORE' and delete_cache_file:
-            coll.delete_files()
-        if coll.type=='DEVICE' and self.count('DEVICE')==0:
-            for m in self.models:
-                m.all_mounts_removed()
+        if coll.type=='DEVICE' and self.count('DEVICE')==0: ##todo: is there anyway to not hardcode this here? (delegate to the class)
+            self.model.all_mounts_removed()
+
     def clear(self):
         for id in self.collections:
             del self[id]
+
     def get_icon(self, icon_id_list):
         t=gtk.icon_theme_get_default()
         ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
@@ -139,74 +155,22 @@ class CollectionSet(gobject.GObject):
         except:
             pb=None
         return pb
+
     def count(self,type=None):
         return sum([1 for id in self.iter_id(type)])
-    def add_mount(self,path,name,icon_names):
-        if not os.path.exists(path):
-            return
-        c=collections.Collection2()
-        c.type='DEVICE'
-        c.image_dirs=[path] ##todo: if device collection data is stored persistently, what to do if path changes?
-        c.name=name
-        c.id=path
-        c.pixbuf=self.get_icon(icon_names)
-        c.add_view()
-        c.verify_after_walk=False
-        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')):
-            c.load_embedded_thumbs=False
-            c.load_metadata=False
-            c.load_preview_icons=True
-            c.store_thumbnails=False ##todo: this needs to be implemented
-        else:
-            c.load_embedded_thumbs=True
-            c.load_metadata=True
-            c.load_preview_icons=False
-            c.store_thumbnails=False
-        if self.count('DEVICE')==0:
-            for m in self.models:
-                m.first_mount_added()
-        self.collections[c.id]=c
-        self.collection_added(c.id)
-        return c
-    def add_localstore(self,col_name,prefs=None):
-        '''
-        add a localstore collection to the collection set
-        - col_name is the name of the collection (and is also used to set the filename of the collection cache file)
-        - prefs is a dictionary containing the preferences for the colleciton, if None they will be loaded from the collection cache file
-        '''
-        c=collections.Collection2()
-        col_path=os.path.join(settings.collections_dir,col_name)
-        c.name=col_name
-        c.id=col_path
-        c.type='LOCALSTORE'
-        c.pixbuf=self.get_icon([gtk.STOCK_HARDDISK]) ##todo: let user choose an icon
-        c.add_view()
-        if prefs!=None:
-            c.set_prefs(prefs)
-        else:
-            c.load_prefs()
-        self.collections[col_path]=c
-        self.collection_added(c.id)
-        return c
-    def add_directory(self,path,prefs=None):
-        c=collections.Collection2()
-        c.name=os.path.split(path)[1]
-        c.id=path
-        c.type='DIRECTORY'
-        c.image_dirs=[path]
-        c.verify_after_walk=False
-        c.pixbuf=self.get_icon([gtk.STOCK_DIRECTORY])
-        c.recursive=prefs['recursive']
-        c.load_embedded_thumbs=prefs['load_embedded_thumbs']
-        c.load_metadata=prefs['load_metadata']
-        if not c.load_metadata and c.load_embedded_thumbs:
-            c.load_preview_icons=True
-        c.store_thumbnails=prefs['store_thumbnails'] ##todo: this needs to be implemented
 
-        c.add_view()
-        self.collections[path]=c
-        self.collection_added(c.id)
+    def add_collection(self,collection):
+        self.collections[collection.id]=collection
+        self.collection_added(collection.id)
+
+    def new_collection(self,prefs):
+        print 'creating new collection with prefs',prefs
+        c=baseobjects.registered_collection_classes[prefs['type']](prefs)
+#        v=c.add_view()
+        print 'NEW COLLECTION',c.name,c.get_active_view()
+        self.add_collection(c)
         return c
+
     def change_prefs(self,coll,new_prefs):
         if coll.is_open:
             return False #can't change open collections (too much potential for errors)
@@ -239,38 +203,40 @@ class CollectionSet(gobject.GObject):
         coll=self[id]
         del self[id]
         return coll
+
     def collection_added(self,id):
-        for m in self.models:
-            m.coll_added(id)
+        print 'coll manager adding',id,self.collections
+        self.model.coll_added(id)
+
     def collection_changed(self,id):
-        for m in self.models:
-            m.coll_changed(id)
+        self.model.coll_changed(id)
+
     def collection_removed(self,id):
-        for m in self.models:
-            m.coll_removed(id)
+        self.model.coll_removed(id)
+
     def collection_opened(self,id):
-        for m in self.models:
-            m.coll_opening(id)
         self[id].is_open=True
-        for m in self.models:
-            m.coll_opened(id)
+        self.model.coll_opened(id)
+
     def collection_closed(self,id):
         if id not in self.collections:
             return
-        for m in self.models:
-            m.coll_closing(id)
         c=self[id]
         c.is_open=False
-        for m in self.models:
-            m.coll_closed(id)
-        if c.type=='DIRECTORY':
-            self.remove(id)
+        self.model.coll_closed(id)
+
     def init_localstores(self):
-        for col_file in settings.get_collection_files():
-            self.add_localstore(col_file)
+        for f in settings.get_collection_files():
+            col_dir=os.path.join(settings.collections_dir,f)
+            c=baseobjects.init_collection(col_dir)
+            if c!=None:
+                c.add_view()
+                self.add_collection(c)
+
     def init_mounts(self,mount_info):
-        for name,icon_names,path in mount_info:
-            self.add_mount(path,name,icon_names)
+        pass
+#        for name,icon_names,path in mount_info:
+#            self.add_mount(path,name,icon_names)
 
 
 class CollectionModel(gtk.GenericTreeModel):
@@ -278,60 +244,24 @@ class CollectionModel(gtk.GenericTreeModel):
     derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
     methods needed for implementing gtk.TreeModel (see pygtk tutorial)
     '''
-    def __init__(self,coll_set,model_type):
+    def __init__(self,coll_set):
         gtk.GenericTreeModel.__init__(self)
         self.coll_set=coll_set
-        self.model_type=model_type
-        if model_type=='OPEN_SELECTOR':
-            self.view_iter=self.view_iter_open_selector
-        if model_type=='UNOPEN_SELECTOR':
-            self.view_iter=self.view_iter_unopen_selector
-        if model_type=='SELECTOR':
-            self.view_iter=self.view_iter_selector
-        if model_type=='ACTIVATOR':
-            self.view_iter=self.view_iter_activator
-        if model_type=='MENU':
-            self.view_iter=self.view_iter_menu
-        if model_type=='LOCALSTORE_SELECTOR':
-            self.view_iter=self.view_iter_localstore_selector
         for r in self.view_iter():
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
-        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
-            return
-        if self.model_type!='OPEN_SELECTOR':
-            self.row_inserted(*self.pi_from_id(id))
+        self.row_inserted(*self.pi_from_id(id))
     def coll_removed(self,id):
-        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
-            return
-        if self.model_type!='OPEN_SELECTOR':
-            self.row_deleted(self.pi_from_id(id)[0])
-    def coll_opening(self,id):
-        if self.model_type=='UNOPEN_SELECTOR':
-            self.row_deleted(self.pi_from_id(id)[0])
+        self.row_deleted(self.pi_from_id(id)[0])
     def coll_opened(self,id):
-        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
-            return
-        if self.model_type=='OPEN_SELECTOR':
-            self.row_inserted(*self.pi_from_id(id))
-        elif self.model_type in ('SELECTOR','MENU','ACTIVATOR'):
-            self.row_changed(*self.pi_from_id(id))
-    def coll_closing(self,id):
-        if self.model_type=='LOCALSTORE_SELECTOR' and self.coll_set[id].type!='LOCALSTORE':
-            return
-        if self.model_type=='OPEN_SELECTOR':
-            self.row_deleted(self.pi_from_id(id)[0])
-        elif self.model_type in ('SELECTOR','MENU','ACTIVATOR'):
-            self.row_changed(*self.pi_from_id(id))
+        self.row_changed(*self.pi_from_id(id))
     def coll_closed(self,id):
-        if self.model_type=='UNOPEN_SELECTOR':
-            self.row_inserted(*self.pi_from_id(id))
+        self.row_changed(*self.pi_from_id(id))
     def first_mount_added(self):
         if self.model_type in ('SELECTOR','MENU'):
             self.row_deleted(self.pi_from_id('#no-devices')[0])
     def all_mounts_removed(self):
-        if self.model_type in ('SELECTOR','MENU'):
-            self.row_inserted(*self.pi_from_id('#no-devices'))
+        self.row_inserted(*self.pi_from_id('#no-devices'))
     def on_get_flags(self):
         return gtk.TREE_MODEL_LIST_ONLY
     def on_get_n_columns(self):
@@ -348,9 +278,11 @@ class CollectionModel(gtk.GenericTreeModel):
     def on_get_path(self, rowref):
         i=0
         for id in self.view_iter():
+            print 'on_get_path',id,rowref
             if id==rowref:
                 return (i,)
             i+=1
+        print 'on_get_path failed',i
         return None
     def on_get_value(self, rowref, column):
         return self.as_row(rowref)[column]
@@ -394,76 +326,25 @@ class CollectionModel(gtk.GenericTreeModel):
             return [id,ci.name,800,False,'brown',ci.pixbuf,True]
         else:
             return [id,ci.name,400,False,'brown',ci.pixbuf,False]
-    def view_iter_menu(self):
+    def view_iter(self):
         '''
         this iterator defines the rows of the collection model
         and adds items for separators, collections and menu options
         '''
-        tcount=0
-        options=['#add-localstore',None,'#add-dir']
+#        tcount=0
+        options=[None,None,'#add-dir']
         for t in self.coll_set.types:
-            if tcount>0:
-                yield '*%i'%(tcount,)
+#            if tcount>0:
+#                yield '*%i'%(tcount,)
             i=0
             for id in self.coll_set.iter_id(t):
                 yield id
                 i+=1
-            if t=='DEVICE' and i==0:
-                yield '#no-devices'
-            if options[tcount]!=None:
-                yield options[tcount]
-            tcount+=1
-    def view_iter_selector(self):
-        '''
-        returns an iterator over all collections
-        and adds separators between collection types but no menu options
-        '''
-        tcount=0
-        i=0
-        for t in self.coll_set.types:
-            if i>0:
-                yield '*%i'%(tcount,)
-            i=0
-            for id in self.coll_set.iter_id(t):
-                yield id
-                i+=1
-            if t=='DEVICE' and i==0:
-                yield '#no-devices'
-            tcount+=1
-    def view_iter_activator(self):
-        '''
-        returns an iterator over all collections
-        plus an additional option to browser a directory
-        '''
-        for t in self.coll_set.types:
-            for id in self.coll_set.iter_id(t):
-                yield id
-        yield '#add-dir'
-    def view_iter_open_selector(self):
-        '''
-        returns an iterator over the open collections
-        and adds separators between collection types
-        '''
-        tcount=0
-        i=0
-        for t in self.coll_set.types:
-            if i>0:
-                yield '*%i'%(tcount,)
-            i=0
-            for id in self.coll_set.iter_id(t):
-                if self.coll_set[id].is_open:
-                    yield id
-                    i+=1
-            tcount+=1
-    def view_iter_unopen_selector(self):
-        '''
-        returns an iterator over the closed collections
-        and adds separators between collection types
-        '''
-        for t in self.coll_set.types:
-            for id in self.coll_set.iter_id(t):
-                if not self.coll_set[id].is_open:
-                    yield id
+#            if t=='DEVICE' and i==0:
+#                yield '#no-devices'
+#            if options[tcount]!=None:
+#                yield options[tcount]
+#            tcount+=1
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
         return self.get_path(iter),iter
@@ -571,7 +452,6 @@ class UnopenedCollectionList(gtk.TreeView):
         self.append_column(tvc)
 
 
-
 class CollectionStartPage(gtk.VBox):
     __gsignals__={
         'collection-open':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(str,)), #user selects a collection to open
@@ -674,34 +554,4 @@ class CollectionStartPage(gtk.VBox):
         self.emit("folder-open")
 
 gobject.type_register(CollectionStartPage)
-
-
-'''
-class Manager:
-    def __init__(self,worker):
-        self.coll_set=collectionset.CollectionSet()
-        self.coll_combo=CollectionCombo(self.coll_set)
-        self.volume_monitor=io.VolumeMonitor()
-        self.volume_monitor.connect("mount-added",self.mount_added)
-        self.volume_monitor.connect("mount-removed",self.mount_removed)
-        self.active_collection_id=None
-        self.coll_combo.connect("changed",self.changed_collection)
-    def collection_changed(self,model,iter):
-        self.active_collection_id=iter
-    def mount_added(self,name,icon_names,path):
-        self.coll_set.add_mount(path,name,icon_names)
-        self.coll_combo.init_view()
-    def mount_removed(self,name,icon_names,path):
-        collection=self.coll_set[path].collection
-        self.coll_set.remove_mount(path)
-        self.coll_combo.init_view()
-    def add_dir(self,name,path):
-        pass
-    def remove_dir(self,name):
-        pass
-    def add_localstore(self,name,path,collection):
-        pass
-    def remove_localstore(self,name,path,collection):
-        pass
-'''
 

@@ -32,7 +32,7 @@ import os.path
 import os
 
 import settings
-import imageinfo
+import baseobjects
 import io
 import pluginmanager
 
@@ -96,7 +96,7 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
         meta=item.meta.copy()
     else:
         meta=item.meta
-    result=metadata.load_metadata(item,filename,get_thumbnail)
+    result=metadata.load_metadata(item,item.uid,get_thumbnail)
     if result:
 ##PICKLED DICT
 #        if isinstance(item.meta,dict):
@@ -147,7 +147,7 @@ def save_metadata(item):
     save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
     '''
     if metadata.save_metadata(item):
-        item.mtime=io.get_mtime(item.filename) ##todo: this and the next line should be a method of the image class
+        item.mtime=io.get_mtime(item.uid) ##todo: this and the next line should be a method of the image class
         update_thumb_date(item)
         return True
     return False
@@ -158,7 +158,7 @@ def save_metadata_key(item,key,value):
     sets the metadata key to value and saves the change in the image
     '''
     if metadata.save_metadata_key(item,key,value):
-        item.mtime=io.get_mtime(item.filename)
+        item.mtime=io.get_mtime(item.uid)
         update_thumb_date(item)
         return True
     return False
@@ -246,15 +246,15 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
     writes a temporary copy of the image to disk
     '''
     import tempfile
-    filename=item.filename
+    filename=item.uid
     try:
-        image=Image.open(item.filename)
+        image=Image.open(item.uid)
     except:
         try:
-            cmd=settings.dcraw_cmd%(item.filename,)
+            cmd=settings.dcraw_cmd%(item.uid,)
             imdata=os.popen(cmd).read()
             if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(item.filename,)
+                cmd=settings.dcraw_backup_cmd%(item.uid,)
                 imdata=os.popen(cmd).read()
                 if not interrupt_fn():
                     return False
@@ -268,20 +268,20 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
         size=tuple(int(dim) for dim in size.split('x'))
         if len(size)>0 and size[0]>0 and size[1]>0:
             image.thumbnail(size,Image.ANTIALIAS)
-            if item.filename==filename:
+            if item.uid==filename:
                 h,filename=tempfile.mkstemp('.jpg')
     if image.format not in ['JPEG','PNG']:
-        if item.filename==filename:
+        if item.uid==filename:
             h,filename=tempfile.mkstemp('.jpg')
     if strip_metadata:
-        if item.filename==filename:
+        if item.uid==filename:
             h,filename=tempfile.mkstemp('.jpg')
-    if filename!=item.filename:
+    if filename!=item.uid:
         if strip_metadata:
             image=orient_image(image,item.meta)
         image.save(filename,quality=95)
         if not strip_metadata:
-            metadata.copy_metadata(item,filename)
+            metadata.copy_metadata(item.uid)
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
 
@@ -292,14 +292,14 @@ def load_image(item,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
-        if io.get_mime_type(item.filename)=='image/x-adobe-dng': ##for extraction with dcraw
+        if io.get_mime_type(item.uid)=='image/x-adobe-dng': ##for extraction with dcraw
             raise TypeError
-        image=Image.open(item.filename) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
-        print 'opened image',item.filename,image
+        image=Image.open(item.uid) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+        print 'opened image',item.uid,image
 #        parsed version
         if not draft_mode and image.format=='JPEG':
             #parser doesn't seem to work correctly on anything but JPEGs
-            f=open(item.filename,'rb')
+            f=open(item.uid,'rb')
             imdata=f.read(10000)
             p = ImageFile.Parser()
             while imdata and len(imdata)>0:
@@ -312,10 +312,10 @@ def load_image(item,interrupt_fn,draft_mode=False):
             print 'parsed image with PIL'
     except:
         try:
-            cmd=settings.dcraw_cmd%(item.filename,)
+            cmd=settings.dcraw_cmd%(item.uid,)
             imdata=os.popen(cmd).read()
             if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(item.filename,)
+                cmd=settings.dcraw_backup_cmd%(item.uid,)
                 imdata=os.popen(cmd).read()
                 if not interrupt_fn():
                     return False
@@ -413,7 +413,7 @@ def has_thumb(item):
     if item.thumburi and os.path.exists(item.thumburi):
         return True
     if not settings.maemo:
-        uri = io.get_uri(item.filename)
+        uri = io.get_uri(item.uid)
         item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
             return True
@@ -443,12 +443,12 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
     remove_old - if the item name has changed, removes the old thumbnail
     affects mtime, thumb, thumburi members of item
     '''
-    item.mtime=io.get_mtime(item.filename)
+    item.mtime=io.get_mtime(item.uid)
     if item.thumburi:
         oldthumburi=item.thumburi
         if not item.thumb:
             load_thumb(item)
-        uri = io.get_uri(item.filename)
+        uri = io.get_uri(item.uid)
         thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
         item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if remove_old and oldthumburi!=item.thumburi:
@@ -464,7 +464,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
     right - rotate right if True else left
     interrupt_fn - callback that returns False if job should be interrupted
     '''
-    if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
+    if thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
         return False
     if item.thumburi:
         try:
@@ -480,7 +480,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             thumb_pb=gtk.gdk.pixbuf_new_from_data(data=image.tostring(), colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
             width=thumb_pb.get_width()
             height=thumb_pb.get_height()
-            uri = io.get_uri(item.filename)
+            uri = io.get_uri(item.uid)
             thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
             item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
             if item.thumb:
@@ -500,27 +500,27 @@ def make_thumb(item,interrupt_fn=None,force=False):
     force = True if thumbnail should be recreated even if already present
     affects thumb, thumburi members of item
     '''
-    if thumb_factory.has_valid_failed_thumbnail(item.filename,int(item.mtime)):
+    if thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
         if not force:
             item.thumb=False
             return
         print 'forcing thumbnail creation'
-        uri = io.get_uri(item.filename)
+        uri = io.get_uri(item.uid)
         thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
         if thumb_uri:
             print 'removing failed thumb',thumb_uri
             os.remove(thumb_uri)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
-    print 'MAKING THUMB FOR',item.filename
+    print 'MAKING THUMB FOR',item.uid
     t=time.time()
     try:
-        uri = io.get_uri(item.filename)
-        mimetype=io.get_mime_type(item.filename)
+        uri = io.get_uri(item.uid)
+        mimetype=io.get_mime_type(item.uid)
         thumb_pb=None
 #        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
         if mimetype.lower().startswith('video'):
-            cmd=settings.video_thumbnailer%(item.filename,)
+            cmd=settings.video_thumbnailer%(item.uid,)
             imdata=os.popen(cmd).read()
             image=Image.open(StringIO.StringIO(imdata))
 #                p = ImageFile.Parser()
@@ -529,13 +529,13 @@ def make_thumb(item,interrupt_fn=None,force=False):
             image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
         else:
             try:
-                image=Image.open(item.filename)
+                image=Image.open(item.uid)
                 image.thumbnail((128,128),Image.ANTIALIAS)
             except:
-                cmd=settings.dcraw_cmd%(item.filename,)
+                cmd=settings.dcraw_cmd%(item.uid,)
                 imdata=os.popen(cmd).read()
                 if not imdata or len(imdata)<100:
-                    cmd=settings.dcraw_backup_cmd%(item.filename,)
+                    cmd=settings.dcraw_backup_cmd%(item.uid,)
                     imdata=os.popen(cmd).read()
 #                pipe = subprocess.Popen(cmd, shell=True,
 #                        stdout=PIPE) ##, close_fds=True
@@ -556,11 +556,11 @@ def make_thumb(item,interrupt_fn=None,force=False):
     except:
         print 'creating FAILED thumbnail',item
         item.thumb=False
-        thumb_factory.create_failed_thumbnail(item.filename,int(item.mtime))
+        thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
-    uri = io.get_uri(item.filename)
+    uri = io.get_uri(item.uid)
     thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
     item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
     item.thumb=thumb_pb
@@ -574,8 +574,8 @@ def load_thumb_from_preview_icon(item):
     affects thumb member of item
     '''
     try:
-        print 'loading thumb from preview icon',item.filename
-        data,dtype=io.get_preview_icon_data(item.filename)
+        print 'loading thumb from preview icon',item.uid
+        data,dtype=io.get_preview_icon_data(item.uid)
         loader = gtk.gdk.PixbufLoader()
         loader.write(data.read())
         pb = loader.get_pixbuf()
@@ -589,7 +589,7 @@ def load_thumb_from_preview_icon(item):
         import sys
         import traceback
         tb_text=traceback.format_exc(sys.exc_info()[2])
-        print 'Error loading thumb from preview icon',item.filename
+        print 'Error loading thumb from preview icon',item.uid
         print tb_text
         item.thumb=None
         return False
@@ -604,10 +604,10 @@ def load_thumb(item):
     image=None
     try:
         if settings.maemo:
-            image = Image.open(item.filename)
+            image = Image.open(item.uid)
             image.thumbnail((128,128))
         else:
-            uri = io.get_uri(item.filename)
+            uri = io.get_uri(item.uid)
             if not item.thumburi:
                 item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
             if item.thumburi:

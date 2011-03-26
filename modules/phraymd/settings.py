@@ -28,7 +28,7 @@ import gtk
 maemo=False
 
 release_version='0.3' #this is the version number of the released program
-version='0.6.0' #version is saved to data and configuration files
+version='0.6.1' #version is saved to data and configuration files
 #version notes:
 # 0.6.0
 #  * separated preferences and image data cache into separate files (under collection name directory)
@@ -150,7 +150,7 @@ def load():
     try:
         file_version=cPickle.load(f)
         if file_version>='0.3.2':
-            active_collection_id=cPickle.load(f)
+            active_collection_id=os.path.split(cPickle.load(f))[1]
         if file_version<'0.3.0':
             legacy_image_dirs=cPickle.load(f)
         if file_version<='0.3.1':
@@ -199,26 +199,12 @@ def user_add_dir():
 def init():
     global image_dirs, active_collection_id
     load()
-    print 'active_collection_id 0',active_collection_id
     if not active_collection_id or not os.path.exists(active_collection_id):
         try:
-            print 'active_collection_id 1',active_collection_id
-            active_collection_id=os.path.join(collections_dir,get_collection_files()[0])
-            print 'active_collection_id 2',active_collection_id
+            active_collection_id=get_collection_files()[0]
         except:
             active_collection_id=''
-#    if not os.path.exists(active_collection_file) and not os.path.exists(legacy_collection_file2) and not os.path.exists(legacy_collection_file):
-#        image_dirs=user_add_dir()
-#        if len(image_dirs)==0:
-#            import sys
-#            print 'no image directory selected... quitting'
-#            sys.exit()
-#        import imageinfo
-#        if not imageinfo.create_empty_file(os.path.join(collections_dir,'collection'),image_dirs):
-#            import sys
-#            print 'error creating collection file... quitting'
-#            sys.exit()
-#        active_collection_file=os.path.join(collections_dir,'collection')
+    print 'ACTIVE COLLECTION ID',active_collection_id
     save()
 
 

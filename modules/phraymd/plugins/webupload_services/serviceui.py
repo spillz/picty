@@ -7,10 +7,9 @@ import gobject
 
 from phraymd import settings
 from phraymd import pluginbase
-from phraymd import imageinfo
+from phraymd import baseobjects
 from phraymd import imagemanip
 from phraymd import io
-from phraymd import collections
 from phraymd import metadata
 
 
@@ -169,7 +168,7 @@ class UploadQueue(gtk.HBox):
         self.active_row=None
         self.active_item=None
         self.model=gtk.ListStore(gtk.gdk.Pixbuf,str,gobject.TYPE_DOUBLE,gobject.TYPE_INT,gobject.TYPE_PYOBJECT,str,gobject.TYPE_BOOLEAN,str,*service_col_types)
-        self.upload_collection=collections.SimpleCollection()
+        self.upload_collection=baseobjects.SimpleCollection()
         self.tv=gtk.TreeView(self.model)
         self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
@@ -215,8 +214,8 @@ class UploadQueue(gtk.HBox):
         if uris: ##todo: all of this should be done on the worker thread, with a notification to add items to the list when done
             for uri in uris:
                 path=io.get_path_from_uri(uri)
-                from phraymd import imageinfo
-                item=imageinfo.Item(path,0)
+                from phraymd import baseobjects
+                item=baseobjects.Item(path,0)
                 ind=self.upload_collection.find(item) #don't include items already in the list
                 if ind>=0:
                     continue
@@ -239,7 +238,7 @@ class UploadQueue(gtk.HBox):
                         width=height*tw/th
                     thumb_pb=thumb_pb.scale_simple(width*1.5,height*1.5,gtk.gdk.INTERP_BILINEAR)
                 self.upload_collection.add(item)
-                row=(thumb_pb,os.path.split(item.filename)[1],0.0,0,item,'',False,'')+self.default_service_cols_cb(item)
+                row=(thumb_pb,os.path.split(item.uid)[1],0.0,0,item,'',False,'')+self.default_service_cols_cb(item)
                 if iter:
                     iter=self.model.insert_after(iter,row)
                 elif not drop_row:

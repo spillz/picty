@@ -27,7 +27,7 @@ import gobject
 import gtk
 
 from phraymd import pluginbase
-from phraymd import imageinfo
+from phraymd import baseobjects
 from phraymd import backend
 from phraymd import settings
 from phraymd import dialogs
@@ -203,7 +203,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         print 'Tag Plugin: dropped',tag_widget,path
         tags=self.tagframe.get_tags(path)
         if not item.selected:
-            imageinfo.toggle_tags(item,tags)
+            baseobjects.toggle_tags(item,tags)
         else:
             self.worker.keyword_edit(tags,True)
     def t_collection_loaded(self,collection):
@@ -609,8 +609,8 @@ class TagFrame(gtk.VBox):
                 if len(model_path)<=1 or model_path[0]==1:
                     return
                 path=data
-                from phraymd import imageinfo
-                item=imageinfo.Item(path,0)
+                from phraymd import baseobjects
+                item=baseobjects.Item(path,0)
                 ind=self.worker.active_collection.find(item)
                 if ind<0:
                     return False

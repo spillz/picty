@@ -38,7 +38,7 @@ import math
 import cPickle
 
 ##phraymd imports
-from phraymd import imageinfo
+from phraymd import baseobjects
 from phraymd import settings
 from phraymd import pluginbase
 
@@ -268,8 +268,7 @@ class MapFrame(gtk.VBox):
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':
             path=selection_data.data
-            from phraymd import imageinfo
-            item=imageinfo.Item(path,0)
+            item=baseobjects.Item(path,0)
             ind=self.worker.active_collection.find(item)
             if ind<0:
                 return False
@@ -281,7 +280,7 @@ class MapFrame(gtk.VBox):
                 from phraymd import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
                 self.osm.add_image(lat,lon,pb)
-                imageinfo.set_coords(item,lat,lon)
+                baseobjects.set_coords(item,lat,lon)
                 self.update_map_items()
 
     def print_tiles(self):

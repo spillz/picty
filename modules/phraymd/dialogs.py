@@ -301,10 +301,11 @@ class AddLocalStoreDialog(gtk.Dialog):
                 }
 
     def set_values(self,val_dict):
-        self.name_entry.set_path(val_dict['name'])
-        if len(val_dict['image_dirs']>0):
+        print 'setting val_dict',val_dict
+        self.name_entry.set_text(val_dict['name'])
+        if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
-        self.recurse_button.set_active(val_dict['recursive'])
+        self.recursive_button.set_active(val_dict['recursive'])
         self.load_meta_check.set_active(val_dict['load_metadata'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
@@ -536,7 +537,7 @@ class MetaDialog(gtk.Dialog):
         hbox.show_all()
         self.vbox.pack_start(hbox)
         file_label=gtk.Label()
-        file_label.set_label(item.filename)
+        file_label.set_label(item.uid)
         file_label.show()
         self.vbox.pack_start(file_label)
     def meta_changed(self,widget,key):

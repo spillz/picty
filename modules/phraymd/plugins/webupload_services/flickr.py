@@ -170,14 +170,14 @@ class FlickrService(UploadServiceBase):
 
             title=preferences[MODEL_COL_FLICKR_TITLE]
             if not title:
-                title=os.path.split(item.filename)[1]
+                title=os.path.split(item.uid)[1]
             tags=preferences[MODEL_COL_FLICKR_TAGS]
             description=preferences[MODEL_COL_FLICKR_DESCRIPTION]
             privacy=preferences[MODEL_COL_FLICKR_PRIVACY]
             public=1 if privacy==PRIVACY_PUBLIC else 0
             family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
-            print 'uploading',item.filename,'with privacy',public,family,friends
+            print 'uploading',item.uid,'with privacy',public,family,friends
 
             def progress_cb(progress,done):
                 print 'progress notify',progress,done
@@ -190,7 +190,7 @@ class FlickrService(UploadServiceBase):
                 photoset_id=album[1].attrib['id']
                 self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
 
-            if filename!=item.filename:
+            if filename!=item.uid:
                 os.remove(filename)
 
             self.t_notify_photo_uploaded(item,True,'Successful upload')

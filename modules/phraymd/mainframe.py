@@ -56,7 +56,8 @@ from widget_tools import *
 
 ##todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
-import imageinfo
+import baseobjects
+import viewsupport
 import fileops
 
 
@@ -166,7 +167,7 @@ class MainFrame(gtk.VBox):
 
         self.sort_order=gtk.combo_box_new_text()
         i=0
-        for s in imageinfo.sort_keys:
+        for s in viewsupport.sort_keys:
             self.sort_order.append_text(s)
             if s=='Relevance':
                 self.sort_order_relevance_ind=i
@@ -355,6 +356,7 @@ class MainFrame(gtk.VBox):
         c.browser.tm=self.tm
         c.browser.active_collection=c
         c.browser.active_view=c.get_active_view()
+        print 'ADD BROWSER VIEW',c.browser.active_view
         c.browser.connect("activate-item",self.activate_item)
         c.browser.connect("context-click-item",self.popup_item)
         c.browser.connect("status-updated",self.update_status)
@@ -402,6 +404,7 @@ class MainFrame(gtk.VBox):
         dialog=dialogs.BrowseDirectoryDialog()
         response=dialog.run()
         prefs=dialog.get_values()
+        prefs['type']='LOCALDIR'
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
             path=prefs['image_dirs'][0]
@@ -417,18 +420,19 @@ class MainFrame(gtk.VBox):
         if first_start:
             prefs=dialog.get_values()
             prefs['name']='main'
-            prefs['image_dirs']=os.path.join(os.environ['$HOME'],'Pictures')
+            prefs['image_dirs']=[os.path.join(os.environ['HOME'],'Pictures')]
             dialog.set_values(prefs)
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
             prefs['name']=prefs['name'].replace('/','').strip()
+            prefs['type']='LOCALSTORE'
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:
-                if imageinfo.create_empty_collection(name,prefs):
-                    c=self.coll_set.add_localstore(name)
+                if baseobjects.create_empty_collection(name,prefs):
+                    c=self.coll_set.new_collection(prefs)
                     self.collection_open(c.id)
                     return
                 dialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
@@ -475,9 +479,10 @@ class MainFrame(gtk.VBox):
 #        if ind!=need_ind:
 #            self.browser_nb.set_current_page(need_ind)
 
+        print 'BROWSER SWITCH',coll.type,coll.id
         sort_model=self.sort_order.get_model()
         for i in xrange(len(sort_model)):
-            if page.active_view.sort_key_text==sort_model[i][0]:
+            if page.active_view.sort_key_text==sort_model[i][0]: ##NEED TO ADD A VIEW TO  OPEN COLLS
                 self.sort_order.handler_block_by_func(self.set_sort_key)
                 self.sort_order.set_active(i)
                 self.sort_order.handler_unblock_by_func(self.set_sort_key)
@@ -493,6 +498,7 @@ class MainFrame(gtk.VBox):
 
 
     def collection_open(self,id):
+        print 'OPENING COLLECTION',id
         c=self.coll_set[id]
         if c!=None:
             if c.browser!=None:
@@ -648,7 +654,7 @@ class MainFrame(gtk.VBox):
 #        layout['viewer active']=self.is_iv_showing
 #        if self.is_iv_showing:
 #            layout['viewer width']=self.hpane.get_position()
-#            layout['viewed item']=self.iv.item.filename
+#            layout['viewed item']=self.iv.item.uid
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
@@ -749,7 +755,7 @@ class MainFrame(gtk.VBox):
             self.tm.keyword_edit(keyword_string,False,True)
 
     def select_set_info(self,widget):
-        item=imageinfo.Item('stub',None)
+        item=baseobjects.Item('stub',None)
         item.meta={}
         dialog=dialogs.BatchMetaDialog(item)
         response=dialog.run()
@@ -1051,14 +1057,14 @@ class MainFrame(gtk.VBox):
             item.connect("activate",callback,*args)
             menu.append(item)
 #            item.show()
-        itype=io.get_mime_type(item.filename)
+        itype=io.get_mime_type(item.uid)
         launch_menu=gtk.Menu()
         if itype in settings.custom_launchers:
             for app in settings.custom_launchers[itype]:
                 menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
         launch_menu.append(gtk.SeparatorMenuItem())
         for app in io.app_info_get_all_for_type(itype):
-            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(item.filename))
+            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(item.uid))
         for app in settings.custom_launchers['default']:
             menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
 
@@ -1149,13 +1155,13 @@ class MainFrame(gtk.VBox):
         if uri:
             app_cmd.launch_uris([uri])
         else:
-            app_cmd.launch_uris([io.get_uri(item.filename) for item in browser.active_view.get_selected_items()])
+            app_cmd.launch_uris([io.get_uri(item.uid) for item in browser.active_view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template
-        fullpath=item.filename
-        directory=os.path.split(item.filename)[0]
-        fullname=os.path.split(item.filename)[1]
+        fullpath=item.uid
+        directory=os.path.split(item.uid)[0]
+        fullname=os.path.split(item.uid)[1]
         name=os.path.splitext(fullname)[0]
         ext=os.path.splitext(fullname)[1]
         app_cmd=Template(app_cmd_template).substitute(
@@ -1186,15 +1192,15 @@ class MainFrame(gtk.VBox):
         self.active_browser().redraw_view()
 
     def launch_item(self,widget,item):
-        uri=io.get_uri(item.filename)
-        mime=io.get_mime_type(item.filename)
+        uri=io.get_uri(item.uid)
+        mime=io.get_mime_type(item.uid)
         cmd=None
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
                 from string import Template
-                fullpath=item.filename
-                directory=os.path.split(item.filename)[0]
-                fullname=os.path.split(item.filename)[1]
+                fullpath=item.uid
+                directory=os.path.split(item.uid)[0]
+                fullname=os.path.split(item.uid)[1]
                 name=os.path.splitext(fullname)[0]
                 ext=os.path.splitext(fullname)[1]
                 cmd=Template(app[1]).substitute(
@@ -1205,9 +1211,9 @@ class MainFrame(gtk.VBox):
                     return
         app=io.app_info_get_default_for_type(mime)
         if app:
-            app.launch_uris([item.filename])
+            app.launch_uris([item.uid])
         else:
-            print 'no known command for ',item.filename,' mimetype',mime
+            print 'no known command for ',item.uid,' mimetype',mime
 
     def edit_item(self,widget,item):
         self.dlg=dialogs.MetaDialog(item,self.active_collection)

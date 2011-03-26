@@ -30,10 +30,8 @@ import gobject
 
 from phraymd import settings
 from phraymd import pluginbase
-from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
-from phraymd import collections
 from phraymd import metadata
 
 import webupload_services as services

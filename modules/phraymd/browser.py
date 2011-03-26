@@ -48,7 +48,7 @@ import viewer
 import backend
 import dialogs
 import pluginmanager
-import imageinfo
+import viewsupport
 import io
 
 import imagemanip
@@ -375,7 +375,7 @@ class ImageBrowser(gtk.HBox):
         if self.drag_item==None:
             return
         if info == self.TARGET_TYPE_IMAGE:
-            selection_data.set('image-filename', 8, self.drag_item.filename)
+            selection_data.set('image-filename', 8, self.drag_item.uid)
         if info == self.TARGET_TYPE_XDS: #drag save is currently disabled (unnecessary?)
             if self.XDS_ATOM in drag_context.targets:
                 typ, fmt, dest = drag_context.source_window.property_get(self.XDS_ATOM,self.TEXT_ATOM)
@@ -386,7 +386,7 @@ class ImageBrowser(gtk.HBox):
         if info == self.TARGET_TYPE_URI_LIST:
             print 'uri list'
             if not self.drag_item.selected:
-                uri=io.get_uri(self.drag_item.filename) #I don't know why, but nautilius expects uris enclosed in quotes
+                uri=io.get_uri(self.drag_item.uid) #I don't know why, but nautilius expects uris enclosed in quotes
                 selection_data.set_uris([uri])
                 print 'set uri',uri
             else:
@@ -395,7 +395,7 @@ class ImageBrowser(gtk.HBox):
                 while i<len(self.active_view):
                     item=self.active_view(i)
                     if item.selected:
-                        uri=io.get_uri(item.filename)
+                        uri=io.get_uri(item.uid)
                         uris.append(uri)
                     i+=1
                 selection_data.set_uris(uris)
@@ -604,6 +604,8 @@ class ImageBrowser(gtk.HBox):
 
     def realize_signal(self,event):
         '''calback to render the view - received when the drawing area needs to be shown'''
+        if self.active_view==None: ##Nothing to draw yet
+            return
         request_thumbs=False
         self.lock.acquire()
         drawable = self.imarea.window
@@ -702,7 +704,7 @@ class ImageBrowser(gtk.HBox):
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
             if self.mouse_hover and self.hover_ind==i or item.meta_changed or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
-                    a,b=imageinfo.text_descr(item)
+                    a,b=viewsupport.text_descr(item)
                     print item,a,b
                     if a or b:
                         a=a.replace('&','&amp;')

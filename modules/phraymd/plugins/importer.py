@@ -59,14 +59,13 @@ from phraymd import dialogs
 from phraymd import settings
 from phraymd import pluginbase
 from phraymd import pluginmanager
-from phraymd import imageinfo
 from phraymd import imagemanip
 from phraymd import io
-from phraymd import collections
-from phraymd import views
+from phraymd import viewsupport
 from phraymd import metadata
 from phraymd import backend
 from phraymd import collectionmanager
+from phraymd import baseobjects
 
 exist_actions=['Skip','Rename','Overwrite Always','Overwrite if Newer']
 EXIST_SKIP=0
@@ -86,7 +85,7 @@ def get_date(item):
     '''
     returns a datetime object containing the date the image was taken or if not available the mtime
     '''
-    result=views.get_ctime(item)
+    result=viewsupport.get_ctime(item)
     if result==datetime.datetime(1900,1,1):
         return datetime.datetime.fromtimestamp(item.mtime)
     else:
@@ -121,7 +120,7 @@ def get_original_name(item):
     '''
     returns a tuple (path,name) for the import destination
     '''
-    return os.path.splitext(os.path.split(item.filename)[1])[0]
+    return os.path.splitext(os.path.split(item.uid)[1])[0]
 
 
 class VariableExpansion:
@@ -141,11 +140,11 @@ class VariableExpansion:
 #    '''
 #    returns a tuple (path,name) for the import destination
 #    '''
-#    return dest_dir_base,os.path.split(item.filename)[1]
+#    return dest_dir_base,os.path.split(item.uid)[1]
 
 def name_item(item,dest_base_dir,naming_scheme):
     subpath=NamingTemplate(naming_scheme).substitute(VariableExpansion(item))
-    ext=os.path.splitext(item.filename)[1]
+    ext=os.path.splitext(item.uid)[1]
     fullpath=os.path.join(dest_base_dir,subpath+ext)
     return os.path.split(fullpath)
 
@@ -208,14 +207,14 @@ class ImporterImportJob(backend.WorkerJob):
         while len(self.items)>0 and jobs.ishighestpriority(self) and not self.stop:
             item=self.items.pop()
             self.dest_dir=self.base_dest_dir
-            src_filename=item.filename
+            src_filename=item.uid
             temp_filename=''
             temp_dir=''
             if self.dest_name_needs_meta and not item.meta:
                 temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
-                temp_filename=os.path.join(temp_dir,os.path.split(item.filename)[1])
+                temp_filename=os.path.join(temp_dir,os.path.split(item.uid)[1])
                 try:
-                    io.copy_file(item.filename,temp_filename)
+                    io.copy_file(item.uid,temp_filename)
                 except IOError:
                     ##todo: log an error
                     continue
@@ -239,26 +238,27 @@ class ImporterImportJob(backend.WorkerJob):
                     io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
                 if temp_filename:
                     io.remove_file(temp_filename)
-                    if self.move and item.filename!=src_filename:
-                        io.remove_file(item.filename)
+                    if self.move and item.uid!=src_filename:
+                        io.remove_file(item.uid)
                 if temp_dir:
                     os.rmdir(temp_dir)
             except IOError:
                 ##todo: log an error
                 continue
-            item[0]=dest_filename
-            item.filename=dest_filename
-            item.mtime=io.get_mtime(item.filename)
+            orig_item=item
+            item=baseobjects.Item(dest_filename)
+            item.mtime=io.get_mtime(item.uid)
+            item.selected=orig_item.selected
             if collection.load_metadata and not item.meta:
                 imagemanip.load_metadata(item,collection)
             if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:
                 if not collection.load_embedded_thumbs and not collection.load_preview_icons:
-                    print 'recreating thumbnail on import for',item.filename
+                    print 'recreating thumbnail on import for',item.uid
                     imagemanip.make_thumb(item)
             imagemanip.update_thumb_date(item)
             if self.browser!=None:
                 self.browser.lock.acquire()
-            print 'importing item',item.filename,'to',collection.id
+            print 'importing item',item.uid,'to',collection.id
             collection.add(item)
             if self.browser!=None:
                 self.browser.lock.release()

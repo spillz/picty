@@ -48,12 +48,12 @@ class Exiv2Metadata(pyexiv2.ImageMetadata):
                 value=pyexiv2.XmpTag(key,value)
             pyexiv2.ImageMetadata.__setitem__(self,key,value)
 
-def load_metadata(item,filename=None,thumbnail=False):
+def load_metadata(item.uid=None,thumbnail=False):
     if item.meta==False:
         return
     try:
         if not filename:
-            filename=item.filename
+            filename=item.uid
         rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         item.meta=dict()
@@ -75,7 +75,7 @@ def load_metadata(item,filename=None,thumbnail=False):
                     item.thumb=None
 
             except:
-                print 'Load thumbnail failed',item.filename
+                print 'Load thumbnail failed',item.uid
                 import traceback,sys
                 print traceback.format_exc(sys.exc_info()[2])
                 item.thumb=None
@@ -92,14 +92,14 @@ def save_metadata(item):
     if item.meta==False:
         return False
     try:
-        rawmeta = Exiv2Metadata(item.filename)
+        rawmeta = Exiv2Metadata(item.uid)
         rawmeta.read()
         meta=item.meta.copy()
         set_exiv2_meta(meta,rawmeta)
         rawmeta.write()
         item.mark_meta_saved()
     except:
-        print 'Error writing metadata for',item.filename
+        print 'Error writing metadata for',item.uid
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
         return False
@@ -117,10 +117,10 @@ def copy_metadata(src_item,destination_file):
         return False
     try:
         print 'reading src_item metadata'
-        rawmeta_src = Exiv2Metadata(src_item.filename)
+        rawmeta_src = Exiv2Metadata(src_item.uid)
         rawmeta_src.read()
     except:
-        print 'Error reading metadata for',src_item.filename
+        print 'Error reading metadata for',src_item.uid
         return False
     try:
         rawmeta_dest = Exiv2Metadata(destination_file)
@@ -146,12 +146,12 @@ def copy_metadata(src_item,destination_file):
 
 def save_metadata_key(item,key,value):
     try:
-        rawmeta = Exiv2Metadata(item.filename)
+        rawmeta = Exiv2Metadata(item.uid)
         rawmeta.read()
         rawmeta[key]=value
         rawmeta.write()
     except:
-        print 'Error writing metadata for',item.filename
+        print 'Error writing metadata for',item.uid
 
 
 

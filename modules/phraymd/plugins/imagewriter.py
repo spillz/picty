@@ -83,7 +83,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         if not self.viewer.plugin_request_control(self):
             return
         self.writer_mode=True
-        self.filename_entry.set_text(item.filename)
+        self.filename_entry.set_text(item.uid)
         self.viewer.image_box.pack_start(self.write_bar,False)
         self.viewer.image_box.reorder_child(self.write_bar,0)
         self.item=item
@@ -93,7 +93,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         if not name:
             return
         if not path:
-            filename=os.path.join(os.path.split(item.filename)[0],name)
+            filename=os.path.join(os.path.split(item.uid)[0],name)
         if os.path.exists(filename):
             if dialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+filename+"?",("_Cancel","_Overwrite"),1)==0:
                 return
@@ -102,7 +102,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         except:
             dialogs.prompt_dialog("Save Failed","Could not save image\n"+filename,("_OK",),1)
             return
-        if not metadata.copy_metadata(self.item,filename):
+        if not metadata.copy_metadata(self.item.uid):
             dialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+filename,("_OK",),1)
         self.reset()
     def write_cancel_callback(self,widget):

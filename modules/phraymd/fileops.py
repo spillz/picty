@@ -48,15 +48,15 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Deleting '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Deleting '+item.uid)
             try:
-                empty,imdir,relpath=item.filename.partition(self.collection.image_dirs[0])
+                empty,imdir,relpath=item.uid.partition(self.collection.image_dirs[0])
                 relpath=relpath.strip('/')
                 if relpath:
                     dest=os.path.join(trashdir,relpath)
                     if os.path.exists(dest):
                         os.remove(dest)
-                    os.renames(item.filename,dest)
+                    os.renames(item.uid,dest)
             except:
                 fileoperrors.append(('del',item))
         if self.cb:
@@ -89,10 +89,10 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Copying '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Copying '+item.uid)
             try:
-                fin=open(item.filename,'rb')
-                fout=open(os.path.join(self.destdir,os.path.split(item.filename)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
+                fin=open(item.uid,'rb')
+                fout=open(os.path.join(self.destdir,os.path.split(item.uid)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
                 fout.write(fin.read())
             except:
                 fileoperrors.append(('copy',item,self.destdir))
@@ -126,9 +126,9 @@ class Worker:
                 self.active=False
                 return
             if self.cb:
-                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Moving '+item.filename)
+                gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Moving '+item.uid)
             try:
-                os.renames(item.filename,os.path.join(self.destdir,os.path.split(item.filename)[1]))
+                os.renames(item.uid,os.path.join(self.destdir,os.path.split(item.uid)[1]))
             except:
                 fileoperrors.append(('move',item,self.destdir))
         if self.cb:

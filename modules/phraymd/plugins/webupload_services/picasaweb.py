@@ -144,7 +144,7 @@ class PicasaService(UploadServiceBase):
             if preferences[MODEL_COL_PICASA_TITLE]:
                 title=preferences[MODEL_COL_PICASA_TITLE]
             else:
-                title=os.path.split(item.filename)[1]
+                title=os.path.split(item.uid)[1]
             photo.title.text = title
             photo.media = gdata.media.Group()
             keywords=metadata.tag_bind(metadata.tag_split(preferences[MODEL_COL_PICASA_TAGS]),',')
@@ -155,7 +155,7 @@ class PicasaService(UploadServiceBase):
                 photo.media.description = gdata.media.Description(text=description)
             #photo.media.credit = gdata.media.Credit(text=preferences[MODEL_COL_PICASA_AUTHOR])
             photo=self.gd_c.InsertPhoto(album_url, photo, filename, io.get_mime_type(filename))
-            if filename!=item.filename:
+            if filename!=item.uid:
                 os.remove(filename)
 
             self.t_notify_photo_uploaded(item,True,'Successful upload')

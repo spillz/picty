@@ -141,7 +141,7 @@ class MetaDataViewer(pluginbase.Plugin):
         except:
             self.button_save.set_sensitive(False)
             self.button_revert.set_sensitive(False)
-        self.meta_table.data_items['FullPath'][1].set_text(item.filename)
+        self.meta_table.data_items['FullPath'][1].set_text(item.uid)
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for t in metadata.apptags:
@@ -211,7 +211,7 @@ class MetaDataViewer(pluginbase.Plugin):
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
-        self.add_meta_row(table,'Full Path',item.filename,0)
+        self.add_meta_row(table,'Full Path',item.uid,0)
         self.add_meta_row(table,'Last Modified',d.isoformat(' '),1)
         r=2
         for t in metadata.apptags:
