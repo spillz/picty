@@ -462,7 +462,6 @@ class ImageBrowser(gtk.HBox):
         '''redraw the view without recomputing geometry or changing position'''
         if collection!=None and collection!=self.active_collection:
             return
-#        self.refresh_view()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
 ##    def update_info_bar(self):
@@ -471,7 +470,7 @@ class ImageBrowser(gtk.HBox):
 ##        ##todo: send a signal about collection updates
 ##        #self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(self.tm.collection),self.tm.collection.numselected,len(self.tm.view)))
 
-    def refresh_view(self,collection=None):
+    def resize_and_refresh_view(self,collection=None):
         '''update geometry, scrollbars, redraw the thumbnail view'''
         if collection==None or collection!=self.active_collection:
             return
@@ -491,7 +490,7 @@ class ImageBrowser(gtk.HBox):
     def update_view(self):
         '''reset position, update geometry, scrollbars, redraw the thumbnail view'''
         self.geo_view_offset=0
-        self.refresh_view()
+        self.resize_and_refresh_view()
 
     def scroll_signal_pane(self,obj,event):
         '''scrolls the view on mouse wheel motion'''

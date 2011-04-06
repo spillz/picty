@@ -80,12 +80,13 @@ class CropPlugin(pluginbase.Plugin):
         self.motion_handle=self.viewer.imarea.connect_after("motion-notify-event",self.mouse_motion_signal)
     def crop_do_callback(self,widget):
         self.crop_mode=False
-        wnum=self.item.image.size[0]
-        wdenom=self.item.qview.get_width()
+        #wnum=self.item.image.size[0]
+        #wdenom=self.item.qview.get_width()
         #hscale=1.0*self.item.image.size[1]self.item.qview.get_height()
-        image_crop_dimensions=tuple(int(x*wnum/wdenom) for x in self.crop_dimensions)
-        self.item.image=self.item.image.crop(image_crop_dimensions)
+        #image_crop_dimensions=tuple(int(x*wnum/wdenom) for x in self.crop_dimensions)
+        self.item.image=self.item.image.crop(self.crop_dimensions)
         self.reset()
+        self.viewer.resize_and_refresh_view(zoom='fit')
     def crop_cancel_callback(self,widget):
         self.reset(True)
     def reset(self,shutdown=False):
@@ -101,7 +102,7 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.imarea.disconnect(self.motion_handle)
         self.viewer.plugin_release(self)
         if not shutdown:
-            self.viewer.refresh_view()
+            self.viewer.resize_and_refresh_view()
     def viewer_release(self,force=False):
         self.reset()
         return True
@@ -110,14 +111,15 @@ class CropPlugin(pluginbase.Plugin):
         #slider has been shifted, crop the image accordingly (on the background thread?)
         if not self.crop_mode:
             return
-        self.viewer.refresh_view()
+        self.viewer.resize_and_refresh_view()
 
     def viewer_to_image(self,x,y):
-        x-=(self.viewer.imarea.window.get_size()[0]-self.item.qview.get_width())/2
-        y-=(self.viewer.imarea.window.get_size()[1]-self.item.qview.get_height())/2
-        x=min(max(x,0),self.item.qview.get_width())
-        y=min(max(y,0),self.item.qview.get_height())
-        return (x,y)
+        return self.viewer.screen_xy_to_image(x,y)
+#        x-=(self.viewer.imarea.window.get_size()[0]-self.item.qview.get_width())/2
+#        y-=(self.viewer.imarea.window.get_size()[1]-self.item.qview.get_height())/2
+#        x=min(max(x,0),self.item.qview.get_width())
+#        y=min(max(y,0),self.item.qview.get_height())
+#        return (x,y)
 
     def button_press(self,widget,event):
         if not self.crop_mode:
@@ -126,6 +128,8 @@ class CropPlugin(pluginbase.Plugin):
             self.dragging=True
             x,y=self.viewer_to_image(event.x,event.y)
             x0,y0,x1,y1=self.crop_dimensions
+            print 'button press',x,y
+            print 'cd',self.crop_dimensions
             if self.hover_zone==5:
                 self.move_mode=True
                 x=x1
@@ -157,13 +161,14 @@ class CropPlugin(pluginbase.Plugin):
                 X=(self.crop_anchor[0],x)
                 Y=(self.crop_anchor[1],y)
                 self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
-                self.viewer.redraw_view()
             else:
                 x0,y0,x1,y1=self.crop_dimensions
                 X=(x0+x1)/2
                 Y=(y0+y1)/2
-                dx=max(-x0,min(x-X,self.item.qview.get_width()-x1))
-                dy=max(-y0,min(y-Y,self.item.qview.get_height()-y1))
+                X,Y=self.viewer.image_xy_to_screen(X,Y)
+                iw,ih=self.item.size
+                dx=max(-x0,min(x-X,iw-x1))
+                dy=max(-y0,min(y-Y,ih-y1))
                 self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
             self.move_mode=False
             self.viewer.redraw_view()
@@ -182,14 +187,17 @@ class CropPlugin(pluginbase.Plugin):
                 x0,y0,x1,y1=self.crop_dimensions
                 X=(x0+x1)/2
                 Y=(y0+y1)/2
-                dx=max(-x0,min(x-X,self.item.qview.get_width()-x1))
-                dy=max(-y0,min(y-Y,self.item.qview.get_height()-y1))
+                iw,ih=self.item.size
+                dx=max(-x0,min(x-X,iw-x1))
+                dy=max(-y0,min(y-Y,ih-y1))
                 self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
             self.viewer.redraw_view()
         else:
-            mx,my=self.viewer_to_image(event.x,event.y)
+            mx,my=self.viewer.screen_xy_to_scaled_image(event.x,event.y)
             old_zone=self.hover_zone
             x0,y0,x1,y1=self.crop_dimensions
+            x0,y0 = self.viewer.image_xy_to_scaled_image(x0,y0)
+            x1,y1 = self.viewer.image_xy_to_scaled_image(x1,y1)
             radx=max(min(15,(x1-x0)/3),1)
             rady=max(min(15,(y1-y0)/3),1)
             hover_zone_pts=(
@@ -215,13 +223,12 @@ class CropPlugin(pluginbase.Plugin):
             return
         if self.crop_dimensions==(0,0,0,0):
             return
+        W,H=self.viewer.imarea.window.get_size()
         x,y,w,h=self.crop_dimensions
+        x,y=self.viewer.image_xy_to_screen(x,y)
+        w,h=self.viewer.image_xy_to_screen(w,h)
         w-=x
         h-=y
-        W,H=self.viewer.imarea.window.get_size()
-        x+=(W-self.item.qview.get_width())/2
-        y+=(H-self.item.qview.get_height())/2
-
         #block out the background in red
         fill_gc=drawable.new_gc()
         fill_gc.set_function(gtk.gdk.OR)

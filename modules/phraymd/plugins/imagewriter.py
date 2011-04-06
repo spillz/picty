@@ -70,7 +70,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
         self.viewer.image_box.remove(self.write_bar)
         self.viewer.plugin_release(self)
         if not shutdown:
-            self.viewer.refresh_view()
+            self.viewer.resize_and_redraw_view()
     def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands

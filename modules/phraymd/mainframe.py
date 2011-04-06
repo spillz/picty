@@ -135,7 +135,11 @@ class MainFrame(gtk.VBox):
                         ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder')
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder'),
+                        ('Zoom Fit',self.zoom_item_fit,show_on_hover,gtk.STOCK_ZOOM_FIT,'Main','Zoom the image to fit available space'),
+                        ('Zoom 100%',self.zoom_item_100,show_on_hover,gtk.STOCK_ZOOM_100,'Main','Zoom to 100% size'),
+                        ('Zoom In',self.zoom_item_in,show_on_hover,gtk.STOCK_ZOOM_IN,'Main','Zoom in'),
+                        ('Zoom Out',self.zoom_item_out,show_on_hover,gtk.STOCK_ZOOM_OUT,'Main','Zoom out'),
                         ]
         for tool in viewer_tools:
             self.viewer_hover_cmds.register_tool(*tool)
@@ -849,7 +853,7 @@ class MainFrame(gtk.VBox):
 #        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
 #        widget.set_active(self.browser.active_view.reverse)
 #        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
-            self.active_browser().refresh_view()
+            self.active_browser().resize_and_refresh_view()
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
@@ -893,7 +897,7 @@ class MainFrame(gtk.VBox):
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
                 self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
-                self.active_browser().refresh_view()
+                self.active_browser().resize_and_refresh_view()
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
@@ -975,7 +979,7 @@ class MainFrame(gtk.VBox):
             b.update_scrollbar()
             b.update_required_thumbs()
             b.focal_item=item
-            b.refresh_view()
+            b.resize_and_refresh_view()
 
 
     def view_image(self,item,fullwindow=False):
@@ -992,7 +996,7 @@ class MainFrame(gtk.VBox):
             browser.center_view_offset(ind)
         browser.update_scrollbar()
         browser.update_required_thumbs()
-        browser.refresh_view()
+        browser.resize_and_refresh_view()
         browser.focal_item=item
         browser.grab_focus()
 
@@ -1026,29 +1030,32 @@ class MainFrame(gtk.VBox):
     def button_press_image_viewer(self,obj,event):
         browser=self.active_browser()
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
-            if self.is_iv_fullscreen:
-                self.iv.ImageNormal()
-                self.browser_nb.show()
-                self.toolbar1.show()
-                if self.sidebar_toggle.get_active():
-                    self.sidebar.show()
-                self.info_bar.show()
-                self.is_iv_fullscreen=False
-                if self.is_fullscreen:
-                    self.window.unfullscreen()
-                    self.is_fullscreen=False
-            else:
-                if not self.is_fullscreen:
-                    self.window.fullscreen()
-                    self.is_fullscreen=True
-                self.iv.ImageFullscreen()
-                self.browser_nb.hide()
-                self.toolbar1.hide()
-                self.sidebar.hide()
-                self.info_bar.hide()
-                self.is_iv_fullscreen=True
-                print self.window.get_size()
-            browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
+            self.iv.set_zoom('in',event.x,event.y)
+        if event.button==2 and event.type==gtk.gdk._2BUTTON_PRESS:
+            self.iv.set_zoom('out',event.x,event.y)
+##            if self.is_iv_fullscreen:
+##                self.iv.ImageNormal()
+##                self.browser_nb.show()
+##                self.toolbar1.show()
+##                if self.sidebar_toggle.get_active():
+##                    self.sidebar.show()
+##                self.info_bar.show()
+##                self.is_iv_fullscreen=False
+##                if self.is_fullscreen:
+##                    self.window.unfullscreen()
+##                    self.is_fullscreen=False
+##            else:
+##                if not self.is_fullscreen:
+##                    self.window.fullscreen()
+##                    self.is_fullscreen=True
+##                self.iv.ImageFullscreen()
+##                self.browser_nb.hide()
+##                self.toolbar1.hide()
+##                self.sidebar.hide()
+##                self.info_bar.hide()
+##                self.is_iv_fullscreen=True
+##                print self.window.get_size()
+##            browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
     def popup_item(self,browser,ind,item):
         ##todo: neeed to create a custom signal to hook into
@@ -1246,6 +1253,15 @@ class MainFrame(gtk.VBox):
                 self.view_image(browser.active_view(ind))
         elif self.is_iv_showing:
             self.hide_image()
-        browser.refresh_view()
+        browser.resize_and_refresh_view()
+
+    def zoom_item_fit(self,widget,item):
+        self.iv.set_zoom('fit')
+    def zoom_item_100(self,widget,item):
+        self.iv.set_zoom(1)
+    def zoom_item_in(self,widget,item):
+        self.iv.set_zoom('in')
+    def zoom_item_out(self,widget,item):
+        self.iv.set_zoom('out')
 
 gobject.type_register(MainFrame)

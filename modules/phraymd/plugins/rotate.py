@@ -97,12 +97,12 @@ class RotatePlugin(pluginbase.Plugin):
         self.viewer.plugin_release(self)
         self.angle_adjustment.set_value(0)
         if not shutdown:
-            self.viewer.refresh_view()
+            self.viewer.resize_and_refresh_view()
 
     def rotate_adjust(self,adjustment):
         if not self.rotate_mode:
             return
-        self.viewer.refresh_view()
+        self.viewer.resize_and_refresh_view()
 
     def viewer_release(self,force=False):
         self.reset(True)

@@ -266,7 +266,7 @@ class ImporterImportJob(backend.WorkerJob):
             i+=1
             if self.browser:
                 gobject.idle_add(self.browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
-                gobject.idle_add(self.browser.refresh_view)
+                gobject.idle_add(self.browser.resize_and_refresh_view)
         self.countpos=i
         if len(self.items)==0 or self.stop:
             if self.browser:

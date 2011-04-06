@@ -55,9 +55,10 @@ class ImageLoader:
         self.plugin=None
         self.thread.start()
 
-    def update_image_size(self,width,height):
+    def update_image_size(self,width,height,zoom='fit'):
         self.vlock.acquire()
         self.sizing=(width,height)
+        self.zoom=zoom
         self.vlock.release()
         self.event.set()
 
@@ -73,7 +74,7 @@ class ImageLoader:
         self.vlock.acquire()
         self.item=item
         self.sizing=sizing ##if sizing is none, zoom is ignored
-        self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel
+        self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel, so typically zoom<=1
         self.vlock.release()
         self.event.set()
 
@@ -123,7 +124,7 @@ class ImageLoader:
                     imagemanip.size_image(item,self.sizing,False,self.zoom)
                     if self.plugin:
                         self.plugin.t_viewer_sized(self.sizing,self.zoom,item)
-                gobject.idle_add(self.viewer.ImageSized,item)
+                gobject.idle_add(self.viewer.ImageSized,item,self.zoom)
                 self.sizing=None
 
 
@@ -147,16 +148,39 @@ class ImageViewer(gtk.VBox):
         self.mouse_hover=False
         self.command_highlight_ind=-1
         self.command_highlight_bd=False
+        self.zoom_level='fit'
+        self.zoom_position=(0,0) #either center or a tuple of left/top coordinates
+        self.zoom_position_request=None
 
         self.freeze_image_refresh=False
         self.change_block=False
 
-        self.image_box=gtk.VBox() ##plugins can add widgets to the box
+        self.vscrolladj=gtk.Adjustment()
+        self.hscrolladj=gtk.Adjustment()
+        self.vscroll=gtk.VScrollbar(self.vscrolladj)
+        self.hscroll=gtk.HScrollbar(self.hscrolladj)
+        self.vscrolladj.connect("value-changed",self.scroll_signal,True)
+        self.hscrolladj.connect("value-changed",self.scroll_signal,False)
+        self.imarea.add_events(gtk.gdk.SCROLL_MASK)
+        self.imarea.connect("scroll-event",self.scroll_signal_pane)
+
+        self.image_box=gtk.VBox()
         self.image_box.pack_start(self.imarea)
         self.image_box.show()
 
+
+        self.image_table=gtk.Table(rows=2,columns=2,homogeneous=False) ##plugins can add widgets to the box
+        self.image_table.attach(self.image_box, 0, 1, 0, 1,
+                       xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+        self.image_table.attach(self.vscroll, 1, 2, 0, 1,
+                       xoptions=0, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+        self.image_table.attach(self.hscroll, 0, 1, 1, 2,
+                       xoptions=gtk.EXPAND|gtk.FILL, yoptions=0, xpadding=0, ypadding=0)
+        self.image_table.show()
+
+
         self.vpane=gtk.VPaned()
-        self.vpane.add1(self.image_box) ##plugins can add widgets with add2
+        self.vpane.add1(self.image_table) ##plugins can add widgets with add2
         self.pack_start(self.vpane)
         self.vpane.show()
 
@@ -206,7 +230,7 @@ class ImageViewer(gtk.VBox):
         print 'activating plugin',plugin
         self.plugin_controller=plugin
         self.il.set_plugin(plugin)
-        self.refresh_view()
+        self.resize_and_refresh_view()
         return True
 
     def request_plugin_release(self,force=False):
@@ -219,9 +243,6 @@ class ImageViewer(gtk.VBox):
             return True
         if not self.plugin_controller.viewer_release() and not force:
             return False
-#        self.plugin_controller=None
-#        self.il.release_plugin()
-#        self.refresh_view()
         return True
 
     def plugin_release(self,plugin):
@@ -233,7 +254,6 @@ class ImageViewer(gtk.VBox):
         self.plugin_controller=None
         self.il.release_plugin(plugin)
         self.imarea.grab_focus()
-#        self.refresh_view()
         return True
 
     def ImageFullscreen(self):
@@ -247,13 +267,23 @@ class ImageViewer(gtk.VBox):
         self.il.quit()
         return False
 
-    def ImageSized(self,item):
+    def ImageSized(self,item,zoom=None):
         if not self.imarea.window:
             return
         if item.image==False:
             return
         if item.uid==self.item.uid:
-            self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+            if zoom!=self.zoom_level:
+                print 'sized to zoom',self.get_zoom()
+                if zoom=='fit':
+                    self.zoom_level=zoom
+                    self.zoom_position=(0,0)
+                else:
+                    self.zoom_position=self.zoom_position_request
+                    self.zoom_level=zoom
+                    print 'setting scroll pos',self.zoom_position
+            self.update_scrollbars()
+            self.redraw_view()
         else:
             print 'sized wrong item'
 
@@ -265,12 +295,13 @@ class ImageViewer(gtk.VBox):
             return False
         if not pluginmanager.mgr.callback_all_until_false('viewer_item_opening',item):
             return False
+        self.zoom_level='fit'
+        self.zoom_position=(0,0)
+        self.hide_scrollbars()
         self.item=item
         self.browser=browser
-        self.il.set_item(item,(self.geo_width,self.geo_height))
-#        self.UpdateMetaTable(item)
-        if self.imarea.window:
-            self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        self.il.set_item(item,(self.geo_width,self.geo_height),zoom=self.zoom_level)
+        self.redraw_view()
         return True
 
 #    def mouse_motion_signal(self,obj,event):
@@ -302,7 +333,6 @@ class ImageViewer(gtk.VBox):
                 self.command_highlight_ind=cmd
                 self.redraw_view()
 
-
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
         if event.mode!=gtk.gdk.CROSSING_NORMAL:
@@ -328,20 +358,26 @@ class ImageViewer(gtk.VBox):
             self.command_highlight_bd=True
             self.redraw_view()
 
-
     def get_hover_command(self, x, y):
-        if not self.item.qview or self.plugin_controller:
+        if not self.item or not self.item.qview or self.plugin_controller:
             return -1
         return self.hover_cmds.get_command(x,y,4,4,4)
 
-    def refresh_view(self):
+    def resize_and_refresh_view(self,w=None,h=None,zoom=None):
         #forces an image to be resized with a call to the worker thread
-        self.il.update_image_size(self.geo_width,self.geo_height)
+        if zoom==None:
+            zoom=self.zoom_level
+        if w==None:
+            w=self.geo_width
+        if h==None:
+            h=self.geo_height
+        print 'RESIZE AND REFRESH',w,h,zoom
+        print 'RESIZE AND REFRESH',self.zoom_position
+        self.il.update_image_size(w,h,zoom)
 
     def redraw_view(self):
         #forces an image to be resized with a call to the worker thread
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-
 
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         cmd=self.get_hover_command(x, y)
@@ -350,13 +386,15 @@ class ImageViewer(gtk.VBox):
             tooltip.set_text(cmd.tooltip)
             return True
 
-
     def configure_signal(self,obj,event):
         if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
             self.geo_width=event.width
             self.geo_height=event.height
-            self.il.update_image_size(self.geo_width,self.geo_height)
-        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+            self.update_scrollbars()
+            if self.zoom_level=='fit':
+                self.resize_and_refresh_view()
+        print 'configure'
+        self.redraw_view()
 
     def expose_signal(self,event,arg):
         self.realize_signal(event)
@@ -372,10 +410,14 @@ class ImageViewer(gtk.VBox):
         if pluginmanager.mgr.callback_first('viewer_render_start',drawable,gc,self.item):
             return
         if self.item and self.item.qview:
-            (iw,ih)=(self.item.qview.get_width(),self.item.qview.get_height())
-            x=(self.geo_width-iw)/2
-            y=(self.geo_height-ih)/2
-            drawable.draw_pixbuf(gc,self.item.qview,0,0,x,y)
+            #want to render the onscreen portion of the scaled image to the drawable
+            #there are three pixbuf containers to worry about: full size image, scaled image, drawable
+            #scroll position is stored in full image units
+            src_x,src_y = self.image_xy_to_scaled_image(*self.zoom_position)
+            w = min(self.item.qview.get_width() - src_x,self.geo_width)
+            h = min(self.item.qview.get_height() - src_y,self.geo_height)
+            dest_x, dest_y = self.image_xy_to_screen(*self.zoom_position)
+            drawable.draw_pixbuf(gc,self.item.qview,src_x,src_y,dest_x,dest_y,w,h)
             drew_image=True
         elif self.item and self.item.thumb:
             iw,ih=self.item.thumb.get_width(),self.item.thumb.get_height()
@@ -386,3 +428,188 @@ class ImageViewer(gtk.VBox):
         if drew_image and not self.plugin_controller:
             self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
+
+    def scroll_signal_pane(self,obj,event):
+        '''scrolls the view on mouse wheel motion'''
+        if event.direction==gtk.gdk.SCROLL_UP:
+            self.vscrolladj.set_value(self.vscrolladj.get_value()-5)
+        if event.direction==gtk.gdk.SCROLL_DOWN:
+            self.vscrolladj.set_value(self.vscrolladj.get_value()+5)
+
+    def scroll_signal(self,obj,vertical):
+        '''signal response when the scroll position changes'''
+        self.zoom_position=(self.hscrolladj.get_value(),self.vscrolladj.get_value())
+        print 'scroll_signal',self.zoom_position
+        self.redraw_view()
+
+    def update_scrollbars(self):
+        '''called to resync the scrollbars to changes in view geometry'''
+        if self.zoom_level=='fit' or self.item==None or self.item.image==None:
+            return self.hide_scrollbars()
+        (iw,ih)=self.item.image.size
+        if iw<self.geo_width and ih<self.geo_height:
+            return self.hide_scrollbars()
+        left = self.zoom_position[0]
+        top = self.zoom_position[1]
+        self.hscrolladj.set_all(
+                value=left,
+                lower=0,
+                upper=iw,
+                step_increment=self.geo_width/self.zoom_level,
+                page_increment=self.geo_width/self.zoom_level, page_size=self.geo_width/self.zoom_level)
+        self.vscrolladj.set_all(
+                value=top,
+                lower=0,
+                upper=ih,
+                step_increment=self.geo_height/self.zoom_level,
+                page_increment=self.geo_height/self.zoom_level, page_size=self.geo_height/self.zoom_level)
+        self.vscroll.show()
+        self.hscroll.show()
+
+    def hide_scrollbars(self):
+        self.vscroll.hide()
+        self.hscroll.hide()
+#        self.hscrolladj.set_all(
+#                value=0,
+#                lower=0,
+#                upper=self.geo_width,
+#                step_increment=10,
+#                page_increment=self.geo_height, page_size=self.geo_height)
+#        self.vscrolladj.set_all(
+#                value=0,
+#                lower=0,
+#                upper=self.geo_height,
+#                step_increment=10,
+#                page_increment=self.geo_height, page_size=self.geo_height)
+
+    def set_zoom(self,zoom_level,x=None,y=None):
+        '''
+        zooms the image to the specified zoom_level centering at viewer position (x,y). zoom_level is one of:
+            'fit' to fit within the viewer window
+            'in' to zoom in 10%
+            'out' to zoom out 10%
+            a double to specify a specific zoom ratio (multiple of full image size, 1=100%, 0.5 = 50%,  2.0 = 200% etc)
+        '''
+        if self.item==None or self.item.image==None:
+            return
+        if x==None:
+            x=self.geo_width/2
+        if y==None:
+            y=self.geo_height/2
+
+        (iw,ih)=self.item.image.size
+        if zoom_level=='fit':
+            pass
+        else:
+            self.zoom_level=self.get_zoom()
+        if zoom_level=='in':
+            zoom_level=self.zoom_level*1.2
+        if zoom_level=='out':
+            zoom_level=self.zoom_level/1.2
+        self.zoom_position_request=self.get_position_for_new_zoom(zoom_level,(x,y))
+        print 'getting new position',self.zoom_level,x,y
+        print 'getting new position',self.zoom_position_request
+        self.resize_and_refresh_view(zoom=zoom_level)
+
+    def screen_xy_to_scaled_image(self,x,y):
+        if self.item==None or self.item.image==None or self.item.qview==None:
+            return
+        (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
+        gw=self.geo_width
+        gh=self.geo_height
+        z=self.get_zoom()
+        x-=max((gw-qw)/2,0)
+        y-=max((gh-qh)/2,0)
+        x=int(x+self.zoom_position[0]*z)
+        y=int(y+self.zoom_position[1]*z)
+        return (x,y)
+
+
+    def screen_xy_to_image(self,x,y):
+        if self.item==None or self.item.image==None or self.item.qview==None:
+            return
+        (iw,ih)=self.item.image.size
+        (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
+        gw=self.geo_width
+        gh=self.geo_height
+        z=self.get_zoom()
+        x-=max((gw-qw)/2,0)
+        y-=max((gh-qh)/2,0)
+        x=int(x/z+self.zoom_position[0])
+        y=int(y/z+self.zoom_position[1])
+        return (x,y)
+
+    def scaled_image_xy_to_screen(self,x,y):
+        if self.item==None or self.item.image==None or self.item.qview==None:
+            return
+        (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
+        gw=self.geo_width
+        gh=self.geo_height
+        z=self.get_zoom()
+        x=int(x-self.zoom_position[0]*z)+max((gw-qw)/2,0)
+        y=int(y-self.zoom_position[1]*z)+max((gh-qh)/2,0)
+        return (x,y)
+
+    def image_xy_to_screen(self,x,y):
+        if self.item==None or self.item.image==None or self.item.qview==None:
+            return
+        (iw,ih)=self.item.image.size
+        (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
+        gw=self.geo_width
+        gh=self.geo_height
+        z=self.get_zoom()
+        x=int((x-self.zoom_position[0])*z)+max((gw-qw)/2,0)
+        y=int((y-self.zoom_position[1])*z)+max((gh-qh)/2,0)
+        return (x,y)
+
+    def get_zoom(self):
+        if self.zoom_level=='fit':
+            try:
+                (iw,ih)=self.item.image.size
+                return 1.0*self.item.qview.get_width()/iw
+            except:
+                return None
+        else:
+            return self.zoom_level
+
+    def image_xy_to_scaled_image(self,x,y):
+        z=self.get_zoom()
+        return (int(self.zoom_position[0]*z), int(self.zoom_position[1]*z))
+
+    def scaled_image_xy_to_image(self,x,y):
+        z=self.get_zoom()
+        return (int(self.zoom_position[0]/z), int(self.zoom_position[1]/z))
+
+#    def get_xy_coords_after_zoom(self,old_zoom,new_zoom,center_coords=None):
+#        iw,ih=self.item.image.size
+#        gw,gh=(self.geo_width,self.geo_height)
+#        if center_coords==None:
+#            center_coords=(gw/2,gh/2)
+#        cx,cy=center_coords
+#        posx,posy=self.screen_xy_to_image(cx,cy)
+#        print 'coords before',self.zoom_position
+#        x=posx-(gw/new_zoom-gw/old_zoom)/2
+#        x=min(x,iw-gw/new_zoom)
+#        x=max(x,0)
+#        y=posy-(gh/new_zoom-gh/old_zoom)/2
+#        y=min(y,ih-gh/new_zoom)
+#        y=max(y,0)
+#        print 'coords after',(x,y)
+#        return (x,y)
+
+    def get_position_for_new_zoom(self,new_zoom,center_xy):
+        if new_zoom=='fit':
+            return (0,0)
+        old_zoom=self.get_zoom()
+        iw,ih=self.item.image.size
+        qw,qh=(self.item.qview.get_width(),self.item.qview.get_height())
+        gw,gh=(self.geo_width,self.geo_height)
+        if center_xy==None:
+            center_xy=(gw/2,gh/2)
+        cx,cy=center_xy
+        ox,oy=self.screen_xy_to_image(cx,cy) #translate the center to image coordinates
+        print 'center coords',ox,oy
+        x = max(min(ox - gw/(2*new_zoom),iw-gw/new_zoom),0)
+        y = max(min(oy - gh/(2*new_zoom),ih-gh/new_zoom),0)
+        print 'new x,y',x,y
+        return (x,y)

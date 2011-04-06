@@ -388,8 +388,8 @@ def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size ima
             return True
     else:
         (iw,ih)=image.size
-        w=zoom*iw ##todo: or is it divide??
-        h=zoom*ih
+        w=int(zoom*iw) ##todo: or is it divide??
+        h=int(zoom*ih)
 
     t=time.time()
     try:
