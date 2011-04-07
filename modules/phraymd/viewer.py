@@ -227,7 +227,7 @@ class ImageViewer(gtk.VBox):
         if self.plugin_controller:
             if not self.plugin_controller.viewer_release() and not force:
                 return False
-        print 'activating plugin',plugin
+        print 'Image viewer: yielding control to plugin',plugin
         self.plugin_controller=plugin
         self.il.set_plugin(plugin)
         self.resize_and_refresh_view()
@@ -274,18 +274,16 @@ class ImageViewer(gtk.VBox):
             return
         if item.uid==self.item.uid:
             if zoom!=self.zoom_level:
-                print 'sized to zoom',self.get_zoom()
                 if zoom=='fit':
                     self.zoom_level=zoom
                     self.zoom_position=(0,0)
                 else:
                     self.zoom_position=self.zoom_position_request
                     self.zoom_level=zoom
-                    print 'setting scroll pos',self.zoom_position
             self.update_scrollbars()
             self.redraw_view()
         else:
-            print 'sized wrong item'
+            print 'WARNING: Sized wrong item',item.uid
 
     def ImageLoaded(self,item):
         pass
@@ -371,8 +369,6 @@ class ImageViewer(gtk.VBox):
             w=self.geo_width
         if h==None:
             h=self.geo_height
-        print 'RESIZE AND REFRESH',w,h,zoom
-        print 'RESIZE AND REFRESH',self.zoom_position
         self.il.update_image_size(w,h,zoom)
 
     def redraw_view(self):
@@ -393,7 +389,6 @@ class ImageViewer(gtk.VBox):
             self.update_scrollbars()
             if self.zoom_level=='fit':
                 self.resize_and_refresh_view()
-        print 'configure'
         self.redraw_view()
 
     def expose_signal(self,event,arg):
@@ -439,7 +434,6 @@ class ImageViewer(gtk.VBox):
     def scroll_signal(self,obj,vertical):
         '''signal response when the scroll position changes'''
         self.zoom_position=(self.hscrolladj.get_value(),self.vscrolladj.get_value())
-        print 'scroll_signal',self.zoom_position
         self.redraw_view()
 
     def update_scrollbars(self):
@@ -469,18 +463,6 @@ class ImageViewer(gtk.VBox):
     def hide_scrollbars(self):
         self.vscroll.hide()
         self.hscroll.hide()
-#        self.hscrolladj.set_all(
-#                value=0,
-#                lower=0,
-#                upper=self.geo_width,
-#                step_increment=10,
-#                page_increment=self.geo_height, page_size=self.geo_height)
-#        self.vscrolladj.set_all(
-#                value=0,
-#                lower=0,
-#                upper=self.geo_height,
-#                step_increment=10,
-#                page_increment=self.geo_height, page_size=self.geo_height)
 
     def set_zoom(self,zoom_level,x=None,y=None):
         '''
@@ -507,8 +489,6 @@ class ImageViewer(gtk.VBox):
         if zoom_level=='out':
             zoom_level=self.zoom_level/1.2
         self.zoom_position_request=self.get_position_for_new_zoom(zoom_level,(x,y))
-        print 'getting new position',self.zoom_level,x,y
-        print 'getting new position',self.zoom_position_request
         self.resize_and_refresh_view(zoom=zoom_level)
 
     def screen_xy_to_scaled_image(self,x,y):
@@ -563,6 +543,9 @@ class ImageViewer(gtk.VBox):
         return (x,y)
 
     def get_zoom(self):
+        '''
+        Get the numeric level of the zoom (even if zoom_level is 'fit')
+        '''
         if self.zoom_level=='fit':
             try:
                 (iw,ih)=self.item.image.size
@@ -580,23 +563,6 @@ class ImageViewer(gtk.VBox):
         z=self.get_zoom()
         return (int(self.zoom_position[0]/z), int(self.zoom_position[1]/z))
 
-#    def get_xy_coords_after_zoom(self,old_zoom,new_zoom,center_coords=None):
-#        iw,ih=self.item.image.size
-#        gw,gh=(self.geo_width,self.geo_height)
-#        if center_coords==None:
-#            center_coords=(gw/2,gh/2)
-#        cx,cy=center_coords
-#        posx,posy=self.screen_xy_to_image(cx,cy)
-#        print 'coords before',self.zoom_position
-#        x=posx-(gw/new_zoom-gw/old_zoom)/2
-#        x=min(x,iw-gw/new_zoom)
-#        x=max(x,0)
-#        y=posy-(gh/new_zoom-gh/old_zoom)/2
-#        y=min(y,ih-gh/new_zoom)
-#        y=max(y,0)
-#        print 'coords after',(x,y)
-#        return (x,y)
-
     def get_position_for_new_zoom(self,new_zoom,center_xy):
         if new_zoom=='fit':
             return (0,0)
@@ -608,8 +574,6 @@ class ImageViewer(gtk.VBox):
             center_xy=(gw/2,gh/2)
         cx,cy=center_xy
         ox,oy=self.screen_xy_to_image(cx,cy) #translate the center to image coordinates
-        print 'center coords',ox,oy
         x = max(min(ox - gw/(2*new_zoom),iw-gw/new_zoom),0)
         y = max(min(oy - gh/(2*new_zoom),ih-gh/new_zoom),0)
-        print 'new x,y',x,y
         return (x,y)
