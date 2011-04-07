@@ -48,7 +48,7 @@ class Exiv2Metadata(pyexiv2.ImageMetadata):
                 value=pyexiv2.XmpTag(key,value)
             pyexiv2.ImageMetadata.__setitem__(self,key,value)
 
-def load_metadata(item=None,thumbnail=False):
+def load_metadata(item=None,filename=None,thumbnail=False):
     if item.meta==False:
         return
     try:
