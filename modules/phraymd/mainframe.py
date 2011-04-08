@@ -416,6 +416,7 @@ class MainFrame(gtk.VBox):
 
     def open_uri(self,uri):
         print 'Received external request to open',uri
+        self.get_toplevel().deiconify()
         self.do_nothing_at_startup=True
         impath=io.get_path_from_uri(uri)
         if not os.path.exists(impath):
