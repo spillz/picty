@@ -33,7 +33,9 @@ def init_collection(col_dir):
             c=registered_collection_classes[prefs['type']](prefs)
         except KeyError:
             c=registered_collection_classes['LOCALSTORE'](prefs)
-#        c.add_view()
+        print 'CREATED COLLECTION WITH PREFS',prefs
+        print 'ID',c.id
+        print 'NAME',c.name
         return c
     except:
         import traceback,sys
@@ -78,12 +80,16 @@ class CollectionBase:
     pref_items=['type','type_descr','name','pixbuf','id'] ##the list of variables that will be saved
     def __init__(self,prefs=None):
         self.is_open=False
-        self.num_selecteed=0
+        self.numselected=0
         self.views=[]
         self.active_view=None
         self.view_class=None
         self.new_menu_entry=None #set to a string prompt that will be shown on menu allowing user to add a new collection
         self.persistent=False #whether the collection is stored to disk when closed
+
+        self.name=''
+        self.pixbuf=None
+        self.id=''
         if prefs:
             self.set_prefs(prefs)
 
@@ -154,9 +160,9 @@ class CollectionBase:
     def get_all_items(self): #was get_items
         pass
     def open(self):
-        pass
+        return True
     def close(self):
-        pass
+        return True
     def empty(self,empty_views=True):
         pass
     def __len__(self):

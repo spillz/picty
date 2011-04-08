@@ -29,6 +29,7 @@ import io
 
 import localstorebin
 import localstoredb
+import localdir
 
 COLUMN_ID=0
 COLUMN_NAME=1
@@ -167,7 +168,6 @@ class CollectionSet(gobject.GObject):
         print 'creating new collection with prefs',prefs
         c=baseobjects.registered_collection_classes[prefs['type']](prefs)
 #        v=c.add_view()
-        print 'NEW COLLECTION',c.name,c.get_active_view()
         self.add_collection(c)
         return c
 
@@ -233,10 +233,65 @@ class CollectionSet(gobject.GObject):
                 c.add_view()
                 self.add_collection(c)
 
+    def add_mount(self,path,name,icon_names):
+        if not os.path.exists(path):
+            return
+        Dev=baseobjects.registered_collection_classes['DEVICE']
+        prefs={
+            'name':name,
+            'id':path,
+            'image_dirs':[path],
+            'pixbuf':self.get_icon(icon_names),
+            }
+        c=Dev(prefs)
+        c.add_view()
+        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
+            ##gphoto2 device (MTP)
+            c.load_embedded_thumbs=False
+            c.load_metadata=False
+            c.load_preview_icons=True
+            c.store_thumbnails=False ##todo: this needs to be implemented
+        else:
+            ##non-gphoto2 device (Mass Storage)
+            c.load_embedded_thumbs=True
+            c.load_metadata=True
+            c.load_preview_icons=False
+            c.store_thumbnails=False
+        if self.count('DEVICE')==0:
+            self.model.first_mount_added()
+        self.add_collection(c)
+        return c
+
+    def add_directory(self,path,prefs):
+        if not os.path.exists(path):
+            return
+        Dir=baseobjects.registered_collection_classes['LOCALDIR']
+        prefs['id']=path
+        name=os.path.split(path)[1]
+        if name=='':
+            name='Folder'
+        prefs['name']=name
+        c=Dir(prefs)
+        c.pixbuf=self.get_icon(gtk.STOCK_DIRECTORY)
+        c.add_view()
+#        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
+#            ##gphoto2 device (MTP)
+#            c.load_embedded_thumbs=False
+#            c.load_metadata=False
+#            c.load_preview_icons=True
+#            c.store_thumbnails=False ##todo: this needs to be implemented
+#        else:
+#            ##non-gphoto2 device (Mass Storage)
+#            c.load_embedded_thumbs=True
+#            c.load_metadata=True
+#            c.load_preview_icons=False
+#            c.store_thumbnails=False
+        self.add_collection(c)
+        return c
+
     def init_mounts(self,mount_info):
-        pass
-#        for name,icon_names,path in mount_info:
-#            self.add_mount(path,name,icon_names)
+        for name,icon_names,path in mount_info:
+            self.add_mount(path,name,icon_names)
 
 
 class CollectionModel(gtk.GenericTreeModel):
@@ -250,6 +305,7 @@ class CollectionModel(gtk.GenericTreeModel):
         for r in self.view_iter():
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
+        print 'notifying',id
         self.row_inserted(*self.pi_from_id(id))
     def coll_removed(self,id):
         self.row_deleted(self.pi_from_id(id)[0])
@@ -258,8 +314,7 @@ class CollectionModel(gtk.GenericTreeModel):
     def coll_closed(self,id):
         self.row_changed(*self.pi_from_id(id))
     def first_mount_added(self):
-        if self.model_type in ('SELECTOR','MENU'):
-            self.row_deleted(self.pi_from_id('#no-devices')[0])
+        self.row_deleted(self.pi_from_id('#no-devices')[0])
     def all_mounts_removed(self):
         self.row_inserted(*self.pi_from_id('#no-devices'))
     def on_get_flags(self):
@@ -315,7 +370,6 @@ class CollectionModel(gtk.GenericTreeModel):
             '#add-localstore':('New Collection...',None),
             '#no-devices':('No Devices Connected',None),
             '#add-dir':('Open a Local Directory...',self.coll_set.dir_image),
-
         }
         if id.startswith('*'):
             return [id,'',800,False,'black',None,False]
@@ -331,20 +385,17 @@ class CollectionModel(gtk.GenericTreeModel):
         this iterator defines the rows of the collection model
         and adds items for separators, collections and menu options
         '''
-#        tcount=0
-        options=[None,None,'#add-dir']
+        tcount=0
         for t in self.coll_set.types:
-#            if tcount>0:
-#                yield '*%i'%(tcount,)
             i=0
             for id in self.coll_set.iter_id(t):
                 yield id
                 i+=1
-#            if t=='DEVICE' and i==0:
-#                yield '#no-devices'
-#            if options[tcount]!=None:
-#                yield options[tcount]
-#            tcount+=1
+            if t=='DEVICE' and i==0:
+                print 'YIELDING NO DEVICE'
+                yield '#no-devices'
+            tcount+=1
+        yield '#add-dir'
     def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
         iter=self.create_tree_iter(name)
         return self.get_path(iter),iter

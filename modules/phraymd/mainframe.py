@@ -135,11 +135,12 @@ class MainFrame(gtk.VBox):
                         ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder'),
                         ('Zoom Fit',self.zoom_item_fit,show_on_hover,gtk.STOCK_ZOOM_FIT,'Main','Zoom the image to fit available space'),
                         ('Zoom 100%',self.zoom_item_100,show_on_hover,gtk.STOCK_ZOOM_100,'Main','Zoom to 100% size'),
                         ('Zoom In',self.zoom_item_in,show_on_hover,gtk.STOCK_ZOOM_IN,'Main','Zoom in'),
                         ('Zoom Out',self.zoom_item_out,show_on_hover,gtk.STOCK_ZOOM_OUT,'Main','Zoom out'),
+                        ('Stub',None,lambda item,hover:False,None,'Main',''),
+                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder'),
                         ]
         for tool in viewer_tools:
             self.viewer_hover_cmds.register_tool(*tool)
@@ -432,6 +433,7 @@ class MainFrame(gtk.VBox):
         if response==gtk.RESPONSE_ACCEPT:
             prefs['name']=prefs['name'].replace('/','').strip()
             prefs['type']='LOCALSTORE'
+            #prefs['id']=prefs['name']
             name=prefs['name']
             image_dir=prefs['image_dirs'][0]
             if len(name)>0 and len(image_dir)>0:

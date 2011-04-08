@@ -544,7 +544,7 @@ class ImageViewer(gtk.VBox):
 
     def get_zoom(self):
         '''
-        Get the numeric level of the zoom (even if zoom_level is 'fit')
+        returns the numeric level of the zoom (even if zoom_level is 'fit')
         '''
         if self.zoom_level=='fit':
             try:

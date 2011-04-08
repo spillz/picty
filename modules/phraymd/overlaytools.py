@@ -73,7 +73,9 @@ class OverlayGroup:
     def __getitem__(self,index):
         return self.tools[index]
     def register_tool(self,name,action_callback=None,active_callback=show_on_hover,icon=None,owner='Main',tooltip='This is a tooltip',priority=50):
-        new_t=OverlayTool(name,action_callback,active_callback,self.widget_render_source.render_icon(icon,self.size),owner,tooltip,priority)
+        if icon!=None:
+            icon=self.widget_render_source.render_icon(icon,self.size)
+        new_t=OverlayTool(name,action_callback,active_callback,icon,owner,tooltip,priority)
         for i in range(len(self.tools)):
             if priority>self.tools[i].priority:
                 self.tools.insert(i,new_t)
@@ -123,7 +125,7 @@ class OverlayGroup:
         for i in xrange(len(self.tools)):
             t=self.tools[i]
             adjx,adjy=0,0
-            if t.is_active(item,hover_data):
+            if t.is_active(item,hover_data) and t.icon:
                 if i==highlight_ind:
                     w,h=t.icon.get_width(),t.icon.get_height()
                     if button_down:
@@ -139,14 +141,19 @@ class OverlayGroup:
                         highlight_pb.fill(0xa0a0f0a0)
                         drawable.draw_pixbuf(gc,highlight_pb,0,0,int(x+offx-4),int(y-4))
                 drawable.draw_pixbuf(gc,t.icon,0,0,int(x+offx+adjx),int(y+adjy))
-            offx+=t.icon.get_width()+xpad
+            if t.icon:
+                offx+=t.icon.get_width()+xpad
+            else:
+                offx+=20+xpad
     def get_command(self, x, y, offx, offy, xpad):
         left=offx
         top=offy
         for i in range(len(self.tools)):
-            right=left+self.tools[i].icon.get_width()
-            bottom=top+self.tools[i].icon.get_height()
+            w=self.tools[i].icon.get_width() if self.tools[i].icon!=None else 20
+            h=self.tools[i].icon.get_height() if self.tools[i].icon!=None else 20
+            right=left+w
+            bottom=top+h
             if left<x<=right and top<y<=bottom:
                 return i
-            left+=self.tools[i].icon.get_width()+xpad
+            left+=w+xpad
         return -1

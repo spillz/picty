@@ -36,28 +36,22 @@ import viewsupport
 import baseobjects
 import simple_parser as sp
 
-col_prefs=('name','image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
             'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
 
 
-class Collection(baseobjects.CollectionBase):
+class LocalDir(baseobjects.CollectionBase):
     '''defines a sorted collection of Items with
     callbacks to plugins when the contents of the collection change'''
     ##todo: do more plugin callbacks here instead of the job classes?
-    type='LOCALSTORE'
-    type_descr='Local Store'
+    type='LOCALDIR'
+    type_descr='Local Directory'
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self,prefs)
-        self.view_class=CollectionView
-        self.new_menu_entry='New Collection' #set to a string prompt that will be shown on menu allowing user to add a new collection
-        self.persistent=True #whether the collection is stored to disk when closed
-
-#        self.name=''
-#        self.pixbuf=None
-#        self.id='' #unique id of the collection
-#        self.is_open=False #set by the owner to specify whether this collection is open or closed
-#        self.numselected=0 #number of items in the collection with a "selected" state
+        self.view_class=LocalDirView
+        self.new_menu_entry='Select a Local Directory To Browse' #set to a string prompt that will be shown on menu allowing user to add a new collection
+        self.persistent=False #whether the collection is stored to disk when closed
 
 #        ##the collection consists of an array of entries for images, which are cached in the collection file
         self.items=[] #the image/video items
@@ -65,9 +59,9 @@ class Collection(baseobjects.CollectionBase):
         ##and has the following properties (which are stored in the collection file if it exists)
         self.image_dirs=[]
         self.recursive=True
-        self.verify_after_walk=True
+        self.verify_after_walk=False
         self.load_metadata=True #image will be loaded into the collection and view without metadata
-        self.load_embedded_thumbs=False #only relevant if load_metadata is true
+        self.load_embedded_thumbs=True #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
         self.trash_location=None #none defaults to <collection dir>/.trash
         self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
@@ -81,10 +75,8 @@ class Collection(baseobjects.CollectionBase):
         if prefs:
             self.set_prefs(prefs)
 
-        self.id=self.name
-
     def copy(self):
-        dup=Collection2([])
+        dup=LocalCollectio()
         dup.items=self.items[:]
         dup.numselected=self.numselected
         dup.image_dirs=self.image_dirs[:]
@@ -195,71 +187,6 @@ class Collection(baseobjects.CollectionBase):
     def monitor_callback(self,path,action,is_dir):
         self.monitor_master_callback(self,path,action,is_dir)
 
-    def open(self):
-        '''
-        load the collection from a binary pickle file
-        '''
-        col_dir=os.path.join(settings.collections_dir,self.name)
-        if self.is_open:
-            return True
-        try:
-            if os.path.isfile(col_dir):
-                return self.legacy_open(col_dir)
-#            if not self.load_prefs():
-#                return False
-            f=open(self.data_file(),'rb')
-            version=cPickle.load(f)
-            print 'loaded collection version',version
-            if version>='0.5':
-                self.items=cPickle.load(f)
-                for i in range(len(self.items)):
-                    if 'filename' in self.items[i].__dict__:
-                        self.items[i]=self.items[i].convert()
-            self.numselected=0
-            return True
-        except:
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection",self.name
-            print tb_text
-            self.empty()
-            return False
-
-    def close(self):
-        '''
-        save the collection to a binary pickle file using the filename attribute of the collection
-        '''
-        if self.type!='LOCALSTORE':
-            return True
-        print 'started close',self.name
-        if not self.is_open:
-            return True
-        if self.type!='LOCALSTORE':
-            return False
-        print 'starting close',self.name
-        try:
-            col_dir=os.path.join(settings.collections_dir,self.name)
-            print 'closing',col_dir
-            if os.path.isfile(col_dir):
-                print 'removing',col_dir
-                os.remove(col_dir)
-            if not os.path.exists(col_dir):
-                print 'make dir',col_dir
-                os.makedirs(col_dir)
-            #self.save_prefs()
-            f=open(self.data_file(),'wb')
-            cPickle.dump(settings.version,f,-1)
-            cPickle.dump(self.items,f,-1)
-            f.close()
-            self.empty()
-        except:
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Writing Collection",self.name
-            print tb_text
-            return False
-        return True
-
     def empty(self,empty_views=True):
         del self.items[:]
         self.numselected=0
@@ -301,73 +228,11 @@ class Collection(baseobjects.CollectionBase):
             print tb_text
             return False
 
-    def legacy_open(self,filename='',load_items=True):  ##todo: put all of the legacy cruft elsewhere
-        '''
-        load the collection from a binary pickle file identified by the pathname in the filename argument
-        '''
-        if self.is_open:
-            return True
-        print 'loading legacy collection',filename
-        try:
-            if not filename:
-                return False
-            f=open(filename,'rb')
-            version=cPickle.load(f)
-            if version<'0.3.0':
-                self.image_dirs=settings.legacy_image_dirs
-            elif version<='0.4.0':
-                self.image_dirs=cPickle.load(f)
-            elif version>='0.4.1':
-                d=cPickle.load(f)
-                self.set_prefs(d)
-            if load_items:
-                if version>='0.4.0':
-                    self.items=cPickle.load(f)
-                else:
-                    f.close()
-                    c=Collection([])
-                    c.load(filename)
-                    self.items[:]=c[:]
-            self.numselected=0
-            return True
-        except:
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection",filename
-            print tb_text
-            self.empty()
-            return False
 
 
-def create_empty_collection(name,prefs,overwrite_if_exists=False):
-    col_dir=os.path.join(settings.collections_dir,name)
-    pref_file=os.path.join(os.path.join(settings.collections_dir,name),'prefs')
-    data_file=os.path.join(os.path.join(settings.collections_dir,name),'data')
-    if not overwrite_if_exists:
-        if os.path.exists(col_dir):
-            return False
-    try:
-        if not os.path.exists(col_dir):
-            os.makedirs(col_dir)
-        f=open(pref_file,'wb')
-        cPickle.dump(settings.version,f,-1)
-        d={}
-        for p in col_prefs:
-            if p in prefs:
-                d[p]=prefs[p]
-        cPickle.dump(d,f,-1)
-        f.close()
-        f=open(data_file,'wb')
-        cPickle.dump(settings.version,f,-1)
-        cPickle.dump([],f,-1) #empty list of items
-        f.close()
-    except:
-        print 'Error writing empty collection to ',fullpath
-        return False
-    return True
 
 
-class CollectionView(baseobjects.ViewBase):
+class LocalDirView(baseobjects.ViewBase):
     def __init__(self,key_cb=viewsupport.get_mtime,items=[],collection=None):
         self.items=[]
         for item in items:
@@ -451,5 +316,13 @@ class CollectionView(baseobjects.ViewBase):
     def empty(self):
         del self.items[:]
 
-baseobjects.register_collection('LOCALSTORE',Collection)
-baseobjects.register_view('LOCALSTORE',CollectionView)
+class Device(LocalDir):
+    type='DEVICE'
+    type_descr='Device'
+    def __init__(self,prefs):
+        LocalDir.__init__(self,prefs)
+        self.pixbuf=prefs['pixbuf'] #device pixbuf vary depending on the device
+
+baseobjects.register_collection('LOCALDIR',LocalDir)
+baseobjects.register_collection('DEVICE',Device)
+baseobjects.register_view('LOCALDIR',LocalDirView)
