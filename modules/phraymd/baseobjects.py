@@ -33,9 +33,7 @@ def init_collection(col_dir):
             c=registered_collection_classes[prefs['type']](prefs)
         except KeyError:
             c=registered_collection_classes['LOCALSTORE'](prefs)
-        print 'CREATED COLLECTION WITH PREFS',prefs
-        print 'ID',c.id
-        print 'NAME',c.name
+        c.add_view()
         return c
     except:
         import traceback,sys

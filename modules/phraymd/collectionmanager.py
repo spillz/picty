@@ -167,7 +167,7 @@ class CollectionSet(gobject.GObject):
     def new_collection(self,prefs):
         print 'creating new collection with prefs',prefs
         c=baseobjects.registered_collection_classes[prefs['type']](prefs)
-#        v=c.add_view()
+        v=c.add_view()
         self.add_collection(c)
         return c
 
