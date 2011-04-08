@@ -426,10 +426,20 @@ class ImageViewer(gtk.VBox):
 
     def scroll_signal_pane(self,obj,event):
         '''scrolls the view on mouse wheel motion'''
+        if event.state&gtk.gdk.CONTROL_MASK:
+            if event.direction==gtk.gdk.SCROLL_UP:
+                self.set_zoom('in')
+            if event.direction==gtk.gdk.SCROLL_DOWN:
+                self.set_zoom('out')
+            return
+        if event.state&gtk.gdk.SHIFT_MASK:
+            adj=self.hscrolladj
+        else:
+            adj=self.vscrolladj
         if event.direction==gtk.gdk.SCROLL_UP:
-            self.vscrolladj.set_value(self.vscrolladj.get_value()-10/self.get_zoom())
+            adj.set_value(adj.get_value()-10/self.get_zoom())
         if event.direction==gtk.gdk.SCROLL_DOWN:
-            self.vscrolladj.set_value(self.vscrolladj.get_value()+10/self.get_zoom())
+            adj.set_value(adj.get_value()+10/self.get_zoom())
 
     def scroll_signal(self,obj,vertical):
         '''signal response when the scroll position changes'''
