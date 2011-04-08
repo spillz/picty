@@ -504,3 +504,5 @@ class ImportPlugin(pluginbase.Plugin):
 #        if self.src_combo.get_editable():
 #            self.import_source_combo.set_path(io.get_path_from_uri(uri))
 
+    def open_uri(self,uri):
+        self.mainframe.open_uri(uri)

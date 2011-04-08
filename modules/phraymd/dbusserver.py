@@ -41,13 +41,20 @@ class DBusServer(dbus.service.Object):
         print "DBus media connection event for "+uri
         return 'success'
 
+    @dbus.service.method('org.spillz.phraymd',in_signature='s',out_signature='s')
+    def open_uri(self, uri):
+        import pluginmanager
+        pluginmanager.mgr.callback('open_uri',uri)
+        print "DBus open uri event for "+uri
+        return 'success'
+
 def start():
     global server
     bus=dbus.SessionBus()
     if bus.name_has_owner('org.spillz.phraymd'):
         print 'Another phraymd instance already has the DBus name org.spillz.phraymd'
         return False
-        ##could also just abort here and send a bring to front message to phraymd main window
+        ##could also just abort here and send a "bring to front" message to phraymd main window
     server = DBusServer(bus)
     print 'Registered dbus server'
     return True

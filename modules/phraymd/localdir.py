@@ -28,6 +28,8 @@ import re
 import datetime
 import cPickle
 
+import gobject
+
 ##phraymd imports
 import pluginmanager
 import settings
@@ -35,6 +37,8 @@ import monitor2 as monitor
 import viewsupport
 import baseobjects
 import simple_parser as sp
+import imagemanip
+import io
 
 col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
             'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
@@ -74,6 +78,21 @@ class LocalDir(baseobjects.CollectionBase):
 
         if prefs:
             self.set_prefs(prefs)
+
+        self.path_to_open=prefs['path_to_open'] if 'path_to_open' in prefs else None
+        self.mainframe=prefs['mainframe'] if 'mainframe' in prefs else None
+
+    def open(self):
+        print '****GOT OPEN REQUEST'
+        if self.path_to_open:
+            item=baseobjects.Item(self.path_to_open)
+            item.mtime=io.get_mtime(item.uid)
+            imagemanip.load_metadata(item)
+            self.add(item)
+            print 'SENDING REQUEST TO VIEW',item
+            gobject.idle_add(self.mainframe.view_image,item)
+        return True
+
 
     def copy(self):
         dup=LocalCollectio()
@@ -316,12 +335,15 @@ class LocalDirView(baseobjects.ViewBase):
     def empty(self):
         del self.items[:]
 
+
 class Device(LocalDir):
     type='DEVICE'
     type_descr='Device'
     def __init__(self,prefs):
         LocalDir.__init__(self,prefs)
         self.pixbuf=prefs['pixbuf'] #device pixbuf vary depending on the device
+    def open(self):
+        return True
 
 baseobjects.register_collection('LOCALDIR',LocalDir)
 baseobjects.register_collection('DEVICE',Device)

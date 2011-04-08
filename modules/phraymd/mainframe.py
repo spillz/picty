@@ -236,6 +236,11 @@ class MainFrame(gtk.VBox):
 #            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
+
+        ##THIS IS A TEST OF OPENING AN IMAGE AT STARTUP (NEED REGISTERED DESKTOP FILE OTHERWISE)
+        #add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_ADD),lambda widget:self.open_uri('file:///home/damien/Pictures/dining_after.jpg'),"TEST IMAGE VIEWER", "")
+
+
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
         if entry_no_icons:
@@ -308,6 +313,7 @@ class MainFrame(gtk.VBox):
 
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
+        self.do_nothing_at_startup=False
 
         dbusserver.start()
         self.tm.start()
@@ -321,6 +327,13 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.disconnect(self.show_sig_id)
         ##open last used collection or
         ##todo: device or directory specified at command line.
+#        self.open_uri('file:///home/damien/Pictures/dining_after.jpg')
+        ##only open something if a collection is not already open
+        if self.do_nothing_at_startup:
+            return
+        for c in self.coll_set:
+            if c.is_open:
+                return
         id=None
         if settings.active_collection_id:
             c=self.coll_set[settings.active_collection_id]
@@ -400,6 +413,26 @@ class MainFrame(gtk.VBox):
 
     def browser_signal_notify(self,*args):
         self.emit(args[-1],*args[:-1])
+
+    def open_uri(self,uri):
+        print 'Received external request to open',uri
+        self.do_nothing_at_startup=True
+        impath=io.get_path_from_uri(uri)
+        if not os.path.exists(impath):
+            return
+        mimetype=io.get_mime_type(impath)
+        prefs={}
+        if mimetype.startswith('image'):
+            path=os.path.split(impath)[0]
+            prefs['path_to_open']=impath
+            prefs['mainframe']=self
+        else:
+            path=impath
+        prefs['type']='LOCALDIR'
+        prefs['image_dirs']=[path]
+        prefs['recursive']=False
+        self.coll_set.add_directory(path,prefs)
+        self.collection_open(path)
 
     def browse_dir_collection(self,combo):
         #prompt for path
@@ -985,6 +1018,7 @@ class MainFrame(gtk.VBox):
 
 
     def view_image(self,item,fullwindow=False):
+        print 'VIEW IMAGE REQUEST',item
         browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()

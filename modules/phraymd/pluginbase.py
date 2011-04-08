@@ -217,3 +217,5 @@ class Plugin(object):
     def media_disconnected(self,uri):
         '''a plugin that handles media connection (e.g. import) should respond to this callback'''
         pass
+    def open_uri(self,uri):
+        pass
