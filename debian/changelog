@@ -1,3 +1,25 @@
+phraymd (0.3a7) lucid; urgency=low
+
+  * improved desktop integration (open images in phraymd from desktop/other apps)
+  * started overhaul of collection management infrastrucuture (collections derive from a base class)
+  * zooming in the image viewer
+  * based on rev 463 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Fri, 08 Apr 2011 17:39:29 -0400
+
+phraymd (0.3a6) lucid; urgency=low
+
+  * setup.py snafu
+  * based on rev 453
+
+ -- damien <damienlmoore@gmail.com>  Sat, 28 Aug 2010 05:33:41 -0400
+
+phraymd (0.3a5) lucid; urgency=low
+
+  * gpg snafu
+
+ -- Damien Moore <damienlmoore@gmail.com>  Fri, 27 Aug 2010 20:52:02 -0400
+
 phraymd (0.3a4) lucid; urgency=low
 
   * bug fix: snafu with icons on 0.3a3 release
