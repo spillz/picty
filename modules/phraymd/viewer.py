@@ -163,6 +163,7 @@ class ImageViewer(gtk.VBox):
         self.hscrolladj.connect("value-changed",self.scroll_signal,False)
         self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         self.imarea.connect("scroll-event",self.scroll_signal_pane)
+        self.scroll_inc = 15
 
         self.image_box=gtk.VBox()
         self.image_box.pack_start(self.imarea)
@@ -437,9 +438,9 @@ class ImageViewer(gtk.VBox):
         else:
             adj=self.vscrolladj
         if event.direction==gtk.gdk.SCROLL_UP:
-            adj.set_value(adj.get_value()-10/self.get_zoom())
+            adj.set_value(adj.get_value()-self.scroll_inc/self.get_zoom())
         if event.direction==gtk.gdk.SCROLL_DOWN:
-            adj.set_value(adj.get_value()+10/self.get_zoom())
+            adj.set_value(adj.get_value()+self.scroll_inc/self.get_zoom())
 
     def scroll_signal(self,obj,vertical):
         '''signal response when the scroll position changes'''
@@ -473,6 +474,26 @@ class ImageViewer(gtk.VBox):
     def hide_scrollbars(self):
         self.vscroll.hide()
         self.hscroll.hide()
+
+    def pan_image(self,direction):
+        if self.zoom_level=='fit':
+            return False
+        if direction=='left':
+            value=self.hscrolladj.get_value()-self.scroll_inc/self.get_zoom()
+            value=max(value,self.hscrolladj.get_lower())
+            self.hscrolladj.set_value(value)
+        if direction=='right':
+            value=self.hscrolladj.get_value()+self.scroll_inc/self.get_zoom()
+            value=min(value,self.hscrolladj.get_upper()-self.hscrolladj.get_page_size())
+            self.hscrolladj.set_value(value)
+        if direction=='up':
+            value=self.vscrolladj.get_value()-self.scroll_inc/self.get_zoom()
+            value=max(value,self.vscrolladj.get_lower())
+            self.vscrolladj.set_value(value)
+        if direction=='down':
+            value=self.vscrolladj.get_value()+self.scroll_inc/self.get_zoom()
+            value=min(value,self.vscrolladj.get_upper()-self.vscrolladj.get_page_size())
+            self.vscrolladj.set_value(value)
 
     def set_zoom(self,zoom_level,x=None,y=None):
         '''

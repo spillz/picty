@@ -218,19 +218,19 @@ class ImageBrowser(gtk.HBox):
     def key_press_signal(self,obj,event):
         ##todo: perhaps return true for some of these to prevent further emission
         if event.type==gtk.gdk.KEY_PRESS:
-            if event.keyval==65362: #up
-                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
-            elif event.keyval==65364: #dn
-                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
-            elif event.keyval==65365: #pgup
-                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
-            elif event.keyval==65366: #pgdn
-                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
-            elif event.keyval==65360: #home
-                self.vscroll.set_value(self.scrolladj.lower)
-            elif event.keyval==65367: #end
-                self.vscroll.set_value(self.scrolladj.upper)
-            elif event.keyval==65505: #shift
+#            if event.keyval==65362: #up
+#                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
+#            elif event.keyval==65364: #dn
+#                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
+#            elif event.keyval==65365: #pgup
+#                self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
+#            elif event.keyval==65366: #pgdn
+#                self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
+#            elif event.keyval==65360: #home
+#                self.vscroll.set_value(self.scrolladj.lower)
+#            elif event.keyval==65367: #end
+#                self.vscroll.set_value(self.scrolladj.upper)
+            if event.keyval==65505: #shift
                 self.redraw_view()
             elif event.keyval==65507: #control
                 self.redraw_view()
@@ -518,6 +518,21 @@ class ImageBrowser(gtk.HBox):
                 upper=upper,
                 step_increment=max(1,self.geo_thumbheight+self.geo_pad)/5,
                 page_increment=self.geo_height, page_size=self.geo_height)
+
+    def scroll(self,direction):
+        if direction=='up':
+            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.step_increment)
+        if direction=='dn':
+            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.step_increment)
+        if direction=='pgup':
+            self.vscroll.set_value(self.vscroll.get_value()-self.scrolladj.page_increment)
+        if direction=='pgdn':
+            self.vscroll.set_value(self.vscroll.get_value()+self.scrolladj.page_increment)
+        if direction=='home':
+            self.vscroll.set_value(self.scrolladj.lower)
+        if direction=='end':
+            self.vscroll.set_value(self.scrolladj.upper)
+
 
     def scroll_up(self,step=10):
         '''call to scroll the view up by step pixels'''

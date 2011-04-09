@@ -902,6 +902,9 @@ class MainFrame(gtk.VBox):
         self.status_bar.set_text(message)
 
     def key_press_signal(self,obj,event,browser=None):
+        keyname = gtk.gdk.keyval_name(event.keyval)
+        print 'KEYPRESS',event.keyval,keyname
+        b=self.active_browser()
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
                 fileops.worker.delete(self.active_browser().active_view,self.update_status)
@@ -964,14 +967,50 @@ class MainFrame(gtk.VBox):
                 self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
             elif event.keyval==65361: #left
                 if self.iv.item:
+                    if self.iv.zoom_level!='fit':
+                        self.iv.pan_image('left')
+                        return True
                     ind=self.active_browser().item_to_view_index(self.iv.item)
                     if len(self.active_browser().active_view)>ind>0:
                         self.view_image(self.active_browser().active_view(ind-1))
             elif event.keyval==65363: #right
                 if self.iv.item:
+                    if self.iv.get_property("visible") and self.iv.zoom_level!='fit':
+                        self.iv.pan_image('right')
+                        return True
                     ind=self.active_browser().item_to_view_index(self.iv.item)
                     if len(self.active_browser().active_view)-1>ind>=0:
                         self.view_image(self.active_browser().active_view(ind+1))
+            elif event.keyval==65362: #up
+                if self.iv.get_property("visible") and self.iv.zoom_level!='fit':
+                    self.iv.pan_image('up')
+                    return True
+                b.scroll('up')
+            elif event.keyval==65364: #dn
+                if self.iv.get_property("visible") and self.iv.zoom_level!='fit':
+                    self.iv.pan_image('down')
+                    return True
+                b.scroll('dn')
+            elif event.keyval==65365: #pgup
+                b.scroll('pgup')
+            elif event.keyval==65366: #pgdn
+                b.scroll('pgdn')
+            elif event.keyval==65360: #home
+                b.scroll('home')
+            elif event.keyval==65367: #end
+                b.scroll('end')
+            elif keyname=='plus':
+                if self.iv.get_property("visible"):
+                    self.iv.set_zoom('in')
+            elif keyname=='minus':
+                if self.iv.get_property("visible"):
+                    self.iv.set_zoom('out')
+            elif keyname=='1':
+                if self.iv.get_property("visible"):
+                    self.iv.set_zoom(1)
+            elif keyname=='equal' or keyname=='asterisk':
+                if self.iv.get_property("visible"):
+                    self.iv.set_zoom('fit')
         return True
 
 
