@@ -999,7 +999,7 @@ class MainFrame(gtk.VBox):
                 b.scroll('home')
             elif event.keyval==65367: #end
                 b.scroll('end')
-            elif keyname=='plus' or keyname='equal':
+            elif keyname=='plus' or keyname=='equal':
                 if self.iv.get_property("visible"):
                     self.iv.set_zoom('in')
             elif keyname=='minus':
