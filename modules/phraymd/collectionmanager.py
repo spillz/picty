@@ -165,7 +165,6 @@ class CollectionSet(gobject.GObject):
         self.collection_added(collection.id)
 
     def new_collection(self,prefs):
-        print 'creating new collection with prefs',prefs
         c=baseobjects.registered_collection_classes[prefs['type']](prefs)
         v=c.add_view()
         self.add_collection(c)
@@ -178,7 +177,6 @@ class CollectionSet(gobject.GObject):
         if new_prefs==old_prefs:
             return False #nothing has changed
         if new_prefs['name']!=coll.name:
-            print 'renaming collection'
             new_path=os.path.join(settings.collections_dir,new_prefs['name'])
             old_path=os.path.join(settings.collections_dir,coll.name)
             if os.path.exists(new_path):
@@ -205,7 +203,6 @@ class CollectionSet(gobject.GObject):
         return coll
 
     def collection_added(self,id):
-        print 'coll manager adding',id,self.collections
         self.model.coll_added(id)
 
     def collection_changed(self,id):
@@ -305,7 +302,6 @@ class CollectionModel(gtk.GenericTreeModel):
         for r in self.view_iter():
             self.row_inserted(*self.pi_from_id(r))
     def coll_added(self,id):
-        print 'notifying',id
         self.row_inserted(*self.pi_from_id(id))
     def coll_removed(self,id):
         self.row_deleted(self.pi_from_id(id)[0])
@@ -333,11 +329,9 @@ class CollectionModel(gtk.GenericTreeModel):
     def on_get_path(self, rowref):
         i=0
         for id in self.view_iter():
-            print 'on_get_path',id,rowref
             if id==rowref:
                 return (i,)
             i+=1
-        print 'on_get_path failed',i
         return None
     def on_get_value(self, rowref, column):
         return self.as_row(rowref)[column]
@@ -392,7 +386,6 @@ class CollectionModel(gtk.GenericTreeModel):
                 yield id
                 i+=1
             if t=='DEVICE' and i==0:
-                print 'YIELDING NO DEVICE'
                 yield '#no-devices'
             tcount+=1
         yield '#add-dir'

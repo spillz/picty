@@ -199,12 +199,11 @@ def user_add_dir():
 def init():
     global image_dirs, active_collection_id
     load()
-    if not active_collection_id or not os.path.exists(active_collection_id):
+    if not active_collection_id:
         try:
             active_collection_id=get_collection_files()[0]
         except:
             active_collection_id=''
-    print 'ACTIVE COLLECTION ID',active_collection_id
     save()
 
 
