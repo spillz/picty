@@ -183,6 +183,74 @@ def text_descr(item):
             details+=exposure
     return (header,details)
 
+def viewer_text(item,size=None,zoom=None):
+    ##HEADER TEXT
+    header=''
+    #show title
+    path,filename=os.path.split(item.uid)
+    try:
+        header=item.meta['Title']
+        title=True
+    except:
+        header+=filename
+        title=False
+
+    ##DETAIL TEXT
+    details=''
+    #show filename and path to image
+    if title:
+        details+=filename+'\n'
+    details+=path
+    #show tags
+    val=get_keyword(item)
+    if val:
+        if details and not details.endswith('\n'):
+            details+='\n'
+        val=str(val)
+        if len(val)<90:
+            details+='Tags: '+val
+        else:
+            details+=val[:88]+'...'
+    #date information
+    if details and not details.endswith('\n'):
+        details+='\n'
+    val=get_ctime(item)
+    if val>datetime.datetime(1900,1,1):
+        details+='Date: '+str(val)+'\n'
+###    details+='Date Modified: '+str(get_mtime(item))
+    #Exposure details
+    val=get_focal(item)
+    exposure=u''
+    if val:
+        exposure+='%imm '%(int(val),)
+    val=get_aperture(item)
+    if val:
+        exposure+='f/%3.1f'%(val,)
+    val=get_speed_str(item)
+    if val:
+        exposure+=' %ss'%(val,)
+    val=get_iso_str(item)
+    if val:
+        exposure+=' iso%s'%(val,)
+    if exposure:
+        if details and not details.endswith('\n'):
+            details+='\n'
+        details+='Exposure: '+exposure
+    #IMAGE SIZE AND ZOOM LEVEL
+    if size:
+        if details and not details.endswith('\n'):
+            details+='\n'
+        details+='Image Dimensions: %i x %i'%size
+    if zoom:
+        if details and not details.endswith('\n'):
+            details+='\n'
+        if zoom!='fit':
+            details+='Zoom: %3.2f%%'%(zoom*100,)
+        else:
+            details+='Zoom: Fit'
+
+    return (header,details)
+
 
 sort_keys={
         'Date Taken':get_ctime,

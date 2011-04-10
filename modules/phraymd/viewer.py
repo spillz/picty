@@ -27,6 +27,7 @@ import datetime
 
 import gobject
 import gtk
+import pango
 
 gobject.threads_init()
 gtk.gdk.threads_init()
@@ -35,6 +36,7 @@ import settings
 import imagemanip
 import pluginmanager
 import metadata
+import viewsupport
 
 class ImageLoader:
     '''
@@ -421,9 +423,41 @@ class ImageViewer(gtk.VBox):
             y=(self.geo_height-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
-        if drew_image and not self.plugin_controller:
-            self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
+        if drew_image:
+            self.render_image_info(drawable,gc)
+            if not self.plugin_controller:
+                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
+
+    def render_image_info(self,drawable,gc):
+        item=self.item
+        if self.mouse_hover:
+            size=self.item.image.size if item.image else None
+            a,b=viewsupport.viewer_text(item,size,self.zoom_level)
+            print item,a,b
+            if a or b:
+                a=a.replace('&','&amp;')
+                b=b.replace('&','&amp;')
+                l=self.imarea.create_pango_layout('')
+                if a and b:
+                    l.set_markup('<b><span size="12000">'+a+'</span></b>\n<span size="10000">'+b+'</span>')
+                elif a:
+                    l.set_markup('<b><span size="12000">'+a+'</span></b>')
+                elif b:
+                    l.set_markup('<span size="10000">'+b+'</span>')
+                l.set_width((self.geo_width-20)*pango.SCALE)
+                l.set_wrap(pango.WRAP_WORD_CHAR)
+                lx=int(10)
+                w,h=l.get_pixel_size()
+                ly=max(self.geo_height-10-h,10)
+                if h>0:
+                    overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+10,h+10)
+                    overlay_pb.fill(0x0000007f)
+                    drawable.draw_pixbuf(None,overlay_pb,0,0,lx-5,ly-5,-1,-1)
+                colormap=drawable.get_colormap()
+                white = colormap.alloc_color('white')
+                drawable.draw_layout(gc,lx,ly,l,white)
+
 
     def scroll_signal_pane(self,obj,event):
         '''scrolls the view on mouse wheel motion'''
