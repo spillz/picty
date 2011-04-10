@@ -452,7 +452,7 @@ class ImageViewer(gtk.VBox):
         if self.zoom_level=='fit' or self.item==None or self.item.image==None:
             return self.hide_scrollbars()
         (iw,ih)=self.item.image.size
-        if iw<self.geo_width and ih<self.geo_height:
+        if iw*self.get_zoom()<self.geo_width and ih*self.get_zoom()<self.geo_height:
             return self.hide_scrollbars()
         left = self.zoom_position[0]
         top = self.zoom_position[1]
@@ -478,6 +478,9 @@ class ImageViewer(gtk.VBox):
     def pan_image(self,direction):
         if self.zoom_level=='fit':
             return False
+        iw,ih=self.item.image.size
+        if iw*self.get_zoom()<self.geo_width and ih*self.get_zoom()<self.geo_height:
+            return False
         if direction=='left':
             value=self.hscrolladj.get_value()-self.scroll_inc/self.get_zoom()
             value=max(value,self.hscrolladj.get_lower())
@@ -494,6 +497,7 @@ class ImageViewer(gtk.VBox):
             value=self.vscrolladj.get_value()+self.scroll_inc/self.get_zoom()
             value=min(value,self.vscrolladj.get_upper()-self.vscrolladj.get_page_size())
             self.vscrolladj.set_value(value)
+        return True
 
     def set_zoom(self,zoom_level,x=None,y=None):
         '''
