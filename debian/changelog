@@ -1,3 +1,16 @@
+phraymd (0.3a8) lucid; urgency=low
+
+  * bug fixes: image zoom rendering, exception caused by accidentally duplicated collection views
+  * improved keyboard shortcuts
+    * arrow keys now function in image viewer (if zoomed) or browser (if image viewer not displayed or not zoomed)
+    * zoom in/out with - and + (or =)
+    * zoom to fit with 0 or asterisk
+    * zoom to 100% with 1
+  * mousewheel scrolling and zooming in image viewer
+  * based on rev 472 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Sun, 10 Apr 2011 00:22:50 -0400
+
 phraymd (0.3a7) lucid; urgency=low
 
   * improved desktop integration (open images in phraymd from desktop/other apps)
