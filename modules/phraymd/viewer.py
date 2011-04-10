@@ -438,9 +438,9 @@ class ImageViewer(gtk.VBox):
         else:
             adj=self.vscrolladj
         if event.direction==gtk.gdk.SCROLL_UP:
-            adj.set_value(adj.get_value()-self.scroll_inc/self.get_zoom())
+            self.pan_image('up')
         if event.direction==gtk.gdk.SCROLL_DOWN:
-            adj.set_value(adj.get_value()+self.scroll_inc/self.get_zoom())
+            self.pan_image('down')
 
     def scroll_signal(self,obj,vertical):
         '''signal response when the scroll position changes'''
