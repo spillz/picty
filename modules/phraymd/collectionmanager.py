@@ -230,7 +230,7 @@ class CollectionSet(gobject.GObject):
             col_dir=os.path.join(settings.collections_dir,f)
             c=baseobjects.init_collection(col_dir)
             if c!=None:
-                c.add_view()
+#                c.add_view()
                 self.add_collection(c)
 
     def add_mount(self,path,name,icon_names):
