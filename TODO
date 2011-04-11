@@ -1,34 +1,68 @@
 Project todo list
 =================
 
-* DISCLAIMER: I expect this document will regularly get out of date.
-* Nonetheless, the idea is to keep track of short-term plans (2-3 months).
-* As stuff is completed or plans change the list should be updated.
-* This file will be in source control to keep track of its history.
+DISCLAIMER: I expect this document will regularly get out of date.
+Nonetheless, the idea is to keep track of short-term plans (2-3 months).
+As stuff is completed or plans change the list should be updated.
+
+* Finish off abstraction of collection architecture (started in Rev 453)
+  * Collections should be responsible for providing GUI, application entry points
+    for adding a collection of that type
+  * Collection must provide all methods for manipulating the collection and images
+    (perhaps using functions shared across multiple collection types for common operations)
+  * All collection types should work seamlessly with global image class (Item) and integrate with plugin framework
+    (providing necessary notifications)
+  * Extend collection support to allow browsing of web-based stores (plugin)
+
+* Move collection handling (scanning/updating/filter/operations) to a separate process
+  * Client/Server model
+    * GUI = client, requests images from server
+    * Server maintains the index and datastore of underlying images in a collection
+    * Server process watches for changes to images and updates index/datastore appropriately, notifying GUI and getting user feedback as necessary
+    * Optional "always on" server (tracks all changes to images in monitored
+      collections even while phraymd client is not running)
+  * This is hard because...
+    * Passing data between processes is slow
+    * High priority tasks need to interrupt with low latency
+    * Have to keep many "lists" of images:
+      * Master list: server side, keeps track of: uid, metadata, thumbnail info, full image
+      * View: list known to both server and client, each item in the view is a tuple of (sortkey,uid)
 
 * Overhaul image class, metadata and image handling
-   * track file attributes (file size, image dimensions, mtime, presence of thumbnails)
-   * mimetype/store specific handler for metadata read/write and image processing
-
-* Support for XMP sidecars (for images that don't support metadata read/write)
+  * track file attributes (file size, image dimensions, mtime, presence of thumbnails)
+  * mimetype/store specific handler for metadata read/write and image processing
+  * must be able to handle cloud-based collections
+  * lossless image manipulation options (keep record of changes, and a cached version
+    of the altered image)
+  * support for XMP sidecars (for images that don't support metadata read/write)
 
 * Update the browser
     * be more consistent with user theme (colors, look and feel)
     * size and align text better
     * improve keyboard navigation
 
-* Padding and alignment tweaks to most of the dialog areas
-
-* Progress bar messages don't always disapper (e.g. job cancelled)
+* General UI
+  * Padding and alignment tweaks to most of the dialog areas
+  * Keyboard customization
+  * Progress bar too distracting, messages don't always disapper (e.g. job cancelled)
     and messages not always useful
 
-* Zoom/Loupe tool in the fullsize view (on the backend, make image loading
-    more readily interruptable and pre-load draft images as necessary for speed)
+* Image viewer enhancements
+  * Make the image viwer a bin that can dynamically place/size/hide gtk widgets
+    * Example use: when mouse over right side of image show a zoom slider and combo box
+  * Keyboard toggles for displaying toolbar and
+
+* Plugins
+  * New plugins
+    * Loupe tool in the image viewer
+    * Histogram
+    * Exposure tweaks
+  * More flexible camera import (folder naming scheme)
+  * Managing Sets/Albums for flickr/picasa uploads
 
 * Overhaul thumbnail support (e.g. allow user to store thumbs in custom
     cache location, support tumbler, use embedded image thumbnails and
     fallback to manual creation as necessary)
 
-* Extend collection support to allow browsing of web-based stores
 
-phraymd (c) 2010 Damien Moore
+phraymd (c) 2011 Damien Moore
