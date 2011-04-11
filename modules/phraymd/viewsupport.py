@@ -218,6 +218,8 @@ def viewer_text(item,size=None,zoom=None):
     if val>datetime.datetime(1900,1,1):
         details+='Date: '+str(val)+'\n'
 ###    details+='Date Modified: '+str(get_mtime(item))
+    if item.meta and 'Model' in item.meta:
+        details+='Model: '+str(item.meta['Model'])+'\n'
     #Exposure details
     val=get_focal(item)
     exposure=u''
