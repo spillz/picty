@@ -148,6 +148,7 @@ class ImageViewer(gtk.VBox):
         self.plugin_controller=None
         self.hover_cmds=hover_cmds
         self.mouse_hover=False
+        self.mouse_hover_pos=None
         self.command_highlight_ind=-1
         self.command_highlight_bd=False
         self.zoom_level='fit'
@@ -318,6 +319,7 @@ class ImageViewer(gtk.VBox):
             if not self.mouse_hover:
                 self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
             self.mouse_hover=True
+            self.mouse_hover_pos=(event.x,event.y)
             cmd=self.get_hover_command(event.x,event.y)
             if self.command_highlight_ind!=cmd:
                 self.command_highlight_ind=cmd
@@ -328,7 +330,22 @@ class ImageViewer(gtk.VBox):
         if self.item!=None:
             if not self.mouse_hover:
                 self.redraw_view()
+            if self.mouse_hover:
+                bbottom=self.mouse_hover_pos[1]>=self.geo_height-3
+                btop=self.mouse_hover_pos[1]<self.geo_height/3
+            else:
+                bbottom=False
+                btop=False
             self.mouse_hover=True
+            self.mouse_hover_pos=(event.x,event.y)
+            if self.mouse_hover:
+                abottom=self.mouse_hover_pos[1]>=self.geo_height-3
+                atop=self.mouse_hover_pos[1]<self.geo_height/3
+            else:
+                abottom=False
+                atop=False
+            if atop!=btop or abottom!=bbottom:
+                self.redraw_view()
             cmd=self.get_hover_command(event.x,event.y)
             if self.command_highlight_ind!=cmd:
                 self.command_highlight_ind=cmd
@@ -346,6 +363,7 @@ class ImageViewer(gtk.VBox):
                 self.command_highlight_ind=cmd
                 self.redraw_view()
         self.mouse_hover=False
+        self.mouse_hover_pos=None
 
     def button_press(self,widget,event):
         self.command_highlight_bd=False
@@ -424,39 +442,40 @@ class ImageViewer(gtk.VBox):
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
         if drew_image:
-            self.render_image_info(drawable,gc)
+            if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height-3:
+                self.render_image_info(drawable,gc)
             if not self.plugin_controller:
-                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
+                if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height/3:
+                    self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 
     def render_image_info(self,drawable,gc):
         item=self.item
-        if self.mouse_hover:
-            size=self.item.image.size if item.image else None
-            a,b=viewsupport.viewer_text(item,size,self.zoom_level)
-            print item,a,b
-            if a or b:
-                a=a.replace('&','&amp;')
-                b=b.replace('&','&amp;')
-                l=self.imarea.create_pango_layout('')
-                if a and b:
-                    l.set_markup('<b><span size="12000">'+a+'</span></b>\n<span size="10000">'+b+'</span>')
-                elif a:
-                    l.set_markup('<b><span size="12000">'+a+'</span></b>')
-                elif b:
-                    l.set_markup('<span size="10000">'+b+'</span>')
-                l.set_width((self.geo_width-20)*pango.SCALE)
-                l.set_wrap(pango.WRAP_WORD_CHAR)
-                lx=int(10)
-                w,h=l.get_pixel_size()
-                ly=max(self.geo_height-10-h,10)
-                if h>0:
-                    overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+10,h+10)
-                    overlay_pb.fill(0x0000007f)
-                    drawable.draw_pixbuf(None,overlay_pb,0,0,lx-5,ly-5,-1,-1)
-                colormap=drawable.get_colormap()
-                white = colormap.alloc_color('white')
-                drawable.draw_layout(gc,lx,ly,l,white)
+        size=self.item.image.size if item.image else None
+        a,b=viewsupport.viewer_text(item,size,self.zoom_level)
+        print item,a,b
+        if a or b:
+            a=a.replace('&','&amp;')
+            b=b.replace('&','&amp;')
+            l=self.imarea.create_pango_layout('')
+            if a and b:
+                l.set_markup('<b><span size="12000">'+a+'</span></b>\n<span size="10000">'+b+'</span>')
+            elif a:
+                l.set_markup('<b><span size="12000">'+a+'</span></b>')
+            elif b:
+                l.set_markup('<span size="10000">'+b+'</span>')
+            l.set_width((self.geo_width-20)*pango.SCALE)
+            l.set_wrap(pango.WRAP_WORD_CHAR)
+            lx=int(10)
+            w,h=l.get_pixel_size()
+            ly=max(self.geo_height-10-h,10)
+            if h>0:
+                overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+10,h+10)
+                overlay_pb.fill(0x0000007f)
+                drawable.draw_pixbuf(None,overlay_pb,0,0,lx-5,ly-5,-1,-1)
+            colormap=drawable.get_colormap()
+            white = colormap.alloc_color('white')
+            drawable.draw_layout(gc,lx,ly,l,white)
 
 
     def scroll_signal_pane(self,obj,event):
