@@ -1,3 +1,12 @@
+phraymd (0.3a9) lucid; urgency=low
+
+  * bug fix: remembering last used collection
+  * show textual image information in the image viewer OSD
+  * show/hide image viewer OSD elements (text information and OSD buttons) depending on mouse/pointer position
+  * based on rev 476 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Sun, 10 Apr 2011 23:13:51 -0400
+
 phraymd (0.3a8) lucid; urgency=low
 
   * bug fixes: image zoom rendering, exception caused by accidentally duplicated collection views
