@@ -29,6 +29,7 @@ import datetime
 import cPickle
 
 import gobject
+import gtk
 
 ##phraymd imports
 import pluginmanager
@@ -39,217 +40,125 @@ import baseobjects
 import simple_parser as sp
 import imagemanip
 import io
-
-col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
-            'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
+import dialogs
 
 
-class LocalDir(baseobjects.CollectionBase):
-    '''defines a sorted collection of Items with
-    callbacks to plugins when the contents of the collection change'''
-    ##todo: do more plugin callbacks here instead of the job classes?
-    type='LOCALDIR'
-    type_descr='Local Directory'
-    def __init__(self,prefs): #todo: store base path for the collection
-        ##the following attributes are set at run-time by the owner
-        baseobjects.CollectionBase.__init__(self,prefs)
-        self.view_class=LocalDirView
-        self.new_menu_entry='Select a Local Directory To Browse' #set to a string prompt that will be shown on menu allowing user to add a new collection
-        self.persistent=False #whether the collection is stored to disk when closed
+class NewLocalDirWidget(gtk.VBox):
+    def __init__(self,main_dialog,value_dict=None):
+        gtk.VBox.__init__(self)
+        self.main_dialog=main_dialog
+        label=gtk.Label()
+        label.set_markup("<b>Directory Browsing Settings</b>")
+        self.pack_start(label,False)
+        self.path_entry=dialogs.PathnameEntry('','Path: ','Choose a Directory',directory=True)
+        self.pack_start(self.path_entry,False)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
 
-#        ##the collection consists of an array of entries for images, which are cached in the collection file
-        self.items=[] #the image/video items
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(True)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
 
-        ##and has the following properties (which are stored in the collection file if it exists)
-        self.image_dirs=[]
-        self.recursive=True
-        self.verify_after_walk=False
-        self.load_metadata=True #image will be loaded into the collection and view without metadata
-        self.load_embedded_thumbs=True #only relevant if load_metadata is true
-        self.load_preview_icons=False #only relevant if load_metadata is false
-        self.trash_location=None #none defaults to <collection dir>/.trash
-        self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
-        self.monitor_image_dirs=True
+        self.pack_start(self.recursive_button,False)
+        self.pack_start(self.a_frame,False)
 
-        ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
-        self.monitor=None
-        self.monitor_master_callback=None
-        self.browser=None
+        if value_dict:
+            self.set_values(value_dict)
 
-        if prefs:
-            self.set_prefs(prefs)
+    def activate(self):
+        sensitive=len(self.name_entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.main_dialog.create_button.set_sensitive(sensitive)
 
-        self.path_to_open=prefs['path_to_open'] if 'path_to_open' in prefs else None
-        self.mainframe=prefs['mainframe'] if 'mainframe' in prefs else None
+    def path_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+        self.main_dialog.create_button.set_sensitive(sensitive)
 
-    def open(self):
-        print '****GOT OPEN REQUEST'
-        if self.path_to_open:
-            item=baseobjects.Item(self.path_to_open)
-            item.mtime=io.get_mtime(item.uid)
-            imagemanip.load_metadata(item)
-            self.add(item)
-            print 'SENDING REQUEST TO VIEW',item
-            gobject.idle_add(self.mainframe.view_image,item)
-        return True
+    def get_values(self):
+        path=self.path_entry.get_path()
+        return {
+                'id':path,
+                'name':os.path.split(path)[1],
+                'image_dirs': [path],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
 
-
-    def copy(self):
-        dup=LocalCollectio()
-        dup.items=self.items[:]
-        dup.numselected=self.numselected
-        dup.image_dirs=self.image_dirs[:]
-        dup.verify_after_walk=self.verify_after_walk
-        dup.load_metadata=self.load_metadata
-        dup.load_embedded_thumbs=self.load_embedded_thumbs
-        dup.load_preview_icons=self.load_preview_icons
-        dup.monitor=None
-        dup.views=[]
-        for v in self.views:
-            dup.views.append(v.copy())
-        return dup
-
-    def copy_from(self,dup):
-        self.items[:]=dup.items[:]
-        self.numselected=dup.numselected
-        self.image_dirs=dup.image_dirs[:]
-        self.verify_after_walk=dup.verify_after_walk
-        self.load_metadata=dup.load_metadata
-        self.load_embedded_thumbs=dup.load_embedded_thumbs
-        self.load_preview_icons=dup.load_preview_icons
-        del self.views[:]
-        for v in dup.views:
-            self.views.append(v.copy())
-        return dup
-
-    def simple_copy(self):
-        return SimpleCollection(self,True)
-
-    def add(self,item,add_to_view=True):
-        '''
-        add an item to the collection and notify plugin
-        '''
-        try:
-            self.numselected+=item.selected
-            ind=bisect.bisect_left(self.items,item)
-            if len(self.items)>ind>0 and self.items[ind]==item:
-                print '#1',self.items[ind]
-                print '#2',item
-                raise LookupError
-            self.items.insert(ind,item)
-            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
-            if add_to_view:
-                for v in self.views:
-                    v.add_item(item)
-            return True
-        except LookupError:
-            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print tb_text
-            return False
-
-    def find(self,item):
-        '''
-        find an item in the collection and return its index
-        '''
-        i=bisect.bisect_left(self,item)
-        if i>=len(self.items) or i<0:
-            return -1
-        if self.items[i]==item:
-            return i
-        return -1
-
-    def update(self,item):
-        '''
-        change the modified item
-        '''
-        ind=find(item)
-        if ind>=0:
-            self.items[ind]=item
-
-    def delete(self,item,delete_from_view=True):
-        '''
-        delete an item from the collection, returning the item to the caller if present
-        notifies plugins if the item is remmoved
-        '''
-        i=self.find(item)
-        if i>=0:
-            item=self.items[i]
-            self.numselected-=item.selected
-            self.items.pop(i)
-            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
-            for v in self.views:
-                v.del_item(item)
-            return item
-        return None
-
-    def __call__(self,ind):
-        return self.items[ind]
-
-    def __getitem__(self,ind):
-        return self.items[ind]
-
-    def get_items(self):
-        return self.items[:]
-
-    def start_monitor(self,callback):
-        if self.monitor_image_dirs:
-            self.monitor_master_callback=callback
-            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
-
-    def end_monitor(self):
-        if self.monitor!=None and self.monitor_image_dirs:
-            self.monitor.stop()
-            self.monitor=None
-
-    def monitor_callback(self,path,action,is_dir):
-        self.monitor_master_callback(self,path,action,is_dir)
-
-    def empty(self,empty_views=True):
-        del self.items[:]
-        self.numselected=0
-        if empty_views:
-            for v in self.views:
-                v.empty()
-
-    def __len__(self):
-        return len(self.items)
-
-    def set_prefs(self,prefs):
-        for p in col_prefs:
-            if p in prefs:
-                self.__dict__[p]=prefs[p]
-
-    def get_prefs(self):
-        prefs={}
-        for p in col_prefs:
-            prefs[p]=self.__dict__[p]
-        return prefs
-
-    def delete_files(self):
-        col_dir=os.path.join(settings.collections_dir,self.name)
-        try:
-            if os.path.isdir(col_dir):
-                for root, dirs, files in os.walk(col_dir, topdown=False):
-                    for name in files:
-                        os.remove(os.path.join(root, name))
-                    for name in dirs:
-                        os.rmdir(os.path.join(root, name))
-                os.rmdir(col_dir)
-            elif os.path.isfile(col_dir):
-                io.remove_file(col_dir)
-            return True
-        except IOError:
-            print 'Error removing collection data files in',col_dir
-            import sys,traceback
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print tb_text
-            return False
+    def set_values(self,val_dict):
+        if len(val_dict['image_dirs'])>0:
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recursive_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
 
+class LocalDirPrefWidget(gtk.VBox):
+    def __init__(self,value_dict=None):
+        gtk.VBox.__init__(self)
+        self.path_entry=dialogs.PathnameEntry('','Path: ','Choose a Directory',directory=True)
+        self.pack_start(self.path_entry,False)
+        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button.set_active(True)
+        self.path_entry.path_entry.connect("changed",self.path_changed)
 
+        self.a_frame=gtk.Expander("Advanced Options")
+        self.a_box=gtk.VBox()
+        self.a_frame.add(self.a_box)
+        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.load_meta_check.set_active(True)
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check.set_active(True)
+        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.use_internal_thumbnails_check,False)
 
+        self.pack_start(self.recursive_button,False)
+        self.pack_start(self.a_frame,False)
+
+        self.show_all()
+        self.cname=None
+        self.cid=None
+        if value_dict:
+            self.set_values(value_dict)
+
+    def path_changed(self,entry):
+        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+
+    def get_values(self):
+        return {
+                'name': self.cname,
+                'id': self.cid,
+                'image_dirs': [self.path_entry.get_path()],
+                'recursive': self.recursive_button.get_active(),
+                'load_metadata':self.load_meta_check.get_active(),
+                'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
+                'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+#                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                }
+
+    def set_values(self,val_dict):
+        self.cname=val_dict['name']
+        self.cid=val_dict['id']
+        if len(val_dict['image_dirs'])>0:
+            self.path_entry.set_path(val_dict['image_dirs'][0])
+        self.recursive_button.set_active(val_dict['recursive'])
+        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+#        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
 class LocalDirView(baseobjects.ViewBase):
     def __init__(self,key_cb=viewsupport.get_mtime,items=[],collection=None):
@@ -336,12 +245,206 @@ class LocalDirView(baseobjects.ViewBase):
         del self.items[:]
 
 
+
+class LocalDir(baseobjects.CollectionBase):
+    '''defines a sorted collection of Items with
+    callbacks to plugins when the contents of the collection change'''
+    ##todo: do more plugin callbacks here instead of the job classes?
+    type='LOCALDIR'
+    type_descr='Local Directory'
+    pref_widget=LocalDirPrefWidget
+    add_widget=NewLocalDirWidget
+    user_creatable=False
+    view_class=LocalDirView
+    col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
+    def __init__(self,prefs): #todo: store base path for the collection
+        ##the following attributes are set at run-time by the owner
+        baseobjects.CollectionBase.__init__(self,prefs)
+
+#        ##the collection consists of an array of entries for images, which are cached in the collection file
+        self.items=[] #the image/video items
+
+        ##and has the following properties (which are stored in the collection file if it exists)
+        self.image_dirs=[]
+        self.recursive=True
+        self.verify_after_walk=False
+        self.load_metadata=True #image will be loaded into the collection and view without metadata
+        self.load_embedded_thumbs=True #only relevant if load_metadata is true
+        self.load_preview_icons=False #only relevant if load_metadata is false
+        self.trash_location=None #none defaults to <collection dir>/.trash
+        self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
+        self.monitor_image_dirs=True
+
+        ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
+        self.monitor=None
+        self.monitor_master_callback=None
+        self.browser=None
+
+        if prefs:
+            self.set_prefs(prefs)
+
+        self.path_to_open=prefs['path_to_open'] if 'path_to_open' in prefs else None
+        self.mainframe=prefs['mainframe'] if 'mainframe' in prefs else None
+
+    def create_store(self):
+        return True
+
+    def open(self):
+        print '****GOT OPEN REQUEST'
+        if self.path_to_open:
+            item=baseobjects.Item(self.path_to_open)
+            item.mtime=io.get_mtime(item.uid)
+            imagemanip.load_metadata(item)
+            self.add(item)
+            print 'SENDING REQUEST TO VIEW',item
+            gobject.idle_add(self.mainframe.view_image,item)
+        return True
+
+
+    def copy(self):
+        dup=LocalCollectio()
+        dup.items=self.items[:]
+        dup.numselected=self.numselected
+        dup.image_dirs=self.image_dirs[:]
+        dup.verify_after_walk=self.verify_after_walk
+        dup.load_metadata=self.load_metadata
+        dup.load_embedded_thumbs=self.load_embedded_thumbs
+        dup.load_preview_icons=self.load_preview_icons
+        dup.monitor=None
+        dup.views=[]
+        for v in self.views:
+            dup.views.append(v.copy())
+        return dup
+
+    def copy_from(self,dup):
+        self.items[:]=dup.items[:]
+        self.numselected=dup.numselected
+        self.image_dirs=dup.image_dirs[:]
+        self.verify_after_walk=dup.verify_after_walk
+        self.load_metadata=dup.load_metadata
+        self.load_embedded_thumbs=dup.load_embedded_thumbs
+        self.load_preview_icons=dup.load_preview_icons
+        del self.views[:]
+        for v in dup.views:
+            self.views.append(v.copy())
+        return dup
+
+    def simple_copy(self):
+        return SimpleCollection(self,True)
+
+    def add(self,item,add_to_view=True):
+        '''
+        add an item to the collection and notify plugin
+        '''
+        try:
+            ind=bisect.bisect_left(self.items,item)
+            if len(self.items)>ind>0 and self.items[ind]==item:
+                raise LookupError
+            self.items.insert(ind,item)
+            self.numselected+=item.selected
+            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
+            if add_to_view:
+                for v in self.views:
+                    v.add_item(item)
+            return True
+        except LookupError:
+            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
+
+    def find(self,item):
+        '''
+        find an item in the collection and return its index
+        '''
+        i=bisect.bisect_left(self,item)
+        if i>=len(self.items) or i<0:
+            return -1
+        if self.items[i]==item:
+            return i
+        return -1
+
+    def item_metadata_update(self,item):
+        '''
+        notification from item that its metadata has been changed
+        '''
+        pass
+
+    def delete(self,item,delete_from_view=True):
+        '''
+        delete an item from the collection, returning the item to the caller if present
+        notifies plugins if the item is remmoved
+        '''
+        i=self.find(item)
+        if i>=0:
+            item=self.items[i]
+            self.numselected-=item.selected
+            self.items.pop(i)
+            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
+            for v in self.views:
+                v.del_item(item)
+            return item
+        return None
+
+    def __call__(self,ind):
+        return self.items[ind]
+
+    def __getitem__(self,ind):
+        return self.items[ind]
+
+    def get_items(self):
+        return self.items[:]
+
+    def start_monitor(self,callback):
+        if self.monitor_image_dirs:
+            self.monitor_master_callback=callback
+            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
+
+    def end_monitor(self):
+        if self.monitor!=None and self.monitor_image_dirs:
+            self.monitor.stop()
+            self.monitor=None
+
+    def monitor_callback(self,path,action,is_dir):
+        self.monitor_master_callback(self,path,action,is_dir)
+
+    def empty(self,empty_views=True):
+        del self.items[:]
+        self.numselected=0
+        if empty_views:
+            for v in self.views:
+                v.empty()
+
+    def __len__(self):
+        return len(self.items)
+
+    def set_prefs(self,prefs):
+        for p in self.col_prefs:
+            if p in prefs:
+                self.__dict__[p]=prefs[p]
+
+    def get_prefs(self):
+        prefs={}
+        for p in self.col_prefs:
+            prefs[p]=self.__dict__[p]
+        return prefs
+
+    def delete_cache_files(self):
+        return True
+
+
+
 class Device(LocalDir):
     type='DEVICE'
     type_descr='Device'
+    pref_widget=LocalDirPrefWidget
+    add_widget=None
+    persistent=True
     def __init__(self,prefs):
         LocalDir.__init__(self,prefs)
-        self.pixbuf=prefs['pixbuf'] #device pixbuf vary depending on the device
+        self.pixbuf=prefs['pixbuf'] #device pixbuf varies depending on the device
     def open(self):
         return True
 

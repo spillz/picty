@@ -6,11 +6,12 @@ Nonetheless, the idea is to keep track of short-term plans (2-3 months).
 As stuff is completed or plans change the list should be updated.
 
 * Finish off abstraction of collection architecture (started in Rev 453)
-  * Collections should be responsible for providing GUI, application entry points
-    for adding a collection of that type
+  * Collections should be responsible for providing GUI dialog/frame for managing collection properties
+  * Framework provide mechanism for creating new instances of any regsitered collection type
   * Collection must provide all methods for manipulating the collection and images
     (perhaps using functions shared across multiple collection types for common operations)
-  * All collection types should work seamlessly with global image class (Item) and integrate with plugin framework
+  * All collection types should work seamlessly with global image class (Item)
+  * All collection types must integrate with plugin framework
     (providing necessary notifications)
   * Extend collection support to allow browsing of web-based stores (plugin)
 
@@ -48,7 +49,7 @@ As stuff is completed or plans change the list should be updated.
     and messages not always useful
 
 * Image viewer enhancements
-  * Make the image viwer a bin that can dynamically place/size/hide gtk widgets
+  * Implement the image viewer as a gtk.Container that can dynamically place/size/hide gtk widgets
     * Example use: when mouse over right side of image show a zoom slider and combo box
   * Keyboard toggles for displaying toolbar and
 

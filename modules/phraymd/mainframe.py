@@ -153,7 +153,7 @@ class MainFrame(gtk.VBox):
 
         self.startpage=collectionmanager.CollectionStartPage(self.coll_set)
         self.startpage.connect("collection-open",self.collection_open_cb)
-        self.startpage.connect("collection-new",self.create_local_store)
+        self.startpage.connect("collection-new",self.create_new_collection)
         self.startpage.connect("collection-context-menu",self.collection_context_menu)
         self.startpage.connect("folder-open",self.browse_dir_collection)
 
@@ -340,7 +340,7 @@ class MainFrame(gtk.VBox):
             if c!=None:
                 id=c.id
         if not id:
-            self.create_local_store(None,True)
+            self.create_new_collection(None,True)
         else:
             print 'opening collection',id
             self.collection_open(c.id)
@@ -440,42 +440,39 @@ class MainFrame(gtk.VBox):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=dialogs.BrowseDirectoryDialog()
+        dialog=dialogs.NewCollectionDialog(type='LOCALDIR',title='Browse A Directory')
         response=dialog.run()
         prefs=dialog.get_values()
-        prefs['type']='LOCALDIR'
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
-            path=prefs['image_dirs'][0]
-            self.coll_set.add_directory(path,prefs)
-            self.collection_open(path)
+            c=self.coll_set.new_collection(prefs)
+            if not c:
+                print 'Create localdir failed'
+            print 'Create localdir success',c.id,c.name,c.get_prefs()
+            self.collection_open(c.id)
 
-    def create_local_store(self,combo,first_start=False):
-        #prompt name and path
+    def create_new_collection(self,combo,first_start=False):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=dialogs.AddLocalStoreDialog()
-        if first_start:
-            prefs=dialog.get_values()
-            prefs['name']='main'
-            prefs['image_dirs']=[os.path.join(os.environ['HOME'],'Pictures')]
-            dialog.set_values(prefs)
+##TODO: default to creating a localstore on first startup
+#        if first_start:
+#            prefs=dialog.get_values()
+#            prefs['name']='main'
+#            prefs['image_dirs']=[os.path.join(os.environ['HOME'],'Pictures')]
+#            dialog=dialogs.NewCollectionDialog(type='LOCALSTORE',pref_dict=prefs,title='Create A Local Collection')
+#        else:
+        dialog=dialogs.NewCollectionDialog()
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
-            prefs['name']=prefs['name'].replace('/','').strip()
-            prefs['type']='LOCALSTORE'
-            #prefs['id']=prefs['name']
-            name=prefs['name']
-            image_dir=prefs['image_dirs'][0]
-            if len(name)>0 and len(image_dir)>0:
-                if baseobjects.create_empty_collection(name,prefs):
-                    c=self.coll_set.new_collection(prefs)
-                    self.collection_open(c.id)
-                    return
-                dialogs.prompt_dialog("Error Creating Collection","The collection could not be created, you must use a valid filename",["_Close"])
+            c=self.coll_set.new_collection(prefs)
+            if c!=False:
+                self.collection_open(c.id)
+            else:
+                dialogs.prompt_dialog("Error Creating Collection","The collection could not be created",["_Close"])
+
 
     def collections_init(self):
         ##now fill the collection manager with
@@ -512,7 +509,7 @@ class MainFrame(gtk.VBox):
         self.active_collection=coll
         self.tm.set_active_collection(coll)
 
-        if coll.type=='LOCALSTORE':
+        if coll.persistent:
             settings.active_collection_id=coll.id
 #        ind=self.browser_nb.get_current_page()
 #        need_ind=self.browser_nb.page_num(coll.browser)
@@ -588,7 +585,7 @@ class MainFrame(gtk.VBox):
         if c.browser!=None or c.is_open:
             return
         old_prefs=c.get_prefs().copy()
-        dialog=dialogs.PrefDialog(c.get_prefs())
+        dialog=dialogs.PrefDialog(c)
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
@@ -609,9 +606,9 @@ class MainFrame(gtk.VBox):
         menu_add(menu,"Open",self.collection_open_cb,coll_id)
         if c.is_open:
             menu_add(menu,"Close",self.collection_close_cb,coll_id)
-        if c!=None and c.type=="LOCALSTORE" and not c.is_open:
+        if c!=None and c.persistent and not c.is_open:
             menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
-        if c!=None and c.browser==None and not c.is_open:
+        if c!=None and c.browser==None and c.pref_widget and not c.is_open:
             menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
         if len(menu.get_children())>0:
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)

@@ -9,7 +9,7 @@ from phraymd import imagemanip
 from serviceui import *
 
 
-##Flickr web uploads use the gdata api
+##Flickr web uploads use the beej's flickr api
 import flickrapi
 
 MODEL_COL_FLICKR_TITLE=MODEL_COL_SERVICE+0

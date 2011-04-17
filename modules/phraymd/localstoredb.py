@@ -127,7 +127,7 @@ class LocalStoreDB(baseobjects.CollectionBase):
         self.conn=SQLconnection(self.data_file())
         self.conn.create_function('filter_func',1,self.filter_func)
         self.conn.create_function('sort_func',1,self.sort_func)
-        
+
         self.cursor=SQLcursor(self.conn)
         self.cursor.execute('''create table items
                     (id text, mtime text, meta blob, thumb_uri text)''')
@@ -160,7 +160,7 @@ class LocalStoreDB(baseobjects.CollectionBase):
         ##required overrides (must be overridden to implement a collection)
     def pref_gui_box(self):
         pass
-    def update(self,item):
+    def item_metadata_update(self,item):
 #        self.cursor.execute('''delete from items where id=?''',(item.id,))
 #        self.cursor.execute('''insert into items values (?,?,?,?)''',(item.id,item.mtime,item.meta,item.thumburi))
         self.cursor.execute('''update items set id=?,mtime=?,meta=?,thumb_uri=? where id=?''',(item.uid,item.mtime,item.meta,item.thumburi,item.id))

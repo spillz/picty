@@ -28,7 +28,7 @@ import baseobjects
 import io
 
 import localstorebin
-import localstoredb
+#import localstoredb
 import localdir
 
 COLUMN_ID=0
@@ -139,6 +139,8 @@ class CollectionSet(gobject.GObject):
 
     def __delitem__(self,name,delete_cache_file=True):
         coll=self.collections[name]
+        if delete_cache_file:
+            coll.delete_cache_files()
         self.collection_removed(coll.id)
         del self.collections[name]
         if coll.type=='DEVICE' and self.count('DEVICE')==0: ##todo: is there anyway to not hardcode this here? (delegate to the class)
@@ -165,7 +167,10 @@ class CollectionSet(gobject.GObject):
         self.collection_added(collection.id)
 
     def new_collection(self,prefs):
+        print 'CREATING NEW COLLECTION',prefs
         c=baseobjects.registered_collection_classes[prefs['type']](prefs)
+        if not c.create_store():
+            return False
         v=c.add_view()
         self.add_collection(c)
         return c
@@ -176,7 +181,7 @@ class CollectionSet(gobject.GObject):
         old_prefs=coll.get_prefs()
         if new_prefs==old_prefs:
             return False #nothing has changed
-        if new_prefs['name']!=coll.name:
+        if 'name' in new_prefs and new_prefs['name']!=coll.name:
             new_path=os.path.join(settings.collections_dir,new_prefs['name'])
             old_path=os.path.join(settings.collections_dir,coll.name)
             if os.path.exists(new_path):
@@ -194,7 +199,7 @@ class CollectionSet(gobject.GObject):
         if new_prefs!=old_prefs:
             new_prefs['name']=coll.name
             coll.set_prefs(new_prefs)
-            coll.save_prefs()
+#            coll.save_prefs()
         return True
 
     def remove(self,id):
@@ -221,6 +226,8 @@ class CollectionSet(gobject.GObject):
         c=self[id]
         c.is_open=False
         self.model.coll_closed(id)
+        if not c.persistent:
+            self.remove(id)
 
     def init_localstores(self):
         for f in settings.get_collection_files():
@@ -259,32 +266,20 @@ class CollectionSet(gobject.GObject):
         self.add_collection(c)
         return c
 
-    def add_directory(self,path,prefs):
-        if not os.path.exists(path):
-            return
-        Dir=baseobjects.registered_collection_classes['LOCALDIR']
-        prefs['id']=path
-        name=os.path.split(path)[1]
-        if name=='':
-            name='Folder'
-        prefs['name']=name
-        c=Dir(prefs)
-        c.pixbuf=self.get_icon(gtk.STOCK_DIRECTORY)
-        c.add_view()
-#        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
-#            ##gphoto2 device (MTP)
-#            c.load_embedded_thumbs=False
-#            c.load_metadata=False
-#            c.load_preview_icons=True
-#            c.store_thumbnails=False ##todo: this needs to be implemented
-#        else:
-#            ##non-gphoto2 device (Mass Storage)
-#            c.load_embedded_thumbs=True
-#            c.load_metadata=True
-#            c.load_preview_icons=False
-#            c.store_thumbnails=False
-        self.add_collection(c)
-        return c
+#    def add_directory(self,path,prefs):
+#        if not os.path.exists(path):
+#            return
+#        Dir=baseobjects.registered_collection_classes['LOCALDIR']
+#        prefs['id']=path
+#        name=os.path.split(path)[1]
+#        if name=='':
+#            name='Folder'
+#        prefs['name']=name
+#        c=Dir(prefs)
+#        c.pixbuf=self.get_icon(gtk.STOCK_DIRECTORY)
+#        c.add_view()
+#        self.add_collection(c)
+#        return c
 
     def init_mounts(self,mount_info):
         for name,icon_names,path in mount_info:

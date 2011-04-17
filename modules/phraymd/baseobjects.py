@@ -76,14 +76,16 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
 
 class CollectionBase:
     pref_items=['type','type_descr','name','pixbuf','id'] ##the list of variables that will be saved
+    persistent=False
+    type=None
+    user_creatable=False
+    pref_widget=None
+    add_widget=None
     def __init__(self,prefs=None):
         self.is_open=False
         self.numselected=0
         self.views=[]
         self.active_view=None
-        self.view_class=None
-        self.new_menu_entry=None #set to a string prompt that will be shown on menu allowing user to add a new collection
-        self.persistent=False #whether the collection is stored to disk when closed
 
         self.name=''
         self.pixbuf=None
@@ -107,6 +109,10 @@ class CollectionBase:
 
     def data_file(self):
         return os.path.join(os.path.join(settings.collections_dir,self.name),'data')
+
+    def delete_store(self):
+        os.remove
+
 
     def add_view(self,sort_criteria=viewsupport.get_mtime):
         if self.view_class==None:
@@ -139,10 +145,13 @@ class CollectionBase:
         provider should send 't_collection_item_added' to plugins
         '''
         pass
-    def update(self,item):
+    def item_metadata_update(self,item):
         '''
-        provider should send 't_collection_item_updated' to plugins
+        notification from item that its metadata has been changed
         '''
+#        '''
+#        provider should send 't_collection_item_updated' to plugins --NOT SURE IF NECESSARY
+#        '''
         pass
     def find(self,item):
         pass
@@ -251,8 +260,8 @@ class Item(str):
         self.meta=None ##a copy of self.meta will be stored as self.meta_backup if self.meta_changed is True
         self.selected=False
         self.relevance=0
+        ##TODO: should an item have a collection member?
 
-        ##TODO: should this have a collection member?
     def load_thumbnail(self):
         pass
     def make_thumbnail(self,pixbuf):
@@ -271,13 +280,13 @@ class Item(str):
             del self.meta_backup
         self.meta_changed=False
         if collection:
-            collection.update(self)
+            collection.item_metadata_update(self)
     def mark_meta_saved(self,collection=None):
         if self.meta_changed:
             del self.meta_backup
         self.meta_changed=False
         if collection:
-            collection.update(self)
+            collection.item_metadata_update(self)
     def set_meta_key(self,key,value,collection=None):
         if self.meta==False or self.meta==None:
             return None
@@ -294,7 +303,7 @@ class Item(str):
             self.meta_changed=False
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.update(self)
+            collection.item_metadata_update(self)
         return self.meta_changed
     def set_meta(self,meta,collection=None):
         if not self.meta_changed:
@@ -307,7 +316,7 @@ class Item(str):
             self.meta_changed=False
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.update(self)
+            collection.item_metadata_update(self)
         return self.meta_changed
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it

@@ -130,6 +130,18 @@ class ImageLoader:
                 self.sizing=None
 
 
+##class DrawableContainer(gtk.DrawingArea):
+##    def __init__(self):
+##        gtk.DrawingArea.__init__(self)
+##
+##    '''THIS DOES NOT WORK, HAVE TO HOOK INTO SIGNALS??'''
+##    def widget_size_request(self,*args):
+##        print '*****got widget_size_request with args',args
+##        gtk.DrawingArea.widget_size_request(self,*args)
+##    def size_allocate(self,*args):
+##        print '*****got widget_size_request with args',args
+##        gtk.DrawingArea.size_allocate(self,*args)
+
 class ImageViewer(gtk.VBox):
     #indices into the hover_cmds structure (overlay shortcuts in image browser)
     HOVER_TEXT=0 #text description of the command
@@ -172,7 +184,7 @@ class ImageViewer(gtk.VBox):
         self.image_box.pack_start(self.imarea)
         self.image_box.show()
 
-
+        #Add scrollbars
         self.image_table=gtk.Table(rows=2,columns=2,homogeneous=False) ##plugins can add widgets to the box
         self.image_table.attach(self.image_box, 0, 1, 0, 1,
                        xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
@@ -331,7 +343,7 @@ class ImageViewer(gtk.VBox):
             if not self.mouse_hover:
                 self.redraw_view()
             if self.mouse_hover:
-                bbottom=self.mouse_hover_pos[1]>=self.geo_height-3
+                bbottom=self.mouse_hover_pos[1]>=self.geo_height-10
                 btop=self.mouse_hover_pos[1]<self.geo_height/3
             else:
                 bbottom=False
@@ -339,7 +351,7 @@ class ImageViewer(gtk.VBox):
             self.mouse_hover=True
             self.mouse_hover_pos=(event.x,event.y)
             if self.mouse_hover:
-                abottom=self.mouse_hover_pos[1]>=self.geo_height-3
+                abottom=self.mouse_hover_pos[1]>=self.geo_height-10
                 atop=self.mouse_hover_pos[1]<self.geo_height/3
             else:
                 abottom=False
@@ -442,11 +454,12 @@ class ImageViewer(gtk.VBox):
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
         if drew_image:
-            if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height-3:
+            if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height-10:
                 self.render_image_info(drawable,gc)
             if not self.plugin_controller:
                 if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height/3:
-                    self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
+                    self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,
+                        self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 
     def render_image_info(self,drawable,gc):
@@ -555,10 +568,11 @@ class ImageViewer(gtk.VBox):
     def set_zoom(self,zoom_level,x=None,y=None):
         '''
         zooms the image to the specified zoom_level centering at viewer position (x,y). zoom_level is one of:
-            'fit' to fit within the viewer window
-            'in' to zoom in 10%
-            'out' to zoom out 10%
-            a double to specify a specific zoom ratio (multiple of full image size, 1=100%, 0.5 = 50%,  2.0 = 200% etc)
+            * 'fit' to fit within the viewer window;
+            * 'in' to zoom in 10%;
+            * 'out' to zoom out 10%; or
+            * a double to specify a specific zoom ratio, which is a multiple of the full
+              image size: 1=100%, 0.5 = 50%,  2.0 = 200% etc)
         '''
         if self.item==None or self.item.image==None:
             return
