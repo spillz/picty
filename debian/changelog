@@ -1,3 +1,11 @@
+phraymd (0.3a11) lucid; urgency=low
+
+  * bug fix: desktop integration now works again
+  * bug fix: removing attached device closes collection and browser tab
+  * based on rev 483 of lp:phraymd
+
+ -- damien <damienlmoore@gmail.com>  Sun, 17 Apr 2011 22:49:43 -0400
+
 phraymd (0.3a10) lucid; urgency=low
 
   * fixes regression that broke tagging of multiple selections (and other multiple selection actions)
