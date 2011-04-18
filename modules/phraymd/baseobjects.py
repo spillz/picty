@@ -55,15 +55,7 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
         cPickle.dump(settings.version,f,-1)
-#        d={}
-#        for p in col_prefs: ##todo: col_prefs should be a member of the relevant collection class
-#            if p in prefs:
-#                d[p]=prefs[p]
         cPickle.dump(prefs,f,-1)
-        f.close()
-        f=open(data_file,'wb')
-        cPickle.dump(settings.version,f,-1)
-        cPickle.dump([],f,-1) #empty list of items
         f.close()
     except:
         print 'Error writing empty collection to ',col_dir
@@ -71,7 +63,7 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
         tb_text=traceback.format_exc(sys.exc_info()[2])
         print tb_text
         return False
-    return True
+    return col_dir,pref_file,data_file
 
 
 class CollectionBase:
