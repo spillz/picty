@@ -642,13 +642,10 @@ class MainFrame(gtk.VBox):
 
     def mount_removed(self,monitor,name,icon_names,path):
         collection=self.coll_set[path]
-        self.coll_set.remove(path)
-        print 'removed',collection,collection.id
-        if collection.is_open:
-            sj=backend.SaveCollectionJob(self.tm,collection,self)
-            sj.priority=1050
-            self.tm.queue_job_instance(sj)
         self.plugmgr.callback('media_disconnected',collection.id)
+        self.coll_set.remove(path)
+        if collection.is_open and collection.browser:
+            self.collection_close(None,collection.browser)
 
     def sidebar_accel_callback(self, accel_group, acceleratable, keyval, modifier):
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
