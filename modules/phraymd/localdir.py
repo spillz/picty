@@ -301,38 +301,6 @@ class LocalDir(baseobjects.CollectionBase):
             gobject.idle_add(self.mainframe.view_image,item)
         return True
 
-
-    def copy(self):
-        dup=LocalCollectio()
-        dup.items=self.items[:]
-        dup.numselected=self.numselected
-        dup.image_dirs=self.image_dirs[:]
-        dup.verify_after_walk=self.verify_after_walk
-        dup.load_metadata=self.load_metadata
-        dup.load_embedded_thumbs=self.load_embedded_thumbs
-        dup.load_preview_icons=self.load_preview_icons
-        dup.monitor=None
-        dup.views=[]
-        for v in self.views:
-            dup.views.append(v.copy())
-        return dup
-
-    def copy_from(self,dup):
-        self.items[:]=dup.items[:]
-        self.numselected=dup.numselected
-        self.image_dirs=dup.image_dirs[:]
-        self.verify_after_walk=dup.verify_after_walk
-        self.load_metadata=dup.load_metadata
-        self.load_embedded_thumbs=dup.load_embedded_thumbs
-        self.load_preview_icons=dup.load_preview_icons
-        del self.views[:]
-        for v in dup.views:
-            self.views.append(v.copy())
-        return dup
-
-    def simple_copy(self):
-        return SimpleCollection(self,True)
-
     def add(self,item,add_to_view=True):
         '''
         add an item to the collection and notify plugin
