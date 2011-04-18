@@ -266,20 +266,21 @@ class CollectionSet(gobject.GObject):
         self.add_collection(c)
         return c
 
-#    def add_directory(self,path,prefs):
-#        if not os.path.exists(path):
-#            return
-#        Dir=baseobjects.registered_collection_classes['LOCALDIR']
-#        prefs['id']=path
-#        name=os.path.split(path)[1]
-#        if name=='':
-#            name='Folder'
-#        prefs['name']=name
-#        c=Dir(prefs)
-#        c.pixbuf=self.get_icon(gtk.STOCK_DIRECTORY)
-#        c.add_view()
-#        self.add_collection(c)
-#        return c
+    def add_directory(self,path,prefs):
+        ###TODO: REMOVE THIS, CALLER SHOULD USE THE FILL OUT PREFERENCES AND USE new_collection
+        if not os.path.exists(path):
+            return
+        Dir=baseobjects.registered_collection_classes['LOCALDIR']
+        prefs['id']=path
+        name=os.path.split(path)[1]
+        if name=='':
+            name='Folder'
+        prefs['name']=name
+        c=Dir(prefs)
+        c.pixbuf=self.get_icon(gtk.STOCK_DIRECTORY)
+        c.add_view()
+        self.add_collection(c)
+        return c
 
     def init_mounts(self,mount_info):
         for name,icon_names,path in mount_info:
