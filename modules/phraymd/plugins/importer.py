@@ -251,11 +251,7 @@ class ImporterImportJob(backend.WorkerJob):
             item.selected=orig_item.selected
             if collection.load_metadata and not item.meta:
                 imagemanip.load_metadata(item,collection)
-            if self.collection_src.load_embedded_thumbs or self.collection_src.load_preview_icons:
-                if not collection.load_embedded_thumbs and not collection.load_preview_icons:
-                    print 'recreating thumbnail on import for',item.uid
-                    imagemanip.make_thumb(item)
-            imagemanip.update_thumb_date(item)
+            collection.make_thumbnail(item)
             if self.browser!=None:
                 self.browser.lock.acquire()
             print 'importing item',item.uid,'to',collection.id

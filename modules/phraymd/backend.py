@@ -251,17 +251,18 @@ class CollectionUpdateJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        c=self.collection
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             item=self.queue.pop(0)
             if item.meta==None:
                 self.browser.lock.acquire()
                 if self.view.del_item(item):
-                    imagemanip.load_metadata(item,self.collection)
+                    c.load_metadata(item)
                     self.view.add_item(item)
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
                 self.browser.lock.release()
-            if not imagemanip.has_thumb(item):
-                imagemanip.make_thumb(item)
+            if not c.has_thumbnail(item):
+                c.make_thumbnail(item)
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
         if len(self.queue)==0:
             return True
@@ -275,6 +276,7 @@ class RecreateThumbJob(WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
+        c=self.collection
         view=self.collection.get_active_view()
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
@@ -282,12 +284,12 @@ class RecreateThumbJob(WorkerJob):
             if item.meta==None:
                 self.browser.lock.acquire()
                 if view.del_item(item):
-                    imagemanip.load_metadata(item,self.collection)
+                    c.load_metadata(item)
                     view.add_item(item)
                 self.browser.lock.release()
             if item.meta!=None:
-                imagemanip.make_thumb(item,None,True) ##force creation of thumbnail (3rd arg = True)
-                imagemanip.load_thumb(item)
+                c.make_thumbnail(item,None,True) ##force creation of thumbnail (3rd arg = True)
+                c.load_thumbnail(item)
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
         if len(self.queue)==0:
             idle_add(self.browser.update_status,2.0,'Recreating thumbnails done')
@@ -309,7 +311,7 @@ class ReloadMetadataJob(WorkerJob):
             self.browser.lock.acquire()
             if view.del_item(item):
                 item.meta=None
-                imagemanip.load_metadata(item,self.collection)
+                c.load_metadata(item)
                 log.info('reloaded metadata for '+item.uid)
                 view.add_item(item)
             self.browser.lock.release()
@@ -440,12 +442,10 @@ class WalkDirectoryJob(WorkerJob):
                 if collection.find(item)<0:
                     print 'found new item',item.uid
                     if not collection.verify_after_walk:
-                        if collection.load_metadata:
-                            imagemanip.load_metadata(item,None,get_thumbnail=collection.load_embedded_thumbs)
-                            if collection.load_embedded_thumbs and not item.thumb:
-                                item.thumb=False
+                        if collection.load_meta:
+                            collection.load_metadata(item)
                         elif collection.load_preview_icons:
-                            imagemanip.load_thumb_from_preview_icon(item)
+                            collection.load_thumb(item)
                             if not item.thumb:
                                 item.thumb=False
                         self.browser.lock.acquire()
@@ -539,7 +539,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 item=baseobjects.Item(fullpath,mtime)
                 if collection.find(item)<0:
                     self.browser.lock.acquire()
-                    imagemanip.load_metadata(item) ##todo: check if exists already
+                    collection.load_metadata(item) ##todo: check if exists already
                     collection.add(item)
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
@@ -926,7 +926,7 @@ class SaveViewJob(WorkerJob):
             if not self.selected_only or listitems(i).selected:
                 if self.save:
                     if item.meta_changed:
-                        imagemanip.save_metadata(item)
+                        self.collection.write_metadata(item)
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
                         idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
@@ -984,7 +984,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                imagemanip.load_metadata(item,None) ##todo: check if exists already
+                collection.load_metadata(item) ##todo: check if exists already
                 time.sleep(0.005)
                 self.browser.lock.acquire()
                 collection.add(item)
@@ -1006,7 +1006,7 @@ class VerifyImagesJob(WorkerJob):
                 item.mtime=mtime
                 item.image=None
                 item.qview=None
-                imagemanip.load_metadata(item,None)
+                collection.load_metadata(item)
                 item.thumb=None
                 item.thumburi=None
                 self.browser.lock.acquire()
@@ -1038,8 +1038,8 @@ class MakeThumbsJob(WorkerJob):
             item=collection[i]
             if i%20==0:
                 idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
-            if not imagemanip.has_thumb(item):
-                imagemanip.make_thumb(item)
+            if not collection.has_thumbnail(item):
+                collection.make_thumbnail(item)
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
                 idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             i+=1
@@ -1083,8 +1083,8 @@ class DirectoryUpdateJob(WorkerJob):
                             collection.delete(item)
                             self.browser.lock.release()
                             item.mtime=io.get_mtime(fullpath)
-                            imagemanip.load_metadata(item,collection)
-                            imagemanip.make_thumb(item) ##todo: queue this onto lower priority job
+                            collection.load_metadata(item)
+                            collection.make_thumbnail(item) ##todo: queue this onto lower priority job
                             self.browser.lock.acquire()
                             collection.add(item)
                             self.browser.lock.release()
@@ -1092,12 +1092,12 @@ class DirectoryUpdateJob(WorkerJob):
                     else:
                         item=baseobjects.Item(fullpath)
                         item.mtime=io.get_mtime(fullpath)
-                        imagemanip.load_metadata(item,collection)
+                        collection.load_metadata(item)
                         self.browser.lock.acquire()
                         collection.add(item)
                         self.browser.lock.release()
-                        if not imagemanip.has_thumb(item):
-                            imagemanip.make_thumb(item) ##todo: queue this onto lower priority job
+                        if not collection.has_thumb(item):
+                            collection.make_thumb(item) ##todo: queue this onto lower priority job
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':

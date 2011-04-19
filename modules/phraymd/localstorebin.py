@@ -22,6 +22,7 @@ License:
 ##standard imports
 import bisect
 import datetime
+import io
 import os
 import os.path
 import re
@@ -38,6 +39,7 @@ import viewsupport
 import baseobjects
 import simple_parser as sp
 import dialogs
+import imagemanip
 
 class LocalStorePrefWidget(gtk.VBox):
     def __init__(self,value_dict=None):
@@ -78,7 +80,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'name': self.name_entry.get_text().replace('/','').strip(),
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
-                'load_metadata':self.load_meta_check.get_active(),
+                'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
@@ -89,7 +91,7 @@ class LocalStorePrefWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
-        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
 
 
@@ -151,7 +153,7 @@ class NewLocalStoreWidget(gtk.VBox):
                 'name': self.name_entry.get_text().strip(),
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
-                'load_metadata':self.load_meta_check.get_active(),
+                'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
                 'monitor_image_dirs':self.monitor_images_check.get_active(),
@@ -163,7 +165,7 @@ class NewLocalStoreWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
-        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
@@ -287,8 +289,9 @@ class CollectionView(baseobjects.ViewBase):
 
 
 class Collection(baseobjects.CollectionBase):
-    '''defines a sorted collection of Items with
-    callbacks to plugins when the contents of the collection change'''
+    '''
+    Defines a persistent collection of images on the local filesystem
+    '''
     ##todo: do more plugin callbacks here instead of the job classes?
     type='LOCALSTORE'
     type_descr='Local Store'
@@ -297,7 +300,7 @@ class Collection(baseobjects.CollectionBase):
     persistent=True
     user_creatable=True
     view_class=CollectionView
-    col_prefs=('name','image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+    col_prefs=('name','image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
                 'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
@@ -310,7 +313,7 @@ class Collection(baseobjects.CollectionBase):
         self.image_dirs=[]
         self.recursive=True
         self.verify_after_walk=True
-        self.load_metadata=True #image will be loaded into the collection and view without metadata
+        self.load_meta=True #image will be loaded into the collection and view without metadata
         self.load_embedded_thumbs=False #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
         self.trash_location=None #none defaults to <collection dir>/.trash
@@ -519,38 +522,69 @@ class Collection(baseobjects.CollectionBase):
     ''' ************************************************************************
                             MANIPULATING INDIVIDUAL ITEMS
         ************************************************************************'''
-    def copy_item(self,src_collection,src_item):
+    def copy_item(self,src_collection,src_item,dest_item):
         'copy an item from another collection source'
-        pass
+        try:
+            self.add(dest_item)
+            stream=src_collection.get_file_data(src_item)
+            self.write_file_data(item,stream)
+            item.mtime=io.get_mtime()
+        except:
+            print 'Error copying src item'
     def delete_item(self,item):
         'remove the item from the underlying store'
-        pass
+        try:
+            io.remove_file(item.uid)
+            return True
+        except:
+            print 'Error deleting',item.uid
+            return False
     def load_thumbnail(self,item):
         'load the thumbnail from the local cache'
-        pass
-    def make_thumbnail(self,item,pixbuf):
+        if self.load_preview_icons:
+            if imagemanip.load_thumb_from_preview_icon(item):
+                return
+        return imagemanip.load_thumb(item)
+    def has_thumbnail(self,item):
+        return imagemanip.has_thumb(item)
+    def make_thumbnail(self,item,interrupt_fn,force=False):
         'create a cached thumbnail of the image'
-        pass
+        if not force and (self.load_embedded_thumbs or collection.load_preview_icons):
+            return False
+        imagemanip.make_thumb(item,interrupt_fn,force)
+        imagemanip.update_thumb_date(item)
+        return
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed'
         pass
     def load_metadata(self,item):
         'retrieve metadata for an item from the source'
-        pass
+        if self.load_embedded_thumbs:
+            result=imagemanip.load_metadata(item,self,None,True)
+        else:
+            result=imagemanip.load_metadata(item,self,None,False)
+        if self.load_embedded_thumbs and not item.thumb:
+            item.thumb=False
+        return result
     def write_metadata(self,item):
         'write metadata for an item to the source'
-        pass
-    def load_pixbuf(self,item,size_bound=None):
+        return imagemanip.save_metadata(item)
+    def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
-        pass
+        draft_mode=False
+        return imagemanip.load_image(item,interrupt_fn,draft_mode)
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
-        pass
+        return open(item.uid,'rb')
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
-        pass
-
-
+        try:
+            f=open(dest_item.uid,'wb')
+            f.write(src_stream.read())
+            f.close()
+            return True
+        except:
+            print 'Error writing file data',dest_item
 
 
 baseobjects.register_collection('LOCALSTORE',Collection)

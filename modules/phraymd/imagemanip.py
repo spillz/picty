@@ -91,22 +91,6 @@ def orient_image(image,meta):
     return image
 
 
-def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
-    if item.meta:
-        meta=item.meta.copy()
-    else:
-        meta=item.meta
-    result=metadata.load_metadata(item,item.uid,get_thumbnail)
-    if result:
-##PICKLED DICT
-#        if isinstance(item.meta,dict):
-#            item.meta=imageinfo.PickledDict(item.meta)
-        if item.thumb and get_thumbnail:
-            item.thumb=orient_pixbuf(item.thumb,item.meta)
-        if collection!=None and item.meta!=meta:
-            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
-    return result
-
 def rotate_left(item,collection=None):
     '''
     rotates image anti-clockwise by setting the Orientation metadata key (rotate thumbnail accordingly and reset full size images)
@@ -140,6 +124,22 @@ def rotate_right(item,collection=None):
     item.qview=None
     rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
+
+def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
+    if item.meta:
+        meta=item.meta.copy()
+    else:
+        meta=item.meta
+    result=metadata.load_metadata(item,item.uid,get_thumbnail)
+    if result:
+##PICKLED DICT
+#        if isinstance(item.meta,dict):
+#            item.meta=imageinfo.PickledDict(item.meta)
+        if item.thumb and get_thumbnail:
+            item.thumb=orient_pixbuf(item.thumb,item.meta)
+        if collection!=None and item.meta!=meta:
+            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
+    return result
 
 
 def save_metadata(item):
@@ -438,7 +438,7 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
     '''
     sets the internal date of the cached thumbnail image to that of the image file
     if the thumbnail name the thumbnail name will be updated
-    if no thumbnail is present it will be create
+    if no thumbnail is present it will be created
     interrupt_fn - callback that returns False if job should be interrupted
     remove_old - if the item name has changed, removes the old thumbnail
     affects mtime, thumb, thumburi members of item

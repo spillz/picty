@@ -175,7 +175,7 @@ class MetaDataViewer(pluginbase.Plugin):
     def metadata_save(self,widget):
         item=self.item
         if item.meta_changed:
-            imagemanip.save_metadata(item)
+            self.viewer.browser.collection.write_metadata(item)
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.update_meta_table(item)

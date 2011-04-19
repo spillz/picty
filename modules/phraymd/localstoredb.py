@@ -7,7 +7,7 @@ import baseobjects
 import viewsupport
 import monitor2 as monitor
 
-col_prefs=('name','image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+col_prefs=('name','image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
             'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
 
 
@@ -101,7 +101,7 @@ class LocalStoreDB(baseobjects.CollectionBase):
         self.image_dirs=[]
         self.recursive=True
         self.verify_after_walk=True
-        self.load_metadata=True #image will be loaded into the collection and view without metadata
+        self.load_meta=True #image will be loaded into the collection and view without metadata
         self.load_embedded_thumbs=False #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
         self.trash_location=None #none defaults to <collection dir>/.trash

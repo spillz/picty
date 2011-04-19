@@ -76,6 +76,10 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
 
 
 class CollectionBase:
+    '''
+    Defines a list of image items, which can be accessed with list-like semantics
+    and provides methos to retrieving and manipulating the associated images
+    '''
     pref_items=['type','type_descr','name','pixbuf','id'] ##the list of variables that will be saved
     persistent=False
     type=None
@@ -223,7 +227,7 @@ class CollectionBase:
     def write_metadata(self,item):
         'write metadata for an item to the source'
         pass
-    def load_pixbuf(self,item,size_bound=None):
+    def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         pass
     def get_file_stream(self,item):
@@ -311,7 +315,7 @@ class Item(str):
 
     def load_thumbnail(self):
         pass
-    def make_thumbnail(self,pixbuf):
+    def make_thumbnail(self,item,interrupt_fn,force=False):
         pass
     def get_pixbuf(self,size_bound):
         '''

@@ -72,8 +72,9 @@ class ImageLoader:
         while self.thread.isAlive():
             time.sleep(0.1)
 
-    def set_item(self,item,sizing=None,zoom='fit'):
+    def set_item(self,collection,item,sizing=None,zoom='fit'):
         self.vlock.acquire()
+        self.collection=collection
         self.item=item
         self.sizing=sizing ##if sizing is none, zoom is ignored
         self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel, so typically zoom<=1
@@ -111,11 +112,12 @@ class ImageLoader:
                 self.vlock.acquire()
                 continue
             if not item.meta:
+                #self.collection.load_metadata(item) ##todo: 2nd arg = collection
                 imagemanip.load_metadata(item) ##todo: 2nd arg = collection
             if not item.image:
                 def interrupt_cb():
                     return self.item.uid==item.uid
-                imagemanip.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
+                self.collection.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
                 gobject.idle_add(self.viewer.ImageLoaded,item)
                 if not item.image:
                     self.vlock.acquire()
@@ -304,7 +306,7 @@ class ImageViewer(gtk.VBox):
     def ImageLoaded(self,item):
         pass
 
-    def SetItem(self,item,browser=None):
+    def SetItem(self,item,browser=None,collection=None):
         if not self.request_plugin_release():
             return False
         if not pluginmanager.mgr.callback_all_until_false('viewer_item_opening',item):
@@ -314,7 +316,7 @@ class ImageViewer(gtk.VBox):
         self.hide_scrollbars()
         self.item=item
         self.browser=browser
-        self.il.set_item(item,(self.geo_width,self.geo_height),zoom=self.zoom_level)
+        self.il.set_item(collection,item,(self.geo_width,self.geo_height),zoom=self.zoom_level)
         self.redraw_view()
         return True
 

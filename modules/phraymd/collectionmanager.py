@@ -252,13 +252,13 @@ class CollectionSet(gobject.GObject):
         if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
             ##gphoto2 device (MTP)
             c.load_embedded_thumbs=False
-            c.load_metadata=False
+            c.load_meta=False
             c.load_preview_icons=True
             c.store_thumbnails=False ##todo: this needs to be implemented
         else:
             ##non-gphoto2 device (Mass Storage)
             c.load_embedded_thumbs=True
-            c.load_metadata=True
+            c.load_meta=True
             c.load_preview_icons=False
             c.store_thumbnails=False
         if self.count('DEVICE')==0:

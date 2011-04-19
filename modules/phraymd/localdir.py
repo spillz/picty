@@ -90,7 +90,7 @@ class NewLocalDirWidget(gtk.VBox):
                 'name':os.path.split(path)[1],
                 'image_dirs': [path],
                 'recursive': self.recursive_button.get_active(),
-                'load_metadata':self.load_meta_check.get_active(),
+                'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
@@ -100,7 +100,7 @@ class NewLocalDirWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
-        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
@@ -144,7 +144,7 @@ class LocalDirPrefWidget(gtk.VBox):
                 'id': self.cid,
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
-                'load_metadata':self.load_meta_check.get_active(),
+                'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
 #                'store_thumbnails':self.store_thumbnails_check.get_active(),
@@ -156,7 +156,7 @@ class LocalDirPrefWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
-        self.load_meta_check.set_active(val_dict['load_metadata'])
+        self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
 #        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
@@ -256,7 +256,7 @@ class LocalDir(localstorebin.Collection):
     add_widget=NewLocalDirWidget
     user_creatable=False
     view_class=LocalDirView
-    col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
+    col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
                 'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
     def __init__(self,prefs): #todo: store base path for the collection
         ##runtime attributes
@@ -268,7 +268,7 @@ class LocalDir(localstorebin.Collection):
         self.image_dirs=[]
         self.recursive=True
         self.verify_after_walk=False
-        self.load_metadata=True #image will be loaded into the collection and view without metadata
+        self.load_meta=True #image will be loaded into the collection and view without metadata
         self.load_embedded_thumbs=True #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
         self.trash_location=None #none defaults to <collection dir>/.trash

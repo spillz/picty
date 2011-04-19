@@ -1056,7 +1056,7 @@ class MainFrame(gtk.VBox):
         browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()
-        self.iv.SetItem(item,browser)
+        self.iv.SetItem(item,browser,self.active_collection)
         self.is_iv_showing=True
         browser.update_geometry(True)
         if not visible:
@@ -1248,7 +1248,7 @@ class MainFrame(gtk.VBox):
 
     def save_item(self,widget,item):
         if item.meta_changed:
-            imagemanip.save_metadata(item)
+            self.active_collection.write_metadata(item)
         self.active_browser().redraw_view()
 
     def revert_item(self,widget,item):
