@@ -140,7 +140,7 @@ class CollectionSet(gobject.GObject):
     def __delitem__(self,name,delete_cache_file=True):
         coll=self.collections[name]
         if delete_cache_file:
-            coll.delete_cache_files()
+            coll.delete_store()
         self.collection_removed(coll.id)
         del self.collections[name]
         if coll.type=='DEVICE' and self.count('DEVICE')==0: ##todo: is there anyway to not hardcode this here? (delegate to the class)

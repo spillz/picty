@@ -211,7 +211,7 @@ class LocalStoreDB(baseobjects.CollectionBase):
             item.meta=itdata[2]
             item.thumburi=itdata[3]
             return item
-    def get_all_items(self): #was get_items
+    def get_all_items(self):
         print 'db get items'
         pass
     def empty(self,empty_views=True):

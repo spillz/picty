@@ -327,88 +327,43 @@ class Collection(baseobjects.CollectionBase):
 
         self.id=self.name
 
-    def create_store(self):
-        return create_empty_localstore(self.name,self.get_prefs())
+    ''' ************************************************************************
+                            PREFERENCES, OPENING AND CLOSING
+        ************************************************************************'''
 
-    def add(self,item,add_to_view=True):
-        '''
-        add an item to the collection and notify plugin
-        '''
+    def set_prefs(self,prefs):
+        for p in self.col_prefs:
+            if p in prefs:
+                self.__dict__[p]=prefs[p]
+
+    def get_prefs(self):
+        prefs={}
+        for p in self.col_prefs:
+            prefs[p]=self.__dict__[p]
+        return prefs
+
+    def delete_store(self):
+        col_dir=os.path.join(settings.collections_dir,self.name)
         try:
-            ind=bisect.bisect_left(self.items,item)
-            if len(self.items)>ind>0 and self.items[ind]==item:
-                raise LookupError
-            self.items.insert(ind,item)
-            self.numselected+=item.selected
-            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
-            if add_to_view:
-                for v in self.views:
-                    v.add_item(item)
+            if os.path.isdir(col_dir):
+                for root, dirs, files in os.walk(col_dir, topdown=False):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
+                os.rmdir(col_dir)
+            elif os.path.isfile(col_dir):
+                io.remove_file(col_dir)
             return True
-        except LookupError:
-            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
-            import traceback,sys
+        except IOError:
+            print 'Error removing collection data files in',col_dir
+            import sys,traceback
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print tb_text
             return False
 
-    def find(self,item):
-        '''
-        find an item in the collection and return its index
-        '''
-        i=bisect.bisect_left(self,item)
-        if i>=len(self.items) or i<0:
-            return -1
-        if self.items[i]==item:
-            return i
-        return -1
-
-    def item_metadata_update(self,item):
-        '''
-        notification from item that its metadata has been changed
-        '''
-        pass
-#        ind=find(item)
-#        if ind>=0:
-#            self.items[ind]=item
-
-    def delete(self,item,delete_from_view=True):
-        '''
-        delete an item from the collection, returning the item to the caller if present
-        notifies plugins if the item is remmoved
-        '''
-        i=self.find(item)
-        if i>=0:
-            item=self.items[i]
-            self.numselected-=item.selected
-            self.items.pop(i)
-            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
-            for v in self.views:
-                v.del_item(item)
-            return item
-        return None
-
-    def __call__(self,ind):
-        return self.items[ind]
-
-    def __getitem__(self,ind):
-        return self.items[ind]
-
-    def get_items(self):
-        return self.items[:]
-
-    def start_monitor(self,callback):
-        if self.monitor_image_dirs:
-            self.monitor_master_callback=callback
-            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
-
-    def end_monitor(self):
-        if self.monitor!=None and self.monitor_image_dirs:
-            self.monitor.stop()
-            self.monitor=None
-
-    def monitor_callback(self,path,action,is_dir):
-        self.monitor_master_callback(self,path,action,is_dir)
+    def create_store(self):
+        return create_empty_localstore(self.name,self.get_prefs())
 
     def open(self):
         '''
@@ -470,6 +425,87 @@ class Collection(baseobjects.CollectionBase):
             return False
         return True
 
+    ''' ************************************************************************
+                            MONITORING THE COLLECTION
+        ************************************************************************'''
+
+    def start_monitor(self,callback):
+        if self.monitor_image_dirs:
+            self.monitor_master_callback=callback
+            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
+
+    def end_monitor(self):
+        if self.monitor!=None and self.monitor_image_dirs:
+            self.monitor.stop()
+            self.monitor=None
+
+    def monitor_callback(self,path,action,is_dir):
+        self.monitor_master_callback(self,path,action,is_dir)
+
+
+
+    ''' ************************************************************************
+                            MANAGING THE LIST OF COLLECTION ITEMS
+        ************************************************************************'''
+
+    def add(self,item,add_to_view=True):
+        '''
+        add an item to the collection and notify plugin
+        '''
+        try:
+            ind=bisect.bisect_left(self.items,item)
+            if len(self.items)>ind>0 and self.items[ind]==item:
+                raise LookupError
+            self.items.insert(ind,item)
+            self.numselected+=item.selected
+            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
+            if add_to_view:
+                for v in self.views:
+                    v.add_item(item)
+            return True
+        except LookupError:
+            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
+
+    def delete(self,item,delete_from_view=True):
+        '''
+        delete an item from the collection, returning the item to the caller if present
+        notifies plugins if the item is remmoved
+        '''
+        i=self.find(item)
+        if i>=0:
+            item=self.items[i]
+            self.numselected-=item.selected
+            self.items.pop(i)
+            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
+            for v in self.views:
+                v.del_item(item)
+            return item
+        return None
+
+    def find(self,item):
+        '''
+        find an item in the collection and return its index
+        '''
+        i=bisect.bisect_left(self,item)
+        if i>=len(self.items) or i<0:
+            return -1
+        if self.items[i]==item:
+            return i
+        return -1
+
+    def __call__(self,ind):
+        return self.items[ind]
+
+    def __getitem__(self,ind):
+        return self.items[ind]
+
+    def get_all_items(self):
+        return self.items[:]
+
     def empty(self,empty_views=True):
         del self.items[:]
         self.numselected=0
@@ -480,73 +516,40 @@ class Collection(baseobjects.CollectionBase):
     def __len__(self):
         return len(self.items)
 
-    def set_prefs(self,prefs):
-        for p in self.col_prefs:
-            if p in prefs:
-                self.__dict__[p]=prefs[p]
+    ''' ************************************************************************
+                            MANIPULATING INDIVIDUAL ITEMS
+        ************************************************************************'''
+    def copy_item(self,src_collection,src_item):
+        'copy an item from another collection source'
+        pass
+    def delete_item(self,item):
+        'remove the item from the underlying store'
+        pass
+    def load_thumbnail(self,item):
+        'load the thumbnail from the local cache'
+        pass
+    def make_thumbnail(self,item,pixbuf):
+        'create a cached thumbnail of the image'
+        pass
+    def item_metadata_update(self,item):
+        'collection will receive this call when item metadata has been changed'
+        pass
+    def load_metadata(self,item):
+        'retrieve metadata for an item from the source'
+        pass
+    def write_metadata(self,item):
+        'write metadata for an item to the source'
+        pass
+    def load_pixbuf(self,item,size_bound=None):
+        'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
+        pass
+    def get_file_stream(self,item):
+        'return a stream read the entire photo file from the source (as binary stream)'
+        pass
+    def write_file_data(self,dest_item,src_stream):
+        'write the entire photo file (as a stream) to the source (as binary stream)'
+        pass
 
-    def get_prefs(self):
-        prefs={}
-        for p in self.col_prefs:
-            prefs[p]=self.__dict__[p]
-        return prefs
-
-    def delete_cache_files(self):
-        col_dir=os.path.join(settings.collections_dir,self.name)
-        try:
-            if os.path.isdir(col_dir):
-                for root, dirs, files in os.walk(col_dir, topdown=False):
-                    for name in files:
-                        os.remove(os.path.join(root, name))
-                    for name in dirs:
-                        os.rmdir(os.path.join(root, name))
-                os.rmdir(col_dir)
-            elif os.path.isfile(col_dir):
-                io.remove_file(col_dir)
-            return True
-        except IOError:
-            print 'Error removing collection data files in',col_dir
-            import sys,traceback
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print tb_text
-            return False
-
-    def legacy_open(self,filename='',load_items=True):  ##todo: put all of the legacy cruft elsewhere
-        '''
-        load the collection from a binary pickle file identified by the pathname in the filename argument
-        '''
-        if self.is_open:
-            return True
-        print 'loading legacy collection',filename
-        try:
-            if not filename:
-                return False
-            f=open(filename,'rb')
-            version=cPickle.load(f)
-            if version<'0.3.0':
-                self.image_dirs=settings.legacy_image_dirs
-            elif version<='0.4.0':
-                self.image_dirs=cPickle.load(f)
-            elif version>='0.4.1':
-                d=cPickle.load(f)
-                self.set_prefs(d)
-            if load_items:
-                if version>='0.4.0':
-                    self.items=cPickle.load(f)
-                else:
-                    f.close()
-                    c=Collection([])
-                    c.load(filename)
-                    self.items[:]=c[:]
-            self.numselected=0
-            return True
-        except:
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print "Error Loading Collection",filename
-            print tb_text
-            self.empty()
-            return False
 
 
 

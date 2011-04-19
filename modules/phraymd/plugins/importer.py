@@ -194,7 +194,7 @@ class ImporterImportJob(backend.WorkerJob):
         collection=self.collection_dest
         if self.items==None:
             if self.import_all:
-                self.items=self.collection_src.get_items()
+                self.items=self.collection_src.get_all_items()
                 print 'importing all',len(self.items)
             else:
                 self.items=self.collection_src.get_active_view().get_selected_items()

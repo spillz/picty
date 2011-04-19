@@ -41,7 +41,7 @@ import simple_parser as sp
 import imagemanip
 import io
 import dialogs
-
+import localstorebin
 
 class NewLocalDirWidget(gtk.VBox):
     def __init__(self,main_dialog,value_dict=None):
@@ -246,7 +246,7 @@ class LocalDirView(baseobjects.ViewBase):
 
 
 
-class LocalDir(baseobjects.CollectionBase):
+class LocalDir(localstorebin.Collection):
     '''defines a sorted collection of Items with
     callbacks to plugins when the contents of the collection change'''
     ##todo: do more plugin callbacks here instead of the job classes?
@@ -259,9 +259,8 @@ class LocalDir(baseobjects.CollectionBase):
     col_prefs=('name', 'id', 'image_dirs','recursive','verify_after_walk','load_metadata','load_embedded_thumbs',
                 'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
     def __init__(self,prefs): #todo: store base path for the collection
-        ##the following attributes are set at run-time by the owner
+        ##runtime attributes
         baseobjects.CollectionBase.__init__(self,prefs)
-
 #        ##the collection consists of an array of entries for images, which are cached in the collection file
         self.items=[] #the image/video items
 
@@ -301,105 +300,7 @@ class LocalDir(baseobjects.CollectionBase):
             gobject.idle_add(self.mainframe.view_image,item)
         return True
 
-    def add(self,item,add_to_view=True):
-        '''
-        add an item to the collection and notify plugin
-        '''
-        try:
-            ind=bisect.bisect_left(self.items,item)
-            if len(self.items)>ind>0 and self.items[ind]==item:
-                raise LookupError
-            self.items.insert(ind,item)
-            self.numselected+=item.selected
-            pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
-            if add_to_view:
-                for v in self.views:
-                    v.add_item(item)
-            return True
-        except LookupError:
-            print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
-            import traceback,sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print tb_text
-            return False
-
-    def find(self,item):
-        '''
-        find an item in the collection and return its index
-        '''
-        i=bisect.bisect_left(self,item)
-        if i>=len(self.items) or i<0:
-            return -1
-        if self.items[i]==item:
-            return i
-        return -1
-
-    def item_metadata_update(self,item):
-        '''
-        notification from item that its metadata has been changed
-        '''
-        pass
-
-    def delete(self,item,delete_from_view=True):
-        '''
-        delete an item from the collection, returning the item to the caller if present
-        notifies plugins if the item is remmoved
-        '''
-        i=self.find(item)
-        if i>=0:
-            item=self.items[i]
-            self.numselected-=item.selected
-            self.items.pop(i)
-            pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
-            for v in self.views:
-                v.del_item(item)
-            return item
-        return None
-
-    def __call__(self,ind):
-        return self.items[ind]
-
-    def __getitem__(self,ind):
-        return self.items[ind]
-
-    def get_items(self):
-        return self.items[:]
-
-    def start_monitor(self,callback):
-        if self.monitor_image_dirs:
-            self.monitor_master_callback=callback
-            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
-
-    def end_monitor(self):
-        if self.monitor!=None and self.monitor_image_dirs:
-            self.monitor.stop()
-            self.monitor=None
-
-    def monitor_callback(self,path,action,is_dir):
-        self.monitor_master_callback(self,path,action,is_dir)
-
-    def empty(self,empty_views=True):
-        del self.items[:]
-        self.numselected=0
-        if empty_views:
-            for v in self.views:
-                v.empty()
-
-    def __len__(self):
-        return len(self.items)
-
-    def set_prefs(self,prefs):
-        for p in self.col_prefs:
-            if p in prefs:
-                self.__dict__[p]=prefs[p]
-
-    def get_prefs(self):
-        prefs={}
-        for p in self.col_prefs:
-            prefs[p]=self.__dict__[p]
-        return prefs
-
-    def delete_cache_files(self):
+    def delete_store(self):
         return True
 
 

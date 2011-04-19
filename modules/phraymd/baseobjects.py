@@ -16,7 +16,16 @@ def register_view(type_id,class0):
 def register_item(type_id,class0):
     registered_item_classes[type_id]=class0
 
+def get_persistent_collections():
+    '''
+    return a list of paths to the persistent collections
+    '''
+    return []
+
 def init_collection(col_dir):
+    '''
+    Helper function to load preference file for persistent collections
+    '''
     try:
         if os.path.isfile(col_dir):
             return None
@@ -85,6 +94,10 @@ class CollectionBase:
         if prefs:
             self.set_prefs(prefs)
 
+    ''' ************************************************************************
+                            PREFERENCES, OPENING AND CLOSING
+        ************************************************************************'''
+
     def set_prefs(self,prefs):
         for p in self.pref_items:
             if p in prefs:
@@ -102,9 +115,20 @@ class CollectionBase:
     def data_file(self):
         return os.path.join(os.path.join(settings.collections_dir,self.name),'data')
 
-    def delete_store(self):
-        os.remove
+    def create_store(self):
+        pass
 
+    def delete_store(self):
+        pass
+
+    def open(self):
+        return True
+    def close(self):
+        return True
+
+    ''' ************************************************************************
+                            VIEW METHODS
+        ************************************************************************'''
 
     def add_view(self,sort_criteria=viewsupport.get_mtime):
         if self.view_class==None:
@@ -129,55 +153,86 @@ class CollectionBase:
     def get_active_view(self):
         return self.active_view
 
-    ##required overrides (must be overridden to implement a collection)
-    def pref_gui_box(self):
+    ''' ************************************************************************
+                            MONITORING THE COLLECTION
+        ************************************************************************'''
+
+    def start_monitor(self,callback):
         pass
+
+    def end_monitor(self):
+        pass
+
+    ''' ************************************************************************
+                            MANAGING THE LIST OF COLLECTION ITEMS
+        ************************************************************************'''
+
+
+    ##required overrides (must be overridden to implement a collection)
     def add(self,item,add_to_view=True):
         '''
-        provider should send 't_collection_item_added' to plugins
+        implementation should call pluginmgr.t_collection_item_added
         '''
-        pass
-    def item_metadata_update(self,item):
-        '''
-        notification from item that its metadata has been changed
-        '''
-#        '''
-#        provider should send 't_collection_item_updated' to plugins --NOT SURE IF NECESSARY
-#        '''
-        pass
-    def find(self,item):
         pass
     def delete(self,item,delete_from_view=True):
         '''
-        provider should send 't_collection_item_removed' to plugins
+        implementation should call pluginmgr.t_collection_item_removed
         '''
         pass
+    def find(self,item):
+        'returns index of item'
+        pass
     def __call__(self,ind):
+        'returns item at list position ind'
         pass
     def __getitem__(self,ind):
+        'returns item at list position ind'
         pass
-    def get_all_items(self): #was get_items
+    def get_all_items(self):
+        'returns list containing all items'
         pass
-    def open(self):
-        return True
-    def close(self):
-        return True
     def empty(self,empty_views=True):
+        'removes all items from the collection (but does not delete items at source)'
         pass
     def __len__(self):
+        'returns number of items in the colleciton'
+        pass
+
+
+    ''' ************************************************************************
+                            MANIPULATING INDIVIDUAL ITEMS
+        ************************************************************************'''
+    def copy_item(self,src_collection,src_item):
+        'copy an item from another collection source'
+        pass
+    def delete_item(self,item):
+        'remove the item from the underlying store'
         pass
     def load_thumbnail(self,item):
+        'load the thumbnail from the local cache'
         pass
     def make_thumbnail(self,item,pixbuf):
+        'create a cached thumbnail of the image'
         pass
-    def get_pixbuf(self,item,size_bound=None):
+    def item_metadata_update(self,item):
+        'collection will receive when item metadata has been changed'
         pass
-    def set_pixbuf(self,item):
+    def load_metadata(self,item):
+        'retrieve metadata for an item from the source'
         pass
-    def get_file_data(self,item):
+    def write_metadata(self,item):
+        'write metadata for an item to the source'
         pass
-    def set_file_data(self,item):
+    def load_pixbuf(self,item,size_bound=None):
+        'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         pass
+    def get_file_stream(self,item):
+        'return a stream read the entire photo file from the source (as binary stream)'
+        pass
+    def write_file_data(self,dest_item,src_stream):
+        'write the entire photo file (as a stream) to the source (as binary stream)'
+        pass
+
 
 
 class ViewBase: ##base class for the filter view of a collection and (for now) reference implementation
