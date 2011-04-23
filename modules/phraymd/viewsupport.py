@@ -218,7 +218,7 @@ def viewer_text(item,size=None,zoom=None):
     if val>datetime.datetime(1900,1,1):
         details+='Date: '+str(val)+'\n'
 ###    details+='Date Modified: '+str(get_mtime(item))
-    if item.meta and 'Model' in item.meta:
+    if item.meta!=None and 'Model' in item.meta:
         details+='Model: '+str(item.meta['Model'])+'\n'
     #Exposure details
     val=get_focal(item)
@@ -299,10 +299,10 @@ def selected_filter(l,r,item):
     return item.selected
 
 def changed_filter(l,r,item):
-    return item.meta_changed
+    return item.is_meta_changed()
 
 def tagged_filter(l,r,item):
-    if not item.meta:
+    if item.meta==None:
         return False
     if 'Keywords' not in item.meta:
         return False
@@ -320,7 +320,7 @@ def keyword_filter(item,test):
     relevance=0
     item_string=''
     item_string+=item.uid.lower()
-    if item.meta:
+    if item.meta!=None:
         for k,v in item.meta.iteritems():
             if v:
                 if type(v) in (tuple,list):

@@ -111,9 +111,9 @@ class ImageLoader:
             if not item:
                 self.vlock.acquire()
                 continue
-            if not item.meta:
-                #self.collection.load_metadata(item) ##todo: 2nd arg = collection
-                imagemanip.load_metadata(item) ##todo: 2nd arg = collection
+            if item.meta==None:
+                self.collection.load_metadata(item) ##todo: 2nd arg = collection
+                #imagemanip.load_metadata(item) ##todo: 2nd arg = collection
             if not item.image:
                 def interrupt_cb():
                     return self.item.uid==item.uid

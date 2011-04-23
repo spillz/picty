@@ -49,8 +49,8 @@ class Exiv2Metadata(pyexiv2.ImageMetadata):
             pyexiv2.ImageMetadata.__setitem__(self,key,value)
 
 def load_metadata(item=None,filename=None,thumbnail=False):
-    if item.meta==False:
-        return
+##    if item.meta==False:
+##        return
     try:
         if not filename:
             filename=item.uid
@@ -83,7 +83,7 @@ def load_metadata(item=None,filename=None,thumbnail=False):
         print 'Error reading metadata for',filename
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
-        item.meta=False
+##        item.meta=False
     item.mark_meta_saved()
     return True
 

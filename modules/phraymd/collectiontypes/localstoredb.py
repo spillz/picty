@@ -7,9 +7,6 @@ import baseobjects
 import viewsupport
 import monitor2 as monitor
 
-col_prefs=('name','image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-            'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
-
 
 class FilterFunc(object):
     def __call__(self,*args):
@@ -134,7 +131,12 @@ class LocalStoreDB(baseobjects.CollectionBase):
         self.cursor.execute('''create index item_index on items (id)''')
         self.cursor.close()
         self.conn.close()
-    def open(self):
+
+    def open(self,thread_manager,browser=None):
+        j=backend.LoadFlickrCollectionJob(thread_manager,self,browser)
+        thread_manager.queue_job_instance(j)
+
+    def _open(self):
         self.conn=SQLconnection(self.data_file())
         self.cursor=SQLcursor(self.conn)
         self.conn.create_function('filter_func',1,self.filter_func)
@@ -223,17 +225,6 @@ class LocalStoreDB(baseobjects.CollectionBase):
         result=self.cursor.fetchall()
         for r in result:
             return r[0]
-
-    def set_prefs(self,prefs):
-        for p in col_prefs:
-            if p in prefs:
-                self.__dict__[p]=prefs[p]
-
-    def get_prefs(self):
-        prefs={}
-        for p in col_prefs:
-            prefs[p]=self.__dict__[p]
-        return prefs
 
     def start_monitor(self,callback):
         if self.monitor_image_dirs:

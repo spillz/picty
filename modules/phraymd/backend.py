@@ -229,7 +229,7 @@ class ThumbnailJob(WorkerJob):
             if item.thumb:
                 continue
             if not imagemanip.load_thumb(item):
-                if item.thumb!=False and not imagemanip.has_thumb(item):
+                if item.thumb!=False and not self.collection.has_thumbnail(item):
                     self.cu_job_queue.append(item)
                     continue
             i+=1
@@ -334,7 +334,7 @@ class LoadCollectionJob(WorkerJob):
         log.info('Loading collection '+self.collection_file)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
         print 'OPENING COLLECTION',collection.id,collection.type
-        if collection.open():
+        if collection._open():
             if os.path.exists(collection.image_dirs[0]):
                 self.collection.start_monitor(self.worker.directory_change_notify)
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
@@ -925,12 +925,12 @@ class SaveViewJob(WorkerJob):
             item=listitems(i)
             if not self.selected_only or listitems(i).selected:
                 if self.save:
-                    if item.meta_changed:
+                    if item.is_meta_changed():
                         self.collection.write_metadata(item)
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
                         idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
                 else:
-                    if item.meta_changed:
+                    if item.is_meta_changed():
                         try:
                             orient=item.meta['Orientation']
                         except:
@@ -939,7 +939,7 @@ class SaveViewJob(WorkerJob):
                             orient_backup=item.meta_backup['Orientation']
                         except:
                             orient_backup=None
-                        item.meta_revert()
+                        item.meta_revert(self.collection)
                         ##todo: need to recreate thumb if orientation changed
                         if orient!=orient_backup:
                             item.thumb=None
@@ -1173,12 +1173,6 @@ class Worker:
 
     def kill_jobs_by_class(self,job_class):
         self.jobs.clear_by_job_class(job_class)
-
-#    def save_collection(self,filename): ##TODO: DO NOT USE!!
-#        self.queue_job(SaveCollectionJob,filename)
-#
-    def load_collection(self,filename):
-        self.queue_job(LoadCollectionJob,filename)
 
     def scan_and_verify(self,collection):
         ##todo: clear out other queued jobs in the scan and verify chain for this collection

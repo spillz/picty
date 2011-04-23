@@ -42,12 +42,13 @@ def init_collection(col_dir):
             c=registered_collection_classes[prefs['type']](prefs)
         except KeyError:
             c=registered_collection_classes['LOCALSTORE'](prefs)
+        print 'ADDING VIEW FOR',c.name,c.type
         c.add_view()
         return c
     except:
         import traceback,sys
         tb_text=traceback.format_exc(sys.exc_info()[2])
-        print "Error Creating Collection"
+        print "Error Initializing Collection"
         print tb_text
         return None
 
@@ -80,7 +81,7 @@ class CollectionBase:
     Defines a list of image items, which can be accessed with list-like semantics
     and provides methos to retrieving and manipulating the associated images
     '''
-    pref_items=['type','type_descr','name','pixbuf','id'] ##the list of variables that will be saved
+    pref_items=('type','name','pixbuf','id') ##the list of variables that will be saved
     persistent=False
     type=None
     user_creatable=False
@@ -103,8 +104,8 @@ class CollectionBase:
         ************************************************************************'''
 
     def set_prefs(self,prefs):
-        for p in self.pref_items:
-            if p in prefs:
+        for p in prefs:
+            if p in self.pref_items:
                 self.__dict__[p]=prefs[p]
 
     def get_prefs(self):
@@ -113,11 +114,14 @@ class CollectionBase:
             prefs[p]=self.__dict__[p]
         return prefs
 
+    def coll_dir(self):
+        return os.path.join(settings.collections_dir,self.name)
+
     def pref_file(self):
-        return os.path.join(os.path.join(settings.collections_dir,self.name),'prefs')
+        return os.path.join(self.coll_dir(),'prefs')
 
     def data_file(self):
-        return os.path.join(os.path.join(settings.collections_dir,self.name),'data')
+        return os.path.join(self.coll_dir(),'data')
 
     def create_store(self):
         pass
@@ -126,7 +130,8 @@ class CollectionBase:
         pass
 
     def open(self):
-        return True
+        return False
+
     def close(self):
         return True
 
@@ -158,7 +163,7 @@ class CollectionBase:
         return self.active_view
 
     ''' ************************************************************************
-                            MONITORING THE COLLECTION
+                        MONITORING THE COLLECTION SOURCE FOR CHANGES
         ************************************************************************'''
 
     def start_monitor(self,callback):
@@ -238,7 +243,6 @@ class CollectionBase:
         pass
 
 
-
 class ViewBase: ##base class for the filter view of a collection and (for now) reference implementation
     def __init__(self,key_cb=viewsupport.get_mtime,items=[],collection=None):
         self.key_cb=key_cb
@@ -307,8 +311,7 @@ class Item(str):
         self.thumburi=None
         self.qview=None
         self.image=None
-        self.meta_changed=False
-        self.meta=None ##a copy of self.meta will be stored as self.meta_backup if self.meta_changed is True
+        self.meta=None ##a copy of self.meta will be stored as self.meta_backup if meta has been changed but not saved
         self.selected=False
         self.relevance=0
         ##TODO: should an item have a collection member?
@@ -325,50 +328,54 @@ class Item(str):
         pass
     def key(self):
         return 1
+    def is_meta_changed(self):
+        return 'meta_backup' in self.__dict__
     def meta_revert(self,collection=None):
-        if self.meta_changed:
+        if self.is_meta_changed():
             self.meta=self.meta_backup
             del self.meta_backup
-        self.meta_changed=False
         if collection:
             collection.item_metadata_update(self)
     def mark_meta_saved(self,collection=None):
-        if self.meta_changed:
+        if self.is_meta_changed():
             del self.meta_backup
-        self.meta_changed=False
         if collection:
             collection.item_metadata_update(self)
     def set_meta_key(self,key,value,collection=None):
-        if self.meta==False or self.meta==None:
+        if self.meta==None:
             return None
         old=self.meta.copy()
-        if not self.meta_changed:
+        if not self.is_meta_changed():
             self.meta_backup=self.meta.copy()
-            self.meta_changed=True
         if key in self.meta and key not in self.meta_backup and value=='':
             del self.meta[key]
         else:
             self.meta[key]=value
         if self.meta==self.meta_backup:
             del self.meta_backup
-            self.meta_changed=False
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
-        return self.meta_changed
+        return self.is_meta_changed()
+    def init_meta(self,meta,collection=None):
+        if self.meta!=None:
+            return False
+        self.meta=meta
+        if collection:
+            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,None)
+            collection.item_metadata_update(self)
+        return True
     def set_meta(self,meta,collection=None):
-        if not self.meta_changed:
+        if not self.is_meta_changed():
             self.meta_backup=self.meta.copy()
-            self.meta_changed=True
         old=self.meta
         self.meta=meta
         if self.meta==self.meta_backup:
             del self.meta_backup
-            self.meta_changed=False
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
-        return self.meta_changed
+        return self.is_meta_changed()
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         if odict['thumb']:

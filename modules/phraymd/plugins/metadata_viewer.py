@@ -135,7 +135,7 @@ class MetaDataViewer(pluginbase.Plugin):
     def update_meta_table(self,item):
         self.change_block=True
         try:
-            enable=item.meta_changed
+            enable=item.is_meta_changed()
             self.button_save.set_sensitive(enable)
             self.button_revert.set_sensitive(enable)
         except:
@@ -149,7 +149,7 @@ class MetaDataViewer(pluginbase.Plugin):
             v=t[1]
             w=t[2]
             value=''
-            if not item.meta:
+            if item.meta==None:
                 self.meta_table.data_items[k][1].set_text('')
             else:
                 try:
@@ -164,6 +164,9 @@ class MetaDataViewer(pluginbase.Plugin):
                     print 'values',value,type(value)
         self.change_block=False
 
+    def is_meta_changed(self):
+        return 'meta_backup' in self.__dict__
+
     def metadata_changed(self,widget,key):
         if self.change_block:
             return
@@ -174,7 +177,7 @@ class MetaDataViewer(pluginbase.Plugin):
 
     def metadata_save(self,widget):
         item=self.item
-        if item.meta_changed:
+        if item.is_meta_changed():
             self.viewer.browser.collection.write_metadata(item)
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
@@ -182,7 +185,7 @@ class MetaDataViewer(pluginbase.Plugin):
 
     def metadata_revert(self,widget):
         item=self.item
-        if not item.meta_changed:
+        if not item.is_meta_changed():
             return
         try:
             orient=item.meta['Orientation']
@@ -192,7 +195,7 @@ class MetaDataViewer(pluginbase.Plugin):
             orient_backup=item.meta_backup['Orientation']
         except:
             orient_backup=None
-        item.meta_revert()
+        item.meta_revert(self.viewer.browser.collection)
         ##todo: need to recreate thumb if orientation changed
         if orient!=orient_backup:
             item.thumb=None
@@ -206,7 +209,8 @@ class MetaDataViewer(pluginbase.Plugin):
         item=self.item
         rows=2
         d=datetime.datetime.fromtimestamp(item.mtime)
-        if item.meta:
+
+        if item.meta!=None:
             rows+=len(metadata.apptags)
         stable=gtk.ScrolledWindow()
         stable.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)

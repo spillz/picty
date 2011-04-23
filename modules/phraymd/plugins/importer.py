@@ -210,7 +210,7 @@ class ImporterImportJob(backend.WorkerJob):
             src_filename=item.uid
             temp_filename=''
             temp_dir=''
-            if self.dest_name_needs_meta and not item.meta:
+            if self.dest_name_needs_meta and item.meta==None:
                 temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
                 temp_filename=os.path.join(temp_dir,os.path.split(item.uid)[1])
                 try:
@@ -249,7 +249,7 @@ class ImporterImportJob(backend.WorkerJob):
             item=baseobjects.Item(dest_filename)
             item.mtime=io.get_mtime(item.uid)
             item.selected=orig_item.selected
-            if collection.load_metadata and not item.meta:
+            if collection.load_metadata and item.meta==None:
                 imagemanip.load_metadata(item,collection)
             collection.make_thumbnail(item)
             if self.browser!=None:
@@ -480,8 +480,7 @@ class ImportPlugin(pluginbase.Plugin):
         else:
             return
         if not coll_src.is_open:
-            cj=backend.LoadCollectionJob(self.mainframe.tm,coll_src,None)
-            self.mainframe.tm.queue_job_instance(cj)
+            coll_src.open(self.mainframe.tm)
         ij=ImporterImportJob(self.mainframe.tm,None,coll_dest.browser,self,coll_src,coll_dest,params)
         self.mainframe.tm.queue_job_instance(ij)
         self.cancel_button.set_sensitive(True)

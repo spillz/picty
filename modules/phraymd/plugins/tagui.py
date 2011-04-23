@@ -79,7 +79,7 @@ class TagCloud():
             else:
                 print 'warning: removing item',item,'with keyword',k,'not in tag cloud'
     def add(self,item):
-        if item.meta==None or item.meta==False:
+        if item.meta==None:
             return False
         try:
             self.tag_add(item.meta['Keywords'])
@@ -88,7 +88,7 @@ class TagCloud():
         return True
     def remove(self,item):
         try:
-            if item.meta==None or item.meta==False:
+            if item.meta==None:
                 return False
             self.tag_remove(item.meta['Keywords'])
         except:

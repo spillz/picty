@@ -27,9 +27,7 @@ import os.path
 import baseobjects
 import io
 
-import localstorebin
-#import localstoredb
-import localdir
+from collectiontypes import localstorebin, localdir, flickr
 
 COLUMN_ID=0
 COLUMN_NAME=1

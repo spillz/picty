@@ -716,7 +716,7 @@ class ImageBrowser(gtk.HBox):
                 adjy=self.geo_pad/2
                 adjx=self.geo_pad/2
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
-            if self.mouse_hover and self.hover_ind==i or item.meta_changed or item.selected or fail_item:
+            if self.mouse_hover and self.hover_ind==i or item.is_meta_changed() or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=viewsupport.text_descr(item)
                     print item,a,b

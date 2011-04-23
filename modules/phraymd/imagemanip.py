@@ -126,7 +126,7 @@ def rotate_right(item,collection=None):
 
 
 def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
-    if item.meta:
+    if item.meta!=None:
         meta=item.meta.copy()
     else:
         meta=item.meta
@@ -599,32 +599,31 @@ def load_thumb(item):
     load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
     affects thumbnail, thumburi members of item
     '''
-    ##todo: could also try extracting the thumb from the image
-    ## would not need to make the thumb in that case
+    ##todo: rename load_thumb_from_cache
+    ##note that loading thumbs embedded in image files is handled elsewhere
     image=None
     try:
-        if settings.maemo:
-            image = Image.open(item.uid)
-            image.thumbnail((128,128))
+        uri = io.get_uri(item.uid)
+        if not item.thumburi:
+            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+        if item.thumburi:
+            image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+            s=(image.get_width(),image.get_height())
+            if s[0]>128 or s[1]>128:
+                m=max(s)
+                w=s[0]*128/m
+                h=s[1]*128/m
+                image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
         else:
-            uri = io.get_uri(item.uid)
-            if not item.thumburi:
-                item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
-            if item.thumburi:
-                image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
-                s=(image.get_width(),image.get_height())
-                #image.thumbnail((128,128))
-            else:
-                thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
-                if thumburi:
-                    try:
-                        image = Image.open(thumburi)
-                        image.thumbnail((128,128))
-                        image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
-                    except:
-                        image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
-                        image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
-#                    item.thumburi=thumburi
+            thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
+            if thumburi:
+                try:
+                    image = Image.open(thumburi)
+                    image.thumbnail((128,128))
+                    image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
+                except:
+                    image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+                    image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
     except:
         image=None
     if image!=None:
@@ -635,4 +634,3 @@ def load_thumb(item):
         item.thumburi=None
         item.thumb=None
         return False
-#        item.thumbrgba='A' in image.getbands()

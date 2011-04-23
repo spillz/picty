@@ -112,8 +112,8 @@ class MainFrame(gtk.VBox):
             return hover
         tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
+                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
                         ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
                         ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
@@ -129,8 +129,8 @@ class MainFrame(gtk.VBox):
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Close',self.close_viewer,show_on_hover,gtk.STOCK_CLOSE,'Main','Hides the image viewer'),
                         ('Locate in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_HOME,'Main','Locate the image in the browser'),
-                        ('Save',self.save_item,lambda item,hover:item.meta_changed,gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.meta_changed,gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
+                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
                         ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
                         ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
@@ -542,27 +542,7 @@ class MainFrame(gtk.VBox):
                 self.browser_nb.set_current_page(self.browser_nb.page_num(c.browser))
                 return
             browser=self.add_browser(c)
-            j=backend.LoadCollectionJob(self.tm,c,browser)
-            self.tm.queue_job_instance(j)
-
-#    def collection_changed(self,widget,id):
-#        if id==None:
-#            ##add start page if not already persent
-#            page=self.startpage
-#            num=self.browser_nb.page_num(page)
-#            if num<0:
-#                self.browser_nb.append_page(page)
-#        else:
-#            coll=self.coll_set[id]
-#            if coll!=None:
-#                page=coll.browser
-#            else:
-#                print 'ERROR! unknown collection with id',id
-#                return
-#            if page==None:
-#                self.add_browser(coll)
-#                self.tm.load_collection(coll)
-#        self.browser_nb.set_current_page(self.browser_nb.page_num(page))
+            c.open(self.tm,browser)
 
     def collection_open_cb(self,widget,id):
         self.collection_open(id)
@@ -1134,7 +1114,10 @@ class MainFrame(gtk.VBox):
             item.connect("activate",callback,*args)
             menu.append(item)
 #            item.show()
-        itype=io.get_mime_type(item.uid)
+        try:
+            itype=io.get_mime_type(item.uid) ##todo: need a collection based method to handle this
+        except:
+            itype='unknown'
         launch_menu=gtk.Menu()
         if itype in settings.custom_launchers:
             for app in settings.custom_launchers[itype]:
@@ -1150,7 +1133,7 @@ class MainFrame(gtk.VBox):
         launch_item.show()
         launch_item.set_submenu(launch_menu)
         menu.append(launch_item)
-        if item.meta_changed:
+        if item.is_meta_changed():
             menu_add(menu,'Save Metadata Changes',self.save_item,item)
             menu_add(menu,'Revert Metadata Changes',self.revert_item,item)
         menu_add(menu,'Edit Metadata',self.edit_item,item)
@@ -1247,12 +1230,12 @@ class MainFrame(gtk.VBox):
         subprocess.Popen(app_cmd,shell=True)
 
     def save_item(self,widget,item):
-        if item.meta_changed:
+        if item.is_meta_changed():
             self.active_collection.write_metadata(item)
         self.active_browser().redraw_view()
 
     def revert_item(self,widget,item):
-        if not item.meta_changed:
+        if not item.is_meta_changed():
             return
         try:
             orient=item.meta['Orientation']
@@ -1262,7 +1245,7 @@ class MainFrame(gtk.VBox):
             orient_backup=item.meta_backup['Orientation']
         except:
             orient_backup=None
-        item.meta_revert()
+        item.meta_revert(self.active_collection)
         if orient!=orient_backup:
             item.thumb=None
             self.tm.recreate_thumb(item)

@@ -15,28 +15,24 @@ class Item(list):
         self.thumburi=None
         self.qview=None
         self.image=None
-        self.meta_changed=False
-        self.meta=None ##a copy of self.meta will be stored as self.meta_backup if self.meta_changed is True
+        self.meta=None ##a copy of self.meta will be stored as self.meta_backup if there are unsaved changes to the metadata
         self.selected=False
         self.relevance=0
     def key(self):
         return 1
     def meta_revert(self):
-        if self.meta_changed:
+        if self.is_meta_changed():
             self.meta=self.meta_backup
             del self.meta_backup
-        self.meta_changed=False
     def mark_meta_saved(self):
-        if self.meta_changed:
+        if self.is_meta_changed():
             del self.meta_backup
-        self.meta_changed=False
     def set_meta_key(self,key,value,collection=None):
         if self.meta==False or self.meta==None:
             return None
         old=self.meta.copy()
-        if not self.meta_changed:
+        if not self.is_meta_changed():
             self.meta_backup=self.meta.copy()
-            self.meta_changed=True
         if key in self.meta and key not in self.meta_backup and value=='':
             del self.meta[key]
         else:
@@ -44,12 +40,10 @@ class Item(list):
         pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
-            self.meta_changed=False
-        return self.meta_changed
+        return self.is_meta_changed()
     def set_meta(self,meta,collection=None):
-        if not self.meta_changed:
+        if not self.is_meta_changed():
             self.meta_backup=self.meta.copy()
-            self.meta_changed=True
         old=self.meta
 ##PICKLED DICT
 #        self.meta=PickledDict(meta)
@@ -57,8 +51,7 @@ class Item(list):
         pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
         if self.meta==self.meta_backup:
             del self.meta_backup
-            self.meta_changed=False
-        return self.meta_changed
+        return self.is_meta_changed()
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         if odict['thumb']:
@@ -85,7 +78,6 @@ class Item(list):
         item.thumburi=self.thumburi
         item.qview=self.qview
         item.image=self.image
-        item.meta_changed=self.meta_changed
         item.meta=self.meta
         item.selected=self.selected
         item.relevance=self.relevance
