@@ -462,7 +462,7 @@ class Collection(baseobjects.CollectionBase):
         return imagemanip.has_thumb(item)
     def make_thumbnail(self,item,interrupt_fn=None,force=False):
         'create a cached thumbnail of the image'
-        if not force and (self.load_embedded_thumbs or collection.load_preview_icons):
+        if not force and (self.load_embedded_thumbs or self.load_preview_icons):
             return False
         imagemanip.make_thumb(item,interrupt_fn,force)
         imagemanip.update_thumb_date(item)
