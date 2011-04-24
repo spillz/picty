@@ -685,7 +685,29 @@ class FlickrCollection(baseobjects.CollectionBase):
         pass
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
-        item.image=None
+        if item.image!=None:
+            return
+        try:
+            import ImageFile
+            print 'loading image for view',item.imageurl
+            fp = urllib2.urlopen(item.imageurl)
+            p = ImageFile.Parser()
+            if interrupt_fn==None:
+                interrupt_fn=lambda:True
+            while interrupt_fn():
+                s = fp.read(1024)
+                if not s:
+                    break
+                p.feed(s)
+            item.image = p.close()
+            return True
+        except:
+            print 'Failed to retrieve fullsize image for',item
+            item.image=False
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
         pass
