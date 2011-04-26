@@ -832,10 +832,12 @@ class FlickrCollection(baseobjects.CollectionBase):
         if details and not details.endswith('\n'):
             details+='\n'
         if item.meta and 'DateUploaded' in item.meta:
-        val=item.meta['DateUploaded']
+            val=item.meta['DateUploaded']
             details+='Uploaded: '+str(val)
-            if item.meta!=None and 'Model' in item.meta:
-                details+='Model: '+str(item.meta['Model'])+'\n'
+        if details and not details.endswith('\n'):
+            details+='\n'
+        if item.meta!=None and 'Model' in item.meta:
+            details+='Model: '+str(item.meta['Model'])+'\n'
         #Exposure details
         val=viewsupport.get_focal(item)
         exposure=u''
