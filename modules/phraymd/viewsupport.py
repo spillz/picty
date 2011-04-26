@@ -31,7 +31,6 @@ import bisect
 import datetime
 import os.path
 import re
-import datetime
 
 ##phraymd imports
 import pluginmanager

@@ -21,12 +21,11 @@ License:
 
 ##standard imports
 import bisect
-import datetime
+from datetime import datetime
 import io
 import os
 import os.path
 import re
-import datetime
 import cPickle
 
 import gtk
