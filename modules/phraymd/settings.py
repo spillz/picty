@@ -87,27 +87,34 @@ overlay_show_tags=True
 overlay_show_date=True
 overlay_show_exposure=True
 
-
-collections_dir=os.path.join(data_dir,'collections')
-if not os.path.exists(collections_dir):
-    os.makedirs(collections_dir)
-
 active_collection=None
 active_collection_id=''
-default_collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
-legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
-legacy_collection_file2=os.path.join(data_dir,'collection')
-if not os.path.exists(default_collection_file):
-    if os.path.exists(legacy_collection_file2):
-        os.renames(legacy_collection_file2,default_collection_file)
-    elif os.path.exists(legacy_collection_file):
-        os.renames(legacy_collection_file,default_collection_file)
-
-conf_file=os.path.join(settings_dir,'app-settings')
+collections_dir=''
+default_collection_file=''
+legacy_collection_file=''
+legacy_collection_file2=''
+conf_file=''
 legacy_conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
-
 legacy_image_dirs=[]
 
+
+def init_settings_files():
+    global collections_dir, default_collection_file, legacy_collection_file, legacy_collection_file2, conf_file, settings_dir, data_dir
+
+    collections_dir=os.path.join(data_dir,'collections')
+    if not os.path.exists(collections_dir):
+        os.makedirs(collections_dir)
+
+    default_collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
+    legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
+    legacy_collection_file2=os.path.join(data_dir,'collection')
+    if not os.path.exists(default_collection_file):
+        if os.path.exists(legacy_collection_file2):
+            os.renames(legacy_collection_file2,default_collection_file)
+        elif os.path.exists(legacy_collection_file):
+            os.renames(legacy_collection_file,default_collection_file)
+
+    conf_file=os.path.join(settings_dir,'app-settings')
 
 def save():
     global version, precache_count, custom_launchers, user_tag_info, places, active_collection_id
@@ -197,6 +204,7 @@ def user_add_dir():
 
 
 def init():
+    init_settings_files()
     global image_dirs, active_collection_id
     load()
     if not active_collection_id:

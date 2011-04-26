@@ -77,6 +77,7 @@ class MainFrame(gtk.VBox):
 
     def __init__(self,window):
         gtk.VBox.__init__(self)
+        self.toplevel_window_state = ()
         self.lock=threading.Lock()
         self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         self.volume_monitor=io.VolumeMonitor()
@@ -314,6 +315,8 @@ class MainFrame(gtk.VBox):
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
         self.do_nothing_at_startup=False
+        if not self.toplevel_window_state:
+            self.toplevel_window_state = (640, 400, 0, 0)
 
         dbusserver.start()
         self.tm.start()
@@ -653,8 +656,15 @@ class MainFrame(gtk.VBox):
                 self.hpane.set_position(layout['sidebar width'])
                 break
 
+#       Restore last window size if values exist in layout, else use defaults
+        try:
+            self.toplevel_window_state =  layout['toplevel_window_state']
+        except:
+            self.toplevel_window_state =  (640, 400, 0, 0)
+
     def get_layout(self):
         layout=dict()
+        layout['toplevel_window_state'] = self.toplevel_window_state
         ##layout['window size']=self.window.get_size()
         ##layout['window maximized']=self.window.get_size()
 #        layout['sort order']=self.sort_order.get_active_text()
