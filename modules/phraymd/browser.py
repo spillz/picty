@@ -718,7 +718,7 @@ class ImageBrowser(gtk.HBox):
                 drawable.draw_pixbuf(gc, self.pixbuf_thumb_load, 0, 0,int(x+adjx),int(y+adjy))
             if self.mouse_hover and self.hover_ind==i or item.is_meta_changed() or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
-                    a,b=viewsupport.text_descr(item)
+                    a,b=self.active_collection.get_browser_text(item)
                     print item,a,b
                     if a or b:
                         a=a.replace('&','&amp;')

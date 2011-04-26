@@ -315,6 +315,7 @@ class ImageViewer(gtk.VBox):
         self.zoom_position=(0,0)
         self.hide_scrollbars()
         self.item=item
+        self.collection=collection
         self.browser=browser
         self.il.set_item(collection,item,(self.geo_width,self.geo_height),zoom=self.zoom_level)
         self.redraw_view()
@@ -467,7 +468,7 @@ class ImageViewer(gtk.VBox):
     def render_image_info(self,drawable,gc):
         item=self.item
         size=self.item.image.size if item.image else None
-        a,b=viewsupport.viewer_text(item,size,self.zoom_level)
+        a,b=self.collection.get_viewer_text(item,size,self.zoom_level)
         print item,a,b
         if a or b:
             a=a.replace('&','&amp;')

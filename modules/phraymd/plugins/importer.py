@@ -249,8 +249,8 @@ class ImporterImportJob(backend.WorkerJob):
             item=baseobjects.Item(dest_filename)
             item.mtime=io.get_mtime(item.uid)
             item.selected=orig_item.selected
-            if collection.load_metadata and item.meta==None:
-                imagemanip.load_metadata(item,collection)
+            if collection.load_meta and item.meta==None:
+                collection.load_metadata(item,collection)
             collection.make_thumbnail(item)
             if self.browser!=None:
                 self.browser.lock.acquire()

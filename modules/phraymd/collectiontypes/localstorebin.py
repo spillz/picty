@@ -498,6 +498,123 @@ class Collection(baseobjects.CollectionBase):
             return True
         except:
             print 'Error writing file data',dest_item
+    def get_browser_text(self,item):
+        header=''
+        if settings.overlay_show_title:
+            try:
+                header=item.meta['Title']
+            except:
+                header=os.path.split(item.uid)[1]
+        details=''
+        if settings.overlay_show_path:
+            details+=os.path.split(item.uid)[0]
+        if settings.overlay_show_tags:
+            val=viewsupport.get_keyword(item)
+            if val:
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                val=str(val)
+                if len(val)<90:
+                    details+='Tags: '+val
+                else:
+                    details+=val[:88]+'...'
+        if settings.overlay_show_date:
+            val=viewsupport.get_ctime(item)
+            if val>datetime(1900,1,1):
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                details+='Date: '+str(val)
+    #    else:
+    #        details+='Mod: '+str(get_mtime(item))
+        if settings.overlay_show_exposure:
+            val=viewsupport.get_focal(item)
+            exposure=u''
+            if val:
+                exposure+='%imm '%(int(val),)
+            val=viewsupport.get_aperture(item)
+            if val:
+                exposure+='f/%3.1f'%(val,)
+            val=viewsupport.get_speed_str(item)
+            if val:
+                exposure+=' %ss'%(val,)
+            val=viewsupport.get_iso_str(item)
+            if val:
+                exposure+=' iso%s'%(val,)
+            if exposure:
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                details+=exposure
+        return (header,details)
+
+    def get_viewer_text(self,item,size=None,zoom=None):
+        ##HEADER TEXT
+        header=''
+        #show title
+        path,filename=os.path.split(item.uid)
+        try:
+            header=item.meta['Title']
+            title=True
+        except:
+            header+=filename
+            title=False
+
+        ##DETAIL TEXT
+        details=''
+        #show filename and path to image
+        if title:
+            details+=filename+'\n'
+        details+=path
+        #show tags
+        val=viewsupport.get_keyword(item)
+        if val:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            val=str(val)
+            if len(val)<90:
+                details+='Tags: '+val
+            else:
+                details+=val[:88]+'...'
+        #date information
+        if details and not details.endswith('\n'):
+            details+='\n'
+        val=viewsupport.get_ctime(item)
+        if val>datetime(1900,1,1):
+            details+='Date: '+str(val)+'\n'
+    ###    details+='Date Modified: '+str(get_mtime(item))
+        if item.meta!=None and 'Model' in item.meta:
+            details+='Model: '+str(item.meta['Model'])+'\n'
+        #Exposure details
+        val=viewsupport.get_focal(item)
+        exposure=u''
+        if val:
+            exposure+='%imm '%(int(val),)
+        val=viewsupport.get_aperture(item)
+        if val:
+            exposure+='f/%3.1f'%(val,)
+        val=get_speed_str(item)
+        if val:
+            exposure+=' %ss'%(val,)
+        val=viewsupport.get_iso_str(item)
+        if val:
+            exposure+=' iso%s'%(val,)
+        if exposure:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+='Exposure: '+exposure
+        #IMAGE SIZE AND ZOOM LEVEL
+        if size:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+='Image Dimensions: %i x %i'%size
+        if zoom:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            if zoom!='fit':
+                details+='Zoom: %3.2f%%'%(zoom*100,)
+            else:
+                details+='Zoom: Fit'
+
+        return (header,details)
 
 
 baseobjects.register_collection('LOCALSTORE',Collection)

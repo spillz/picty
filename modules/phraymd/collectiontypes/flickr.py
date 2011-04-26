@@ -20,6 +20,13 @@ License:
 '''
 
 
+#TODO: Load desscriptive metadata and some exif data
+#TODO: Write metadata changes to flickr
+#TODO: Handle offline mode (can't view fullsize, can't write changes etc)
+#TODO: Fix image sync
+#TODO: Login authentication
+#TODO: Image orientation
+
 
 ##standard imports
 import bisect
@@ -27,7 +34,7 @@ import datetime
 import os
 import os.path
 import re
-import datetime
+from datetime import datetime
 import cPickle
 import urllib2
 import time
@@ -47,12 +54,15 @@ from phraymd import simple_parser as sp
 from phraymd import dialogs
 from phraymd import backend
 from phraymd import imagemanip
+from phraymd import metadata
+from phraymd import viewsupport
 import simpleview
 
 class LoadFlickrCollectionJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser):
         backend.WorkerJob.__init__(self,'LOADFLICKRCOLLECTION',890,worker,collection,browser)
         self.pos=0
+        self.full_rescan=False
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -63,7 +73,7 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
         print 'OPENING COLLECTION',collection.id,collection.type
         if collection._open():
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
-            if len(collection)==0:
+            if self.full_rescan or len(collection)==0:
                 self.worker.queue_job_instance(FlickrSyncJob(self.worker,self.collection,self.browser))
             self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
             self.worker.queue_job_instance(backend.MakeThumbsJob(self.worker,self.collection,self.browser))
@@ -73,6 +83,9 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
             pass
 #            log.error('Load collection failed')
         return True
+
+datefmt="%Y-%m-%d %H:%M:%S"
+
 
 class FlickrSyncJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser):
@@ -98,45 +111,43 @@ class FlickrSyncJob(backend.WorkerJob):
             if recently_updated: ##TODO: This isn't going to work if recentlyUpdated doesn't report deleted images
                 photos=flickr_client.people_recentlyUpdated(user_id="me",page=self.page, min_date=self.last_update_time, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
             else:
-                photos=flickr_client.people_getPhotos(user_id="me",page=self.page, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
+                photos=flickr_client.people_getPhotos(user_id="me",page=self.page, per_page=500, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
+            gobject.idle_add(self.browser.update_status,1.0*(self.page-1)/self.pages,'Syncing with Flickr')
             photos=photos.find('photos')
-            print 'retrieved',photos
             self.page=int(photos.attrib['page'])
-            print 'page',self.page
             self.pages=int(photos.attrib['pages'])
-            print 'pages',self.pages
             photodata=photos.findall('photo')
             for ph in photodata:
                 uid=ph.attrib['id']
                 print 'uid',uid
-                ##todo: most of these need to be converted to python types
                 item=baseobjects.Item(uid)
                 ind=collection.find(item)
                 if ind>=0:
                     item=collection[ind]
-                else:
-                    collection.add(item)
                 item.secret=ph.attrib['secret']
                 item.server=ph.attrib['server']
                 meta={}
-                try:
-                    meta['Title']=ph.attrib['title']
-                    print 'title',meta['Title']
-                except:
-                    print 'no title for ',item
+                meta['Title']=ph.attrib['title']
+                d=ph.find('description')
+                if d:
+                    meta['ImageDescription']=d[0].text
+                meta['License']=ph.attrib['license']
+                meta['Keywords']=metadata.tag_split(ph.attrib['tags'])
+                meta['DateTaken']=datetime.strptime(ph.attrib['datetaken'],datefmt) ##todo: assuming a time stamp, otherwise use datetime.strptime
+                meta['DateUploaded']=datetime.fromtimestamp(float(ph.attrib['dateupload']))
+                meta['DateModified']=datetime.fromtimestamp(float(ph.attrib['lastupdate']))
+                meta['Mimetype']=ph.attrib['originalformat']
                 item.thumburl=ph.attrib['url_s']
                 item.imageurl=ph.attrib['url_o']
-                item.init_meta(meta,collection)
-###                item.meta['Keywords']=ph.tags
-##                item.meta['DateTaken']=ph.date_taken
-##                item.meta['DateUploaded']=ph.date_upload
-##                item.meta['DateModified']=ph.last_update
-##                item.imtype=ph.attrib['original_format']
-                print 'thumburl',item.thumburl
+                if ind>=0:
+                    item.init_meta(meta,self.collection)
+                else:
+                    self.collection.add(item,self.collection)
                 gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
             self.page+=1
         if self.page>self.pages:
             collection.last_update_time=new_time
+            gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
             return True
         return False
 
@@ -515,16 +526,20 @@ class FlickrCollection(baseobjects.CollectionBase):
             for ph in photodata:
                 uid=ph.id
                 ##todo: most of these need to be converted to python types
+                datefmt="%Y-%m-%d %H:%M:%S"
                 item=baseobjects.Item(uid)
                 item.secret=ph.secret
                 item.server=ph.server
                 item.meta['Title']=ph.title
-                item.meta['Keywords']=ph.tags
-                item.meta['DateTaken']=ph.date_taken
-                item.meta['DateUploaded']=ph.date_upload
-                item.meta['DateModified']=ph.last_update
-                item.thumburl=ph.url_o
-                item.imageurl=ph.original_format
+                item.meta['ImageDescription']=ph.description
+                item.meta['License']=ph.license
+                item.meta['Keywords']=metadata.tag_split(ph.tags)
+                item.meta['DateTaken']=datetime.strptime(ph.date_taken,datefmt) ##todo: assuming a time stamp, otherwise use datetime.strptime
+                item.meta['DateUploaded']=datetime.fromtimestamp(ph.date_upload)
+                item.meta['DateModified']=datetime.fromtimestamp(ph.last_update)
+                item.thumburl=ph.url_s
+                item.imageurl=ph.url_o
+                item.meta['Mimetype']=ph.original_format
                 self.add(item)
             self.last_update_time=time.time()
 
@@ -694,12 +709,23 @@ class FlickrCollection(baseobjects.CollectionBase):
             p = ImageFile.Parser()
             if interrupt_fn==None:
                 interrupt_fn=lambda:True
+            from cStringIO import StringIO
+            sio=StringIO()
             while interrupt_fn():
-                s = fp.read(1024)
+                s=fp.read(1024)
                 if not s:
                     break
+                sio.write(s)
                 p.feed(s)
             item.image = p.close()
+            try:
+                import pyexiv2
+                im=pyexiv2.ImageMetadata.from_buffer(sio.getvalue())
+                im.read()
+                orient={'Orientation':im['Exif.Image.Orientation'].value}
+            except:
+                orient={}
+            item.image=imagemanip.orient_image(item.image,orient)
             return True
         except:
             print 'Failed to retrieve fullsize image for',item
@@ -714,6 +740,133 @@ class FlickrCollection(baseobjects.CollectionBase):
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         pass
+    def get_browser_text(self,item):
+        header=''
+        if settings.overlay_show_title:
+            try:
+                header=item.meta['Title']
+            except:
+                header=os.path.split(item.uid)[1]
+        details=''
+        if settings.overlay_show_path:
+            details+=os.path.split(item.uid)[0]
+        if settings.overlay_show_tags:
+            val=viewsupport.get_keyword(item)
+            if val:
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                val=str(val)
+                if len(val)<90:
+                    details+='Tags: '+val
+                else:
+                    details+=val[:88]+'...'
+        if settings.overlay_show_date:
+            val=viewsupport.get_ctime(item)
+            if val>datetime(1900,1,1):
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                details+='Date: '+str(val)
+        if settings.overlay_show_date:
+            if 'DateUploaded' in item.meta:
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                val=item.meta['DateUploaded']
+                details+='Uploaded: '+str(val)
+    #    else:
+    #        details+='Mod: '+str(get_mtime(item))
+        if settings.overlay_show_exposure:
+            val=viewsupport.get_focal(item)
+            exposure=u''
+            if val:
+                exposure+='%imm '%(int(val),)
+            val=viewsupport.get_aperture(item)
+            if val:
+                exposure+='f/%3.1f'%(val,)
+            val=viewsupport.get_speed_str(item)
+            if val:
+                exposure+=' %ss'%(val,)
+            val=viewsupport.get_iso_str(item)
+            if val:
+                exposure+=' iso%s'%(val,)
+            if exposure:
+                if details and not details.endswith('\n'):
+                    details+='\n'
+                details+=exposure
+        return (header,details)
+
+    def get_viewer_text(self,item,size=None,zoom=None):
+        ##HEADER TEXT
+        header=''
+        #show title
+        path,filename=os.path.split(item.uid)
+        try:
+            header=item.meta['Title']
+            title=True
+        except:
+            header+=filename
+            title=False
+
+        ##DETAIL TEXT
+        details=''
+        #show filename and path to image
+        if title:
+            details+=filename+'\n'
+        details+=path
+        #show tags
+        val=viewsupport.get_keyword(item)
+        if val:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            val=str(val)
+            if len(val)<90:
+                details+='Tags: '+val
+            else:
+                details+=val[:88]+'...'
+        #date information
+        if details and not details.endswith('\n'):
+            details+='\n'
+        val=viewsupport.get_ctime(item)
+        if val>datetime(1900,1,1):
+            details+='Date: '+str(val)+'\n'
+    ###    details+='Date Modified: '+str(get_mtime(item))
+        if details and not details.endswith('\n'):
+            details+='\n'
+        val=item.meta['DateUploaded']
+        details+='Uploaded: '+str(val)
+        if item.meta!=None and 'Model' in item.meta:
+            details+='Model: '+str(item.meta['Model'])+'\n'
+        #Exposure details
+        val=viewsupport.get_focal(item)
+        exposure=u''
+        if val:
+            exposure+='%imm '%(int(val),)
+        val=viewsupport.get_aperture(item)
+        if val:
+            exposure+='f/%3.1f'%(val,)
+        val=get_speed_str(item)
+        if val:
+            exposure+=' %ss'%(val,)
+        val=viewsupport.get_iso_str(item)
+        if val:
+            exposure+=' iso%s'%(val,)
+        if exposure:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+='Exposure: '+exposure
+        #IMAGE SIZE AND ZOOM LEVEL
+        if size:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            details+='Image Dimensions: %i x %i'%size
+        if zoom:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            if zoom!='fit':
+                details+='Zoom: %3.2f%%'%(zoom*100,)
+            else:
+                details+='Zoom: Fit'
+
+        return (header,details)
 
 
 baseobjects.register_collection('FLICKR',FlickrCollection)
