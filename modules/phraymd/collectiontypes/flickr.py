@@ -767,7 +767,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                     details+='\n'
                 details+='Date: '+str(val)
         if settings.overlay_show_date:
-            if 'DateUploaded' in item.meta:
+            if item.meta and 'DateUploaded' in item.meta:
                 if details and not details.endswith('\n'):
                     details+='\n'
                 val=item.meta['DateUploaded']
@@ -831,10 +831,11 @@ class FlickrCollection(baseobjects.CollectionBase):
     ###    details+='Date Modified: '+str(get_mtime(item))
         if details and not details.endswith('\n'):
             details+='\n'
+        if item.meta and 'DateUploaded' in item.meta:
         val=item.meta['DateUploaded']
-        details+='Uploaded: '+str(val)
-        if item.meta!=None and 'Model' in item.meta:
-            details+='Model: '+str(item.meta['Model'])+'\n'
+            details+='Uploaded: '+str(val)
+            if item.meta!=None and 'Model' in item.meta:
+                details+='Model: '+str(item.meta['Model'])+'\n'
         #Exposure details
         val=viewsupport.get_focal(item)
         exposure=u''
