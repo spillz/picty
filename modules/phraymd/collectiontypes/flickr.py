@@ -58,6 +58,23 @@ from phraymd import metadata
 from phraymd import viewsupport
 import simpleview
 
+
+privacy_levels=[
+'PUBLIC',
+'FRIENDS AND FAMILY',
+'FRIENDS',
+'FAMILY',
+'PRIVATE'
+]
+
+PRIVACY_PUBLIC=0
+PRIVACY_FRIENDS_AND_FAMILY=1
+PRIVACY_FRIENDS=2
+PRIVACY_FAMILY=3
+PRIVACY_PRIVATE=4
+
+
+
 class LoadFlickrCollectionJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser):
         backend.WorkerJob.__init__(self,'LOADFLICKRCOLLECTION',890,worker,collection,browser)
@@ -137,6 +154,20 @@ class FlickrSyncJob(backend.WorkerJob):
                 meta['DateUploaded']=datetime.fromtimestamp(float(ph.attrib['dateupload']))
                 meta['DateModified']=datetime.fromtimestamp(float(ph.attrib['lastupdate']))
                 meta['Mimetype']=ph.attrib['originalformat']
+                is_public=int(ph.attrib['ispublic'])
+                is_friend=int(ph.attrib['isfriend'])
+                is_family=int(ph.attrib['isfamily'])
+                if is_public:
+                    privacy=0
+                elif is_friend and is_family:
+                    privacy=1
+                elif is_friend:
+                    privacy=2
+                elif is_family:
+                    privacy=3
+                else:
+                    privacy=4
+                meta['Privacy']=privacy
                 item.thumburl=ph.attrib['url_s']
                 item.imageurl=ph.attrib['url_o']
                 if ind>=0:
@@ -213,20 +244,6 @@ class NewFlickrAccountWidget(gtk.VBox):
     def set_values(self,val_dict):
         self.name_entry.set_text(val_dict['name'])
 
-
-privacy_levels=[
-'PUBLIC',
-'FRIENDS AND FAMILY',
-'FRIENDS',
-'FAMILY',
-'PRIVATE'
-]
-
-PRIVACY_PUBLIC=0
-PRIVACY_FRIENDS_AND_FAMILY=1
-PRIVACY_FRIENDS=2
-PRIVACY_FAMILY=3
-PRIVACY_PRIVATE=4
 
 def create_empty_collection(name,prefs,overwrite_if_exists=False):
     col_dir=os.path.join(settings.collections_dir,name)
@@ -667,37 +684,122 @@ class FlickrCollection(baseobjects.CollectionBase):
             print tb_text
             return False
     def item_metadata_update(self,item):
-        'collection will receive when item metadata has been changed'
+        'collection will receive this call when item metadata has been changed. (Intended for use with database backends)'
         pass
     def load_metadata(self,item):
         'retrieve metadata for an item from the source'
-        pass
-#        result=self.flickr_client.photos_getInfo(item.uid)
-#        result=self.flickr_client.photos_getExif(item.uid)
-        # flickr.photos.getAllContexts
-        # flickr.photos.getContactsPhotos
-        # flickr.photos.getContactsPublicPhotos
-        # flickr.photos.getContext
-        # flickr.photos.getCounts
-        # flickr.photos.getExif
-        # flickr.photos.getFavorites
-        # flickr.photos.getInfo
-        # flickr.photos.getNotInSet
-        # flickr.photos.getPerms
-        # flickr.photos.getRecent
-        # flickr.photos.getSizes
-        # flickr.photos.getUntagged
-        # flickr.photos.getWithGeoData
-        # flickr.photos.getWithoutGeoData
-    def write_metadata(self,item):
+        result=self.flickr_client.photos_getInfo(item.uid)
+        ph=result.find('photo')
+        if not ph:
+            return False
+        meta={}
+        title=ph.find('title')
+        if title: meta['Title']=title.text
+        desc=ph.find('description')
+        if desc: meta['Title']=desc.text
+        imtype=ph.attrib['originalformat']
+        if imtype=='png': meta['imtype']='image/png'
+        if imtype=='jpg': meta['imtype']='image/jpeg'
+        vis=ph.find('visibility')
+        if vis:
+            is_public=int(vis.attrib['ispublic'])
+            is_friend=int(vis.attrib['isfriend'])
+            is_family=int(vis.attrib['isfamily'])
+            if is_public:
+                privacy=0
+            elif is_friend and is_family:
+                privacy=1
+            elif is_friend:
+                privacy=2
+            elif is_family:
+                privacy=3
+            else:
+                privacy=4
+            meta['Privacy']=privacy
+        rotate=ph.attrib['rotation']
+        if rotate=='0': meta['Orientation']=1
+        if rotate=='90': meta['Orientation']=8
+        if rotate=='180': meta['Orientation']=3
+        if rotate=='270': meta['Orientation']=6
+        dates=ph.find('dates')
+        if dates:
+            meta['DateUploaded']=datetime.fromtimestamp(float(dates.attrib['posted']))
+            meta['DateModified']=datetime.fromtimestamp(float(dates.attrib['lastupdate']))
+            meta['DateTaken']=datetime.strptime(dates.attrib['taken'],datefmt)
+        perm=ph.find('permissions')
+        if perm:
+            meta['PermComment']=perm.attrib['permcomment']
+            meta['PermAddMeta']=perm.attrib['permaddmeta']
+        tags=ph.findall('tags')
+        meta['Keywords']=[t.attrib['raw'] for t in tags]
+        item.init_meta(meta,self)
+        '''
+        <photo id="2733" secret="123456" server="12"
+            isfavorite="0" license="3" rotation="90"
+            originalsecret="1bc09ce34a" originalformat="png">
+            <owner nsid="12037949754@N01" username="Bees"
+                realname="Cal Henderson" location="Bedford, UK" />
+            <title>orford_castle_taster</title>
+            <description>hello!</description>
+            <visibility ispublic="1" isfriend="0" isfamily="0" />
+            <dates posted="1100897479" taken="2004-11-19 12:51:19"
+                takengranularity="0" lastupdate="1093022469" />
+            <permissions permcomment="3" permaddmeta="2" />
+            <editability cancomment="1" canaddmeta="1" />
+            <comments>1</comments>
+            <notes>
+                <note id="313" author="12037949754@N01"
+                    authorname="Bees" x="10" y="10"
+                    w="50" h="50">foo</note>
+            </notes>
+            <tags>
+                <tag id="1234" author="12037949754@N01" raw="woo yay">wooyay</tag>
+                <tag id="1235" author="12037949754@N01" raw="hoopla">hoopla</tag>
+            </tags>
+            <urls>
+                <url type="photopage">http://www.flickr.com/photos/bees/2733/</url>
+            </urls>
+        </photo>
+        '''
+    def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True):
         'write metadata for an item to the source'
-#        flickr.photos.setContentType
-#        flickr.photos.setDates
-#        flickr.photos.setMeta
-#        flickr.photos.setPerms
-#        flickr.photos.setSafetyLevel
-#        flickr.photos.setTags
-        pass
+##TODO: Other metadate that could be set...
+##        flickr.photos.setContentType
+##        flickr.photos.setDates
+##        flickr.photos.setSafetyLevel
+        try:
+            privacy=item.meta['Privacy']
+        except KeyError:
+            private=PRIVACY_PUBLIC
+        is_public=1 if privacy==PRIVACY_PUBLIC else 0
+        is_family=1 if privacy in (PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY) else 0
+        is_friends=1 if privacy in (PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY) else 0
+        try:
+            perm_comment=item.meta['PermComment']
+        except KeyError:
+            perm_comment=0
+        try:
+            perm_addmeta=item.meta['PermAddMeta']
+        except KeyError:
+            perm_addmeta=0
+        try:
+            title=item.meta['Title']
+        except:
+            title=''
+        try:
+            description=item.meta['Description']
+        except:
+            description=''
+        try:
+            tags=metadata.tag_bind(item.meta['Keywords'])
+        except:
+            tags=''
+        if set_meta:
+            self.flickr_client.photos_setMeta(item.uid,title,description)
+        if set_tags:
+            self.flickr_client.photos_setTags(item.uid,tags)
+        if set_perms:
+            self.flickr_client.photos_setPerms(item.uid,is_public,is_friend,is_family,perm_comment,perm_addmeta)
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         if item.image!=None:
@@ -736,7 +838,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             return False
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
-        pass
+        return urllib2.urlopen(item.imageurl)
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         pass

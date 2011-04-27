@@ -435,12 +435,19 @@ class Collection(baseobjects.CollectionBase):
     def copy_item(self,src_collection,src_item):
         'copy an item from another collection source'
         try:
-            uid=''###TODO: Establish a uid
+            uid=''###TODO: Establish a uid based on src item metadata
             dest_item=baseobjects.Item(uid)
             self.add(dest_item)
-            stream=src_collection.get_file_data(src_item)
+            stream=src_collection.get_file_stream(src_item)
             self.write_file_data(item,stream)
-            item.mtime=io.get_mtime()
+            src_item.mtime=io.get_mtime(uid)
+            keys=metadata.apptags_dict
+            self.load_metadata(dest_item)
+            meta={}
+            for key in keys:
+                meta[key]=src_item.meta[key]
+            dest_item.set_meta(meta,self)
+            self.write_metadata(dest_item)
         except:
             print 'Error copying src item'
     def delete_item(self,item):
