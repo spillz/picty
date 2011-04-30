@@ -447,8 +447,12 @@ class FlickrCollection(baseobjects.CollectionBase):
 #        if self.flickr_client!=None:
 #            return True
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret, username=self.name)
-        self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
-        self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
+        tokenpath = os.path.join(self.coll_dir(),'flickr-token')
+        try:
+            self.flickr_client.token.path = tokenpath
+            self.flickr_client.token_cache = LockingTokenCache(api_key)
+        except:
+            pass
         try:
             (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
             if not self.token:
@@ -832,6 +836,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 
     def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True):
         'write metadata for an item to the source'
+##
 ##TODO: Other metadate that could be set...
 ##        flickr.photos.setContentType
 ##        flickr.photos.setDates

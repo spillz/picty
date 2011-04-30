@@ -342,9 +342,10 @@ class MainFrame(gtk.VBox):
             c=self.coll_set[settings.active_collection_id]
             if c!=None:
                 id=c.id
-        if not id:
-            self.create_new_collection(None,True)
-        else:
+        if id:
+#        if not id:
+#            self.create_new_collection(None,True)
+#        else:
             print 'opening collection',id
             self.collection_open(c.id)
 
