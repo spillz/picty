@@ -448,6 +448,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 #            return True
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret, username=self.name)
         self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
+        self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
         try:
             (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
             if not self.token:
@@ -742,7 +743,10 @@ class FlickrCollection(baseobjects.CollectionBase):
         if title!=None and title.text!=None: meta['Title']=title.text
         desc=ph.find('description')
         if desc!=None and desc.text!=None: meta['Description']=desc.text
-        imtype=ph.attrib['originalformat']
+        try:
+            imtype=ph.attrib['originalformat']
+        except:
+            imtype='png'
         if imtype=='png': meta['imtype']='image/png'
         if imtype=='jpg': meta['imtype']='image/jpeg'
         if imtype=='gif': meta['imtype']='image/gif'
