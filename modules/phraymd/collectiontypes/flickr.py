@@ -735,13 +735,25 @@ class FlickrCollection(baseobjects.CollectionBase):
         item.secret=ph.attrib['secret']
         item.server=ph.attrib['server']
         item.farm=ph.attrib['farm']
+##      FLICKR URLS
+##        http://farm{farm-id}.static.flickr.com/{server-id}/{id}_{secret}.jpg
+##            or
+##        http://farm{farm-id}.static.flickr.com/{server-id}/{id}_{secret}_[mstzb].jpg
+##            t = tiny
+##            s = small square
+##            m = small
+##            z = medium
+##            b = large
+##            or
+##        http://farm{farm-id}.static.flickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
+##              for original image if it exists
         try:
             originalformat=ph.attrib['originalformat']
+            originalsecret=ph.attrib['originalsecret']
+            item.imageurl='http://farm%s.static.flickr.com/%s/%s_%s_o.%s'%(item.farm,item.server,item.uid,originalsecret,originalformat)
         except:
-            originalformat='jpg'
-        originalsecret=ph.attrib['originalsecret']
+            item.imageurl='http://farm%s.static.flickr.com/%s/%s_%s.jpg'%(item.farm,item.server,item.uid,item.secret)
         item.thumburl='http://farm%s.static.flickr.com/%s/%s_%s_m.jpg'%(item.farm,item.server,item.uid,item.secret)
-        item.imageurl='http://farm%s.static.flickr.com/%s/%s_%s_o.%s'%(item.farm,item.server,item.uid,originalsecret,originalformat)
         title=ph.find('title')
         if title!=None and title.text!=None: meta['Title']=title.text
         desc=ph.find('description')
