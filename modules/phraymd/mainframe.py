@@ -172,13 +172,13 @@ class MainFrame(gtk.VBox):
         self.info_bar.show()
 
         self.sort_order=gtk.combo_box_new_text()
-        i=0
-        for s in viewsupport.sort_keys:
-            self.sort_order.append_text(s)
-            if s=='Relevance':
-                self.sort_order_relevance_ind=i
-            i+=1
-        self.sort_order.set_active(0)
+#        i=0
+#        for s in viewsupport.sort_keys:
+#            self.sort_order.append_text(s)
+#            if s=='Relevance':
+#                self.sort_order_relevance_ind=i
+#            i+=1
+#        self.sort_order.set_active(0)
         self.sort_order.set_property("can-focus",False)
         self.sort_order.connect("changed",self.set_sort_key)
         self.sort_order.show()
@@ -520,13 +520,16 @@ class MainFrame(gtk.VBox):
 #            self.browser_nb.set_current_page(need_ind)
 
         print 'BROWSER SWITCH',coll.type,coll.id
+        self.sort_order.handler_block_by_func(self.set_sort_key)
         sort_model=self.sort_order.get_model()
+        sort_model.clear()
+        for s in self.active_collection.browser_sort_keys:
+            self.sort_order.append_text(s)
         for i in xrange(len(sort_model)):
             if page.active_view.sort_key_text==sort_model[i][0]: ##NEED TO ADD A VIEW TO  OPEN COLLS
-                self.sort_order.handler_block_by_func(self.set_sort_key)
                 self.sort_order.set_active(i)
-                self.sort_order.handler_unblock_by_func(self.set_sort_key)
                 break
+        self.sort_order.handler_unblock_by_func(self.set_sort_key)
         self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
         self.sort_toggle.set_active(page.active_view.reverse)
         self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
@@ -1308,15 +1311,14 @@ class MainFrame(gtk.VBox):
     def delete_item(self,widget,item):
         browser=self.active_browser()
         fileops.worker.delete(browser.active_collection,[item],None,False)
-        ind=browser.active_view.find_item(item)
-        if ind>=0:
-            browser.active_view.del_item(item)
-            if self.is_iv_showing:
-                ind=min(ind,len(browser.active_view)-1)
-                self.view_image(browser.active_view(ind))
-        elif self.is_iv_showing:
+        if self.is_iv_showing and self.iv.item==item:
             self.hide_image()
-        browser.resize_and_refresh_view()
+#        if ind>=0:
+#            browser.active_view.del_item(item)
+#            if self.is_iv_showing:
+#                ind=min(ind,len(browser.active_view)-1)
+#                self.view_image(browser.active_view(ind))
+#        browser.resize_and_refresh_view()
 
     def zoom_item_fit(self,widget,item):
         self.iv.set_zoom('fit')

@@ -120,6 +120,7 @@ def get_original_name(item):
     '''
     returns a tuple (path,name) for the import destination
     '''
+    ##this only applies to locally stored files
     return os.path.splitext(os.path.split(item.uid)[1])[0]
 
 
@@ -200,68 +201,39 @@ class ImporterImportJob(backend.WorkerJob):
                 self.items=self.collection_src.get_active_view().get_selected_items()
                 self.count=len(self.items)
         if not self.base_dest_dir:
-            self.base_dest_dir=collection.image_dirs[0]
+            try:
+                self.base_dest_dir=collection.image_dirs[0]
+            except:
+                self.base_dest_dir=os.environ['HOME']
         print 'importing',len(self.items),'items'
         if not os.path.exists(self.base_dest_dir):
             os.makedirs(self.base_dest_dir)
         while len(self.items)>0 and jobs.ishighestpriority(self) and not self.stop:
             item=self.items.pop()
-            self.dest_dir=self.base_dest_dir
-            src_filename=item.uid
-            temp_filename=''
-            temp_dir=''
-            if self.dest_name_needs_meta and item.meta==None:
-                temp_dir=tempfile.mkdtemp('','.image-',self.base_dest_dir)
-                temp_filename=os.path.join(temp_dir,os.path.split(item.uid)[1])
-                try:
-                    io.copy_file(item.uid,temp_filename)
-                except IOError:
-                    ##todo: log an error
-                    continue
-                src_filename=temp_filename
-                imagemanip.load_metadata(item,self.collection,src_filename)
-            dest_path,dest_name=name_item(item,self.base_dest_dir,self.dest_name_template)
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
-            dest_filename=os.path.join(dest_path,dest_name)
-            if os.path.exists(dest_filename):
-                if self.action_if_exists==EXIST_SKIP:
-                    ##TODO: LOGGING TO IMPORT LOG
-                    continue
-                if self.action_if_exists==EXIST_RENAME:
-                    dest_filename=altname(dest_filename)
-            try:
-                ##todo: set mtime to the mtime of the original after copy/move?
-                if self.move or temp_filename:
-                    io.move_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
-                else:
-                    io.copy_file(src_filename,dest_filename,overwrite=self.action_if_exists==EXIST_OVERWRITE)
-                if temp_filename:
-                    io.remove_file(temp_filename)
-                    if self.move and item.uid!=src_filename:
-                        io.remove_file(item.uid)
-                if temp_dir:
-                    os.rmdir(temp_dir)
-            except IOError:
-                ##todo: log an error
-                continue
-            orig_item=item
-            item=baseobjects.Item(dest_filename)
-            item.mtime=io.get_mtime(item.uid)
-            item.selected=orig_item.selected
-            if collection.load_meta and item.meta==None:
-                collection.load_metadata(item,collection)
-            collection.make_thumbnail(item)
-            if self.browser!=None:
-                self.browser.lock.acquire()
-            print 'importing item',item.uid,'to',collection.id
-            collection.add(item)
-            if self.browser!=None:
-                self.browser.lock.release()
+            ##todo: must set prefs
+            if self.browser:
+                gobject.idle_add(self.browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
+            prefs={
+                'base_dest_dir':self.base_dest_dir,
+                'dest_name_needs_meta':self.dest_name_needs_meta,
+                'dest_name_template':self.dest_name_template,
+                'name_item_fn':name_item,
+                'action_if_exists':self.action_if_exists,
+                'altname_fn':altname,
+                'move_files':self.move,
+                'upload_size':None,
+                'metadata_strip':False,
+            }
+            collection.copy_item(self.collection_src,item,prefs)
+###            if self.browser!=None:
+###                self.browser.lock.acquire()
+###            print 'importing item',item.uid,'to',collection.id
+###            collection.add(item)
+###            if self.browser!=None:
+###                self.browser.lock.release()
             ##todo: log success
             i+=1
             if self.browser:
-                gobject.idle_add(self.browser.update_status,1.0*i/self.count,'Importing media - %i of %i'%(i,self.count))
                 gobject.idle_add(self.browser.resize_and_refresh_view)
         self.countpos=i
         if len(self.items)==0 or self.stop:

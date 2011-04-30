@@ -20,12 +20,9 @@ License:
 '''
 
 
-#TODO: Load desscriptive metadata and some exif data
-#TODO: Write metadata changes to flickr
 #TODO: Handle offline mode (can't view fullsize, can't write changes etc)
-#TODO: Fix image sync
+#TODO: Fix image sync (must be interruptable, check for deleted + changed images)
 #TODO: Login authentication
-#TODO: Image orientation
 
 
 ##standard imports
@@ -38,6 +35,7 @@ from datetime import datetime
 import cPickle
 import urllib2
 import time
+import tempfile
 
 ##beej's flickr API
 import flickrapi
@@ -56,6 +54,7 @@ from phraymd import backend
 from phraymd import imagemanip
 from phraymd import metadata
 from phraymd import viewsupport
+from phraymd import io
 import simpleview
 
 
@@ -74,12 +73,11 @@ PRIVACY_FAMILY=3
 PRIVACY_PRIVATE=4
 
 
-
 class LoadFlickrCollectionJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser):
         backend.WorkerJob.__init__(self,'LOADFLICKRCOLLECTION',890,worker,collection,browser)
         self.pos=0
-        self.full_rescan=False
+        self.full_rescan=True
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -89,11 +87,9 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
         gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(collection.name,))
         print 'OPENING COLLECTION',collection.id,collection.type
         if collection._open():
-            pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
-            if self.full_rescan or len(collection)==0:
-                self.worker.queue_job_instance(FlickrSyncJob(self.worker,self.collection,self.browser))
             self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
-            self.worker.queue_job_instance(backend.MakeThumbsJob(self.worker,self.collection,self.browser))
+            gobject.idle_add(collection.login,self.worker,self.browser)
+            pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
 #            log.info('Loaded collection with '+str(len(collection))+' images')
         else:
@@ -111,13 +107,14 @@ class FlickrSyncJob(backend.WorkerJob):
 
     def __call__(self):
         jobs=self.worker.jobs
-        jobs.clear(None,self.collection,self)
         collection=self.collection
         flickr_client=collection.flickr_client
         recently_updated=False
         if not self.started:
-            self.page=1
+            self.page=0
             self.pages=1
+            self.photodata=[]
+            self.counter=0
             self.started=True
         new_time=time.time()
         while jobs.ishighestpriority(self) and self.page<=self.pages:
@@ -125,60 +122,60 @@ class FlickrSyncJob(backend.WorkerJob):
 #                    last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_m,
 #                    url_z, url_l, url_o'''
 #            photos=flickr_client.people_getPhotos(user_id="me",page=page, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_t,original_format')
-            if recently_updated: ##TODO: This isn't going to work if recentlyUpdated doesn't report deleted images
-                photos=flickr_client.people_recentlyUpdated(user_id="me",page=self.page, min_date=self.last_update_time, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
-            else:
-                photos=flickr_client.people_getPhotos(user_id="me",page=self.page, per_page=500, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
-            gobject.idle_add(self.browser.update_status,1.0*(self.page-1)/self.pages,'Syncing with Flickr')
-            photos=photos.find('photos')
-            self.page=int(photos.attrib['page'])
-            self.pages=int(photos.attrib['pages'])
-            photodata=photos.findall('photo')
-            for ph in photodata:
+            if self.counter>=len(self.photodata):
+                self.page+=1
+                self.counter=0
+                pct=(1.0*(self.page-1)*500+self.counter)/(self.pages*500)
+                gobject.idle_add(self.browser.update_status,pct,'Syncing with Flickr')
+                if recently_updated: ##TODO: This isn't going to work if recentlyUpdated doesn't report deleted images
+                    photos=flickr_client.people_recentlyUpdated(user_id="me",page=self.page, min_date=self.last_update_time, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
+                else:
+                    photos=flickr_client.people_getPhotos(user_id="me",page=self.page, per_page=500, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
+                photos=photos.find('photos')
+                self.page=int(photos.attrib['page'])
+                self.pages=int(photos.attrib['pages'])
+                self.photodata=photos.findall('photo')
+            while self.counter<len(self.photodata) and jobs.ishighestpriority(self):
+                pct=(1.0*(self.page-1)*500+self.counter)/(self.pages*500)
+                print '***',pct,self.page,self.pages,self.counter
+                gobject.idle_add(self.browser.update_status,pct,'Syncing with Flickr')
+                ph=self.photodata[self.counter]
+                self.counter+=1
                 uid=ph.attrib['id']
                 print 'uid',uid
                 item=baseobjects.Item(uid)
                 ind=collection.find(item)
                 if ind>=0:
                     item=collection[ind]
-                item.secret=ph.attrib['secret']
-                item.server=ph.attrib['server']
-                meta={}
-                meta['Title']=ph.attrib['title']
-                d=ph.find('description')
-                if d:
-                    meta['ImageDescription']=d[0].text
-                meta['License']=ph.attrib['license']
-                meta['Keywords']=metadata.tag_split(ph.attrib['tags'])
-                meta['DateTaken']=datetime.strptime(ph.attrib['datetaken'],datefmt) ##todo: assuming a time stamp, otherwise use datetime.strptime
-                meta['DateUploaded']=datetime.fromtimestamp(float(ph.attrib['dateupload']))
-                meta['DateModified']=datetime.fromtimestamp(float(ph.attrib['lastupdate']))
-                meta['Mimetype']=ph.attrib['originalformat']
-                is_public=int(ph.attrib['ispublic'])
-                is_friend=int(ph.attrib['isfriend'])
-                is_family=int(ph.attrib['isfamily'])
-                if is_public:
-                    privacy=0
-                elif is_friend and is_family:
-                    privacy=1
-                elif is_friend:
-                    privacy=2
-                elif is_family:
-                    privacy=3
-                else:
-                    privacy=4
-                meta['Privacy']=privacy
-                item.thumburl=ph.attrib['url_s']
-                item.imageurl=ph.attrib['url_o']
-                if ind>=0:
-                    item.init_meta(meta,self.collection)
-                else:
+                item.sync=True
+                datemod=datetime.fromtimestamp(float(ph.attrib['lastupdate']))
+                if item.meta==None or datemod!=item.meta['DateModified']:
+#                    item.secret=ph.attrib['secret']
+#                    item.server=ph.attrib['server']
+#                    item.thumburl=ph.attrib['url_s']
+#                    item.imageurl=ph.attrib['url_o']
+                    collection.load_metadata(item)
+                if ind<0:
                     self.collection.add(item,self.collection)
                 gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
-            self.page+=1
         if self.page>self.pages:
             collection.last_update_time=new_time
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
+
+            ##todo: this should be interruptable
+            print 'REMOVING DELETED ITEMS'
+            items_to_del=[]
+            for i in range(len(collection)):
+                item=collection[i]
+                if 'sync' in item.__dict__:
+                    del item.sync
+                else:
+                    items_to_del.append(item)
+            for item in items_to_del:
+                self.browser.lock.acquire()
+                collection.delete(item)
+                self.browser.lock.release()
+                gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
             return True
         return False
 
@@ -276,12 +273,40 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
     return True
 
 
+def get_uid(item):
+    return item.uid
+
+def get_utime(item):
+    try:
+        date=item.meta["DateUploaded"]
+        if type(date)==str:
+            date=datetime.strptime(date)
+        return date
+    except:
+        return datetime.datetime(1900,1,1)
+
+flickr_sort_keys={
+        'Date Taken':viewsupport.get_ctime,
+        'Date Uploaded':get_utime,
+        'Date Last Modified':viewsupport.get_mtime,
+        'Photo ID':get_uid,
+        'Orientation':viewsupport.get_orient,
+#        'Folder':view_support.get_folder,
+#        'Shutter Speed':view_support.get_speed,
+#        'Aperture':view_support.get_aperture,
+#        'Focal Length':view_support.get_focal,
+#        'Relevance':view_support.get_relevance
+        }
+
+
 class FlickrCollection(baseobjects.CollectionBase):
     '''defines a sorted collection of Items with
     callbacks to plugins when the contents of the collection change'''
     ##todo: do more plugin callbacks here instead of the job classes?
     type='FLICKR'
     type_descr='Flickr Account'
+    local_filesystem=False
+    browser_sort_keys=flickr_sort_keys
     api_key = 'c0ec5403179a50fbbff9f3f65b664b29'
     api_secret = 'd5340e24789b7fd9'
     pref_widget=FlickrPrefWidget
@@ -304,7 +329,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 
         ##and has the following properties (which are stored in the collection file if it exists)
         self.image_dirs=[]
-        self.sync_on_open=True #try to synchronize with Flickr after start up
+        self.sync_at_login=True #try to synchronize with Flickr after start up
         self.store_images_locally=False #keep an offline copy of all images in the collections
         self.max_stored_image_size=None
         self.trash_location=None #none defaults to <collection dir>/.trash
@@ -356,7 +381,6 @@ class FlickrCollection(baseobjects.CollectionBase):
         '''
         load the cached state of the flickr collection from a binary pickle file
         '''
-        self.online=self.login()
         col_dir=os.path.join(settings.collections_dir,self.name)
         if self.is_open:
             return True
@@ -414,13 +438,17 @@ class FlickrCollection(baseobjects.CollectionBase):
             METHODS TO SYNC THE COLLECTION WITH THE FLICKR ACCOUNT
     ******************************************************************** '''
 
-    def login(self):
+    def login(self,worker,browser):
         '''
         initialize flickr client object and log into the flickr account
         '''
+        print '#########FLICKR LOGIN#########'
+        if self.flickr_client!=None:
+            return
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret)
+        self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
         try:
-            (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='write')
+            (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
             if not self.token:
                 from phraymd import dialogs
                 result=dialogs.prompt_dialog('Allow Flickr Access','phraymd has opened a Flickr application authentication page in your web browser. Please give phraymd access to your flickr account by accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
@@ -429,6 +457,10 @@ class FlickrCollection(baseobjects.CollectionBase):
             user=login_resp.find('user')
             self.login_username=user.find('username').text
             self.login_id=user.attrib['id']
+            self.online=True
+            if self.sync_at_login or len(collection)==0:
+                worker.queue_job_instance(FlickrSyncJob(worker,self,browser))
+                worker.queue_job_instance(backend.MakeThumbsJob(worker,self,browser))
             return True
         except:
             import traceback, sys
@@ -500,71 +532,6 @@ class FlickrCollection(baseobjects.CollectionBase):
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print 'Error on upload',tb_text
 
-    def enumerate_source(self,interrupt_fn,recently_updated=False):
-        '''
-        get the list of items from the source
-        and cache appropriately
-        '''
-
-        '''
-        see also:
-        flickr.photos.recentlyUpdated
-            api_key (Required)
-                Your API application key. See here for more details.
-            min_date (Required)
-                A Unix timestamp or any English textual datetime description indicating the date from which modifications should be compared.
-            extras (Optional)
-                A comma-delimited list of extra information to fetch for each returned record. Currently supported fields are: description, license, date_upload, date_taken, owner_name, icon_server, original_format, last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_m, url_z, url_l, url_o
-            per_page (Optional)
-                Number of photos to return per page. If this argument is omitted, it defaults to 100. The maximum allowed value is 500.
-            page (Optional)
-                The page of results to return. If this argument is omitted, it defaults to 1.
-
-        '''
-
-        page=0
-        pages=1
-        while not interrupt_fn() and page<pages:
-            supported_extras='''description, license, date_upload, date_taken, owner_name, icon_server, original_format,
-                    last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_m,
-                    url_z, url_l, url_o'''
-#            photos=flickr_client.people_getPhotos(user_id="me",page=page, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_t,original_format')
-            new_time=time.time()
-            if recently_updated: ##TODO: This isn't going to work if recentlyUpdated doesn't report deleted images
-                photos=flickr_client.people_recentlyUpdated(user_id="me",page=page, min_date=self.last_update_time, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,original_format')
-            else:
-                photos=flickr_client.people_getPhotos(user_id="me",page=page, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,original_format')
-
-            self.last_upate=time.time()
-            photos=photos.find('photos')
-            page=photos.page
-            pages=photos.pages
-            photodata=photocollections.findall('photo')
-            for ph in photodata:
-                uid=ph.id
-                ##todo: most of these need to be converted to python types
-                datefmt="%Y-%m-%d %H:%M:%S"
-                item=baseobjects.Item(uid)
-                item.secret=ph.secret
-                item.server=ph.server
-                item.meta['Title']=ph.title
-                item.meta['ImageDescription']=ph.description
-                item.meta['License']=ph.license
-                item.meta['Keywords']=metadata.tag_split(ph.tags)
-                item.meta['DateTaken']=datetime.strptime(ph.date_taken,datefmt) ##todo: assuming a time stamp, otherwise use datetime.strptime
-                item.meta['DateUploaded']=datetime.fromtimestamp(ph.date_upload)
-                item.meta['DateModified']=datetime.fromtimestamp(ph.last_update)
-                item.thumburl=ph.url_s
-                item.imageurl=ph.url_o
-                item.meta['Mimetype']=ph.original_format
-                self.add(item)
-            self.last_update_time=time.time()
-
-    def sync(self):
-        '''
-        Synchronize the cache with the online state of the flickr collection
-        '''
-        pass
 
     ''' ************************************************************************
                         MONITORING THE COLLECTION SOURCE FOR CHANGES
@@ -586,7 +553,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         '''
         try:
             ind=bisect.bisect_left(self.items,item)
-            if len(self.items)>ind>0 and self.items[ind]==item:
+            if len(self.items)>ind>=0 and self.items[ind]==item:
                 raise LookupError
             self.items.insert(ind,item)
             self.numselected+=item.selected
@@ -653,27 +620,130 @@ class FlickrCollection(baseobjects.CollectionBase):
     ''' ************************************************************************
                             MANIPULATING INDIVIDUAL ITEMS
         ************************************************************************'''
-    def copy_item(self,src_collection,src_item):
+    def copy_item(self,src_collection,src_item,prefs):
         'copy an item from another collection source'
-        pass
+        try:
+            #get or create suitable copy of the image file for uploading
+            name=os.path.split(src_item.uid)[1] ##this could be a problem for some uid's
+            temp_filename=''
+            temp_dir=''
+            src_filename=src_item.uid
+            if prefs['dest_name_needs_meta'] and src_item.meta==None or not self.local_filesystem:
+                temp_dir=tempfile.mkdtemp('','.image-')
+                temp_filename=os.path.join(temp_dir,name)
+                try:
+                    if src_collection.local_filesystem:
+                        io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
+                    else:
+                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item))
+                except IOError:
+                    ##todo: log an error
+                    ##todo: maybe better to re-raise the exception here
+                    return False
+                src_filename=temp_filename
+                imagemanip.load_metadata(src_item,src_collection,src_filename)
+            filename=imagemanip.get_jpeg_or_png_image_file(src_item,prefs['upload_size'],prefs['metadata_strip'],src_filename)
+
+            #specify metadata
+            try:
+                title=src_item.meta['Title']
+            except:
+                title=os.path.split(src_item.uid)[1]
+            try:
+                tags=src_item.meta['Keywords'] ##TODO: have to convert to space delimited
+            except:
+                tags=None
+            try:
+                description=src_item.meta['ImageDescription']
+            except:
+                description=None
+            try:
+                privacy=src_item.meta['Privacy']
+            except:
+                privacy=PRIVACY_PRIVATE
+            public=1 if privacy==PRIVACY_PUBLIC else 0
+            family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
+            friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
+
+            #do the upload to flickr
+            print 'uploading',src_item.uid,'with privacy',public,family,friends
+            def progress_cb(progress,done):
+                ##send notification
+                pass
+            photo_id=self.flickr_client.upload(filename=filename,title=title,description=description,tags=tags,
+                is_public=public,is_family=family,is_friend=friends,callback=progress_cb)
+            photo_id=photo_id.find('photoid').text
+
+##            if album[0]:
+##                photoset_id=album[1].attrib['id']
+##                self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
+
+            #clean up
+            try:
+                if prefs['move_files']:
+                    src_collection.delete_item(src_item)
+                if temp_filename!=src_filename:
+                    io.remove_file(temp_filename)
+                if temp_dir:
+                    os.rmdir(temp_dir)
+            except:
+                print 'Error cleaning up old files'
+                print 'Error copying image'
+                import traceback,sys
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                print tb_text
+
+            #now add the item to the collection
+            item=baseobjects.Item(photo_id)
+            item.selected=src_item.selected
+            self.load_metadata(item)
+            self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
+            self.add(item) ##todo: should we lock the image browser rendering updates for this call??
+            return True
+        except:
+            print 'Error copying src item'
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
+
     def delete_item(self,item):
         'remove the item from the underlying store'
-        pass
+        try:
+            print 'Deleting item',item
+            self.flickr_client.photos_delete(photo_id=item.uid)
+            self.delete(item.uid)
+            print 'Deleted item',item
+            return True
+        except:
+            ##todo: should delete item from collection anyway?
+            import traceback,sys
+            print 'Error deleting item',item
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
+
     def load_thumbnail(self,item):
         'load the thumbnail from the local cache'
         return imagemanip.load_thumb(item)
+
     def has_thumbnail(self,item):
         return item.thumburi
+
     def make_thumbnail(self,item,interrupt_fn=None,force=False):
         'create a cached thumbnail of the image'
         if not force and item.thumburi:
             return True
-        print 'creating thumb for ',item
+        print 'Flickr Colleciton: creating thumb for',item
         try:
-            item.thumburi=os.path.join(self.thumbnail_cache_dir,item.uid)+'.jpg'
-            print 'thumburi',item.thumburi,item.thumburl
-            f=open(item.thumburi,'wb')
+            thumburi=os.path.join(self.thumbnail_cache_dir,item.uid)+'.jpg'
+            try:
+                os.makedirs(os.path.split(thumburi)[0])
+            except:
+                pass
+            f=open(thumburi,'wb')
             f.write(urllib2.urlopen(item.thumburl).read())
+            item.thumburi=thumburi ##avoid a race condition with imagemanip.load_thumb by setting item.thumburi AFTER the thumb has been created
             return True
         except:
             print 'Failed to retrieve thumbnail for',item
@@ -683,25 +753,37 @@ class FlickrCollection(baseobjects.CollectionBase):
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print tb_text
             return False
+
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed. (Intended for use with database backends)'
         pass
-    def load_metadata(self,item):
+
+    def load_metadata(self,item,missing_only=False):
         'retrieve metadata for an item from the source'
-        result=self.flickr_client.photos_getInfo(item.uid)
+##        extras='description,license,geo,date_upload,date_taken,last_update,url_s,url_o,original_format'
+        result=self.flickr_client.photos_getInfo(photo_id=item.uid)
+
         ph=result.find('photo')
         if not ph:
             return False
         meta={}
+        item.secret=ph.attrib['secret']
+        item.server=ph.attrib['server']
+        item.farm=ph.attrib['farm']
+        originalformat=ph.attrib['originalformat']
+        originalsecret=ph.attrib['originalsecret']
+        item.thumburl='http://farm%s.static.flickr.com/%s/%s_%s_m.jpg'%(item.farm,item.server,item.uid,item.secret)
+        item.imageurl='http://farm%s.static.flickr.com/%s/%s_%s_o.%s'%(item.farm,item.server,item.uid,originalsecret,originalformat)
         title=ph.find('title')
-        if title: meta['Title']=title.text
+        if title!=None and title.text!=None: meta['Title']=title.text
         desc=ph.find('description')
-        if desc: meta['Title']=desc.text
+        if desc!=None and desc.text!=None: meta['Description']=desc.text
         imtype=ph.attrib['originalformat']
         if imtype=='png': meta['imtype']='image/png'
         if imtype=='jpg': meta['imtype']='image/jpeg'
+        if imtype=='gif': meta['imtype']='image/gif'
         vis=ph.find('visibility')
-        if vis:
+        if vis!=None:
             is_public=int(vis.attrib['ispublic'])
             is_friend=int(vis.attrib['isfriend'])
             is_family=int(vis.attrib['isfamily'])
@@ -722,16 +804,19 @@ class FlickrCollection(baseobjects.CollectionBase):
         if rotate=='180': meta['Orientation']=3
         if rotate=='270': meta['Orientation']=6
         dates=ph.find('dates')
-        if dates:
+        if dates!=None:
             meta['DateUploaded']=datetime.fromtimestamp(float(dates.attrib['posted']))
             meta['DateModified']=datetime.fromtimestamp(float(dates.attrib['lastupdate']))
             meta['DateTaken']=datetime.strptime(dates.attrib['taken'],datefmt)
         perm=ph.find('permissions')
-        if perm:
+        if perm!=None:
             meta['PermComment']=perm.attrib['permcomment']
             meta['PermAddMeta']=perm.attrib['permaddmeta']
-        tags=ph.findall('tags')
-        meta['Keywords']=[t.attrib['raw'] for t in tags]
+        tags=ph.find('tags')
+        if tags!=None:
+            tags=tags.findall('tag')
+            meta['Keywords']=[t.attrib['raw'] for t in tags]
+        print 'Read metadata',meta
         item.init_meta(meta,self)
         '''
         <photo id="2733" secret="123456" server="12"
@@ -761,6 +846,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             </urls>
         </photo>
         '''
+
     def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True):
         'write metadata for an item to the source'
 ##TODO: Other metadate that could be set...
@@ -770,10 +856,10 @@ class FlickrCollection(baseobjects.CollectionBase):
         try:
             privacy=item.meta['Privacy']
         except KeyError:
-            private=PRIVACY_PUBLIC
+            privacy=PRIVACY_PUBLIC
         is_public=1 if privacy==PRIVACY_PUBLIC else 0
         is_family=1 if privacy in (PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY) else 0
-        is_friends=1 if privacy in (PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY) else 0
+        is_friend=1 if privacy in (PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY) else 0
         try:
             perm_comment=item.meta['PermComment']
         except KeyError:
@@ -795,11 +881,13 @@ class FlickrCollection(baseobjects.CollectionBase):
         except:
             tags=''
         if set_meta:
-            self.flickr_client.photos_setMeta(item.uid,title,description)
+            self.flickr_client.photos_setMeta(photo_id=item.uid,title=title,description=description)
         if set_tags:
-            self.flickr_client.photos_setTags(item.uid,tags)
+            self.flickr_client.photos_setTags(photo_id=item.uid,tags=tags)
         if set_perms:
-            self.flickr_client.photos_setPerms(item.uid,is_public,is_friend,is_family,perm_comment,perm_addmeta)
+            self.flickr_client.photos_setPerms(photo_id=item.uid,is_public=is_public,is_friend=is_friend,is_family=is_family,perm_comment=perm_comment,perm_addmeta=perm_addmeta)
+        item.mark_meta_saved()
+
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         if item.image!=None:
@@ -836,12 +924,15 @@ class FlickrCollection(baseobjects.CollectionBase):
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print tb_text
             return False
+
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
         return urllib2.urlopen(item.imageurl)
+
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         pass
+
     def get_browser_text(self,item):
         header=''
         if settings.overlay_show_title:
@@ -873,7 +964,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                 if details and not details.endswith('\n'):
                     details+='\n'
                 val=item.meta['DateUploaded']
-                details+='Uploaded: '+str(val)
+                details+='Upload: '+str(val)
     #    else:
     #        details+='Mod: '+str(get_mtime(item))
         if settings.overlay_show_exposure:

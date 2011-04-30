@@ -205,13 +205,12 @@ class LocalDir(localstorebin.Collection):
         return True
 
     def _open(self):
-        print '****GOT DBUS OPEN REQUEST'
         if self.path_to_open:
+            print 'Received D-Bus open request for',self.path_to_open
             item=baseobjects.Item(self.path_to_open)
             item.mtime=io.get_mtime(item.uid)
             imagemanip.load_metadata(item)
             self.add(item)
-            print 'SENDING REQUEST TO VIEW',item
             gobject.idle_add(self.mainframe.view_image,item)
         return True
 

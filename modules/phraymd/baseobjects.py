@@ -81,9 +81,11 @@ class CollectionBase:
     Defines a list of image items, which can be accessed with list-like semantics
     and provides methos to retrieving and manipulating the associated images
     '''
+    type=None #unique string usd to identify the type of the collection
+    type_descr=None #human readable string
+    local_filesystem=False #True is image files are stored in the local filesystem (uid assumed to be path to files)
     pref_items=('type','name','pixbuf','id') ##the list of variables that will be saved
     persistent=False
-    type=None
     user_creatable=False
     pref_widget=None
     add_widget=None
@@ -247,7 +249,7 @@ class ViewBase: ##base class for the filter view of a collection and (for now) r
     def __init__(self,key_cb=viewsupport.get_mtime,items=[],collection=None):
         self.key_cb=key_cb
         self.sort_key_text=''
-        for text,cb in viewsupport.sort_keys.iteritems():
+        for text,cb in collection.browser_sort_keys.iteritems():
             if cb==key_cb:
                 self.sort_key_text=text
         self.filter_tree=None

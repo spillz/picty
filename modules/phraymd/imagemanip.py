@@ -125,12 +125,12 @@ def rotate_right(item,collection=None):
     rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
 
 
-def load_metadata(item,collection=None,filename=None,get_thumbnail=False):
+def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing_only=False):
     if item.meta!=None:
         meta=item.meta.copy()
     else:
         meta=item.meta
-    result=metadata.load_metadata(item,item.uid,get_thumbnail)
+    result=metadata.load_metadata(item,item.uid,get_thumbnail,missing_only)
     if result:
 ##PICKLED DICT
 #        if isinstance(item.meta,dict):
@@ -241,12 +241,14 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def get_jpeg_or_png_image_file(item,size,strip_metadata):
+def get_jpeg_or_png_image_file(item,size,strip_metadata,filename=''):
     '''
     writes a temporary copy of the image to disk
     '''
     import tempfile
-    filename=item.uid
+    if not filename:
+        filename=item.uid
+    src_filename=filename
     try:
         image=Image.open(item.uid)
     except:
@@ -276,7 +278,7 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata):
     if strip_metadata:
         if item.uid==filename:
             h,filename=tempfile.mkstemp('.jpg')
-    if filename!=item.uid:
+    if filename!=src_filename:
         if strip_metadata:
             image=orient_image(image,item.meta)
         image.save(filename,quality=95)
@@ -600,7 +602,9 @@ def load_thumb(item):
     affects thumbnail, thumburi members of item
     '''
     ##todo: rename load_thumb_from_cache
-    ##note that loading thumbs embedded in image files is handled elsewhere
+    ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon and load_metadata
+    if item.thumb==False:
+        return
     image=None
     try:
         uri = io.get_uri(item.uid)
@@ -631,6 +635,6 @@ def load_thumb(item):
         cache_thumb(item)
         return True
     else:
-        item.thumburi=None
-        item.thumb=None
+#        item.thumburi=None
+#        item.thumb=None
         return False

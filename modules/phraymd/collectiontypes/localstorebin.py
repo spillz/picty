@@ -22,7 +22,6 @@ License:
 ##standard imports
 import bisect
 from datetime import datetime
-import io
 import os
 import os.path
 import re
@@ -40,7 +39,15 @@ from phraymd import simple_parser as sp
 from phraymd import dialogs
 from phraymd import imagemanip
 from phraymd import backend
+from phraymd import io
 import simpleview
+
+
+EXIST_SKIP=0
+EXIST_RENAME=1
+EXIST_OVERWRITE=2
+EXIST_OVERWRITE_NEWER=3
+
 
 class LocalStorePrefWidget(gtk.VBox):
     def __init__(self,value_dict=None):
@@ -212,8 +219,10 @@ class Collection(baseobjects.CollectionBase):
     ##todo: do more plugin callbacks here instead of the job classes?
     type='LOCALSTORE'
     type_descr='Local Store'
+    local_filesystem=True
     pref_widget=LocalStorePrefWidget
     add_widget=NewLocalStoreWidget
+    browser_sort_keys=viewsupport.sort_keys
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
@@ -365,9 +374,10 @@ class Collection(baseobjects.CollectionBase):
         '''
         add an item to the collection and notify plugin
         '''
+        print '####adding',item
         try:
             ind=bisect.bisect_left(self.items,item)
-            if len(self.items)>ind>0 and self.items[ind]==item:
+            if len(self.items)>ind>=0 and self.items[ind]==item:
                 raise LookupError
             self.items.insert(ind,item)
             self.numselected+=item.selected
@@ -432,31 +442,105 @@ class Collection(baseobjects.CollectionBase):
     ''' ************************************************************************
                             MANIPULATING INDIVIDUAL ITEMS
         ************************************************************************'''
-    def copy_item(self,src_collection,src_item):
+    def copy_item(self,src_collection,src_item,prefs):
         'copy an item from another collection source'
         try:
-            uid=''###TODO: Establish a uid based on src item metadata
-            dest_item=baseobjects.Item(uid)
-            self.add(dest_item)
-            stream=src_collection.get_file_stream(src_item)
-            self.write_file_data(item,stream)
-            src_item.mtime=io.get_mtime(uid)
-            keys=metadata.apptags_dict
-            self.load_metadata(dest_item)
-            meta={}
-            for key in keys:
-                meta[key]=src_item.meta[key]
-            dest_item.set_meta(meta,self)
-            self.write_metadata(dest_item)
+            name=os.path.split(src_item.uid)[1]
+            dest_dir=prefs['base_dest_dir']
+            src_filename=src_item.uid
+            temp_filename=''
+            temp_dir=''
+            if prefs['dest_name_needs_meta'] and src_item.meta==None:
+                temp_dir=tempfile.mkdtemp('','.image-',dest_dir)
+                temp_filename=os.path.join(temp_dir,name)
+                try:
+                    if src_collection.local_filesystem:
+                        io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
+                    else:
+                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item))
+                except IOError:
+                    ##todo: log an error
+                    ##todo: maybe better to re-raise the exception here
+                    return False
+                src_filename=temp_filename
+                imagemanip.load_metadata(src_item,self.collection,src_filename)
+            dest_path,dest_name=prefs['name_item_fn'](src_item,dest_dir,prefs['dest_name_template'])
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+            dest_filename=os.path.join(dest_path,dest_name)
+            print 'copying dest filename',dest_filename
+            print 'action',prefs['action_if_exists']
+            if os.path.exists(dest_filename):
+                if prefs['action_if_exists']==EXIST_SKIP:
+                    print 'SKIPPING',src_item
+                    ##TODO: LOGGING TO IMPORT LOG
+                    return False
+                if prefs['action_if_exists']==EXIST_RENAME:
+                    dest_filename=prefs['altname_fn'](dest_filename)
+
+            try:
+                if prefs['move_files'] or temp_filename:
+                    io.move_file(src_filename,dest_filename,overwrite=prefs['action_if_exists']==EXIST_OVERWRITE)
+                else:
+                    if src_collection.local_filesystem:
+                        io.copy_file(src_filename,dest_filename,overwrite=prefs['action_if_exists']==EXIST_OVERWRITE)
+                    else:
+                        open(src_filename,'wb').write(src_collection.get_file_stream(src_item))
+            except IOError:
+                ##todo: log an error
+                ##todo: maybe better to re-raise the exception here
+                print 'Error copying image',src_item
+                import traceback,sys
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                print tb_text
+                return False
+
+            try:
+                if prefs['move_files'] and not temp_filename:
+                    src_collection.delete(src_item)
+                if temp_filename and temp_filename!=src_filename:
+                    io.remove_file(temp_filename)
+                if temp_dir:
+                    os.rmdir(temp_dir)
+            except IOError:
+                ##todo: log an error
+                ##todo: maybe better to re-raise the exception here
+                print 'Error cleaning up after copying image',src_item
+                import traceback,sys
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                print tb_text
+
+            item=baseobjects.Item(dest_filename)
+            item.mtime=io.get_mtime(item.uid)
+            item.selected=src_item.selected
+            self.load_metadata(item,missing_only=True)
+            self.make_thumbnail(item)
+            self.add(item) ##todo: should we lock the image browser rendering updates for this call??
+            return True
         except:
             print 'Error copying src item'
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+            return False
     def delete_item(self,item):
         'remove the item from the underlying store'
         try:
-            io.remove_file(item.uid)
+            trashdir=os.path.join(self.collection.image_dirs[0],'.trash')
+            empty,imdir,relpath=item.uid.partition(self.collection.image_dirs[0])
+            relpath=relpath.strip('/')
+            if relpath:
+                dest=os.path.join(trashdir,relpath)
+                if os.path.exists(dest):
+                    os.remove(dest)
+                os.renames(item.uid,dest)
+            self.delete(item) ##todo: lock the image browser??
             return True
         except:
             print 'Error deleting',item.uid
+            import traceback,sys
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
             return False
     def load_thumbnail(self,item):
         'load the thumbnail from the local cache'
@@ -476,12 +560,12 @@ class Collection(baseobjects.CollectionBase):
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed'
         pass
-    def load_metadata(self,item):
+    def load_metadata(self,item,missing_only=False):
         'retrieve metadata for an item from the source'
         if self.load_embedded_thumbs:
-            result=imagemanip.load_metadata(item,self,None,True)
+            result=imagemanip.load_metadata(item,self,None,True,missing_only)
         else:
-            result=imagemanip.load_metadata(item,self,None,False)
+            result=imagemanip.load_metadata(item,self,None,False,missing_only)
         if self.load_embedded_thumbs and not item.thumb:
             item.thumb=False
         return result
@@ -597,7 +681,7 @@ class Collection(baseobjects.CollectionBase):
         val=viewsupport.get_aperture(item)
         if val:
             exposure+='f/%3.1f'%(val,)
-        val=get_speed_str(item)
+        val=viewsupport.get_speed_str(item)
         if val:
             exposure+=' %ss'%(val,)
         val=viewsupport.get_iso_str(item)

@@ -41,7 +41,6 @@ class Worker:
         self.kill=False
 
     def _delete(self):
-        trashdir=os.path.join(self.collection.image_dirs[0],'.trash')
         for i in range(len(self.items)):
             item=self.items[i]
             if self.kill:
@@ -49,15 +48,7 @@ class Worker:
                 return
             if self.cb:
                 gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Deleting '+item.uid)
-            try:
-                empty,imdir,relpath=item.uid.partition(self.collection.image_dirs[0])
-                relpath=relpath.strip('/')
-                if relpath:
-                    dest=os.path.join(trashdir,relpath)
-                    if os.path.exists(dest):
-                        os.remove(dest)
-                    os.renames(item.uid,dest)
-            except:
+            if not self.collection.delete_item(item):
                 fileoperrors.append(('del',item))
         if self.cb:
             gobject.idle_add(self.cb,None,2.0,'Finished Deleting')

@@ -21,8 +21,9 @@ License:
 
 
 '''
-this module defines helper functions to process image metadata
-for display in the view or sorting and filtering the view
+this module defines helper functions for:
+    1. generating human readable image metadata for display in the view
+    2. sorting and filtering the view
 '''
 
 

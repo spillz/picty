@@ -9,7 +9,7 @@ class SimpleView(baseobjects.ViewBase):
             self.add(key_cb(item),item)
         self.key_cb=key_cb
         self.sort_key_text=''
-        for text,cb in viewsupport.sort_keys.iteritems():
+        for text,cb in collection.browser_sort_keys.iteritems():
             if cb==key_cb:
                 self.sort_key_text=text
         self.filter_tree=None

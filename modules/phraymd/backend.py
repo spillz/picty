@@ -311,7 +311,7 @@ class ReloadMetadataJob(WorkerJob):
             self.browser.lock.acquire()
             if view.del_item(item):
                 item.meta=None
-                c.load_metadata(item)
+                self.collection.load_metadata(item)
                 log.info('reloaded metadata for '+item.uid)
                 view.add_item(item)
             self.browser.lock.release()
@@ -603,7 +603,7 @@ class BuildViewJob(WorkerJob):
             if self.sort_key:
                 view.sort_key_text=self.sort_key
             if view.sort_key_text:
-                view.key_cb=viewsupport.sort_keys[view.sort_key_text]
+                view.key_cb=self.collection.browser_sort_keys[view.sort_key_text]
             view.filters=None
             filter_text=self.filter_text.strip()
             if filter_text.startswith('lastview&'):
