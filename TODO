@@ -6,19 +6,12 @@ Nonetheless, the idea is to keep track of short-term plans (2-3 months).
 As stuff is completed or plans change the list should be updated.
 
 * Rename import plugin Transfer (and eventually drop the upload plugin)
-* Transfer plugin get preference widget
+* Transfer plugin should get preference widgets from collections (e.g. specify import location, metadata handling, privacy etc)
 * All collections should have an offline member and when offline turn off GUI that needs read or write access to the store
 * The OSD delete button becomes a toggle. Delete is committed along with metadata changes (requires the collection to be online)
-
-* Finish off abstraction of collection architecture (started in Rev 453)
-  * Collections should be responsible for providing GUI dialog/frame for managing collection properties
-  * Framework provide mechanism for creating new instances of any regsitered collection type
-  * Collection must provide all methods for manipulating the collection and images
-    (perhaps using functions shared across multiple collection types for common operations)
-  * All collection types should work seamlessly with global image class (Item)
-  * All collection types must integrate with plugin framework
-    (providing necessary notifications)
-  * Extend collection support to allow browsing of web-based stores (plugin)
+* Each collection should specify the metadata that is editable and/or provide the editing widgets
+* Support GEO (GPS) info in flickr
+* Allow changing thumb orientation in flickr (currently causes a crash)
 
 * Move collection handling (scanning/updating/filter/operations) to a separate process
   * Client/Server model
