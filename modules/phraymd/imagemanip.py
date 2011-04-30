@@ -250,13 +250,13 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata,filename=''):
         filename=item.uid
     src_filename=filename
     try:
-        image=Image.open(item.uid)
+        image=Image.open(filename)
     except:
         try:
-            cmd=settings.dcraw_cmd%(item.uid,)
+            cmd=settings.dcraw_cmd%(filename,)
             imdata=os.popen(cmd).read()
             if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(item.uid,)
+                cmd=settings.dcraw_backup_cmd%(filename,)
                 imdata=os.popen(cmd).read()
                 if not interrupt_fn():
                     return False

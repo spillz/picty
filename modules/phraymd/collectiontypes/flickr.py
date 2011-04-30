@@ -604,7 +604,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                     if src_collection.local_filesystem:
                         io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
                     else:
-                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item))
+                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
                     ##todo: log an error
                     ##todo: maybe better to re-raise the exception here
@@ -635,7 +635,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
 
             #do the upload to flickr
-            print 'uploading',src_item.uid,'with privacy',public,family,friends
+            print 'uploading',src_item.uid,'from file',filename,' privacy',public,family,friends
             def progress_cb(progress,done):
                 ##send notification
                 pass

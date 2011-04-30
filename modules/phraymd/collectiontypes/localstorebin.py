@@ -457,7 +457,7 @@ class Collection(baseobjects.CollectionBase):
                     if src_collection.local_filesystem:
                         io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
                     else:
-                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item))
+                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
                     ##todo: log an error
                     ##todo: maybe better to re-raise the exception here
@@ -485,7 +485,7 @@ class Collection(baseobjects.CollectionBase):
                     if src_collection.local_filesystem:
                         io.copy_file(src_filename,dest_filename,overwrite=prefs['action_if_exists']==EXIST_OVERWRITE)
                     else:
-                        open(src_filename,'wb').write(src_collection.get_file_stream(src_item))
+                        open(src_filename,'wb').write(src_collection.get_file_stream(src_item).read())
             except IOError:
                 ##todo: log an error
                 ##todo: maybe better to re-raise the exception here
