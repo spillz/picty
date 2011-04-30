@@ -979,6 +979,8 @@ class VerifyImagesJob(WorkerJob):
             item=collection[i]
             if i%20==0:
                 idle_add(self.browser.update_status,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
+            if item.meta==False: ##TODO: This is a legacy check -- should remove eventually
+                item.meta=None
             if item.meta==None:
                 print 'verify loading metadata',item.uid
                 self.browser.lock.acquire()

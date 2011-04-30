@@ -18,6 +18,7 @@ As stuff is completed or plans change the list should be updated.
 * Correctly count the number of flickr items during FlickrSync
 * Add options to scan for updates or fully reimport the collection
 * Fix incorrect counts in the tag pane
+* Logging pane in the Transfer plugin
 
 * Move collection handling (scanning/updating/filter/operations) to a separate process
   * Client/Server model
