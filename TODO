@@ -12,6 +12,8 @@ As stuff is completed or plans change the list should be updated.
 * Each collection should specify the metadata that is editable and/or provide the editing widgets
 * Support GEO (GPS) info in flickr
 * Allow changing thumb orientation in flickr (currently causes a crash)
+* Delete thumbnails when image is deleted
+* Copy thumbnails on transfer
 
 * Move collection handling (scanning/updating/filter/operations) to a separate process
   * Client/Server model
