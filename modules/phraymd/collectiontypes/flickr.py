@@ -735,7 +735,10 @@ class FlickrCollection(baseobjects.CollectionBase):
         item.secret=ph.attrib['secret']
         item.server=ph.attrib['server']
         item.farm=ph.attrib['farm']
-        originalformat=ph.attrib['originalformat']
+        try:
+            originalformat=ph.attrib['originalformat']
+        except:
+            originalformat='jpg'
         originalsecret=ph.attrib['originalsecret']
         item.thumburl='http://farm%s.static.flickr.com/%s/%s_%s_m.jpg'%(item.farm,item.server,item.uid,item.secret)
         item.imageurl='http://farm%s.static.flickr.com/%s/%s_%s_o.%s'%(item.farm,item.server,item.uid,originalsecret,originalformat)
@@ -746,7 +749,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         try:
             imtype=ph.attrib['originalformat']
         except:
-            imtype='png'
+            imtype='jpg'
         if imtype=='png': meta['imtype']='image/png'
         if imtype=='jpg': meta['imtype']='image/jpeg'
         if imtype=='gif': meta['imtype']='image/gif'
