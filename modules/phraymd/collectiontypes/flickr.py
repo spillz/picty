@@ -1039,7 +1039,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         val=viewsupport.get_aperture(item)
         if val:
             exposure+='f/%3.1f'%(val,)
-        val=get_speed_str(item)
+        val=viewsupport.get_speed_str(item)
         if val:
             exposure+=' %ss'%(val,)
         val=viewsupport.get_iso_str(item)
