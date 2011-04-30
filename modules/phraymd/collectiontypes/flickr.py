@@ -57,6 +57,8 @@ from phraymd import viewsupport
 from phraymd import io
 import simpleview
 
+datefmt="%Y-%m-%d %H:%M:%S"
+
 
 privacy_levels=[
 'PUBLIC',
@@ -88,16 +90,16 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
         print 'OPENING COLLECTION',collection.id,collection.type
         if collection._open():
             self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
-            gobject.idle_add(collection.login,self.worker,self.browser)
+            gobject.idle_add(self.worker.coll_set.collection_opened,self.collection.id)
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
-            gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
+            if self.collection.flickr_client!=None and (self.collection.sync_at_login or len(self.collection)==0):
+                self.worker.queue_job_instance(FlickrSyncJob(self.worker,self.collection,self.browser))
+                self.worker.queue_job_instance(backend.MakeThumbsJob(self.worker,self.collection,self.browser))
 #            log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             pass
 #            log.error('Load collection failed')
         return True
-
-datefmt="%Y-%m-%d %H:%M:%S"
 
 
 class FlickrSyncJob(backend.WorkerJob):
@@ -137,12 +139,10 @@ class FlickrSyncJob(backend.WorkerJob):
                 self.photodata=photos.findall('photo')
             while self.counter<len(self.photodata) and jobs.ishighestpriority(self):
                 pct=(1.0*(self.page-1)*500+self.counter)/(self.pages*500)
-                print '***',pct,self.page,self.pages,self.counter
                 gobject.idle_add(self.browser.update_status,pct,'Syncing with Flickr')
                 ph=self.photodata[self.counter]
                 self.counter+=1
                 uid=ph.attrib['id']
-                print 'uid',uid
                 item=baseobjects.Item(uid)
                 ind=collection.find(item)
                 if ind>=0:
@@ -374,6 +374,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             return False
 
     def open(self,thread_manager,browser=None):
+        self.login()
         j=LoadFlickrCollectionJob(thread_manager,self,browser)
         thread_manager.queue_job_instance(j)
 
@@ -438,14 +439,14 @@ class FlickrCollection(baseobjects.CollectionBase):
             METHODS TO SYNC THE COLLECTION WITH THE FLICKR ACCOUNT
     ******************************************************************** '''
 
-    def login(self,worker,browser):
+    def login(self):
         '''
         initialize flickr client object and log into the flickr account
         '''
         print '#########FLICKR LOGIN#########'
         if self.flickr_client!=None:
-            return
-        self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret)
+            return True
+        self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret, username=self.name)
         self.flickr_client.token.path = os.path.join(self.coll_dir(),'flickr-token')
         try:
             (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
@@ -458,9 +459,6 @@ class FlickrCollection(baseobjects.CollectionBase):
             self.login_username=user.find('username').text
             self.login_id=user.attrib['id']
             self.online=True
-            if self.sync_at_login or len(collection)==0:
-                worker.queue_job_instance(FlickrSyncJob(worker,self,browser))
-                worker.queue_job_instance(backend.MakeThumbsJob(worker,self,browser))
             return True
         except:
             import traceback, sys
