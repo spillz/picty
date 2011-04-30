@@ -499,40 +499,6 @@ class FlickrCollection(baseobjects.CollectionBase):
             print 'Error retrieving set data',tb_text
             #self.t_notify_albums([],'')
 
-    def upload_photo(self,item,album=None,preferences=None):
-        try:
-            ##TODO: update get_jpeg_or_png_image_file to use collection method get_file_data/get_image
-            filename=imagemanip.get_jpeg_or_png_image_file(item,preferences.upload_size,preferences.metadata_strip)
-            title=item.meta['Title']
-            if not title:
-                title=os.path.split(item.uid)[1]
-            tags=item.meta['Keywords'] ##TODO: have to convert to space delimited
-            description=item.meta['ImageDescription']
-            privacy=item.meta['Privacy']
-            public=1 if privacy==PRIVACY_PUBLIC else 0
-            family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
-            friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
-            print 'uploading',item.uid,'with privacy',public,family,friends
-
-            def progress_cb(progress,done):
-                ##send notification
-                pass
-            photo_id=self.flickr_client.upload(filename=filename,title=title,description=description,tags=tags,
-                is_public=public,is_family=family,is_friend=friends,callback=progress_cb)
-            photo_id=photo_id.find('photoid').text
-
-            if album[0]:
-                photoset_id=album[1].attrib['id']
-                self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
-
-            if filename!=item.uid:
-                os.remove(filename)
-        except:
-            import traceback, sys
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print 'Error on upload',tb_text
-
-
     ''' ************************************************************************
                         MONITORING THE COLLECTION SOURCE FOR CHANGES
                         FOR FLICKR: POLL AT MOST ONCE PER HOUR
@@ -650,7 +616,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             except:
                 title=os.path.split(src_item.uid)[1]
             try:
-                tags=src_item.meta['Keywords'] ##TODO: have to convert to space delimited
+                tags=metadata.tag_bind(src_item.meta['Keywords'])
             except:
                 tags=None
             try:
