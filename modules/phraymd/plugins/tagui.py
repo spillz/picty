@@ -517,6 +517,7 @@ class TagFrame(gtk.VBox):
                 it=self.model.iter_children(dest_iter)
                 it=None
                 n=self.model.iter_n_children(dest_iter)
+                i=0
                 for i in range(n):
                     it=self.model.iter_nth_child(dest_iter,i)
                     if self.model[it][self.M_DISP].lower()>row[self.M_DISP].lower():
