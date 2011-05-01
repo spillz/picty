@@ -316,14 +316,9 @@ class Collection(baseobjects.CollectionBase):
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
-        if self.type!='FLICKR':
-            return True
         print 'started close',self.name
         if not self.is_open:
             return True
-        if self.type!='FLICKR':
-            return False
-        print 'starting close',self.name
         try:
             col_dir=os.path.join(settings.collections_dir,self.name)
             print 'closing',col_dir
