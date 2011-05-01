@@ -187,13 +187,13 @@ class ImporterImportJob(backend.WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         worker=self.worker
-        pluginmanager.mgr.suspend_collection_events(self.collection_dest)
         i=self.countpos
         if not self.collection_dest.is_open or not self.collection_src.is_open:
             gobject.idle_add(self.plugin.import_cancelled)
             return True
         collection=self.collection_dest
         if self.items==None:
+            pluginmanager.mgr.suspend_collection_events(self.collection_dest)
             if self.import_all:
                 self.items=self.collection_src.get_all_items()
                 print 'importing all',len(self.items)

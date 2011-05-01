@@ -360,9 +360,10 @@ class Item(str):
             collection.item_metadata_update(self)
         return self.is_meta_changed()
     def init_meta(self,meta,collection=None):
+        old=self.meta
         self.meta=meta
         if collection:
-            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,None)
+            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
         return True
     def set_meta(self,meta,collection=None):

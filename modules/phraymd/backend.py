@@ -786,7 +786,7 @@ EDIT_SELECTION=3
 class EditMetaDataJob(WorkerJob):
     def __init__(self,worker,collection,browser,mode,meta,keyword_string='',scope=EDIT_VIEW):
         WorkerJob.__init__(self,'EDITMETADATA',750,worker,collection,browser)
-        self.pos=0
+        self.pos=-1
         self.cancel=False
         self.mode=mode
         self.scope=scope
@@ -799,9 +799,10 @@ class EditMetaDataJob(WorkerJob):
         collection=self.collection
         view=collection.get_active_view()
         jobs=self.worker.jobs
-        i=self.pos
-        if i==0:
+        if self.pos<0:
+            self.pos=0
             pluginmanager.mgr.suspend_collection_events(self.collection)
+        i=self.pos
         items=collection if self.scope==EDIT_COLLECTION else view
         if self.mode==ADD_KEYWORDS:
             tags=metadata.tag_split(self.keyword_string)
@@ -966,14 +967,16 @@ class SaveViewJob(WorkerJob):
 class VerifyImagesJob(WorkerJob):
     def __init__(self,worker,collection,browser):
         WorkerJob.__init__(self,'VERIFYIMAGES',500,worker,collection,browser)
-        self.countpos=0
+        self.countpos=-1
         self.view=self.collection.get_active_view()
 
     def __call__(self):
         print 'running verify job'
         jobs=self.worker.jobs
         collection=self.collection
-        pluginmanager.mgr.suspend_collection_events(self.collection)
+        if self.countpos<0:
+            self.countpos=0
+            pluginmanager.mgr.suspend_collection_events(self.collection)
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
@@ -1057,12 +1060,15 @@ class DirectoryUpdateJob(WorkerJob):
     def __init__(self,worker,collection,browser,action_queue):
         WorkerJob.__init__(self,'DIRECTORYUPDATE',400,worker,collection,browser)
         self.queue=action_queue
+        self.started=False
 
     def __call__(self):
         #todo: make sure job.queue has been initialized
         #todo: acquire and release collection lock
         jobs=self.worker.jobs
-        pluginmanager.mgr.suspend_collection_events(self.collection)
+        if not self.started:
+            self.started=True
+            pluginmanager.mgr.suspend_collection_events(self.collection)
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             collection,fullpath,action=self.queue.pop(0)
             if action in ('DELETE','MOVED_FROM'):
