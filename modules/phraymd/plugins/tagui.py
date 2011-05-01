@@ -522,16 +522,16 @@ class TagFrame(gtk.VBox):
             if rownum!=None:
                 dest_iter=self.model.insert(dest_iter,rownum,row)
             else:
-                it=self.model.iter_children(dest_iter)
-                it=None
+#                it=self.model.iter_children(dest_iter)
+#                it=None
                 n=self.model.iter_n_children(dest_iter)
-                i=0
                 for i in range(n):
                     it=self.model.iter_nth_child(dest_iter,i)
                     if self.model[it][self.M_DISP].lower()>row[self.M_DISP].lower():
                         dest_iter=self.model.insert(dest_iter,i,row)
+                        n=-1
                         break
-                if i==n:
+                if n>=0:
                     dest_iter=self.model.append(dest_iter,row)
             row=self.model[dest_iter]
             if row[self.M_TYPE]==3:
