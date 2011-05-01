@@ -92,7 +92,10 @@ def rotate_left(item,collection=None):
     item.set_meta_key('Orientation',rotate_left_tx[orient],collection)
     item.image=None
     item.qview=None
-    rotate_thumb(item,False)
+    if collection==None:
+        rotate_thumb(item,False)
+    else:
+        collection.rotate_thumbnail(item,False)
 
 
 def rotate_right(item,collection=None):
@@ -109,7 +112,10 @@ def rotate_right(item,collection=None):
     item.set_meta_key('Orientation',rotate_right_tx[orient],collection)
     item.image=None
     item.qview=None
-    rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
+    if collection==None:
+        rotate_thumb(item,True)
+    else:
+        collection.rotate_thumbnail(item,True)
 
 
 def toggle_tags(item,tags,collection=None):
@@ -571,8 +577,6 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
     right - rotate right if True else left
     interrupt_fn - callback that returns False if job should be interrupted
     '''
-    if thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
-        return False
     if item.thumburi:
         try:
             image=Image.open(item.thumburi)
@@ -585,15 +589,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             width=thumbsize[0]
             height=thumbsize[1]
             thumb_pb=gtk.gdk.pixbuf_new_from_data(data=image.tostring(), colorspace=gtk.gdk.COLORSPACE_RGB, has_alpha=thumbrgba, bits_per_sample=8, width=width, height=height, rowstride=width*(3+thumbrgba)) #last arg is rowstride
-            width=thumb_pb.get_width()
-            height=thumb_pb.get_height()
-            uri = io.get_uri(item.uid)
-            thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
-            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
-            if item.thumb:
-                item.thumb=thumb_pb
-                cache_thumb(item)
-            return True
+            return thumb_pb
         except:
             return False
     return False

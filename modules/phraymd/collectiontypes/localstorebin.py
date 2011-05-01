@@ -552,6 +552,28 @@ class Collection(baseobjects.CollectionBase):
         imagemanip.make_thumb(item,interrupt_fn,force)
         imagemanip.update_thumb_date(item)
         return
+    def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
+        '''
+        rotates thumbnail of item 90 degrees right (clockwise) or left (anti-clockwise)
+        right - rotate right if True else left
+        interrupt_fn - callback that returns False if job should be interrupted
+        '''
+        if imagemanip.thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
+            return False
+        thumb_pb=imagemanip.rotate_thumb(item,right,interrupt_fn)
+        if not thumb_pb:
+            return  False
+#        width=thumb_pb.get_width()
+#        height=thumb_pb.get_height()
+        uri = io.get_uri(item.uid)
+        imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+        item.thumburi=imagemanip.thumb_factory.lookup(uri,int(item.mtime))
+        if item.thumb:
+            item.thumb=thumb_pb
+            imagemanip.cache_thumb(item)
+        return True
+        #return False
+
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed'
         pass

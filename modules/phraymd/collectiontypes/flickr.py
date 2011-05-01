@@ -723,6 +723,26 @@ class FlickrCollection(baseobjects.CollectionBase):
             print tb_text
             return False
 
+    def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
+        '''
+        rotates thumbnail of item 90 degrees right (clockwise) or left (anti-clockwise)
+        right - rotate right if True else left
+        interrupt_fn - callback that returns False if job should be interrupted
+        '''
+        thumb_pb=imagemanip.rotate_thumb(item,right,interrupt_fn)
+        if thumb_pb:
+            thumb_pb.save(item.thumburi,'jpeg',{"quality":"95"})
+            s=(thumb_pb.get_width(),thumb_pb.get_height())
+            if s[0]>128 or s[1]>128:
+                m=max(s)
+                w=s[0]*128/m
+                h=s[1]*128/m
+                thumb_pb=thumb_pb.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
+            item.thumb=thumb_pb
+            return True
+        return False
+
+
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed. (Intended for use with database backends)'
         pass
@@ -868,12 +888,59 @@ class FlickrCollection(baseobjects.CollectionBase):
             tags=metadata.tag_bind(item.meta['Keywords'])
         except:
             tags=''
+
+        rotate=None
+        if 'Orientation' in item.meta:
+            orient=item.meta['Orientation']
+        else:
+            orient=1
+        if item.meta_backup and 'Orientation' in item.meta_backup:
+            borient=item.meta_backup['Orientation']
+        else:
+            borient=1
+##        Orientation,Angle
+##        1,0
+##        8,90
+##        3,180
+##        6,270
+
+        if borient==1:
+            if orient==8:
+                rotate=90
+            if orient==3:
+                rotate=180
+            if orient==6:
+                rotate=270
+        if borient==8:
+            if orient==3:
+                rotate=90
+            if orient==6:
+                rotate=180
+            if orient==1:
+                rotate=270
+        if borient==3:
+            if orient==6:
+                rotate=90
+            if orient==1:
+                rotate=180
+            if orient==8:
+                rotate=270
+        if borient==6:
+            if orient==1:
+                rotate=90
+            if orient==8:
+                rotate=180
+            if orient==3:
+                rotate=270
+
         if set_meta:
             self.flickr_client.photos_setMeta(photo_id=item.uid,title=title,description=description)
         if set_tags:
             self.flickr_client.photos_setTags(photo_id=item.uid,tags=tags)
         if set_perms:
             self.flickr_client.photos_setPerms(photo_id=item.uid,is_public=is_public,is_friend=is_friend,is_family=is_family,perm_comment=perm_comment,perm_addmeta=perm_addmeta)
+        if rotate!=None:
+            self.flickr_client.photos_transform_rotate(photo_id=item.uid,degrees=rotate)
         item.mark_meta_saved()
 
     def load_image(self,item,interrupt_fn=None,size_bound=None):
@@ -896,14 +963,19 @@ class FlickrCollection(baseobjects.CollectionBase):
                 sio.write(s)
                 p.feed(s)
             item.image = p.close()
-            try:
-                import pyexiv2
-                im=pyexiv2.ImageMetadata.from_buffer(sio.getvalue())
-                im.read()
-                orient={'Orientation':im['Exif.Image.Orientation'].value}
-            except:
-                orient={}
-            item.image=imagemanip.orient_image(item.image,orient)
+            if 'Orientation' in item.meta:
+                orient_meta=item.meta
+            else:
+                try:
+                    import pyexiv2
+                    im=pyexiv2.ImageMetadata.from_buffer(sio.getvalue())
+                    im.read()
+                    orient_meta={'Orientation':im['Exif.Image.Orientation'].value}
+                except:
+                    orient_meta={}
+            item.image=imagemanip.orient_image(item.image,orient_meta)
+            if item.image:
+                imagemanip.cache_image(item)
             return True
         except:
             print 'Failed to retrieve fullsize image for',item

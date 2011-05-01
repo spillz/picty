@@ -225,6 +225,9 @@ class CollectionBase:
     def make_thumbnail(self,item,pixbuf):
         'create a cached thumbnail of the image'
         pass
+    def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
+        'rotate the cached thumbnail image right (clockwise) or left (counter-clockwise)'
+        return False
     def item_metadata_update(self,item):
         'collection will receive when item metadata has been changed'
         pass

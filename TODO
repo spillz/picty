@@ -11,14 +11,13 @@ As stuff is completed or plans change the list should be updated.
 * The OSD delete button becomes a toggle. Delete is committed along with metadata changes (requires the collection to be online)
 * Each collection should specify the metadata that is editable and/or provide the editing widgets
 * Support GEO (GPS) info in flickr
-* Allow changing thumb orientation in flickr (currently causes a crash)
 * Delete thumbnails when image is deleted (add option to scan and delete redundant thumbnails)
-* Copy thumbnails on transfer
+* Copy cached thumbnails on transfer (avoids downloading/recreating)
 * Drag to/from desktop or other apps needs more support
 * Correctly count the number of flickr items during FlickrSync
 * Add options to scan for updates or fully reimport the collection
-* Fix incorrect counts in the tag pane
 * Logging pane in the Transfer plugin
+* Don't allow duplicates of a tag in an image
 
 * Move collection handling (scanning/updating/filter/operations) to a separate process
   * Client/Server model
