@@ -78,6 +78,7 @@ class MainFrame(gtk.VBox):
     def __init__(self,window):
         gtk.VBox.__init__(self)
         self.toplevel_window_state = ()
+        self.toplevel_window_max =''
         self.lock=threading.Lock()
         self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         self.volume_monitor=io.VolumeMonitor()
@@ -315,6 +316,8 @@ class MainFrame(gtk.VBox):
         if len(settings.layout)>0:
             self.set_layout(settings.layout)
         self.do_nothing_at_startup=False
+        if not self.toplevel_window_max:
+            self.toplevel_window_max = False
         if not self.toplevel_window_state:
             self.toplevel_window_state = (640, 400, 0, 0)
 
@@ -638,6 +641,7 @@ class MainFrame(gtk.VBox):
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
 
     def set_layout(self,layout):
+        print 'LAYOUT',layout
         sort_model=self.sort_order.get_model()
 
         for c in self.coll_set.iter_coll():
@@ -666,8 +670,14 @@ class MainFrame(gtk.VBox):
         except:
             self.toplevel_window_state =  (640, 400, 0, 0)
 
+        try:
+            self.toplevel_window_max = layout['toplevel_window_max']
+        except:
+            self.toplevel_window_max = 'False'
+
     def get_layout(self):
         layout=dict()
+        layout['toplevel_window_max'] = self.toplevel_window_max
         layout['toplevel_window_state'] = self.toplevel_window_state
         ##layout['window size']=self.window.get_size()
         ##layout['window maximized']=self.window.get_size()
@@ -686,6 +696,7 @@ class MainFrame(gtk.VBox):
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
+        print 'LAYOUT',layout
         return layout
 
     def activate_item(self,browser,ind,item):
