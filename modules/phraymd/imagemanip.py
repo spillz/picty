@@ -77,19 +77,6 @@ import time
 memimages=[]
 memthumbs=[]
 
-def orient_image(image,meta):
-    '''
-    returns a rotated copy of the PIL image based on the value of the 'Orientation' metadata key in meta
-    '''
-    try:
-        orient=meta['Orientation']
-    except:
-        orient=1
-    if orient>1:
-        for method in transposemethods[orient]:
-            image=image.transpose(method)
-    return image
-
 
 def rotate_left(item,collection=None):
     '''
@@ -123,6 +110,111 @@ def rotate_right(item,collection=None):
     item.image=None
     item.qview=None
     rotate_thumb(item,True) ##TODO: If this fails, should revert orientation
+
+
+def toggle_tags(item,tags,collection=None):
+    try:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
+        try:
+            tags_kw=meta['Keywords']
+        except:
+            tags_kw=[]
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=list(tags_kw)
+        all_present=reduce(bool.__and__,[t in tags_kw_lower for t in tags_lower],True)
+        if all_present:
+            print 'removing tags',new_tags,tags_kw_lower,tags_lower
+            j=0
+            while j<len(new_tags):
+                if tags_kw_lower[j] in tags_lower:
+                    new_tags.pop(j)
+                    tags_kw_lower.pop(j)
+                else:
+                    j+=1
+        else:
+            for j in range(len(tags)):
+                if tags_lower[j] not in tags_kw_lower:
+                    new_tags.append(tags[j])
+        if len(new_tags)==0:
+            try:
+                del meta['Keywords']
+            except:
+                pass
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta,collection)
+    except:
+        pass
+
+def add_tags(item,tags):
+    try:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
+        try:
+            tags_kw=meta['Keywords']
+        except:
+            tags_kw=[]
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=list(tags_kw)
+        for j in range(len(tags)):
+            if tags_lower[j] not in tags_kw_lower:
+                new_tags.append(tags[j])
+        if len(new_tags)==0:
+            try:
+                del meta['Keywords']
+            except:
+                pass
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta)
+    except:
+        pass
+
+def remove_tags(item,tags):
+    try:
+        tags_lower=[t.lower() for t in tags]
+        meta=item.meta.copy()
+        tags_kw=list(meta['Keywords'])
+        tags_kw_lower=[t.lower() for t in tags_kw]
+        new_tags=[]
+        for j in range(len(tags_kw)):
+            if tags_kw_lower[j] not in tags_lower:
+                new_tags.append(tags_kw[j])
+        if len(new_tags)==0:
+            del meta['Keywords']
+        else:
+            meta['Keywords']=new_tags
+        item.set_meta(meta)
+    except:
+        pass
+
+def set_tags(item,tags):
+    try:
+        meta=item.meta.copy()
+        meta['Keywords']=tags
+        item.set_meta(meta)
+    except:
+        pass
+
+def get_coords(item):
+    '''retrieve a pair of latitude longitude coordinates in degrees from item'''
+    try:
+        return item.meta['LatLon']
+    except:
+        return None
+
+def set_coords(item,lat,lon):
+    '''set the latitude and longitude in degrees to the item's exif metadata'''
+    item.set_meta_key('LatLon',(lat,lon))
+
+def item_in_region(item,lat0,lon0,lat1,lon1):
+    '''returns true if the item's geolocation is contained in the rectangular region (lat0,lon0),(lat1,lon1)'''
+    c=get_coords(item)
+    if c and lat1<=c[0]<=lat0 and lon0<=c[1]<=lon1:
+            return True
+    return False
+
 
 
 def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing_only=False):
@@ -285,6 +377,19 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata,filename=''):
         if not strip_metadata:
             metadata.copy_metadata(item.uid)
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
+
+def orient_image(image,meta):
+    '''
+    returns a rotated copy of the PIL image based on the value of the 'Orientation' metadata key in meta
+    '''
+    try:
+        orient=meta['Orientation']
+    except:
+        orient=1
+    if orient>1:
+        for method in transposemethods[orient]:
+            image=image.transpose(method)
+    return image
 
 
 def load_image(item,interrupt_fn,draft_mode=False):

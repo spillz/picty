@@ -39,6 +39,7 @@ import cPickle
 
 ##phraymd imports
 from phraymd import baseobjects
+from phraymd import imagemanip
 from phraymd import settings
 from phraymd import pluginbase
 
@@ -280,7 +281,7 @@ class MapFrame(gtk.VBox):
                 from phraymd import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
                 self.osm.add_image(lat,lon,pb)
-                baseobjects.set_coords(item,lat,lon)
+                imagemanip.set_coords(item,lat,lon)
                 self.update_map_items()
 
     def print_tiles(self):
@@ -354,5 +355,5 @@ class MapFrame(gtk.VBox):
     def update_map_items_signal(self,list_pairs):
         '''notification of a list of images'''
         for l in list_pairs:
-            lat,lon=imageinfo.get_coords(l[0])
+            lat,lon=imagemanip.get_coords(l[0])
             self.osm.add_image(lat,lon,l[1])

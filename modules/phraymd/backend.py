@@ -667,8 +667,8 @@ class MapImagesJob(WorkerJob):
             listitems=collection
         while i<len(listitems) and jobs.ishighestpriority(self) and self.im_count<self.max_images and not self.cancel:
             item=listitems(i)
-            if baseobjects.item_in_region(item,*self.region):
-                imagemanip.load_thumb(item)
+            if imagemanip.item_in_region(item,*self.region):
+                self.collection.load_thumbnail(item)
                 if item.thumb:
                     log.debug('Map plugin: found item '+str(item)+' with coordinates onscreen')
                     pb=imagemanip.scale_pixbuf(item.thumb,40)
@@ -857,8 +857,8 @@ class EditMetaDataJob(WorkerJob):
             tags=metadata.tag_split(self.keyword_string)
             while i<len(items) and jobs.ishighestpriority(self) and not self.cancel:
                 item=items(i)
-                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None and item.meta!=False:
-                    baseobjects.toggle_tags(item,tags,collection)
+                if (self.scope!=EDIT_SELECTION or item.selected) and item.meta!=None:
+                    imagemanip.toggle_tags(item,tags,collection)
                 if i%100==0:
                     idle_add(self.browser.update_status,1.0*i/len(items),'Selecting images - %i of %i'%(i,len(items)))
                 i+=1
