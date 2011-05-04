@@ -367,6 +367,8 @@ class Item(str):
     def init_meta(self,meta,collection=None):
         old=self.meta
         self.meta=meta
+        if 'meta_backup' in self.__dict__:
+            del self.meta_backup
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
@@ -390,6 +392,8 @@ class Item(str):
         del odict['image']
         del odict['selected']
         del odict['relevance']
+        if 'meta_backup' in self.__dict__ and self.meta==self.meta_backup:
+            del self.meta_backup
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
