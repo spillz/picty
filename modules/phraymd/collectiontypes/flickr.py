@@ -809,9 +809,9 @@ class FlickrCollection(baseobjects.CollectionBase):
             meta['Privacy']=privacy
         rotate=ph.attrib['rotation']
         if rotate=='0': meta['Orientation']=1
-        if rotate=='90': meta['Orientation']=8
+        if rotate=='90': meta['Orientation']=6
         if rotate=='180': meta['Orientation']=3
-        if rotate=='270': meta['Orientation']=6
+        if rotate=='270': meta['Orientation']=8
         dates=ph.find('dates')
         if dates!=None:
             meta['DateUploaded']=datetime.fromtimestamp(float(dates.attrib['posted']))
@@ -967,6 +967,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             item.image = p.close()
             if 'Orientation' in item.meta:
                 orient_meta=item.meta
+                print 'Flickr orientation is',item.meta['Orientation']
             else:
                 try:
                     import pyexiv2
@@ -975,6 +976,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                     orient_meta={'Orientation':im['Exif.Image.Orientation'].value}
                 except:
                     orient_meta={}
+                print 'EXIV2 orientation is',item.meta['Orientation']
             item.image=imagemanip.orient_image(item.image,orient_meta)
             if item.image:
                 imagemanip.cache_image(item)
