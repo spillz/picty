@@ -17,11 +17,11 @@ class SimpleView(baseobjects.ViewBase):
         self.reverse=False
         self.collection=collection
     def copy(self):
-        dup=Index(self.key_cb)
+        dup=SimpleView(self.key_cb,[],self.collection)
         dup.sort_key_text=self.sort_key_text
         dup.filter_tree=self.filter_tree
         dup.filter_text=self.filter_text
-        dup.collection=self.collection
+        dup.reverse=self.reverse
         dup.items[:]=self.items[:]
         return dup
     def set_filter(self,expr):

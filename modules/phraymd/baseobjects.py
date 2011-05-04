@@ -337,9 +337,11 @@ class Item(str):
         return 'meta_backup' in self.__dict__
     def meta_revert(self,collection=None):
         if self.is_meta_changed():
+            old=self.meta
             self.meta=self.meta_backup
             del self.meta_backup
         if collection:
+            pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
     def mark_meta_saved(self,collection=None):
         if self.is_meta_changed():
