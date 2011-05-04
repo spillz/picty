@@ -162,7 +162,6 @@ class FlickrSyncJob(backend.WorkerJob):
         if self.page>self.pages:
             collection.last_update_time=new_time
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
-            pluginmanager.mgr.resume_collection_events(self.collection)
 
             ##todo: this should be interruptable
             print 'REMOVING DELETED ITEMS'
@@ -178,6 +177,7 @@ class FlickrSyncJob(backend.WorkerJob):
                 collection.delete(item)
                 self.browser.lock.release()
                 gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
+            pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         return False
 
