@@ -269,7 +269,7 @@ class MapFrame(gtk.VBox):
     def drag_receive_signal(self, osm, drag_context, x, y, selection_data, info, timestamp):
         if selection_data.type=='image-filename':
             path=selection_data.data
-            item=baseobjects.Item(path,0)
+            item=baseobjects.Item(path)
             ind=self.worker.active_collection.find(item)
             if ind<0:
                 return False
