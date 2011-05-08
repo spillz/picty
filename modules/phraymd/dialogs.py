@@ -219,7 +219,7 @@ def date_range_entry_dialog(title,prompt,default_from=None,default_to=None,butto
         button_list.append(i)
         i+=1
     dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,tuple(button_list))
-    dialog.vbox.set_border_width(15)
+    dialog.vbox.set_property('border-width',15) ##TODO: This doesn't work, find an alternative way to create spacing
     prompt_label=gtk.Label()
     prompt_label.set_label(prompt)
     prompt_label.set_line_wrap(True)

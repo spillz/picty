@@ -93,17 +93,15 @@ class SearchBox(gtk.HBox):
             self.entry.activate()
 
     def tag_cb(self):
-        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separate by spaces (enclose tags with spaces in \"quotes\"")
+        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separate by spaces (enclose tags with spaces in \"quotes\")")
         if response==1:
             return None
         tags=metadata.tag_split(tag_text)
-        print '####TAG_SEARCH',tags
         tag_search=''
         for t in tags:
             if tag_search:
                 tag_search+="&"
             tag_search+='tag="%s"'%(t,)
-        print '####TAG SEARCH',tag_search
         return tag_search
 
     def taken_cb(self):
