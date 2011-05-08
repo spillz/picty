@@ -193,8 +193,16 @@ def tagged_filter(l,r,item):
         return False
     if len(item.meta['Keywords'])>0:
         return True
-
     return item.meta['Keywords']
+
+def geotagged_filter(l,r,item):
+    if item.meta==None:
+        return False
+    if 'LatLon' not in item.meta:
+        return False
+    if not item.meta['LatLon']:
+        return False
+    return item.meta['LatLon']
 
 def keyword_filter(item,test):
     if not test:
@@ -452,6 +460,7 @@ TOKENS=[
 ('date<',(DateCompare('DateTaken',lt),None,DateTime)),
 ('selected',(selected_filter,None,None)),
 ('changed',(changed_filter,None,None)),
-('tagged',(tagged_filter,None,None))
+('geotagged',(geotagged_filter,None,None)),
+('tagged',(tagged_filter,None,None)),
 ]
 

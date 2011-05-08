@@ -48,6 +48,7 @@ import pluginmanager
 import pluginimporter
 import io
 import overlaytools
+import searchbox
 import dbusserver
 import collectionmanager
 import floats
@@ -184,21 +185,21 @@ class MainFrame(gtk.VBox):
         self.sort_order.connect("changed",self.set_sort_key)
         self.sort_order.show()
 
-        self.filter_entry=gtk.Entry()
-        self.filter_entry.connect("activate",self.set_filter_text)
-        self.filter_entry.connect("changed",self.filter_text_changed)
+        self.filter_entry=searchbox.SearchBox()
+        self.filter_entry.entry.connect("activate",self.set_filter_text)
+        self.filter_entry.entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
 
-        try:
-            self.filter_entry.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,gtk.STOCK_CLEAR)
-            self.filter_entry.connect("icon-press",self.clear_filter)
-            entry_no_icons=False
-        except:
-            print 'ERROR SETTING FILTER ENTRY'
-            import sys,traceback
-            tb_text=traceback.format_exc(sys.exc_info()[2])
-            print tb_text
-            entry_no_icons=True
+#        try:
+#            self.filter_entry.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,gtk.STOCK_CLEAR)
+#            self.filter_entry.connect("icon-press",self.clear_filter)
+#            entry_no_icons=False
+#        except:
+#            print 'ERROR SETTING FILTER ENTRY'
+#            import sys,traceback
+#            tb_text=traceback.format_exc(sys.exc_info()[2])
+#            print tb_text
+#            entry_no_icons=True
         #self.filter_entry.set_width_chars(40)
 
         self.selection_menu_button=gtk.Button('_Selection')
@@ -245,11 +246,12 @@ class MainFrame(gtk.VBox):
 
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
-        if entry_no_icons:
-            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression",True)
+        if self.filter_entry.entry_no_icons:
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression or choose from the list of common searches in the drop-down list",True)
             add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,None, "Reset the filter and display all images in collection",False)
         else:
-            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression",True)
+            self.filter_entry.entry.connect("icon-press",self.clear_filter)
+            add_widget(self.toolbar1,self.filter_entry,None,None, "Enter keywords or an expression to restrict the view to images in the active collection matching the expression or choose from the list of common searches in the drop-down list",True)
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Sort: "),None,None,None)
         add_widget(self.toolbar1,self.sort_order,None,None,"Set the image attribute that determines the order images appear in")
@@ -537,7 +539,7 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
         self.sort_toggle.set_active(page.active_view.reverse)
         self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
-        self.filter_entry.set_text(page.active_view.filter_text)
+        self.filter_entry.entry.set_text(page.active_view.filter_text)
         self.view_changed2(page)
 
         pluginmanager.mgr.callback('collection_activated',coll)
@@ -743,8 +745,8 @@ class MainFrame(gtk.VBox):
 
 
     def select_show(self,widget):
-        self.filter_entry.set_text("selected")
-        self.filter_entry.activate()
+        self.filter_entry.entry.set_text("selected")
+        self.filter_entry.entry.activate()
 
     def entry_dialog(self,title,prompt,default=''):
         dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,
@@ -853,17 +855,17 @@ class MainFrame(gtk.VBox):
 
     def filter_text_changed(self,widget):
         if self.active_collection!=None:
-            self.active_collection.get_active_view().filter_text=self.filter_entry.get_text()
+            self.active_collection.get_active_view().filter_text=widget.get_text()
 
     def set_filter_text(self,widget):
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
-        filter_text=self.filter_entry.get_text()
+        filter_text=self.filter_entry.entry.get_text()
         if self.active_collection!=None and self.active_browser().active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
             self.tm.rebuild_view(key,filter_text)
 
     def clear_filter(self,widget,*args):
-        self.filter_entry.set_text('')
+        self.filter_entry.entry.set_text('')
         self.set_filter_text(widget)
 
     def set_sort_key(self,widget):
@@ -871,7 +873,7 @@ class MainFrame(gtk.VBox):
             return
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
-        filter_text=self.filter_entry.get_text()
+        filter_text=self.filter_entry.entry.get_text()
         if self.active_collection!=None and self.active_browser().active_view!=None and (self.active_browser().active_view.sort_key_text!=key):
             self.tm.rebuild_view(key,filter_text)
 

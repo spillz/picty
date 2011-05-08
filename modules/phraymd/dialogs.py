@@ -24,6 +24,8 @@ License:
 import os
 import gtk
 
+from datetime import date
+
 #local imports
 import settings
 import metadata
@@ -152,6 +154,7 @@ def file_dialog(title='Choose an Image',default=''):
 def directory_dialog(title='Choose Image Directory',default=''):
     fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
+#    fcd.vbox.set_border_width(15)
     if not default:
         default=os.environ['HOME']
     fcd.set_current_folder(default)
@@ -171,9 +174,9 @@ def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
         button_list.append(i)
         i+=1
     dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,tuple(button_list))
+    dialog.vbox.set_border_width(15)
     prompt_label=gtk.Label()
     prompt_label.set_label(prompt)
-    prompt_label.set_padding(15,15)
     prompt_label.set_line_wrap(True)
     prompt_label.set_width_chars(40)
     dialog.vbox.pack_start(prompt_label)
@@ -182,6 +185,91 @@ def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
     response=dialog.run()
     dialog.destroy()
     return response
+
+def entry_dialog(title,prompt,default_entry='',buttons=('_OK','_Cancel'),default=0):
+    button_list=[]
+    i=0
+    for x in buttons:
+        button_list.append(x)
+        button_list.append(i)
+        i+=1
+    dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,tuple(button_list))
+    dialog.vbox.set_border_width(15)
+    prompt_label=gtk.Label()
+    prompt_label.set_label(prompt)
+    prompt_label.set_line_wrap(True)
+    prompt_label.set_width_chars(40)
+    edit=gtk.Entry()
+    if default_entry:
+        edit.set_text(default_entry)
+    dialog.vbox.pack_start(prompt_label)
+    dialog.vbox.pack_start(edit)
+    dialog.vbox.show_all()
+    dialog.set_default_response(default)
+    response=dialog.run()
+    text=edit.get_text()
+    dialog.destroy()
+    return response,text
+
+def date_range_entry_dialog(title,prompt,default_from=None,default_to=None,buttons=('_OK','_Cancel'),default=0):
+    button_list=[]
+    i=0
+    for x in buttons:
+        button_list.append(x)
+        button_list.append(i)
+        i+=1
+    dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,tuple(button_list))
+    dialog.vbox.set_border_width(15)
+    prompt_label=gtk.Label()
+    prompt_label.set_label(prompt)
+    prompt_label.set_line_wrap(True)
+    prompt_label.set_width_chars(40)
+
+    def check_cb(check,cal):
+        cal.set_sensitive(check.get_active())
+
+    date_box=gtk.HBox()
+    cal_from=gtk.Calendar()
+    cal_to=gtk.Calendar()
+    if default_from:
+        cal_from.select_month(default_from.month-1,default_from.year)
+        cal_from.select_day(default_from.day)
+    if default_to:
+        cal_to.select_month(default_to.month-1,default_to.year)
+        cal_to.select_day(default_to.day)
+    from_box=gtk.VBox()
+    from_check=gtk.CheckButton('From')
+    from_check.set_active(True)
+    from_box.pack_start(from_check)
+    from_box.pack_start(cal_from)
+    to_box=gtk.VBox()
+    to_check=gtk.CheckButton('To')
+    to_check.set_active(True)
+    to_box.pack_start(to_check)
+    to_box.pack_start(cal_to)
+    date_box.pack_start(from_box)
+    date_box.pack_start(to_box)
+    from_check.connect('toggled', check_cb,cal_from)
+    to_check.connect('toggled', check_cb,cal_to)
+
+    dialog.vbox.pack_start(prompt_label)
+    dialog.vbox.pack_start(date_box)
+    dialog.vbox.show_all()
+    dialog.set_default_response(default)
+    response=dialog.run()
+    if from_check.get_active():
+        date_from=cal_from.get_date()
+        date_from=date(date_from[0],date_from[1]+1,date_from[2])
+    else:
+        date_from=None
+    if to_check.get_active():
+        date_to=cal_to.get_date()
+        date_to=date(date_to[0],date_to[1]+1,date_to[2])
+    else:
+        date_to=None
+    dialog.destroy()
+    return response,date_from,date_to
+
 
 
 class BatchMetaDialog(gtk.Dialog):
