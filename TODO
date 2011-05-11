@@ -1,19 +1,16 @@
 Project todo list
 =================
 
-DISCLAIMER: I expect this document will regularly get out of date.
-Nonetheless, the idea is to keep track of short-term plans (2-3 months).
+The purpose of this document is to keep track of short-term plans (up to 6 months ahead).
 As stuff is completed or plans change the list should be updated.
 
-* Rename import plugin Transfer (andpossibly drop the upload plugin)
 * Transfer plugin should get preference widgets from collections (e.g. specify import location, metadata handling, privacy etc)
 * All collections should have an offline member and when offline turn off GUI that needs read or write access to the store
 * The OSD delete button becomes a toggle. Delete is committed along with metadata changes (requires the collection to be online)
 * Each collection should specify the metadata that is editable and/or provide the editing widgets
 * Support GEO (GPS) info in flickr
 * Drag to/from desktop or other apps needs more support
-* Correctly count the number of flickr items during FlickrSync
-* Add options to scan for updates or fully reimport the collection
+* Add toolbar button options to scan for updates or fully reimport the collection
 * Logging pane in the Transfer plugin
 * Don't allow duplicates of a tag in an image
 * Collections need icons on the start page
@@ -33,9 +30,10 @@ As stuff is completed or plans change the list should be updated.
       * Master list: server side, keeps track of: uid, metadata, thumbnail info, full image
       * View: list known to both server and client, each item in the view is a tuple of (sortkey,uid)
   * A solution is to move the job handler to the main thread, call the jobs in a separate process and use
-    gobject signals to handle notifications from the jobs
+    gobject signals (and/or dbus) to handle notifications from the jobs
      * The job handler assembles the information needed for the job and writes changes back to the items/view/collection
-     * Avoids thread synchroniization issues
+     * The gobject loop supports callbacks
+     * Avoids soem nasty thread synchroniization issues by enforcing safer data manipulation
      * Only do the intensive work on a separate process
        * E.g. for a write metadata request
          1. create a list of changed items on the main thread
@@ -57,6 +55,7 @@ As stuff is completed or plans change the list should be updated.
     * be more consistent with user theme (colors, look and feel)
     * size and align text better
     * improve keyboard navigation
+    * add  suport for horizontal (instead of vertical) scrolling
 
 * General UI
   * Padding and alignment tweaks to most of the dialog areas
