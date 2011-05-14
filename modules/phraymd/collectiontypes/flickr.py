@@ -55,6 +55,7 @@ from phraymd import imagemanip
 from phraymd import metadata
 from phraymd import viewsupport
 from phraymd import io
+from phraymd import widgetbuilder as wb
 import simpleview
 
 datefmt="%Y-%m-%d %H:%M:%S"
@@ -66,6 +67,13 @@ privacy_levels=[
 'FRIENDS',
 'FAMILY',
 'PRIVATE'
+]
+
+permission_levels=[
+'NOBODY',
+'FRIENDS AND FAMILY',
+'CONTACTS',
+'EVERYBODY'
 ]
 
 PRIVACY_PUBLIC=0
@@ -180,6 +188,67 @@ class FlickrSyncJob(backend.WorkerJob):
             pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         return False
+
+class FlickrMetadataWidget(wb.ModalDialog):
+    ##TODO: show the thumbnail and uid
+    def __init__(self,item,collection):
+        dialog_data=[]
+        if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
+            self.thumb=wb.gtk_widget(gtk.Image)()
+            self.thumb.set_from_pixbuf(item.thumb)
+            dialog_data.append(('thumb',self.thumb))
+        dialog_data.append(
+                ('form',wb.LabeledWidgets([
+                            ('title','Title:',wb.Entry()),
+                            ('tags','Tags:',wb.Entry()),
+                            ('description','Description:',wb.Entry()),
+                            ('privacy','Visible To:',wb.ComboBox(privacy_levels)),
+                            ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
+                            ('meta','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
+                       ])
+                    )
+            )
+        wb.ModalDialog.__init__(self,dialog_data,title='Edit Metadata',buttons=[])
+        def dict0(dict,key,no_val=''):
+            try:
+                return dict[key]
+            except:
+                return no_val
+        m=item.meta
+        values={
+            'title':dict0(m,'Title'),
+            'tags':metadata.tag_bind(dict0(m,'Keywords',[])),
+            'description':dict0(m,'Description'),
+            'privacy':dict0(m,'Privacy',-1),
+            'comment':dict0(m,'PermCommment',False),
+            'meta':dict0(m,'PermMeta',False),
+            }
+        change_set=[
+            ('changed','Title','title'),
+            ('changed','Keywords','tags'),
+            ('changed','Description','description'),
+            ('changed','Privacy','privacy'),
+            ('changed','PermComment','comment'),
+            ('changed','PermAddMeta','meta'),
+            ]
+        self.form=self.widgets['form']
+        self.form.set_form_data(values)
+        for c in change_set:
+            w=self.form
+            for k in c[2:]:
+                w=w[k]
+            w.connect(c[0],self.meta_changed,*c[1:])
+        self.item=item
+        self.collection=collection
+        self.set_default_size(600,1)
+    def meta_changed(self,widget,item_key,*form_keys):
+        widget=self.form
+        for k in form_keys:
+            widget=widget[k]
+        value=widget.get_form_data()
+        if form_keys[-1]=='tags':
+            metadata.tag_split(value)
+        self.item.set_meta_key(item_key,value,self.collection)
 
 
 class FlickrPrefWidget(gtk.VBox):
@@ -313,6 +382,7 @@ class FlickrCollection(baseobjects.CollectionBase):
     api_secret = 'd5340e24789b7fd9'
     pref_widget=FlickrPrefWidget
     add_widget=NewFlickrAccountWidget
+    metadata_widget=FlickrMetadataWidget
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
@@ -873,10 +943,12 @@ class FlickrCollection(baseobjects.CollectionBase):
         try:
             perm_comment=item.meta['PermComment']
         except KeyError:
+            set_perms=False
             perm_comment=0
         try:
             perm_addmeta=item.meta['PermAddMeta']
         except KeyError:
+            set_perms=False
             perm_addmeta=0
         try:
             title=item.meta['Title']

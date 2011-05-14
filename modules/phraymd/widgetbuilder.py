@@ -17,6 +17,20 @@ def pack_widgets(parent,container,children):
         parent.widgets[name]=widget
         container.pack_start(widget,*pack_args)
 
+def gtk_widget(base,setter=None,getter=None):
+    class Widget(base):
+        def __init__(self,*args):
+            base.__init__(self,*args)
+            if setter:
+                self.set_form_data=setter
+            if getter:
+                self.get_form_data=getter
+        def get_form_data(self):
+            return None
+        def set_form_data(self,values):
+            pass
+    return Widget
+
 class Entry(gtk.Entry):
     def __init__(self,default_value=''):
         gtk.Entry.__init__(self)
@@ -312,6 +326,7 @@ if __name__ == '__main__':
 
     window = gtk.Window()
     b=PaddedVBox([
+                ('label',gtk_widget(gtk.Label)('Attendee Preferences')),
                 ('name',LabeledEntry('enter your name','sam')),
                 ('trees',CheckBox('likes trees?')),
                 ('eats',LabeledComboBox('eats',['soup','salad','burgers'])),

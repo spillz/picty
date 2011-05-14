@@ -1303,8 +1303,11 @@ class MainFrame(gtk.VBox):
             print 'no known command for ',item.uid,' mimetype',mime
 
     def edit_item(self,widget,item):
-        self.dlg=dialogs.MetaDialog(item,self.active_collection)
-        self.dlg.show()
+#        dlg=dialogs.MetaDialog(item,self.active_collection)
+#        dlg.show()
+        if self.active_collection.metadata_widget:
+            self.dlg=self.active_collection.metadata_widget(item,self.active_collection)
+            self.dlg.show()
 
     def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)

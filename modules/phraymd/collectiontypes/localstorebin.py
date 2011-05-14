@@ -222,6 +222,7 @@ class Collection(baseobjects.CollectionBase):
     local_filesystem=True
     pref_widget=LocalStorePrefWidget
     add_widget=NewLocalStoreWidget
+    metadata_widget=dialogs.MetaDialog
     browser_sort_keys=viewsupport.sort_keys
     persistent=True
     user_creatable=True

@@ -447,12 +447,21 @@ class PrefDialog(gtk.Dialog):
 
 
 class MetaDialog(gtk.Dialog):
+    ##TODO: Use the widgetbuilder classes
     def __init__(self,item,collection):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
+        self.set_default_size(600,-1)
+        vbox=gtk.VBox()
+        a=gtk.Alignment(0,0,1,1)
+        a.set_padding(16,16,16,16)
+        a.add(vbox)
+        self.vbox.pack_start(a)
+#        self.vbox.pack_start(vbox,True,True)
         self.set_title('Edit Descriptive Info')
         tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
+        table.set_col_spacings(16)
         self.item=item
         self.collection=collection
         r=0
@@ -466,25 +475,31 @@ class MetaDialog(gtk.Dialog):
             self.add_meta_row(table,k,v,val,r)
             r+=1
         table.show_all()
-        hbox=gtk.HBox()
+        hbox=gtk.HBox(False,16)
+        hbox.pack_start(table,True,True)
         if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
             self.thumb=gtk.Image()
+#            self.thumb.set_alignment(0,0)
             self.thumb.set_from_pixbuf(item.thumb)
             hbox.pack_start(self.thumb)
-        hbox.pack_start(table)
         hbox.show_all()
-        self.vbox.pack_start(hbox)
+
         file_label=gtk.Label()
-        file_label.set_label(item.uid)
+        file_label.set_markup('<b>%s</b>'%(item.uid,))
         file_label.show()
-        self.vbox.pack_start(file_label)
+        file_label.set_alignment(0,0.5)
+
+        vbox.pack_start(file_label,True,True,8)
+        vbox.pack_start(hbox,True,True)
+        self.vbox.show_all()
     def meta_changed(self,widget,key):
         value=metadata.app_key_from_string(key,widget.get_text())
         self.item.set_meta_key(key,value,self.collection)
     def add_meta_row(self,table,key,label,data,row,writable=True):
         child1=gtk.Label(label)
+        child1.set_alignment(0,0.5)
         table.attach(child1, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
-               xoptions=gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+               xoptions=gtk.FILL, yoptions=0, xpadding=0, ypadding=0)
         if writable:
             child2=gtk.Entry()
             child2.set_text(data)
@@ -492,7 +507,7 @@ class MetaDialog(gtk.Dialog):
         else:
             child2=gtk.Label(data)
         table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
-               xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
+               xoptions=gtk.EXPAND|gtk.FILL, yoptions=0, xpadding=0, ypadding=0) #yoptions=gtk.EXPAND|gtk.FILL
 
 
 
