@@ -8,15 +8,37 @@ to "named" widgets and a simply mechanism to set and retrieve data values of chi
 
 import gtk
 
-class Entry(gtk.HBox):
+def pack_widgets(parent,container,children):
+    parent.widgets={}
+    for c in children:
+        name=c[0]
+        widget=c[1]
+        pack_args=c[2:]
+        parent.widgets[name]=widget
+        container.pack_start(widget,*pack_args)
+
+class Entry(gtk.Entry):
+    def __init__(self,default_value=''):
+        gtk.Entry.__init__(self)
+        if default_value:
+            self.set_text(default_value)
+
+    def get_form_data(self):
+        return self.get_text()
+
+    def set_form_data(self,values):
+        self.set_text(values)
+
+
+class LabeledEntry(gtk.HBox):
     '''
     A gtk entry plus optional label packed into an HBox
     '''
     def __init__(self,prompt='',default_value=''):
-        gtk.HBox.__init__(self)
+        gtk.HBox.__init__(self,False,8)
         if prompt:
-            self.label=gtk.Label(prompt)
-            self.pack_start(self.label,False)
+            l=gtk.Label(prompt)
+            self.pack_start(l,False)
         self.entry=gtk.Entry()
         self.entry.set_text(default_value)
         self.pack_start(self.entry)
@@ -25,8 +47,16 @@ class Entry(gtk.HBox):
     def get_form_data(self):
         return self.entry.get_text()
 
-    def set_form_data(values):
+    def set_form_data(self,values):
         self.entry.set_text(values)
+
+class Button(gtk.Button):
+    def __init__(self,label):
+        gtk.Button.__init__(self,label)
+    def get_form_data(self):
+        return None
+    def set_form_data(self,values):
+        pass
 
 class CheckBox(gtk.CheckButton):
     '''
@@ -41,14 +71,36 @@ class CheckBox(gtk.CheckButton):
     def set_form_data(self,values):
         self.set_active(values)
 
-class ComboBox(gtk.HBox):
+class ComboBox(gtk.ComboBox):
+    '''
+    A combo box with optional label
+    '''
+    def __init__(self,choices):
+        liststore = gtk.ListStore(str)
+        gtk.ComboBox.__init__(self,liststore)
+        cell = gtk.CellRendererText()
+        self.pack_start(cell, True)
+        self.add_attribute(cell, 'text', 0)
+
+        for c in choices:
+            liststore.append([c])
+
+    def get_form_data(self):
+        return self.get_active()
+
+    def set_form_data(self,values):
+        self.set_active(values)
+
+
+class LabeledComboBox(gtk.HBox):
     '''
     A combo box with optional label
     '''
     def __init__(self,label,choices):
-        gtk.HBox.__init__(self)
+        gtk.HBox.__init__(self,False,8)
         if label:
-            self.pack_start(gtk.Label(label),False)
+            l=gtk.Label(label)
+            self.pack_start(l,False)
         self.combo=gtk.combo_box_new_text()
         for c in choices:
             self.combo.append_text(c)
@@ -68,7 +120,8 @@ class RadioGroup:
         labels is a list/tuple of labels for the radio boxes:
         '''
         if group_label:
-            self.pack_start(gtk.Label(group_label),False)
+            l=gtk.Label(group_label)
+            self.pack_start(l,False)
         self.items=[]
         grp=gtk.RadioButton(None,labels[0],True)
         self.pack_start(grp)
@@ -91,39 +144,51 @@ class RadioGroup:
 
 class HRadioGroup(gtk.HBox,RadioGroup):
     def __init__(self,group_label,labels,*box_args):
-        gtk.HBox.__init__(self,*box_args)
+        if box_args:
+            gtk.HBox.__init__(self,*box_args)
+        else:
+            gtk.HBox.__init__(self,False,8)
         RadioGroup.__init__(self,group_label,labels)
 
 class VRadioGroup(gtk.VBox,RadioGroup):
     def __init__(self,group_label,labels,*box_args):
-        gtk.VBox.__init__(self,*box_args)
+        if box_args:
+            gtk.VBox.__init__(self,*box_args)
+        else:
+            gtk.VBox.__init__(self,False,8)
         RadioGroup.__init__(self,group_label,labels)
 
-
-class Box:
+class LabeledWidgets(gtk.Table):
     '''
-    A Form is a container that adds methods to pack a set of standardized
-    data entry elements such as Entry, Combo Box, Check Box or even another Box
+    A sequence of widgets embedded in a table. Widgets are laid out in rows with labels.
+    The first column displays labels and the second column displays widgets
     '''
-    def __init__(self,form_spec):
+    def __init__(self,child_data,spacing=16):
         '''
-        Abstract base for a vbox of hbox with nested widgets as specified in the tuple form_spec
-        form_spec is a list or tuple of tuples describing the list of widgets to add:
+        Created the LabeledWidgets object
+        child_data is a list/tuple
             [
-            ('name1','type1',fill1,expand1,*args1),
-            ('name2','type2',fill2,expand2,*args2),
+            ('name',widget,'label',xoptions=gtk.EXPAND|gtk.FILL),
             ...
             ]
-            where name is the name of the widget, type is the registered type of the widget, fill, args are the constructor arguments to the widget
         '''
+        gtk.Table.__init__(self,len(child_data),2)
+        self.set_col_spacings(spacing)
+        row=0
         self.widgets={}
-        for f in form_spec:
-            print 'creating',f
-            name=f[0]
-            args=f[2:]
-            widget=registered_widgets[f[1]](*args)
-            self.widgets[name]=widget
-            self.pack_start(widget)
+        for c in child_data:
+            label=gtk.Label(c[1])
+            label.set_alignment(0,0.5)
+            self.attach(label, left_attach=0, right_attach=1, top_attach=row, bottom_attach=row+1,
+                   xoptions=gtk.FILL, yoptions=0, xpadding=0, ypadding=0)
+            if len(c)>3:
+                xopt=c[3] if c[3] else gtk.EXPAND|gtk.FILL
+            else:
+                xopt=gtk.EXPAND|gtk.FILL
+            self.attach(c[2], left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
+                   xoptions=xopt, yoptions=0, xpadding=0, ypadding=0) #yoptions=gtk.EXPAND|gtk.FILL
+            self.widgets[c[0]]=c[2]
+            row+=1
 
     def __getitem__(self,key):
         return self.widgets[key]
@@ -139,51 +204,131 @@ class Box:
         return data
 
 
+class Box:
+    '''
+    A Form is a container that adds methods to pack a set of standardized
+    data entry elements such as Entry, Combo Box, Check Box or even another Box
+    '''
+    def __init__(self,children):
+        '''
+        Abstract base for a vbox of hbox with nested widgets as specified in the tuple form_spec
+        children is a list or tuple of tuples describing the list of widgets to add:
+            [
+            ('name1',obj1,*pack_args1),
+            ('name2',obj2,*pack_args2),
+            ...
+            ]
+            where name is the name of the widget, obj is a widget builder instance, args are the packing arguments
+        '''
+        pack_widgets(self,self,children)
+
+    def __getitem__(self,key):
+        return self.widgets[key]
+
+    def set_form_data(self,data_dict):
+        for k in data_dict:
+            self.widgets[k].set_form_data(data_dict[k])
+
+    def get_form_data(self):
+        data={}
+        for k in self.widgets:
+            data[k]=self.widgets[k].get_form_data()
+        return data
+
+class PaddedVBox(gtk.Alignment,Box):
+    def __init__(self,children,*box_args):
+        gtk.Alignment.__init__(self,0,0,1,1)
+        self.set_padding(16,16,16,16)
+        self.box=gtk.VBox(*box_args)
+        self.add(self.box)
+        pack_widgets(self,self.box,children)
+
+class PaddedHBox(gtk.Alignment,Box):
+    def __init__(self,children,*box_args):
+        gtk.Alignment.__init__(self,0,0,1,1)
+        self.set_padding(16,16,16,16)
+        self.box=gtk.HBox(*box_args)
+        self.add(self.box)
+        pack_widgets(self,self.box,children)
+
 class VBox(gtk.VBox,Box):
-    def __init__(self,form_spec,*args):
+    def __init__(self,children,*args):
         gtk.VBox.__init__(self,*args)
-        Box.__init__(self,form_spec)
+        Box.__init__(self,children)
 
 class HBox(gtk.HBox,Box):
-    def __init__(self,form_spec,*args):
+    def __init__(self,children,*args):
         gtk.HBox.__init__(self,*args)
-        Box.__init__(self,form_spec)
+        Box.__init__(self,children)
 
-##Registered widgets are specified in this dictionary
-##A light class wrapper around any gtk widget could be added here provided it has a constructor, set_form_data, get_form_data, (and optionally __getitem__) members
-registered_widgets={
-'hbox':HBox,
-'vbox':VBox,
-'entry':Entry,
-'hradiogroup':HRadioGroup,
-'vradiogroup':VRadioGroup,
-'combobox':ComboBox,
-'checkbox':CheckBox,
-}
+class ModalDialog(gtk.Dialog,Box):
+    def __init__(self,children,title=None,buttons=['_Cancel','_OK'],default_button=1):
+        '''
+        Creates  a gtk.Dialog with the modal flag set and the vbox embedded in an aligment
+        to create additional spacing then the widgets in form_spec will be added to the vbox
+            butttons is a list/tuple of strings containing the button labels
+        '''
+        i=0
+        button_list=[]
+        for x in buttons:
+            button_list.append(x)
+            button_list.append(i)
+            i+=1
+        gtk.Dialog.__init__(self,title=title,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL,buttons=tuple(button_list))
+        self.set_default_response(default_button)
+        vbox=gtk.VBox()
+        a=gtk.Alignment(0,0,1,1)
+        a.set_padding(16,16,16,16)
+        self.vbox.pack_start(a,True,True)
+        a.add(vbox)
+        self.vbox2=vbox
 
-def quit(window,box):
-    print 'DATA',box.get_form_data()
-    gtk.main_quit()
+        pack_widgets(self,self.vbox2,children)
+        self.vbox.show_all()
 
-def change_cb(entry):
-    print 'Name Changed!'
+
 
 if __name__ == '__main__':
+
+    def quit(window,box):
+        print 'DATA',box.get_form_data()
+        gtk.main_quit()
+
+    def change_cb(entry):
+        print 'Name Changed!'
+
+    def button_cb(button):
+        d=ModalDialog([
+                    ('lw',LabeledWidgets([
+                        ('club','supper club #',Entry()),
+                        ('cc','c/c #',Entry()),
+                        ]),True,True),
+            ],title='Payment Info')
+        response=d.run()
+        print 'response was',response
+        print 'form data'
+        print d.get_form_data()
+        d.destroy()
+
     window = gtk.Window()
-    b=VBox([
-                ('entry1','entry','enter your name','sam'),
-                ('checkbox1','checkbox','likes trees?'),
-                ('combobox1','combobox','eats',['soup','salad','burgers']),
-                ('radiogroup1','hradiogroup','drinks',['tea','coffee','water']),
-                ('subbox1','hbox',
-                    [
-                        ('entry1','entry','requests','french fries'),
-                        ('entry2','entry','friends','d'),
-                    ]),
+    b=PaddedVBox([
+                ('name',LabeledEntry('enter your name','sam')),
+                ('trees',CheckBox('likes trees?')),
+                ('eats',LabeledComboBox('eats',['soup','salad','burgers'])),
+                ('drinks',HRadioGroup('drinks',['tea','coffee','water'])),
+                ('subbox1',HBox([
+                                ('entry2',LabeledEntry('requests','french fries')),
+                                ('entry3',LabeledEntry('friends','d')),
+                                ],False,8)
+                    ),
+                ('button1',Button('Payment Info...')),
             ]
             )
-    b['entry1'].entry.connect("changed",change_cb)
+    b['name'].entry.connect("changed",change_cb)
+    b['button1'].connect("clicked",button_cb)
     window.connect('destroy', quit,b)
     window.add(b)
     window.show_all()
     gtk.main()
+
+
