@@ -64,8 +64,8 @@ def get_date(item):
     returns a datetime object containing the date the image was taken or if not available the mtime
     '''
     result=viewsupport.get_ctime(item)
-    if result==datetime.datetime(1900,1,1):
-        return datetime.datetime.fromtimestamp(item.mtime)
+    if result==datetime(1900,1,1):
+        return datetime.fromtimestamp(item.mtime)
     else:
         return result
 
@@ -170,7 +170,7 @@ class LocalTransferOptionsBox(gtk.VBox):
     def get_options(self):
         return {
             'base_dest_dir':self.base_dir_entry.get_path(),
-            'name_scheme':self.name_scheme_model[self.name_scheme_combo.get_form_data()],
+            'name_scheme':self.widgets['name_scheme'].get_form_data(),
             'action_if_exists':self.widgets['action_if_exists'].get_form_data(),
             }
 
@@ -578,7 +578,7 @@ class Collection(baseobjects.CollectionBase):
             src_filename=src_item.uid
             temp_filename=''
             temp_dir=''
-            name_scheme=namings_schemes[prefs['name_scheme']]
+            name_scheme=naming_schemes[prefs['name_scheme']]
             dest_name_template=name_scheme[1]
             dest_needs_meta=name_scheme[2]
 
