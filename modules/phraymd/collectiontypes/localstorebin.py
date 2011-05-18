@@ -26,6 +26,7 @@ import os
 import os.path
 import re
 import cPickle
+import string
 
 import gtk
 
@@ -40,13 +41,144 @@ from phraymd import dialogs
 from phraymd import imagemanip
 from phraymd import backend
 from phraymd import io
+from phraymd import widgetbuilder as wb
 import simpleview
 
 
+exist_actions=['Skip','Rename','Overwrite Always','Overwrite if Newer']
 EXIST_SKIP=0
 EXIST_RENAME=1
 EXIST_OVERWRITE=2
 EXIST_OVERWRITE_NEWER=3
+
+
+class NamingTemplate(string.Template):
+    def __init__(self,template):
+        print 'naming template',template
+        t=template.replace("<","${").replace(">","}")
+        print 'subbed naming template',t
+        string.Template.__init__(self,t)
+
+def get_date(item):
+    '''
+    returns a datetime object containing the date the image was taken or if not available the mtime
+    '''
+    result=viewsupport.get_ctime(item)
+    if result==datetime.datetime(1900,1,1):
+        return datetime.datetime.fromtimestamp(item.mtime)
+    else:
+        return result
+
+def get_year(item):
+    '''
+    returns 4 digit year as string
+    '''
+    return '%04i'%get_date(item).year
+
+def get_month(item):
+    '''
+    returns 2 digit month as string
+    '''
+    return '%02i'%get_date(item).month
+
+def get_day(item):
+    '''
+    returns 2 digit day as string
+    '''
+    return '%02i'%get_date(item).day
+
+def get_datetime(item):
+    '''
+    returns a datetime string of the form "YYYYMMDD-HHMMSS"
+    '''
+    d=get_date(item)
+    return '%04i%02i%02i-%02i%02i%02i'%(d.year,d.month,d.day,d.hour,d.minute,d.day)
+
+def get_original_name(item):
+    '''
+    returns a tuple (path,name) for the transfer destination
+    '''
+    ##this only applies to locally stored files
+    return os.path.splitext(os.path.split(item.uid)[1])[0]
+
+
+class VariableExpansion:
+    def __init__(self,item):
+        self.item=item
+        self.variables={
+            'Year':get_year,
+            'Month':get_month,
+            'Day':get_day,
+            'DateTime':get_datetime,
+            'ImageName':get_original_name,
+            }
+    def __getitem__(self,variable):
+        return self.variables[variable](self.item)
+
+#def naming_default(item,dest_dir_base):
+#    '''
+#    returns a tuple (path,name) for the transfer destination
+#    '''
+#    return dest_dir_base,os.path.split(item.uid)[1]
+
+def name_item(item,dest_base_dir,naming_scheme):
+    subpath=NamingTemplate(naming_scheme).substitute(VariableExpansion(item))
+    ext=os.path.splitext(item.uid)[1]
+    fullpath=os.path.join(dest_base_dir,subpath+ext)
+    return os.path.split(fullpath)
+
+naming_schemes=[
+    ("<ImageName>","<ImageName>",False),
+    ("<Year>/<Month>/<ImageName>","<Year>/<Month>/<ImageName>",True),
+    ("<Y>/<M>/<DateTime>-<ImageName>","<Year>/<Month>/<DateTime>-<ImageName>",True),
+    ("<Y>/<M>/<Day>/<ImageName>","<Year>/<Month>/<Day>/<ImageName>",True),
+    ("<Y>/<M>/<Day>/<DateTime>-<ImageName>","<Year>/<Month>/<Day>/<DateTime>-<ImageName>",True),
+    ]
+
+def altname(pathname):
+    dirname,fullname=os.path.split(pathname)
+    name,ext=os.path.splitext(fullname)
+    i=0
+    while os.path.exists(pathname):
+        i+=1
+        aname=name+'_(%i)'%i
+        pathname=os.path.join(dirname,aname+ext)
+    return pathname
+
+
+class LocalTransferOptionsBox(gtk.VBox):
+    def __init__(self,collection):
+        gtk.VBox.__init__(self)
+        self.transfer_frame=gtk.Expander("Advanced Transfer Options")
+        self.pack_start(self.transfer_frame)
+        self.transfer_box=gtk.VBox()
+        self.transfer_frame.add(self.transfer_box)
+
+        self.base_dir_entry=dialogs.PathnameEntry('','',"Choose transfer directory") ##todo:move PathnameEntry to widgetbuilder
+        self.base_dir_entry.set_path(collection.image_dirs[0])
+
+        self.widgets=wb.LabeledWidgets([
+                ('base_dest_dir','Destination Path:',self.base_dir_entry),
+                ('name_scheme','Naming Scheme:',wb.ComboBox([n[0] for n in naming_schemes])),
+                ('action_if_exists','Action if Destination Exists:',wb.ComboBox(exist_actions)),
+            ])
+
+        self.widgets['action_if_exists'].set_active(0)
+        self.widgets['name_scheme'].set_active(3)
+        self.transfer_box.pack_start(self.widgets)
+
+    def get_options(self):
+        return {
+            'base_dest_dir':self.base_dir_entry.get_path(),
+            'name_scheme':self.name_scheme_model[self.name_scheme_combo.get_form_data()],
+            'action_if_exists':self.widgets['action_if_exists'].get_form_data(),
+            }
+
+    def set_options(self,values):
+        self.base_dir_entry.set_path(values['base_dest_dir'])
+        self.widgets['name_scheme'].set_form_data(values['name_scheme'])
+        self.widgets['action_if_exists'].set_form_data(values['action_if_exists'])
+
 
 
 class LocalStorePrefWidget(gtk.VBox):
@@ -216,13 +348,13 @@ class Collection(baseobjects.CollectionBase):
     '''
     Defines a persistent collection of images on the local filesystem
     '''
-    ##todo: do more plugin callbacks here instead of the job classes?
     type='LOCALSTORE'
     type_descr='Local Store'
     local_filesystem=True
     pref_widget=LocalStorePrefWidget
     add_widget=NewLocalStoreWidget
     metadata_widget=dialogs.MetaDialog
+    transfer_widget=LocalTransferOptionsBox
     browser_sort_keys=viewsupport.sort_keys
     persistent=True
     user_creatable=True
@@ -446,7 +578,11 @@ class Collection(baseobjects.CollectionBase):
             src_filename=src_item.uid
             temp_filename=''
             temp_dir=''
-            if prefs['dest_name_needs_meta'] and src_item.meta==None:
+            name_scheme=namings_schemes[prefs['name_scheme']]
+            dest_name_template=name_scheme[1]
+            dest_needs_meta=name_scheme[2]
+
+            if dest_needs_meta and src_item.meta==None:
                 temp_dir=tempfile.mkdtemp('','.image-',dest_dir)
                 temp_filename=os.path.join(temp_dir,name)
                 try:
@@ -460,7 +596,7 @@ class Collection(baseobjects.CollectionBase):
                     return False
                 src_filename=temp_filename
                 imagemanip.load_metadata(src_item,self.collection,src_filename)
-            dest_path,dest_name=prefs['name_item_fn'](src_item,dest_dir,prefs['dest_name_template'])
+            dest_path,dest_name=name_item(src_item,dest_dir,dest_name_template)
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             dest_filename=os.path.join(dest_path,dest_name)
@@ -472,7 +608,7 @@ class Collection(baseobjects.CollectionBase):
                     ##TODO: LOGGING TO IMPORT LOG
                     return False
                 if prefs['action_if_exists']==EXIST_RENAME:
-                    dest_filename=prefs['altname_fn'](dest_filename)
+                    dest_filename=altname(dest_filename)
 
             try:
                 if prefs['move_files'] or temp_filename:

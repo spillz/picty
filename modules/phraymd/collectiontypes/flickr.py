@@ -189,6 +189,35 @@ class FlickrSyncJob(backend.WorkerJob):
             return True
         return False
 
+class FlickrTransferOptionsBox(gtk.VBox):
+    def __init__(self,collection):
+        gtk.VBox.__init__(self)
+
+        transfer_frame=gtk.Frame("Visibility and Permisions")
+        self.pack_start(transfer_frame)
+
+        transfer_box=gtk.VBox()
+        transfer_frame.add(transfer_box)
+
+        self.widgets=wb.LabeledWidgets([
+                ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
+                ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
+                ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
+            ])
+
+        self.widgets['visibility'].set_active(0)
+        self.widgets['comment'].set_active(0)
+        self.widgets['metadata'].set_active(0)
+
+        transfer_box.pack_start(self.widgets)
+
+    def get_options(self):
+        return self.widgets.get_form_data()
+
+    def set_options(self,values):
+        self.widgets.set_form_data()
+
+
 class FlickrMetadataWidget(wb.ModalDialog):
     ##TODO: show the thumbnail and uid
     def __init__(self,item,collection):
@@ -202,7 +231,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
                             ('title','Title:',wb.Entry()),
                             ('tags','Tags:',wb.Entry()),
                             ('description','Description:',wb.Entry()),
-                            ('privacy','Visible To:',wb.ComboBox(privacy_levels)),
+                            ('privacy','Visibility:',wb.ComboBox(privacy_levels)),
                             ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
                             ('meta','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
                        ])
@@ -383,6 +412,7 @@ class FlickrCollection(baseobjects.CollectionBase):
     pref_widget=FlickrPrefWidget
     add_widget=NewFlickrAccountWidget
     metadata_widget=FlickrMetadataWidget
+    transfer_widget=FlickrTransferOptionsBox
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
@@ -669,20 +699,19 @@ class FlickrCollection(baseobjects.CollectionBase):
             temp_filename=''
             temp_dir=''
             src_filename=src_item.uid
-            if prefs['dest_name_needs_meta'] and src_item.meta==None or not self.local_filesystem:
-                temp_dir=tempfile.mkdtemp('','.image-')
-                temp_filename=os.path.join(temp_dir,name)
-                try:
-                    if src_collection.local_filesystem:
-                        io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
-                    else:
-                        open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
-                except IOError:
-                    ##todo: log an error
-                    ##todo: maybe better to re-raise the exception here
-                    return False
-                src_filename=temp_filename
-                imagemanip.load_metadata(src_item,src_collection,src_filename)
+            temp_dir=tempfile.mkdtemp('','.image-')
+            temp_filename=os.path.join(temp_dir,name)
+            try:
+                if src_collection.local_filesystem:
+                    io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
+                else:
+                    open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
+            except IOError:
+                ##todo: log an error
+                ##todo: maybe better to re-raise the exception here
+                return False
+            src_filename=temp_filename
+            imagemanip.load_metadata(src_item,src_collection,src_filename)
             filename=imagemanip.get_jpeg_or_png_image_file(src_item,prefs['upload_size'],prefs['metadata_strip'],src_filename)
 
             #specify metadata
@@ -701,7 +730,9 @@ class FlickrCollection(baseobjects.CollectionBase):
             try:
                 privacy=src_item.meta['Privacy']
             except:
-                privacy=PRIVACY_PRIVATE
+                privacy=prefs['visibility']
+            perm_comment=prefs['comment']
+            perm_metadata=prefs['metadata']
             public=1 if privacy==PRIVACY_PUBLIC else 0
             family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
@@ -714,6 +745,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             photo_id=self.flickr_client.upload(filename=filename,title=title,description=description,tags=tags,
                 is_public=public,is_family=family,is_friend=friends,callback=progress_cb)
             photo_id=photo_id.find('photoid').text
+            ##TODO: Set metadata and comment permissions
 
 ##            if album[0]:
 ##                photoset_id=album[1].attrib['id']

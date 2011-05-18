@@ -4,6 +4,7 @@ Project todo list
 The purpose of this document is to keep track of short-term plans (up to 6 months ahead).
 As stuff is completed or plans change the list should be updated.
 
+* Simplify collection initialization/open/close (make interface more uniform)
 * Transfer plugin should get preference widgets from collections (e.g. specify import location, metadata handling, privacy etc)
 * All collections should have an offline member and when offline turn off GUI that needs read or write access to the store
 * The OSD delete button becomes a toggle. Delete is committed along with metadata changes (requires the collection to be online)
@@ -38,7 +39,7 @@ As stuff is completed or plans change the list should be updated.
        * E.g. for a write metadata request
          1. create a list of changed items on the main thread
          2. dispatch the intructions to write changes to the list of items as a batch (or with single requests)
-     * Need a locking mechanism: user should be able to modify items that are being modified by background processes
+     * Need a locking mechanism: user should not be able to modify items that are being modified by background processes
      * Need a cancellation mechanism: any job should be interruptable
      * Plugins will now get their update messages on the main thread instead of on a worker thread (plugin IPC too much of a mess)
 

@@ -87,17 +87,33 @@ class CheckBox(gtk.CheckButton):
 
 class ComboBox(gtk.ComboBox):
     '''
-    A combo box with optional label
+    A combo box with set of choices
     '''
-    def __init__(self,choices):
-        liststore = gtk.ListStore(str)
+    def __init__(self,choices,model=None):
+        '''
+        creates a new combo box
+        choices is a list or tuple of combobox rows
+        if model==None, the combo box is set up with a Text Cell Render and a model with a single column
+        of type str
+        otherwise, model should be a liststore, with choices containing a list of tuples dimensioned
+        appropriately and the caller must add appropriate cell renderers
+        '''
+        if model==None:
+            liststore = gtk.ListStore(str)
+        else:
+            liststore=model
+
         gtk.ComboBox.__init__(self,liststore)
-        cell = gtk.CellRendererText()
-        self.pack_start(cell, True)
-        self.add_attribute(cell, 'text', 0)
+        if model==None:
+            cell = gtk.CellRendererText()
+            self.pack_start(cell, True)
+            self.add_attribute(cell, 'text', 0)
 
         for c in choices:
-            liststore.append([c])
+            if type(c)==str:
+                liststore.append([c])
+            else:
+                liststore.append(c)
 
     def get_form_data(self):
         return self.get_active()
