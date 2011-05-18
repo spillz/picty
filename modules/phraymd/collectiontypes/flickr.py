@@ -212,10 +212,11 @@ class FlickrTransferOptionsBox(gtk.VBox):
         transfer_box.pack_start(self.widgets)
 
     def get_options(self):
+        print '###GET OPTIONS CALLED###',self.widgets.get_form_data()
         return self.widgets.get_form_data()
 
     def set_options(self,values):
-        self.widgets.set_form_data()
+        self.widgets.set_form_data(values)
 
 
 class FlickrMetadataWidget(wb.ModalDialog):
@@ -695,6 +696,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         'copy an item from another collection source'
         try:
             #get or create suitable copy of the image file for uploading
+            print 'copying item with prefs',src_item,prefs
             name=os.path.split(src_item.uid)[1] ##this could be a problem for some uid's
             temp_filename=''
             temp_dir=''

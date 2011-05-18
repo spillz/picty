@@ -70,7 +70,7 @@ from phraymd import widgetbuilder as wb
 
 
 class TransferImportJob(backend.WorkerJob):
-    def __init__(self,worker,collection,browser,plugin,collection_src,collection_dest,params):
+    def __init__(self,worker,collection,browser,plugin,collection_src,collection_dest,prefs):
         backend.WorkerJob.__init__(self,'TRANSFER',780,worker,collection,browser)
         self.plugin=plugin
         self.collection_src=collection_src
@@ -78,8 +78,7 @@ class TransferImportJob(backend.WorkerJob):
         self.stop=False
         self.countpos=0
         self.items=None
-        for p in params:
-            self.__dict__[p]=params[p]
+        self.prefs=prefs
 ##        self.plugin.mainframe.tm.queue_job_instance(self)
 
     def cancel(self,shutdown=False):
@@ -96,30 +95,26 @@ class TransferImportJob(backend.WorkerJob):
         collection=self.collection_dest
         if self.items==None:
             pluginmanager.mgr.suspend_collection_events(self.collection_dest)
-            if self.transfer_all:
+            if self.prefs['transfer_all']:
                 self.items=self.collection_src.get_all_items()
                 print 'transferring all',len(self.items)
             else:
                 self.items=self.collection_src.get_active_view().get_selected_items()
                 self.count=len(self.items)
-        if not self.base_dest_dir:
-            try:
-                self.base_dest_dir=collection.image_dirs[0]
-            except:
-                self.base_dest_dir=os.environ['HOME']
         print 'transferring',len(self.items),'items'
-        if not os.path.exists(self.base_dest_dir):
-            os.makedirs(self.base_dest_dir)
+#        if not os.path.exists(self.base_dest_dir): ##TODO: move this to localstore collection (should only call once)
+#            os.makedirs(self.base_dest_dir)
         while len(self.items)>0 and jobs.ishighestpriority(self) and not self.stop:
             item=self.items.pop()
             ##todo: must set prefs
             if self.browser:
                 gobject.idle_add(self.browser.update_status,1.0*i/self.count,'Transferring media - %i of %i'%(i,self.count))
-            prefs={
-                'move_files':self.move,
-                'upload_size':None,
-                'metadata_strip':False,
-            }
+            prefs=self.prefs
+#            prefs={
+#                'move_files':self.move_files,
+#                'upload_size':None,
+#                'metadata_strip':False,
+#            }
             collection.copy_item(self.collection_src,item,prefs)
 ###            if self.browser!=None:
 ###                self.browser.lock.acquire()
@@ -260,7 +255,7 @@ class TransferPlugin(pluginbase.Plugin):
         called from the transfer job thread to indicate the job has been cancelled
         '''
         ##todo: give visual indication of cancellation
-        self.transfer_frame.set_sensitive(True)
+        self.transfer_box.set_sensitive(True)
         self.src_combo.set_sensitive(True)
         self.dest_combo.set_sensitive(True)
         self.start_transfer_button.set_sensitive(True)
@@ -272,7 +267,7 @@ class TransferPlugin(pluginbase.Plugin):
         called from the transfer job thread to indicate the job has completed
         '''
         ##todo: give visual indication of completion
-        self.transfer_frame.set_sensitive(True)
+        self.transfer_box.set_sensitive(True)
         self.src_combo.set_sensitive(True)
         self.dest_combo.set_sensitive(True)
         self.start_transfer_button.set_sensitive(True)
@@ -296,10 +291,13 @@ class TransferPlugin(pluginbase.Plugin):
         self.start_transfer_button.set_sensitive(False)
         worker=self.mainframe.tm
         params={}
-        if self.transfer_widget:
+        if self.transfer_widget!=None:
             params=self.transfer_widget.get_options()
         params['transfer_all']=all
-        params['move']=self.move_radio.get_active()
+        params['move_files']=self.move_radio.get_active()
+        params['metadata_strip']=False
+        params['upload_size']=None
+        print '******PARAMS******',params
         if not coll_src.is_open:
             coll_src.open(self.mainframe.tm)
         ij=TransferImportJob(self.mainframe.tm,None,coll_dest.browser,self,coll_src,coll_dest,params)
@@ -307,7 +305,7 @@ class TransferPlugin(pluginbase.Plugin):
         self.cancel_button.set_sensitive(True)
         self.start_transfer_all_button.set_sensitive(False)
         self.start_transfer_button.set_sensitive(False)
-        self.transfer_frame.set_sensitive(False)
+        self.transfer_box.set_sensitive(False)
 
     def media_connected(self,uri): ##todo: ensure that uri is actually a local path and if so rename the argument
         print 'media connected event for',uri
