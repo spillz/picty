@@ -417,6 +417,9 @@ class Collection(baseobjects.CollectionBase):
         return create_empty_localstore(self.name,self.get_prefs())
 
     def open(self,thread_manager,browser=None):
+        print 'STARTING MONITOR'
+        self.start_monitor(thread_manager.directory_change_notify) ##todo: THIS SHOULDN'T HAPPEN UNTIL AFTER WE SUCCESSFULLY OPEN
+        print 'STARTED MONITOR'
         j=backend.LoadCollectionJob(thread_manager,self,browser)
         thread_manager.queue_job_instance(j)
 
@@ -617,7 +620,7 @@ class Collection(baseobjects.CollectionBase):
                     if src_collection.local_filesystem:
                         io.copy_file(src_filename,dest_filename,overwrite=prefs['action_if_exists']==EXIST_OVERWRITE)
                     else:
-                        open(src_filename,'wb').write(src_collection.get_file_stream(src_item).read())
+                        open(dest_filename,'wb').write(src_collection.get_file_stream(src_item).read())
             except IOError:
                 ##todo: log an error
                 ##todo: maybe better to re-raise the exception here
