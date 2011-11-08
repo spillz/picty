@@ -4,9 +4,9 @@ Project todo list
 The purpose of this document is to keep track of short-term plans (up to 6 months ahead).
 As stuff is completed or plans change the list should be updated.
 
-* Simplify collection initialization/open/close (make interface more uniform)
 * Transfer plugin should get preference widgets from collections (e.g. specify import location, metadata handling, privacy etc)
 * All collections should have an offline member and when offline turn off GUI that needs read or write access to the store
+* Simplify collection initialization/open/close (make interface more uniform)
 * The OSD delete button becomes a toggle. Delete is committed along with metadata changes (requires the collection to be online)
 * Each collection should specify the metadata that is editable and/or provide the editing widgets
 * Support GEO (GPS) info in flickr

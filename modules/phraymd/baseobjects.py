@@ -262,7 +262,7 @@ class ViewBase: ##base class for the filter view of a collection and (for now) r
     def __call__(self,ind):
         pass
     def __getitem__(self,ind):
-        pass
+        return self(ind)
     def set_filter(self,expr):
         self.filter_tree=sp.parse_expr(viewsupport.TOKENS[:],expr,viewsupport.literal_converter)
     def clear_filter(self,expr):

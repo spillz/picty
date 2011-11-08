@@ -112,16 +112,18 @@ class MainFrame(gtk.VBox):
         ##todo: register the right click menu options (a tuple)
         ##todo: this has to be registered after instantiation of browser.
         def show_on_hover(item,hover):
-            return hover
+            return hover-1
+        def show_and_changed(item,hover):
+            return (hover and item.is_meta_changed())-1
         tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
-                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder')
+                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed()-1,[gtk.STOCK_SAVE],'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,show_and_changed,[gtk.STOCK_REVERT_TO_SAVED],'Main','Revert changes to the metadata in this image'),
+#                        ('Launch',self.launch_item,show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,['phraymd-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,['phraymd-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        ('Delete',self.delete_item,show_on_hover,[gtk.STOCK_DELETE],'Main','Move this image to the collection trash folder')
                         ]
         for tool in tools:
             self.hover_cmds.register_tool(*tool)
@@ -130,20 +132,20 @@ class MainFrame(gtk.VBox):
         self.viewer_hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_LARGE_TOOLBAR)
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Close',self.close_viewer,show_on_hover,gtk.STOCK_CLOSE,'Main','Hides the image viewer'),
-                        ('Locate in Browser',self.show_viewed_item,show_on_hover,gtk.STOCK_HOME,'Main','Locate the image in the browser'),
-                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),gtk.STOCK_SAVE,'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),gtk.STOCK_REVERT_TO_SAVED,'Main','Revert changes to the metadata in this image'),
-                        ('Launch',self.launch_item,show_on_hover,gtk.STOCK_EXECUTE,'Main','Open with the default editor (well...  GIMP)'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,gtk.STOCK_EDIT,'Main','Edit the descriptive metadata for this image'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,'phraymd-rotate-left','Main','Rotate the image 90 degrees counter-clockwise'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,'phraymd-rotate-right','Main','Rotate the image 90 degrees clockwise'),
-                        ('Zoom Fit',self.zoom_item_fit,show_on_hover,gtk.STOCK_ZOOM_FIT,'Main','Zoom the image to fit available space'),
-                        ('Zoom 100%',self.zoom_item_100,show_on_hover,gtk.STOCK_ZOOM_100,'Main','Zoom to 100% size'),
-                        ('Zoom In',self.zoom_item_in,show_on_hover,gtk.STOCK_ZOOM_IN,'Main','Zoom in'),
-                        ('Zoom Out',self.zoom_item_out,show_on_hover,gtk.STOCK_ZOOM_OUT,'Main','Zoom out'),
-                        ('Stub',None,lambda item,hover:False,None,'Main',''),
-                        ('Delete',self.delete_item,show_on_hover,gtk.STOCK_DELETE,'Main','Move this image to the collection trash folder'),
+                        ('Close',self.close_viewer,show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
+                        ('Locate in Browser',self.show_viewed_item,show_on_hover,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
+                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),[gtk.STOCK_SAVE],'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),[gtk.STOCK_REVERT_TO_SAVED],'Main','Revert changes to the metadata in this image'),
+                        ('Launch',self.launch_item,show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',self.rotate_item_left,show_on_hover,['phraymd-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',self.rotate_item_right,show_on_hover,['phraymd-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        ('Zoom Fit',self.zoom_item_fit,show_on_hover,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
+                        ('Zoom 100%',self.zoom_item_100,show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
+                        ('Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
+                        ('Zoom Out',self.zoom_item_out,show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
+                        ('Stub',None,lambda item,hover:False,[None],'Main',''),
+                        ('Delete',self.delete_item,show_on_hover,[gtk.STOCK_DELETE],'Main','Move this image to the collection trash folder'),
                         ]
         for tool in viewer_tools:
             self.viewer_hover_cmds.register_tool(*tool)

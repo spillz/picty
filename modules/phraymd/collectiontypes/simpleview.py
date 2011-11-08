@@ -74,6 +74,8 @@ class SimpleView(baseobjects.ViewBase):
             return self.items[len(self.items)-1-index][1]
         else:
             return self.items[index][1]
+    def __getitem__(self,index):
+        return self(index)
     def __len__(self):
         return len(self.items)
     def get_items(self,first,last):
