@@ -68,7 +68,7 @@ class SimpleView(baseobjects.ViewBase):
             return True
         return False
     def __call__(self,index):
-        if index>=len(self):
+        if index<0 or index>=len(self):
             return
         if self.reverse:
             return self.items[len(self.items)-1-index][1]
