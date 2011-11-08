@@ -245,19 +245,13 @@ class ImageBrowser(gtk.HBox):
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
         item=self.active_view[ind]
-        print 'HOVER CMD',item,ind
         if item:
             left=(offset%self.geo_horiz_count)*(self.geo_thumbwidth+self.geo_pad)
             left+=self.geo_pad/4
             top=self.geo_ind_view_first*(self.geo_thumbheight+self.geo_pad)/self.geo_horiz_count-int(self.geo_view_offset)
             top+=offset/self.geo_horiz_count*(self.geo_thumbheight+self.geo_pad)
             top+=self.geo_pad/4
-            print 'hover cmd'
             return self.hover_cmds.get_command(x,y,left,top,self.geo_pad/6,item,True)
-#                offx=self.geo_pad/4
-#                offy=self.geo_pad/4
-#                self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind if self.hover_ind==i else -1
-#                    ,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)
         return -1
 
     def item_to_view_index(self,item):

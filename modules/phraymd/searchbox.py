@@ -68,6 +68,12 @@ class SearchBox(gtk.HBox):
         self.pack_start(self.filter_combo)
         return
 
+    def set_text(self,text):
+        self.entry.set_text(text)
+
+    def activate(self):
+        self.entry.activate()
+
     def sep_fn(self,model,iter,data=None):
         if model[iter][0]!='-':
             return False

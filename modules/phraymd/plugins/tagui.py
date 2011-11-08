@@ -620,7 +620,7 @@ class TagFrame(gtk.VBox):
                     return
                 path=data
                 from phraymd import baseobjects
-                item=baseobjects.Item(path,0)
+                item=baseobjects.Item(path)
                 ind=self.worker.active_collection.find(item)
                 if ind<0:
                     return False
