@@ -113,17 +113,19 @@ class MainFrame(gtk.VBox):
         ##todo: this has to be registered after instantiation of browser.
         def show_on_hover(item,hover):
             return hover-1
+        def show_on_hover_if_not_deleted(item,hover):
+            return (hover and item.is_meta_changed()!=2)-1
         def show_and_changed(item,hover):
             return (hover and item.is_meta_changed())-1
         tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed()-1,[gtk.STOCK_SAVE],'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,show_and_changed,[gtk.STOCK_REVERT_TO_SAVED],'Main','Revert changes to the metadata in this image'),
+                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed()-1,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image or delete the image if marked for deletion'),
+                        ('Revert',self.revert_item,show_and_changed,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image or cancel the deletion of the image'),
 #                        ('Launch',self.launch_item,show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
                         ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,['phraymd-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',self.rotate_item_right,show_on_hover,['phraymd-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
-                        ('Delete',self.delete_item,show_on_hover,[gtk.STOCK_DELETE],'Main','Move this image to the collection trash folder')
+                        ('Delete',self.delete_item,show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark the item for deletion (not final until you save the change)')
                         ]
         for tool in tools:
             self.hover_cmds.register_tool(*tool)
@@ -1259,12 +1261,21 @@ class MainFrame(gtk.VBox):
         subprocess.Popen(app_cmd,shell=True)
 
     def save_item(self,widget,item):
-        if item.is_meta_changed():
+        if item.is_meta_changed()==2:
+            browser=self.active_browser()
+            fileops.worker.delete(browser.active_collection,[item],None,False)
+            if self.is_iv_showing and self.iv.item==item:
+                self.hide_image()
+        elif item.is_meta_changed():
             self.active_collection.write_metadata(item)
         self.active_browser().redraw_view()
 
     def revert_item(self,widget,item):
         if not item.is_meta_changed():
+            return
+        if item.is_meta_changed()==2:
+            item.delete_revert()
+            self.active_browser().redraw_view()
             return
         try:
             orient=item.meta['Orientation']
@@ -1328,16 +1339,7 @@ class MainFrame(gtk.VBox):
             self.view_image(item)
 
     def delete_item(self,widget,item):
-        browser=self.active_browser()
-        fileops.worker.delete(browser.active_collection,[item],None,False)
-        if self.is_iv_showing and self.iv.item==item:
-            self.hide_image()
-#        if ind>=0:
-#            browser.active_view.del_item(item)
-#            if self.is_iv_showing:
-#                ind=min(ind,len(browser.active_view)-1)
-#                self.view_image(browser.active_view(ind))
-#        browser.resize_and_refresh_view()
+        item.delete_mark()
 
     def zoom_item_fit(self,widget,item):
         self.iv.set_zoom('fit')

@@ -228,8 +228,13 @@ class Device(LocalDir):
     def __init__(self,prefs):
         LocalDir.__init__(self,prefs)
         self.pixbuf=prefs['pixbuf'] #device pixbuf varies depending on the device
+        self.monitor_image_dirs=False
     def _open(self):
         return True
+#    def start_monitor(self,callback):
+#        if self.monitor_image_dirs:
+#            self.monitor_master_callback=callback
+#            self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
 
 baseobjects.register_collection('LOCALDIR',LocalDir)
 baseobjects.register_collection('DEVICE',Device)

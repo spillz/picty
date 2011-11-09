@@ -334,9 +334,15 @@ class Item(str):
     def key(self):
         return 1
     def is_meta_changed(self):
+        if 'delete' in self.__dict__: ##todo this is a bit of a kludge to handle mark for deletion
+            return 2
         return 'meta_backup' in self.__dict__
+    def delete_mark(self):
+        self.delete=True
+    def delete_revert(self):
+        del self.delete
     def meta_revert(self,collection=None):
-        if self.is_meta_changed():
+        if self.is_meta_changed()==True:
             old=self.meta
             self.meta=self.meta_backup
             del self.meta_backup
@@ -344,7 +350,7 @@ class Item(str):
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
     def mark_meta_saved(self,collection=None):
-        if self.is_meta_changed():
+        if self.is_meta_changed()==True:
             del self.meta_backup
         if collection:
             collection.item_metadata_update(self)
@@ -352,7 +358,7 @@ class Item(str):
         if self.meta==None:
             return None
         old=self.meta.copy()
-        if not self.is_meta_changed():
+        if self.is_meta_changed()!=True:
             self.meta_backup=self.meta.copy()
         if key in self.meta and key not in self.meta_backup and value=='':
             del self.meta[key]
@@ -363,7 +369,7 @@ class Item(str):
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
-        return self.is_meta_changed()
+        return self.is_meta_changed()==True
     def init_meta(self,meta,collection=None):
         old=self.meta
         self.meta=meta
@@ -374,7 +380,7 @@ class Item(str):
             collection.item_metadata_update(self)
         return True
     def set_meta(self,meta,collection=None):
-        if not self.is_meta_changed():
+        if self.is_meta_changed()!=True:
             self.meta_backup=self.meta.copy()
         old=self.meta
         self.meta=meta
@@ -383,7 +389,7 @@ class Item(str):
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
             collection.item_metadata_update(self)
-        return self.is_meta_changed()
+        return self.is_meta_changed()==True
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
         if odict['thumb']:

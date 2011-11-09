@@ -659,10 +659,10 @@ class Collection(baseobjects.CollectionBase):
             print tb_text
             return False
     def delete_item(self,item):
-        'remove the item from the underlying store'
+        'remove the item from the collection and the underlying filestore'
         try:
-            trashdir=os.path.join(self.collection.image_dirs[0],'.trash')
-            empty,imdir,relpath=item.uid.partition(self.collection.image_dirs[0])
+            trashdir=os.path.join(self.image_dirs[0],'.trash')
+            empty,imdir,relpath=item.uid.partition(self.image_dirs[0])
             relpath=relpath.strip('/')
             if relpath:
                 dest=os.path.join(trashdir,relpath)

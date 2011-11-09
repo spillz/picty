@@ -277,7 +277,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
             widget=widget[k]
         value=widget.get_form_data()
         if form_keys[-1]=='tags':
-            metadata.tag_split(value)
+            value=metadata.tag_split(value)
         self.item.set_meta_key(item_key,value,self.collection)
 
 

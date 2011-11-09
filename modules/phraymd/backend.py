@@ -926,11 +926,21 @@ class SaveViewJob(WorkerJob):
             item=listitems(i)
             if not self.selected_only or listitems(i).selected:
                 if self.save:
-                    if item.is_meta_changed():
+                    ##delete the file, or write any metadata changes.
+                    if item.is_meta_changed()==2:
+                        self.collection.delete_item(item)
+                        idle_add(self.browser.resize_and_refresh_view,self.collection)
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Committing chages in view - %i of %i'%(i,len(listitems)))
+                    elif item.is_meta_changed():
                         self.collection.write_metadata(item)
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
-                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Committing changes in view - %i of %i'%(i,len(listitems)))
                 else:
+                    ##revert the deletion mark and any changes to the image metadata
+                    if item.is_meta_changed()==2:
+                        item.delete_revert()
+                        idle_add(self.browser.resize_and_refresh_view,self.collection)
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting changes in view - %i of %i'%(i,len(listitems)))
                     if item.is_meta_changed():
                         try:
                             orient=item.meta['Orientation']
@@ -946,12 +956,12 @@ class SaveViewJob(WorkerJob):
                             item.thumb=None
                             self.worker.queue_job_instance(RecreateThumbJob(self.worker,self.collection,self.browser,[item]))
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
-                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
+                        idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting changes in view - %i of %i'%(i,len(listitems)))
             if i%100==0:
                 if self.save:
-                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Saving changed images in view - %i of %i'%(i,len(listitems)))
+                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Committing changes in view - %i of %i'%(i,len(listitems)))
                 else:
-                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting images in view - %i of %i'%(i,len(listitems)))
+                    idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting changes in view - %i of %i'%(i,len(listitems)))
             i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
