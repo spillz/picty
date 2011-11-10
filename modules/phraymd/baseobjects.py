@@ -243,6 +243,9 @@ class CollectionBase:
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
         pass
+    def get_file_name(self,item):
+        'return a filename that can be used when copying to a local filesystem'
+        pass
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         pass

@@ -600,6 +600,10 @@ class Collection(baseobjects.CollectionBase):
                 src_filename=temp_filename
                 imagemanip.load_metadata(src_item,self.collection,src_filename)
             dest_path,dest_name=name_item(src_item,dest_dir,dest_name_template)
+            if not src_collection.local_filesystem:
+                local_name=src_collection.get_file_name(src_item)
+                if local_name:
+                    dest_name=local_name
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             dest_filename=os.path.join(dest_path,dest_name)
@@ -648,7 +652,13 @@ class Collection(baseobjects.CollectionBase):
             item=baseobjects.Item(dest_filename)
             item.mtime=io.get_mtime(item.uid)
             item.selected=src_item.selected
-            self.load_metadata(item,missing_only=True)
+            ##TODO: Do we need to do this for all non-local filesystems? (Apparently yes for flickr)
+            if not src_collection.local_filesystem:
+                item.init_meta(src_item.meta.copy(),self)
+                self.write_metadata(item)
+                self.load_metadata(item)
+            else:
+                self.load_metadata(item,missing_only=True)
             self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True

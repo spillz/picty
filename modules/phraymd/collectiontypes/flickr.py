@@ -1099,6 +1099,10 @@ class FlickrCollection(baseobjects.CollectionBase):
         'return a stream read the entire photo file from the source (as binary stream)'
         return urllib2.urlopen(item.imageurl)
 
+    def get_file_name(self,item):
+        'return the filename in the image url as a valid name for the file'
+        return item.imageurl.split('/')[-1]
+
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         pass
