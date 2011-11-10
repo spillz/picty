@@ -49,6 +49,13 @@ class Exiv2Metadata(pyexiv2.ImageMetadata):
             pyexiv2.ImageMetadata.__setitem__(self,key,value)
 
 def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
+    '''
+    load the metadata from the image and convert the keys to a subset that phraymd understands
+    item - the item to load metadata for
+    filename - if specified, metadata is loaded from this file
+    thumbnail - if True, load the thumbnail from the file
+    missing_only - if True, will set keys that aren't already present in the item
+    '''
 ##    if item.meta==False:
 ##        return
     try:
@@ -94,6 +101,9 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
 
 
 def save_metadata(item):
+    '''
+    write the metadata in item to the underlying file converting keys from the phraymd representation to the relevant standard
+    '''
     if item.meta==False:
         return False
     try:
@@ -150,6 +160,9 @@ def copy_metadata(src_item,destination_file):
 
 
 def save_metadata_key(item,key,value):
+    '''
+    write a single exiv2 native key value to the image file associated with item
+    '''
     try:
         rawmeta = Exiv2Metadata(item.uid)
         rawmeta.read()
