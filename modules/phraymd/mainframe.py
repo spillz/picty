@@ -653,9 +653,10 @@ class MainFrame(gtk.VBox):
         for c in self.coll_set.iter_coll():
             try:
                 c.get_active_view().reverse=layout['collection'][c.id]['sort direction']
-                for i in range(len(sort_model)):
-                    if layout['collection'][c.id]['sort order']==sort_model[i][0]:
-                        c.get_active_view().sort_key_text=sort_model[i][0]
+                keys=c.browser_sort_keys
+                so=layout['collection'][c.id]['sort order']
+                if so in keys:
+                    c.get_active_view().sort_key_text=so
             except KeyError:
                 pass
 
@@ -891,10 +892,7 @@ class MainFrame(gtk.VBox):
         c=self.active_collection
         if c:
             c.get_active_view().reverse=widget.get_active()#not self.browser.active_view.reverse
-#        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
-#        widget.set_active(self.browser.active_view.reverse)
-#        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
-            self.active_browser().resize_and_refresh_view()
+            self.active_browser().resize_and_refresh_view(c)
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
@@ -941,7 +939,7 @@ class MainFrame(gtk.VBox):
                     self.is_fullscreen=True
             elif event.keyval==92: #backslash
                 self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
-                self.active_browser().resize_and_refresh_view()
+                self.active_browser().resize_and_refresh_view(self.active_collection)
             elif event.keyval==65293: #enter
                 if self.iv.item:
                     if self.is_iv_fullscreen:
@@ -1059,7 +1057,7 @@ class MainFrame(gtk.VBox):
             b.update_scrollbar()
             b.update_required_thumbs()
             b.focal_item=item
-            b.resize_and_refresh_view()
+            b.resize_and_refresh_view(self.active_collection)
 
 
     def view_image(self,item,fullwindow=False):
@@ -1077,7 +1075,7 @@ class MainFrame(gtk.VBox):
             browser.center_view_offset(ind)
         browser.update_scrollbar()
         browser.update_required_thumbs()
-        browser.resize_and_refresh_view()
+        browser.resize_and_refresh_view(self.active_collection)
         browser.focal_item=item
         browser.grab_focus()
 
