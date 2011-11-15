@@ -209,7 +209,7 @@ class LocalDir(localstorebin.Collection):
             print 'Received D-Bus open request for',self.path_to_open
             item=baseobjects.Item(self.path_to_open)
             item.mtime=io.get_mtime(item.uid)
-            imagemanip.load_metadata(item)
+            imagemanip.load_metadata(item,notify_plugins=False)
             self.add(item)
             gobject.idle_add(self.mainframe.view_image,item)
         return True

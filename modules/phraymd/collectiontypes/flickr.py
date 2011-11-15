@@ -159,10 +159,6 @@ class FlickrSyncJob(backend.WorkerJob):
                 item.sync=True
                 datemod=datetime.fromtimestamp(float(ph.attrib['lastupdate']))
                 if item.meta==None or datemod!=item.meta['DateModified']:
-#                    item.secret=ph.attrib['secret']
-#                    item.server=ph.attrib['server']
-#                    item.thumburl=ph.attrib['url_s']
-#                    item.imageurl=ph.attrib['url_o']
                     collection.load_metadata(item)
                 if ind<0:
                     self.collection.add(item,self.collection)
@@ -771,7 +767,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             #now add the item to the collection
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
-            self.load_metadata(item)
+            self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
@@ -853,7 +849,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         'collection will receive this call when item metadata has been changed. (Intended for use with database backends)'
         pass
 
-    def load_metadata(self,item,missing_only=False):
+    def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
 ##        extras='description,license,geo,date_upload,date_taken,last_update,url_s,url_o,original_format'
         result=self.flickr_client.photos_getInfo(photo_id=item.uid)
@@ -930,7 +926,8 @@ class FlickrCollection(baseobjects.CollectionBase):
             tags=tags.findall('tag')
             meta['Keywords']=[t.attrib['raw'] for t in tags]
         print 'Read metadata',meta
-        item.init_meta(meta,self)
+        c=self if notify_plugins else None
+        item.init_meta(meta,c)
         '''
         <photo id="2733" secret="123456" server="12"
             isfavorite="0" license="3" rotation="90"

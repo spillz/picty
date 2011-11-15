@@ -138,7 +138,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
-        self.block_refresh=False
+        self.block_refresh={}
         user_tag_layout=user_tag_layout_default
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
@@ -189,16 +189,16 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.tagframe.tag_cloud_view[view].remove(item)
         self.thread_refresh()
     def t_collection_modify_start_hint(self,collection):
-        if collection!=self.worker.active_collection:
-            return
-        self.block_refresh=True
+#        if collection!=self.worker.active_collection:
+#            return
+        self.block_refresh[collection]=True
     def t_collection_modify_complete_hint(self,collection):
-        if collection!=self.worker.active_collection:
-            return
-        self.block_refresh=False
+#        if collection!=self.worker.active_collection:
+#            return
+        del self.block_refresh[collection]
         self.thread_refresh()
     def thread_refresh(self):
-        if not self.block_refresh:
+        if self.worker.active_collection not in (self.block_refresh):
             gobject.idle_add(self.tagframe.start_refresh_timer)
     def tag_dropped_in_browser(self,mainframe,browser,item,tag_widget,path):
         print 'Tag Plugin: dropped',tag_widget,path

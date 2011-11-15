@@ -255,9 +255,11 @@ class CollectionUpdateJob(WorkerJob):
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             item=self.queue.pop(0)
             if item.meta==None:
+                it=baseobjects.Item(item)
+                it.meta=item.meta.copy()
+                c.load_metadata(item)
                 self.browser.lock.acquire()
-                if self.view.del_item(item):
-                    c.load_metadata(item)
+                if self.view.del_item(it):
                     self.view.add_item(item)
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
                 self.browser.lock.release()
@@ -282,9 +284,11 @@ class RecreateThumbJob(WorkerJob):
             idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Recreating thumbnails')
             item=self.queue.pop(0)
             if item.meta==None:
+                it=baseobjects.Item(item)
+                it.meta=item.meta.copy()
+                c.load_metadata(item)
                 self.browser.lock.acquire()
-                if view.del_item(item):
-                    c.load_metadata(item)
+                if view.del_item(it):
                     view.add_item(item)
                 self.browser.lock.release()
             if item.meta!=None:
@@ -308,11 +312,12 @@ class ReloadMetadataJob(WorkerJob):
         while len(self.queue)>0 and jobs.ishighestpriority(self):
             idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
             item=self.queue.pop(0)
+            it=baseobjects.Item(item)
+            it.meta=item.meta.copy()
+            self.collection.load_metadata(item)
+            log.info('reloaded metadata for '+item.uid)
             self.browser.lock.acquire()
             if view.del_item(item):
-                item.meta=None
-                self.collection.load_metadata(item)
-                log.info('reloaded metadata for '+item.uid)
                 view.add_item(item)
             self.browser.lock.release()
         if len(self.queue)==0:
@@ -443,7 +448,7 @@ class WalkDirectoryJob(WorkerJob):
                     print 'found new item',item.uid
                     if not collection.verify_after_walk:
                         if collection.load_meta:
-                            collection.load_metadata(item)
+                            collection.load_metadata(item,notify_plugins=False)
                         elif collection.load_preview_icons:
                             collection.load_thumb(item)
                             if not item.thumb:
@@ -538,8 +543,8 @@ class WalkSubDirectoryJob(WorkerJob):
                     continue
                 item=baseobjects.Item(fullpath,mtime)
                 if collection.find(item)<0:
+                    collection.load_metadata(item,notify_plugins=False) ##todo: check if exists already
                     self.browser.lock.acquire()
-                    collection.load_metadata(item) ##todo: check if exists already
                     collection.add(item)
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
@@ -999,8 +1004,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                collection.load_metadata(item) ##todo: check if exists already
-                time.sleep(0.005)
+                collection.load_metadata(item,notify_plugins=False) ##todo: check if exists already
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
@@ -1021,7 +1025,7 @@ class VerifyImagesJob(WorkerJob):
                 item.mtime=mtime
                 item.image=None
                 item.qview=None
-                collection.load_metadata(item)
+                collection.load_metadata(item,notify_plugins=False)
                 item.thumb=None
                 item.thumburi=None
                 self.browser.lock.acquire()
@@ -1085,7 +1089,7 @@ class DirectoryUpdateJob(WorkerJob):
                 log.info('deleting '+fullpath)
                 if not os.path.exists(fullpath):
                     self.browser.lock.acquire()
-                    collection.delete([fullpath])
+                    collection.delete(fullpath)
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
             if action in ('MOVED_TO','MODIFY','CREATE'):
@@ -1093,7 +1097,7 @@ class DirectoryUpdateJob(WorkerJob):
                     mimetype=io.get_mime_type(fullpath)
                     if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                         continue
-                    i=collection.find([fullpath])
+                    i=collection.find(fullpath)
                     if i>=0:
                         if io.get_mtime(fullpath)!=collection[i].mtime:
                             item=collection[i]
@@ -1101,7 +1105,7 @@ class DirectoryUpdateJob(WorkerJob):
                             collection.delete(item)
                             self.browser.lock.release()
                             item.mtime=io.get_mtime(fullpath)
-                            collection.load_metadata(item)
+                            collection.load_metadata(item,notify_plugins=False)
                             collection.make_thumbnail(item) ##todo: queue this onto lower priority job
                             self.browser.lock.acquire()
                             collection.add(item)
@@ -1110,7 +1114,7 @@ class DirectoryUpdateJob(WorkerJob):
                     else:
                         item=baseobjects.Item(fullpath)
                         item.mtime=io.get_mtime(fullpath)
-                        collection.load_metadata(item)
+                        collection.load_metadata(item,notify_plugins=False)
                         self.browser.lock.acquire()
                         collection.add(item)
                         self.browser.lock.release()

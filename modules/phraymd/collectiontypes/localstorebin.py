@@ -534,6 +534,7 @@ class Collection(baseobjects.CollectionBase):
             item=self.items[i]
             self.numselected-=item.selected
             self.items.pop(i)
+            print '****REMOVING',item
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
@@ -656,9 +657,9 @@ class Collection(baseobjects.CollectionBase):
             if not src_collection.local_filesystem:
                 item.init_meta(src_item.meta.copy(),self)
                 self.write_metadata(item)
-                self.load_metadata(item)
+                self.load_metadata(item,notify_plugins=False)
             else:
-                self.load_metadata(item,missing_only=True)
+                self.load_metadata(item,missing_only=True,notify_plugins=False)
             self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
@@ -727,12 +728,13 @@ class Collection(baseobjects.CollectionBase):
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed'
         pass
-    def load_metadata(self,item,missing_only=False):
+    def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
+        c=self if notify_plugins else None
         if self.load_embedded_thumbs:
-            result=imagemanip.load_metadata(item,self,None,True,missing_only)
+            result=imagemanip.load_metadata(item,c,None,True,missing_only)
         else:
-            result=imagemanip.load_metadata(item,self,None,False,missing_only)
+            result=imagemanip.load_metadata(item,c,None,False,missing_only)
         if self.load_embedded_thumbs and not item.thumb:
             item.thumb=False
         return result

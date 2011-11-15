@@ -56,10 +56,10 @@ class SimpleView(baseobjects.ViewBase):
         ##todo: check ind is in the required range
         if self.reverse:
             i=len(self.items)-1-ind
-            pluginmanager.mgr.callback_collection('t_collection_item_removed_from_view',self.collection,self,self.items[i])
+            pluginmanager.mgr.callback_collection('t_collection_item_removed_from_view',self.collection,self,self.items[i][1])
             del self.items[i]
         else:
-            pluginmanager.mgr.callback_collection('t_collection_item_removed_from_view',self.collection,self,self.items[ind])
+            pluginmanager.mgr.callback_collection('t_collection_item_removed_from_view',self.collection,self,self.items[ind][1])
             del self.items[ind]
     def del_item(self,item):
         ind=self.find_item(item)
