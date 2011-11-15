@@ -139,7 +139,7 @@ class FlickrSyncJob(backend.WorkerJob):
                 pct=(1.0*(self.page-1)*500+self.counter)/(self.pages*500)
                 gobject.idle_add(self.browser.update_status,pct,'Syncing with Flickr')
                 if recently_updated: ##TODO: This isn't going to work if recentlyUpdated doesn't report deleted images
-                    photos=flickr_client.people_recentlyUpdated(user_id="me",page=self.page, min_date=self.last_update_time, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
+                    photos=flickr_client.photos_recentlyUpdated(min_date=collection.last_update_time, page=self.page, per_page=100, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
                 else:
                     photos=flickr_client.people_getPhotos(user_id="me",page=self.page, per_page=500, extras='description,license,geo,tags,date_upload,date_taken,last_update,url_s,url_o,original_format')
                 photos=photos.find('photos')
@@ -168,19 +168,20 @@ class FlickrSyncJob(backend.WorkerJob):
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
 
             ##todo: this should be interruptable
-            print 'REMOVING DELETED ITEMS'
-            items_to_del=[]
-            for i in range(len(collection)):
-                item=collection[i]
-                if 'sync' in item.__dict__:
-                    del item.sync
-                else:
-                    items_to_del.append(item)
-            for item in items_to_del:
-                self.browser.lock.acquire()
-                collection.delete(item)
-                self.browser.lock.release()
-                gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
+            if not recently_updated:
+                print 'REMOVING DELETED ITEMS'
+                items_to_del=[]
+                for i in range(len(collection)):
+                    item=collection[i]
+                    if 'sync' in item.__dict__:
+                        del item.sync
+                    else:
+                        items_to_del.append(item)
+                for item in items_to_del:
+                    self.browser.lock.acquire()
+                    collection.delete(item)
+                    self.browser.lock.release()
+                    gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
             pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         return False
@@ -413,11 +414,12 @@ class FlickrCollection(baseobjects.CollectionBase):
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
-    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk',)
+    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk','last_update_time')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self,prefs)
         self.persistent=True #whether the collection is stored to disk when closed
+        self.last_update_time=1
 
         ##flickr login + API
         self.login_username=''
@@ -720,11 +722,11 @@ class FlickrCollection(baseobjects.CollectionBase):
             try:
                 tags=metadata.tag_bind(src_item.meta['Keywords'])
             except:
-                tags=None
+                tags=''
             try:
                 description=src_item.meta['ImageDescription']
             except:
-                description=None
+                description=''
             try:
                 privacy=src_item.meta['Privacy']
             except:
