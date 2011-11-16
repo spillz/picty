@@ -731,8 +731,6 @@ class FlickrCollection(baseobjects.CollectionBase):
                 privacy=src_item.meta['Privacy']
             except:
                 privacy=prefs['visibility']
-            perm_comment=prefs['comment']
-            perm_metadata=prefs['metadata']
             public=1 if privacy==PRIVACY_PUBLIC else 0
             family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
@@ -769,6 +767,9 @@ class FlickrCollection(baseobjects.CollectionBase):
             #now add the item to the collection
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
+            item.meta['PermComment']=prefs['comment']
+            item.meta['PermAddMeta']=prefs['metadata']
+            self.write_metadata(self,item,set_perms=True) #set the permisions
             self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
@@ -959,7 +960,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         </photo>
         '''
 
-    def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True):
+    def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True,set_rotate=True):
         'write metadata for an item to the source'
 ##
 ##TODO: Other metadate that could be set...
@@ -1041,14 +1042,26 @@ class FlickrCollection(baseobjects.CollectionBase):
                 rotate=270
 
         if set_meta:
+            if 'meta_backup' in item.__dict__:
+                item.meta_backup['Title']=item.meta['Title']
+                item.meta_backup['Description']=item.meta['Description']
             self.flickr_client.photos_setMeta(photo_id=item.uid,title=title,description=description)
         if set_tags:
+            if 'meta_backup' in item.__dict__:
+                item.meta_backup['Keywords']=item.meta['Keywords']
             self.flickr_client.photos_setTags(photo_id=item.uid,tags=tags)
         if set_perms:
+            if 'meta_backup' in item.__dict__:
+                item.meta_backup['Privacy']=item.meta['Privacy']
+                item.meta_backup['PermComment']=item.meta['PermComment']
+                item.meta_backup['PermAddMeta']=item.meta['PermAddMeta']
             self.flickr_client.photos_setPerms(photo_id=item.uid,is_public=is_public,is_friend=is_friend,is_family=is_family,perm_comment=perm_comment,perm_addmeta=perm_addmeta)
-        if rotate!=None:
+        if set_rotate and rotate!=None:
+            if 'meta_backup' in item.__dict__:
+                item.meta_backup['Orientation']=item.meta['Orientation']
             self.flickr_client.photos_transform_rotate(photo_id=item.uid,degrees=rotate)
-        item.mark_meta_saved()
+        if 'meta_backup' not in item.__dict__ or item.meta_backup==item.meta:
+            item.mark_meta_saved()
 
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
