@@ -24,6 +24,8 @@ License:
 #TODO: Fix image sync (must be interruptable, check for deleted + changed images)
 #TODO: Login authentication
 
+__version__='0.6'
+
 
 ##standard imports
 import bisect
@@ -83,6 +85,39 @@ PRIVACY_FAMILY=3
 PRIVACY_PRIVATE=4
 
 
+def sets_as_string(item,sets):
+    if sets and 'meta' in item.__dict__ and 'Sets' in item.meta:
+        return ', '.join([sets[s][0] for s in item.meta['Sets'] if s in sets.dict])
+
+def pools_as_string(item):
+    if 'meta' in item.__dict__ and 'Pools' in item.meta:
+        return item.meta['Pools'].join(', ')
+
+class Sets:
+    '''
+    The sets class represents that available flickr sets.
+    Sets contains a ListStore and a dict
+    '''
+    def __init__(self):
+        self.store=gtk.ListStore(str,str)
+        self.dict={}
+    def set_sets(self,set_data):
+        self.store.clear()
+        for s in set_data:
+            self.store.append(s[0:2])
+        self.dict=dict([(s[0],s[1:])for s in set_data])
+    def add_set(self,set_data):
+        s=set_data
+        self.store.append(s[0:2]) ##todo: maybe prepend??
+        self.dict[s[0]]=s[1:]
+    def __getitem__(self,id):
+        return self.dict[id]
+    def find_id(self,name):
+        for id in self.dict:
+            if self.dict[id][1]==name:
+                return id
+        return None
+
 class LoadFlickrCollectionJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser):
         backend.WorkerJob.__init__(self,'LOADFLICKRCOLLECTION',890,worker,collection,browser)
@@ -119,7 +154,7 @@ class FlickrSyncJob(backend.WorkerJob):
         jobs=self.worker.jobs
         collection=self.collection
         flickr_client=collection.flickr_client
-        recently_updated=False
+        recently_updated=True
         if not self.started:
             pluginmanager.mgr.suspend_collection_events(self.collection)
             self.page=0
@@ -167,6 +202,10 @@ class FlickrSyncJob(backend.WorkerJob):
             collection.last_update_time=new_time
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
 
+            sets=collection.get_sets()
+            print 'RETRIEVED SETS',sets
+            if sets!=None:
+                gobject.idle_add(collection.sets.set_sets,sets) ##don't want to change liststore on a background thread
             ##todo: this should be interruptable
             if not recently_updated:
                 print 'REMOVING DELETED ITEMS'
@@ -186,34 +225,63 @@ class FlickrSyncJob(backend.WorkerJob):
             return True
         return False
 
-class FlickrTransferOptionsBox(gtk.VBox):
+class FlickrTransferOptionsBox(wb.VBox):
+##    def __init__(self,collection):
+##        gtk.VBox.__init__(self)
+##
+##        set_frame=gtk.Frame("Add to Set")
+##        self.pack_start(set_frame)
+##
+###        if collection.sets:
+###            sets=[s[0] for s in  collection.sets.itervalues()]
+###        else:
+###            sets=[]
+##        self.set_box=wb.LabeledWidgets([
+##                ('set','Set:',wb.ComboBoxEntry([],collection.sets.store,1)),
+##            ])
+##        set_frame.add(self.set_box)
+###        self.set_box['new-set'].connect("clicked",self.create_set,collection)
+##
+##        transfer_frame=gtk.Frame("Visibility and Permisions")
+##        self.pack_start(transfer_frame)
+##
+##        transfer_box=gtk.VBox()
+##        transfer_frame.add(transfer_box)
+##
+##        self.widgets=wb.LabeledWidgets([
+##                ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
+##                ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
+##                ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
+##            ])
+##
+##        self.widgets['visibility'].set_active(0)
+##        self.widgets['comment'].set_active(0)
+##        self.widgets['metadata'].set_active(0)
+##
+##        transfer_box.pack_start(self.widgets)
+
     def __init__(self,collection):
-        gtk.VBox.__init__(self)
-
-        transfer_frame=gtk.Frame("Visibility and Permisions")
-        self.pack_start(transfer_frame)
-
-        transfer_box=gtk.VBox()
-        transfer_frame.add(transfer_box)
-
-        self.widgets=wb.LabeledWidgets([
-                ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
-                ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
-                ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
+        wb.VBox.__init__(self,[
+            ('sets',wb.Frame("Add to Set",
+                wb.LabeledWidgets([
+                        ('set','Set:',wb.ComboBoxEntry([],collection.sets.store,1)),
+                    ])
+                )),
+            ('privacy',wb.Frame("Visibility and Permissions",
+                wb.LabeledWidgets([
+                        ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
+                        ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
+                        ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
+                    ])
+                )),
             ])
 
-        self.widgets['visibility'].set_active(0)
-        self.widgets['comment'].set_active(0)
-        self.widgets['metadata'].set_active(0)
-
-        transfer_box.pack_start(self.widgets)
 
     def get_options(self):
-        print '###GET OPTIONS CALLED###',self.widgets.get_form_data()
-        return self.widgets.get_form_data()
+        return self.get_form_data()
 
     def set_options(self,values):
-        self.widgets.set_form_data(values)
+        self.set_form_data(values)
 
 
 class FlickrMetadataWidget(wb.ModalDialog):
@@ -340,6 +408,7 @@ class NewFlickrAccountWidget(gtk.VBox):
         self.name_entry.set_text(val_dict['name'])
 
 
+
 def create_empty_collection(name,prefs,overwrite_if_exists=False):
     col_dir=os.path.join(settings.collections_dir,name)
     pref_file=os.path.join(os.path.join(settings.collections_dir,name),'prefs')
@@ -351,7 +420,7 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
         if not os.path.exists(col_dir):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(__version__,f,-1)
         d={}
         for p in FlickrCollection.pref_items:
             if p in prefs:
@@ -359,7 +428,7 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
         cPickle.dump(d,f,-1)
         f.close()
         f=open(data_file,'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(__version__,f,-1)
         cPickle.dump([],f,-1) #empty list of items
         f.close()
     except:
@@ -414,7 +483,7 @@ class FlickrCollection(baseobjects.CollectionBase):
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
-    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk','last_update_time')
+    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk',)
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self,prefs)
@@ -426,7 +495,9 @@ class FlickrCollection(baseobjects.CollectionBase):
         self.login_id=''
         self.flickr_client=None #will be none if not logged in
 
+        ####collection image data
         self.items=[] #the image/video items
+        self.sets=Sets()
 
         ##and has the following properties (which are stored in the collection file if it exists)
         self.image_dirs=[]
@@ -499,6 +570,10 @@ class FlickrCollection(baseobjects.CollectionBase):
                 for i in range(len(self.items)):
                     if 'filename' in self.items[i].__dict__:
                         self.items[i]=self.items[i].convert()
+            if version>='0.6':
+                sets=cPickle.load(f)
+                self.sets.set_sets(sets)
+                self.last_update_time=cPickle.load(f)
             self.numselected=0
             return True
         except:
@@ -523,8 +598,10 @@ class FlickrCollection(baseobjects.CollectionBase):
             if not os.path.exists(col_dir):
                 os.makedirs(col_dir)
             f=open(self.data_file(),'wb')
-            cPickle.dump(settings.version,f,-1)
+            cPickle.dump(__version__,f,-1)
             cPickle.dump(self.items,f,-1)
+            cPickle.dump(self.sets.dict,f,-1)
+            cPickle.dump(self.last_update_time,f,-1)
             f.close()
             self.empty()
         except:
@@ -595,13 +672,12 @@ class FlickrCollection(baseobjects.CollectionBase):
             response=self.flickr_client.photosets_getList()
             photosets=response.find('photosets')
             sets=photosets.findall('photoset')
-            self.sets=[(s.find('title').text,s) for s in sets]
-            #self.t_notify_albums(alist,'')
+            return [(s.attrib['id'],s.find('title').text,s.find('description').text) for s in sets]
         except:
             import traceback, sys
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print 'Error retrieving set data',tb_text
-            #self.t_notify_albums([],'')
+            return None
 
     ''' ************************************************************************
                         MONITORING THE COLLECTION SOURCE FOR CHANGES
@@ -629,9 +705,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             self.numselected+=item.selected
             pluginmanager.mgr.callback_collection('t_collection_item_added',self,item)
             if add_to_view:
-                print 'adding to view'
                 for v in self.views:
-                    print 'adding to view',item
                     v.add_item(item)
             return True
         except LookupError:
@@ -730,7 +804,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             try:
                 privacy=src_item.meta['Privacy']
             except:
-                privacy=prefs['visibility']
+                privacy=prefs['privacy']['visibility']
             public=1 if privacy==PRIVACY_PUBLIC else 0
             family=1 if privacy in [PRIVACY_FRIENDS,PRIVACY_FRIENDS_AND_FAMILY] else 0
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
@@ -743,11 +817,6 @@ class FlickrCollection(baseobjects.CollectionBase):
             photo_id=self.flickr_client.upload(filename=filename,title=title,description=description,tags=tags,
                 is_public=public,is_family=family,is_friend=friends,callback=progress_cb)
             photo_id=photo_id.find('photoid').text
-            ##TODO: Set metadata and comment permissions
-
-##            if album[0]:
-##                photoset_id=album[1].attrib['id']
-##                self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
 
             #clean up
             try:
@@ -767,9 +836,18 @@ class FlickrCollection(baseobjects.CollectionBase):
             #now add the item to the collection
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
-            item.meta['PermComment']=prefs['comment']
-            item.meta['PermAddMeta']=prefs['metadata']
-            self.write_metadata(self,item,set_perms=True) #set the permisions
+            item.meta={}
+            item.meta['PermComment']=prefs['privacy']['comment']
+            item.meta['PermAddMeta']=prefs['privacy']['metadata']
+            set_name=prefs['sets']['set'][1]
+            set_id=self.sets.find_id(set_name)
+            set_sets=False
+            if set_id==None and set_name:
+                self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
+                set_sets=True
+            if set_id:
+                item.meta['Sets']=[set_id]
+            self.write_metadata(item,set_perms=True,set_sets=set_sets) #set the permisions
             self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
@@ -782,12 +860,10 @@ class FlickrCollection(baseobjects.CollectionBase):
             return False
 
     def delete_item(self,item):
-        'remove the item from the underlying store'
+        'remove the item from the collection and the underlying store'
         try:
-            print 'Deleting item',item
             self.flickr_client.photos_delete(photo_id=item.uid)
             self.delete(item.uid)
-            print 'Deleted item',item
             return True
         except:
             ##todo: should delete item from collection anyway?
@@ -854,16 +930,34 @@ class FlickrCollection(baseobjects.CollectionBase):
 
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
-##        extras='description,license,geo,date_upload,date_taken,last_update,url_s,url_o,original_format'
-        result=self.flickr_client.photos_getInfo(photo_id=item.uid)
-
-        ph=result.find('photo')
-        if not ph:
-            return False
-        meta={}
-        item.secret=ph.attrib['secret']
-        item.server=ph.attrib['server']
-        item.farm=ph.attrib['farm']
+##        THIS IS A SAMPLE REQUEST RESPONSE TO THE FLICKR API Photos.getInfo CALL
+##        <photo id="2733" secret="123456" server="12"
+##            isfavorite="0" license="3" rotation="90"
+##            originalsecret="1bc09ce34a" originalformat="png">
+##            <owner nsid="12037949754@N01" username="Bees"
+##                realname="Cal Henderson" location="Bedford, UK" />
+##            <title>orford_castle_taster</title>
+##            <description>hello!</description>
+##            <visibility ispublic="1" isfriend="0" isfamily="0" />
+##            <dates posted="1100897479" taken="2004-11-19 12:51:19"
+##                takengranularity="0" lastupdate="1093022469" />
+##            <permissions permcomment="3" permaddmeta="2" />
+##            <editability cancomment="1" canaddmeta="1" />
+##            <comments>1</comments>
+##            <notes>
+##                <note id="313" author="12037949754@N01"
+##                    authorname="Bees" x="10" y="10"
+##                    w="50" h="50">foo</note>
+##            </notes>
+##            <tags>
+##                <tag id="1234" author="12037949754@N01" raw="woo yay">wooyay</tag>
+##                <tag id="1235" author="12037949754@N01" raw="hoopla">hoopla</tag>
+##            </tags>
+##            <urls>
+##                <url type="photopage">http://www.flickr.com/photos/bees/2733/</url>
+##            </urls>
+##        </photo>
+##
 ##      FLICKR URLS
 ##        http://farm{farm-id}.static.flickr.com/{server-id}/{id}_{secret}.jpg
 ##            or
@@ -876,6 +970,14 @@ class FlickrCollection(baseobjects.CollectionBase):
 ##            or
 ##        http://farm{farm-id}.static.flickr.com/{server-id}/{id}_{o-secret}_o.(jpg|gif|png)
 ##              for original image if it exists
+        result=self.flickr_client.photos_getInfo(photo_id=item.uid)
+        ph=result.find('photo')
+        if not ph:
+            return False
+        meta={}
+        item.secret=ph.attrib['secret']
+        item.server=ph.attrib['server']
+        item.farm=ph.attrib['farm']
         try:
             originalformat=ph.attrib['originalformat']
             originalsecret=ph.attrib['originalsecret']
@@ -928,39 +1030,20 @@ class FlickrCollection(baseobjects.CollectionBase):
         if tags!=None:
             tags=tags.findall('tag')
             meta['Keywords']=[t.attrib['raw'] for t in tags]
-        print 'Read metadata',meta
+
+        result_c=self.flickr_client.photos_getAllContexts(photo_id=item.uid)
+        sets=result_c.findall('set')
+        if len(sets)>0:
+            meta['Sets']=[s.attrib['id'] for s in sets]
+        pools=result_c.findall('pool')
+        if len(pools)>0:
+            meta['Pools']=[s.attrib['title'] for s in pools]
+
+##        print 'Read metadata',meta
         c=self if notify_plugins else None
         item.init_meta(meta,c)
-        '''
-        <photo id="2733" secret="123456" server="12"
-            isfavorite="0" license="3" rotation="90"
-            originalsecret="1bc09ce34a" originalformat="png">
-            <owner nsid="12037949754@N01" username="Bees"
-                realname="Cal Henderson" location="Bedford, UK" />
-            <title>orford_castle_taster</title>
-            <description>hello!</description>
-            <visibility ispublic="1" isfriend="0" isfamily="0" />
-            <dates posted="1100897479" taken="2004-11-19 12:51:19"
-                takengranularity="0" lastupdate="1093022469" />
-            <permissions permcomment="3" permaddmeta="2" />
-            <editability cancomment="1" canaddmeta="1" />
-            <comments>1</comments>
-            <notes>
-                <note id="313" author="12037949754@N01"
-                    authorname="Bees" x="10" y="10"
-                    w="50" h="50">foo</note>
-            </notes>
-            <tags>
-                <tag id="1234" author="12037949754@N01" raw="woo yay">wooyay</tag>
-                <tag id="1235" author="12037949754@N01" raw="hoopla">hoopla</tag>
-            </tags>
-            <urls>
-                <url type="photopage">http://www.flickr.com/photos/bees/2733/</url>
-            </urls>
-        </photo>
-        '''
 
-    def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True,set_rotate=True):
+    def write_metadata(self,item,set_meta=True,set_tags=True,set_perms=True,set_sets=True,set_rotate=True):
         'write metadata for an item to the source'
 ##
 ##TODO: Other metadate that could be set...
@@ -1002,7 +1085,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             orient=item.meta['Orientation']
         else:
             orient=1
-        if item.meta_backup and 'Orientation' in item.meta_backup:
+        if 'meta_backup' in item.__dict__ and item.meta_backup and 'Orientation' in item.meta_backup:
             borient=item.meta_backup['Orientation']
         else:
             borient=1
@@ -1060,6 +1143,21 @@ class FlickrCollection(baseobjects.CollectionBase):
             if 'meta_backup' in item.__dict__:
                 item.meta_backup['Orientation']=item.meta['Orientation']
             self.flickr_client.photos_transform_rotate(photo_id=item.uid,degrees=rotate)
+        if set_sets:
+            if 'meta_backup' in item.__dict__ and 'Sets' in item.meta_backup:
+                old=set(item.meta_backup['Sets'])
+            else:
+                old=set()
+            if 'meta' in item.__dict__ and 'Sets' in item.meta:
+                new=set(item.meta['Sets'])
+            else:
+                new=set()
+            removers=old-new
+            adders=new-old
+            for s in adders:
+                self.flickr_client.photosets_addPhoto(photoset_id=s,photo_id=item.uid)
+            for s in removers:
+                self.flickr_client.photosets_removePhoto(photoset_id=s,photo_id=item.uid)
         if 'meta_backup' not in item.__dict__ or item.meta_backup==item.meta:
             item.mark_meta_saved()
 
@@ -1085,7 +1183,6 @@ class FlickrCollection(baseobjects.CollectionBase):
             item.image = p.close()
             if 'Orientation' in item.meta:
                 orient_meta=item.meta
-                print 'Flickr orientation is',item.meta['Orientation']
             else:
                 try:
                     import pyexiv2
@@ -1094,7 +1191,6 @@ class FlickrCollection(baseobjects.CollectionBase):
                     orient_meta={'Orientation':im['Exif.Image.Orientation'].value}
                 except:
                     orient_meta={}
-                print 'EXIV2 orientation is',item.meta['Orientation']
             item.image=imagemanip.orient_image(item.image,orient_meta)
             if item.image:
                 imagemanip.cache_image(item)
@@ -1199,6 +1295,26 @@ class FlickrCollection(baseobjects.CollectionBase):
             val=str(val)
             if len(val)<90:
                 details+='Tags: '+val
+            else:
+                details+=val[:88]+'...'
+        #show sets
+        val=sets_as_string(item,self.sets)
+        if val:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            val=str(val)
+            if len(val)<90:
+                details+='Sets: '+val
+            else:
+                details+=val[:88]+'...'
+        #show pools
+        val=pools_as_string(item)
+        if val:
+            if details and not details.endswith('\n'):
+                details+='\n'
+            val=str(val)
+            if len(val)<90:
+                details+='Pools: '+val
             else:
                 details+=val[:88]+'...'
         #date information

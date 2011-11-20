@@ -122,6 +122,44 @@ class ComboBox(gtk.ComboBox):
         self.set_active(values)
 
 
+class ComboBoxEntry(gtk.ComboBoxEntry):
+    '''
+    A combo box with set of choices
+    '''
+    def __init__(self,choices,model=None,text_column=-1):
+        '''
+        creates a new combo box
+        choices is a list or tuple of combobox rows
+        if model==None, the combo box is set up with a Text Cell Render and a model with a single column
+        of type str
+        otherwise, model should be a liststore, with choices containing a list of tuples dimensioned
+        appropriately and the caller must add appropriate cell renderers
+        '''
+        if model==None:
+            liststore = gtk.ListStore(str)
+        else:
+            liststore=model
+
+        gtk.ComboBoxEntry.__init__(self,liststore,text_column)
+        if model==None:
+            cell = gtk.CellRendererText()
+            self.pack_start(cell, True)
+            self.add_attribute(cell, 'text', 0)
+
+        for c in choices:
+            if type(c)==str:
+                liststore.append([c])
+            else:
+                liststore.append(c)
+
+    def get_form_data(self):
+        return self.get_active(),self.child.get_text()
+
+    def set_form_data(self,values):
+        self.child.set_text(values[1])
+        self.set_active(values[0])
+
+
 class LabeledComboBox(gtk.HBox):
     '''
     A combo box with optional label
@@ -264,6 +302,18 @@ class Box:
         for k in self.widgets:
             data[k]=self.widgets[k].get_form_data()
         return data
+
+class Frame(gtk.Frame):
+    def __init__(self,frame_text,child):
+        gtk.Frame.__init__(self,frame_text)
+        self.add(child)
+        self.child=child
+    def set_form_data(self,data_dict):
+        self.child.set_form_data(data_dict)
+    def get_form_data(self):
+        return self.child.get_form_data()
+    def __getitem__(self,key):
+        return self.child[key]
 
 class PaddedVBox(gtk.Alignment,Box):
     def __init__(self,children,*box_args):

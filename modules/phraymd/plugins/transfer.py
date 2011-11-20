@@ -218,13 +218,13 @@ class TransferPlugin(pluginbase.Plugin):
     def src_view(self,button):
         id=self.src_combo.get_active()
         if id:
-            self.mainframe.coll_combo.set_active(id)
+            self.mainframe.collection_open(id)
 ##        self.mainframe.grab_focus() ##todo: add mainframe method "restore_focus"
 
     def dest_view(self,button):
         id=self.dest_combo.get_active()
         if id:
-            self.mainframe.coll_combo.set_active(id)
+            self.mainframe.collection_open(id)
 ##        self.mainframe.grab_focus() ##todo: add mainframe method "restore_focus"
 
     def src_changed(self,combo,id):

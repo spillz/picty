@@ -305,12 +305,13 @@ class ReloadMetadataJob(WorkerJob):
     def __init__(self,worker,collection,browser,queue):
         WorkerJob.__init__(self,'RELOADMETADATA',800,worker,collection,browser)
         self.queue=queue
+        self.count=len(queue)
 
     def __call__(self):
         jobs=self.worker.jobs
         view=self.collection.get_active_view()
         while len(self.queue)>0 and jobs.ishighestpriority(self):
-            idle_add(self.browser.update_status,1.0/(1+len(self.queue)),'Reloading metadata')
+            idle_add(self.browser.update_status,1.0-1.0*len(self.queue)/self.count,'Reloading metadata')
             item=self.queue.pop(0)
             it=baseobjects.Item(item)
             it.meta=item.meta.copy()

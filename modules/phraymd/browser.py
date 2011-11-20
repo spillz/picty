@@ -450,7 +450,6 @@ class ImageBrowser(gtk.HBox):
 
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
-        print 'MOUSE LEAVING BROWSER'
         self.mouse_hover=False
         if self.hover_ind>=0:
             self.command_highlight_ind=-1
@@ -723,7 +722,6 @@ class ImageBrowser(gtk.HBox):
             if self.mouse_hover and self.hover_ind==i or item.is_meta_changed() or item.selected or fail_item:
                 if self.hover_ind==i or item.selected:
                     a,b=self.active_collection.get_browser_text(item)
-                    print item,a,b
                     if a or b:
                         a=a.replace('&','&amp;')
                         b=b.replace('&','&amp;')
