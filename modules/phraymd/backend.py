@@ -929,6 +929,7 @@ class SaveViewJob(WorkerJob):
         i=self.pos
         listitems=self.collection.get_active_view()
         while i<len(listitems) and jobs.ishighestpriority(self) and not self.cancel:
+            inc=True
             item=listitems(i)
             if not self.selected_only or listitems(i).selected:
                 if self.save:
@@ -937,6 +938,7 @@ class SaveViewJob(WorkerJob):
                         self.collection.delete_item(item)
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
                         idle_add(self.browser.update_status,1.0*i/len(listitems),'Committing chages in view - %i of %i'%(i,len(listitems)))
+                        inc=False
                     elif item.is_meta_changed():
                         self.collection.write_metadata(item)
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
@@ -968,7 +970,8 @@ class SaveViewJob(WorkerJob):
                     idle_add(self.browser.update_status,1.0*i/len(listitems),'Committing changes in view - %i of %i'%(i,len(listitems)))
                 else:
                     idle_add(self.browser.update_status,1.0*i/len(listitems),'Reverting changes in view - %i of %i'%(i,len(listitems)))
-            i+=1
+            if inc:
+                i+=1
         if i<len(listitems) and not self.cancel:
             self.pos=i
         else:

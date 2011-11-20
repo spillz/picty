@@ -297,7 +297,6 @@ class TransferPlugin(pluginbase.Plugin):
         params['move_files']=self.move_radio.get_active()
         params['metadata_strip']=False
         params['upload_size']=None
-        print '******PARAMS******',params
         if not coll_src.is_open:
             coll_src.open(self.mainframe.tm)
         ij=TransferImportJob(self.mainframe.tm,None,coll_dest.browser,self,coll_src,coll_dest,params)

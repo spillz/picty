@@ -30,7 +30,7 @@ __version__='0.6'
 ##standard imports
 import bisect
 import datetime
-import os
+import os,shutil
 import os.path
 import re
 from datetime import datetime
@@ -254,9 +254,6 @@ class FlickrTransferOptionsBox(wb.VBox):
 ##                ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
 ##            ])
 ##
-##        self.widgets['visibility'].set_active(0)
-##        self.widgets['comment'].set_active(0)
-##        self.widgets['metadata'].set_active(0)
 ##
 ##        transfer_box.pack_start(self.widgets)
 
@@ -275,6 +272,9 @@ class FlickrTransferOptionsBox(wb.VBox):
                     ])
                 )),
             ])
+        self['privacy']['visibility'].set_active(0)
+        self['privacy']['comment'].set_active(0)
+        self['privacy']['metadata'].set_active(0)
 
 
     def get_options(self):
@@ -789,6 +789,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             filename=imagemanip.get_jpeg_or_png_image_file(src_item,prefs['upload_size'],prefs['metadata_strip'],src_filename)
 
             #specify metadata
+            print 'src_meta',src_item.meta
             try:
                 title=src_item.meta['Title']
             except:
@@ -825,7 +826,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                 if temp_filename!=src_filename:
                     io.remove_file(temp_filename)
                 if temp_dir:
-                    os.rmdir(temp_dir)
+                    shutil.rmtree(temp_dir)
             except:
                 print 'Error cleaning up old files'
                 print 'Error copying image'
@@ -836,7 +837,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             #now add the item to the collection
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
-            item.meta={}
+            item.meta={} ##TODO: What about orientation?
             item.meta['PermComment']=prefs['privacy']['comment']
             item.meta['PermAddMeta']=prefs['privacy']['metadata']
             set_name=prefs['sets']['set'][1]
@@ -847,7 +848,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                 set_sets=True
             if set_id:
                 item.meta['Sets']=[set_id]
-            self.write_metadata(item,set_perms=True,set_sets=set_sets) #set the permisions
+            self.write_metadata(item,set_meta=False,set_tags=False,set_perms=True,set_sets=set_sets,set_rotate=False)
             self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
@@ -884,7 +885,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         'create a cached thumbnail of the image'
         if not force and item.thumburi:
             return True
-        print 'Flickr Colleciton: creating thumb for',item
+        print 'Flickr Collection: creating thumb for',item
         try:
             thumburi=os.path.join(self.thumbnail_cache_dir,item.uid)+'.jpg'
             try:
@@ -1039,7 +1040,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         if len(pools)>0:
             meta['Pools']=[s.attrib['title'] for s in pools]
 
-##        print 'Read metadata',meta
+        print 'Read metadata',meta
         c=self if notify_plugins else None
         item.init_meta(meta,c)
 

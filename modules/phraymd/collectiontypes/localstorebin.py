@@ -22,7 +22,7 @@ License:
 ##standard imports
 import bisect
 from datetime import datetime
-import os
+import os, shutil
 import os.path
 import re
 import cPickle
@@ -641,7 +641,7 @@ class Collection(baseobjects.CollectionBase):
                 if temp_filename and temp_filename!=src_filename:
                     io.remove_file(temp_filename)
                 if temp_dir:
-                    os.rmdir(temp_dir)
+                    shutil.rmtree(temp_dir)
             except IOError:
                 ##todo: log an error
                 ##todo: maybe better to re-raise the exception here
