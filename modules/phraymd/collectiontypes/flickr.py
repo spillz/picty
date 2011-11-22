@@ -101,17 +101,59 @@ class Sets:
     def __init__(self):
         self.store=gtk.ListStore(str,str)
         self.dict={}
-    def set_sets(self,set_data):
+
+    def new_set_id(self):
+        sid=0
+        tempids=[int(sid[1]) for sid in self.dict if sid[0]=='t']
+        while sid in tempids:
+            sid+=1
+        sid='t'+str(sid)
+        return sid
+
+    def is_temp(self,id):
+        if id.startswith('t'):
+            return True
+
+    def init_sets(self,sets):
+        self.dict=sets
         self.store.clear()
-        for s in set_data:
-            self.store.append(s[0:2])
-        self.dict=dict([(s[0],s[1:])for s in set_data])
+        ss=sorted(self.dict)
+        for s in ss:
+            self.store.append([s,self.dict[s][0]])
+
+    def set_flickr_sets(self,flickr_set_data):
+        tdict=[s for s in self.dict if s.startswith('t')]
+        sets=dict([(s[0],s[1:])for s in flickr_set_data])
+        for t in tdict:
+            sets[t]=tdict[t]
+        self.init_sets(sets)
+
     def add_set(self,set_data):
         s=set_data
+        if s[0]==None:
+            s[0]=self.new_set_id()
         self.store.append(s[0:2]) ##todo: maybe prepend??
         self.dict[s[0]]=s[1:]
+
+    def make_perm(self,tempid,flickrid):
+        self.dict[flickrid]=self.dict[tempid]
+        del self.dict[tempid]
+        it=self.store.get_iter_first()
+        while it!=None:
+            if self.store[it][0]==tempid:
+                self.store[it][0]=flickrid
+                break
+            it=self.store.iter_next(it)
+
     def __getitem__(self,id):
         return self.dict[id]
+
+    def ind_to_id(self,index):
+        try:
+            return self.store[(ind,)][0]
+        except:
+            return None
+
     def find_id(self,name):
         for id in self.dict:
             if self.dict[id][1]==name:
@@ -205,7 +247,7 @@ class FlickrSyncJob(backend.WorkerJob):
             sets=collection.get_sets()
             print 'RETRIEVED SETS',sets
             if sets!=None:
-                gobject.idle_add(collection.sets.set_sets,sets) ##don't want to change liststore on a background thread
+                gobject.idle_add(collection.sets.set_flickr_sets,sets) ##don't want to change liststore on a background thread
             ##todo: this should be interruptable
             if not recently_updated:
                 print 'REMOVING DELETED ITEMS'
@@ -226,38 +268,8 @@ class FlickrSyncJob(backend.WorkerJob):
         return False
 
 class FlickrTransferOptionsBox(wb.VBox):
-##    def __init__(self,collection):
-##        gtk.VBox.__init__(self)
-##
-##        set_frame=gtk.Frame("Add to Set")
-##        self.pack_start(set_frame)
-##
-###        if collection.sets:
-###            sets=[s[0] for s in  collection.sets.itervalues()]
-###        else:
-###            sets=[]
-##        self.set_box=wb.LabeledWidgets([
-##                ('set','Set:',wb.ComboBoxEntry([],collection.sets.store,1)),
-##            ])
-##        set_frame.add(self.set_box)
-###        self.set_box['new-set'].connect("clicked",self.create_set,collection)
-##
-##        transfer_frame=gtk.Frame("Visibility and Permisions")
-##        self.pack_start(transfer_frame)
-##
-##        transfer_box=gtk.VBox()
-##        transfer_frame.add(transfer_box)
-##
-##        self.widgets=wb.LabeledWidgets([
-##                ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
-##                ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
-##                ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
-##            ])
-##
-##
-##        transfer_box.pack_start(self.widgets)
-
     def __init__(self,collection):
+        self.collection=collection
         wb.VBox.__init__(self,[
             ('sets',wb.Frame("Add to Set",
                 wb.LabeledWidgets([
@@ -278,10 +290,13 @@ class FlickrTransferOptionsBox(wb.VBox):
 
 
     def get_options(self):
-        return self.get_form_data()
+        f=self.get_form_data()
+        ind,name=f['sets']['set']
+        f['sets']['set']=[self.collection.sets.ind_to_id(ind),name]
+        return f
 
     def set_options(self,values):
-        self.set_form_data(values)
+        self.set_form_data(values) ##todo: fix me -- convert f['sets']['set'][0] from an id to an index
 
 
 class FlickrMetadataWidget(wb.ModalDialog):
@@ -572,7 +587,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                         self.items[i]=self.items[i].convert()
             if version>='0.6':
                 sets=cPickle.load(f)
-                self.sets.set_sets(sets)
+                gobject.idle_add(self.sets.init_sets,sets)
                 self.last_update_time=cPickle.load(f)
             self.numselected=0
             return True
@@ -829,7 +844,6 @@ class FlickrCollection(baseobjects.CollectionBase):
                     shutil.rmtree(temp_dir)
             except:
                 print 'Error cleaning up old files'
-                print 'Error copying image'
                 import traceback,sys
                 tb_text=traceback.format_exc(sys.exc_info()[2])
                 print tb_text
@@ -838,16 +852,26 @@ class FlickrCollection(baseobjects.CollectionBase):
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
             item.meta={} ##TODO: What about orientation?
+            item.meta['Privacy']=privacy
             item.meta['PermComment']=prefs['privacy']['comment']
             item.meta['PermAddMeta']=prefs['privacy']['metadata']
-            set_name=prefs['sets']['set'][1]
-            set_id=self.sets.find_id(set_name)
+            sid,set_name=prefs['sets']['set']
             set_sets=False
-            if set_id==None and set_name:
-                self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
-                set_sets=True
-            if set_id:
-                item.meta['Sets']=[set_id]
+            if sid==None:
+                result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
+                sid=result.find('photoset').attrib['id']
+                self.sets.add_set([sid,set_name,''])
+                prefs['sets']['set'][0]=sid
+            else:
+                if self.sets.is_temp(sid):
+                    result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
+                    new_sid=result.find('photoset').attrib['id']
+                    self.sets.make_perm(sid,new_sid)
+                    sid=new_sid
+                    prefs['sets']['set'][0]=sid
+                else:
+                    set_sets=True
+            item.meta['Sets']=[sid]
             self.write_metadata(item,set_meta=False,set_tags=False,set_perms=True,set_sets=set_sets,set_rotate=False)
             self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
