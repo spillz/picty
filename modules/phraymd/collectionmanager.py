@@ -553,7 +553,7 @@ class CollectionStartPage(gtk.VBox):
 
     def context_menu(self,widget,event):
         if event.button==3:
-            (row_path,tvc,tvc_x,tvc_y)=self.coll_list.get_path_at_pos(event.x, event.y)
+            (row_path,tvc,tvc_x,tvc_y)=self.coll_list.get_path_at_pos(int(event.x), int(event.y))
             if row_path:
                 id=self.coll_list.get_model()[row_path][COLUMN_ID]
                 self.emit('collection-context-menu',id)

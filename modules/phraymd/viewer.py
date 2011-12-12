@@ -435,8 +435,9 @@ class ImageViewer(gtk.VBox):
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
-        drawable.set_background(black)
-        drawable.clear()
+#        drawable.set_background(black)
+#        drawable.clear()
+
         drew_image=False
         if pluginmanager.mgr.callback_first('viewer_render_start',drawable,gc,self.item):
             return

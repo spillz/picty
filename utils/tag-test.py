@@ -374,7 +374,7 @@ class MetadataTreeView(gtk.VBox):
         self.connect("query-tooltip",self.tooltip_query)
         self.show_all()
     def tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
-        path,tvc,cx,cy=self.tv.get_path_at_pos(x,y)
+        path,tvc,cx,cy=self.tv.get_path_at_pos(int(x),int(y))
         if path:
             path=self.model.convert_path_to_child_path(path)
             key=self.model.get_model()[path][0]

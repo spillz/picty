@@ -344,7 +344,7 @@ class TagFrame(gtk.VBox):
 
     def context_menu(self,widget,event):
         if event.button==3:
-            (row_path,tvc,tvc_x,tvc_y)=self.tv.get_path_at_pos(event.x, event.y)
+            (row_path,tvc,tvc_x,tvc_y)=self.tv.get_path_at_pos(int(event.x), int(event.y))
             row_iter=self.model.get_iter(row_path)
             menu=gtk.Menu()
             def menu_add(menu,text,callback):

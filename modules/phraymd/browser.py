@@ -641,7 +641,9 @@ class ImageBrowser(gtk.HBox):
         red= colormap.alloc_color('red')
         gc_r = drawable.new_gc(foreground=red)
 
-        drawable.set_background(black)
+
+#        drawable.set_background(black)
+#        drawable.clear()
 
         hover_item=None
         if self.mouse_hover:
