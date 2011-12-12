@@ -1180,9 +1180,15 @@ class FlickrCollection(baseobjects.CollectionBase):
             removers=old-new
             adders=new-old
             for s in adders:
+                if self.sets.is_temp(s):
+                    result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
+                    new_sid=result.find('photoset').attrib['id']
+                    self.sets.make_perm(s,new_sid)
+                    s=new_sid
                 self.flickr_client.photosets_addPhoto(photoset_id=s,photo_id=item.uid)
             for s in removers:
-                self.flickr_client.photosets_removePhoto(photoset_id=s,photo_id=item.uid)
+                if not self.sets.is_temp(s):
+                    self.flickr_client.photosets_removePhoto(photoset_id=s,photo_id=item.uid)
         if 'meta_backup' not in item.__dict__ or item.meta_backup==item.meta:
             item.mark_meta_saved()
 
