@@ -52,7 +52,7 @@ class NewLocalDirWidget(gtk.VBox):
         self.pack_start(label,False)
         self.path_entry=dialogs.PathnameEntry('','Path: ','Choose a Directory',directory=True)
         self.pack_start(self.path_entry,False)
-        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button=gtk.CheckButton('Include sub-directories')
         self.recursive_button.set_active(True)
         self.path_entry.path_entry.connect("changed",self.path_changed)
 
@@ -110,7 +110,7 @@ class LocalDirPrefWidget(gtk.VBox):
         gtk.VBox.__init__(self)
         self.path_entry=dialogs.PathnameEntry('','Path: ','Choose a Directory',directory=True)
         self.pack_start(self.path_entry,False)
-        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button=gtk.CheckButton('Include sub-directories')
         self.recursive_button.set_active(True)
         self.path_entry.path_entry.connect("changed",self.path_changed)
 

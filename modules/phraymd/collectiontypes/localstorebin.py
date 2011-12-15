@@ -193,7 +193,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.a_frame=gtk.Expander("Advanced Options")
         self.a_box=gtk.VBox()
         self.a_frame.add(self.a_box)
-        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button=gtk.CheckButton('Include sub-directories')
         self.recursive_button.set_active(True)
         self.load_meta_check=gtk.CheckButton("Load Metadata")
         self.load_meta_check.set_active(True)
@@ -251,7 +251,7 @@ class NewLocalStoreWidget(gtk.VBox):
         self.a_frame=gtk.Expander("Advanced Options")
         self.a_box=gtk.VBox()
         self.a_frame.add(self.a_box)
-        self.recursive_button=gtk.CheckButton('Recurse sub-directories')
+        self.recursive_button=gtk.CheckButton('Include sub-directories')
         self.recursive_button.set_active(True)
         self.load_meta_check=gtk.CheckButton("Load Metadata")
         self.load_meta_check.set_active(True)
@@ -452,17 +452,17 @@ class Collection(baseobjects.CollectionBase):
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
-        print 'started close',self.name
+        print 'started to close',self.name
+        print 'In Context:'
+        import traceback
+        traceback.print_stack()
         if not self.is_open:
             return True
         try:
             col_dir=os.path.join(settings.collections_dir,self.name)
-            print 'closing',col_dir
             if os.path.isfile(col_dir):
-                print 'removing',col_dir
                 os.remove(col_dir)
             if not os.path.exists(col_dir):
-                print 'make dir',col_dir
                 os.makedirs(col_dir)
             #self.save_prefs()
             f=open(self.data_file(),'wb')

@@ -352,7 +352,7 @@ class CollectionTypeList(gtk.TreeView):
 
 
 class NewCollectionDialog(gtk.Dialog):
-    def __init__(self,type=None,pref_dict=None,title=None):
+    def __init__(self,type=None,pref_dict=None,title=None,button_label=None):
         '''
         Dialog displayed when user chooses to create a new collection
         If type is None
@@ -367,7 +367,9 @@ class NewCollectionDialog(gtk.Dialog):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL)
         self.set_default_size(600,400)
         self.add_button("Cancel",gtk.RESPONSE_REJECT)
-        self.create_button=self.add_button("Create",gtk.RESPONSE_ACCEPT)
+        if button_label==None:
+            button_label="Create"
+        self.create_button=self.add_button(button_label,gtk.RESPONSE_ACCEPT)
         self.create_button.set_sensitive(False)
 
         if title:

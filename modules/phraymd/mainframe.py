@@ -162,7 +162,7 @@ class MainFrame(gtk.VBox):
         self.startpage.connect("collection-open",self.collection_open_cb)
         self.startpage.connect("collection-new",self.create_new_collection)
         self.startpage.connect("collection-context-menu",self.collection_context_menu)
-        self.startpage.connect("folder-open",self.browse_dir_collection)
+        self.startpage.connect("folder-open",self.browse_dir_as_collection)
 
         self.browser_nb.append_page(self.startpage,gtk.image_new_from_stock(gtk.STOCK_ADD,gtk.ICON_SIZE_MENU))
 
@@ -448,12 +448,12 @@ class MainFrame(gtk.VBox):
         self.coll_set.add_directory(path,prefs)
         self.collection_open(path)
 
-    def browse_dir_collection(self,combo):
+    def browse_dir_as_collection(self,combo):
         #prompt for path
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-        dialog=dialogs.NewCollectionDialog(type='LOCALDIR',title='Browse A Directory')
+        dialog=dialogs.NewCollectionDialog(type='LOCALDIR',title='Browse A Directory',button_label='Browse')
         response=dialog.run()
         prefs=dialog.get_values()
         dialog.destroy()
@@ -1094,47 +1094,12 @@ class MainFrame(gtk.VBox):
             self.is_fullscreen=False
         browser.grab_focus()
 
-
-#        self.iv.ImageNormal()
-#        if self.active_collection:
-#            self.active_browser().show()
-#        #self.hbox.show()
-#        #self.toolbar1.show()
-#        self.hpane_ext.show()
-#        self.info_bar.show()
-#        self.is_iv_fullscreen=False
-#        self.is_iv_showing=False
-#        browser.grab_focus()
-
     def button_press_image_viewer(self,obj,event):
         browser=self.active_browser()
         if event.button==1 and event.type==gtk.gdk._2BUTTON_PRESS:
             self.iv.set_zoom('in',event.x,event.y)
         if event.button==2 and event.type==gtk.gdk._2BUTTON_PRESS:
             self.iv.set_zoom('out',event.x,event.y)
-##            if self.is_iv_fullscreen:
-##                self.iv.ImageNormal()
-##                self.browser_nb.show()
-##                self.toolbar1.show()
-##                if self.sidebar_toggle.get_active():
-##                    self.sidebar.show()
-##                self.info_bar.show()
-##                self.is_iv_fullscreen=False
-##                if self.is_fullscreen:
-##                    self.window.unfullscreen()
-##                    self.is_fullscreen=False
-##            else:
-##                if not self.is_fullscreen:
-##                    self.window.fullscreen()
-##                    self.is_fullscreen=True
-##                self.iv.ImageFullscreen()
-##                self.browser_nb.hide()
-##                self.toolbar1.hide()
-##                self.sidebar.hide()
-##                self.info_bar.hide()
-##                self.is_iv_fullscreen=True
-##                print self.window.get_size()
-##            browser.imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
     def popup_item(self,browser,ind,item):
         ##todo: neeed to create a custom signal to hook into
