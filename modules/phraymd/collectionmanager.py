@@ -197,7 +197,7 @@ class CollectionSet(gobject.GObject):
         if new_prefs!=old_prefs:
             new_prefs['name']=coll.name
             coll.set_prefs(new_prefs)
-#            coll.save_prefs()
+            coll.save_prefs()
         return True
 
     def remove(self,id):

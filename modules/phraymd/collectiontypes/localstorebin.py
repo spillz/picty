@@ -193,14 +193,17 @@ class LocalStorePrefWidget(gtk.VBox):
         self.a_frame=gtk.Expander("Advanced Options")
         self.a_box=gtk.VBox()
         self.a_frame.add(self.a_box)
-        self.recursive_button=gtk.CheckButton('Include sub-directories')
+        self.recursive_button=gtk.CheckButton("Include sub-directories")
         self.recursive_button.set_active(True)
-        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.rescan_check=gtk.CheckButton("Rescan for changes after opening")
+        self.rescan_check.set_active(True)
+        self.load_meta_check=gtk.CheckButton("Load metadata")
         self.load_meta_check.set_active(True)
-        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
-        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
+        self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
@@ -220,6 +223,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'name': self.name_entry.get_text().replace('/','').strip(),
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
+                'rescan_at_open': self.rescan_check.get_active(),
                 'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
@@ -231,6 +235,7 @@ class LocalStorePrefWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
+        self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
 
@@ -253,14 +258,17 @@ class NewLocalStoreWidget(gtk.VBox):
         self.a_frame.add(self.a_box)
         self.recursive_button=gtk.CheckButton('Include sub-directories')
         self.recursive_button.set_active(True)
-        self.load_meta_check=gtk.CheckButton("Load Metadata")
+        self.rescan_check=gtk.CheckButton("Rescan for changes after opening")
+        self.rescan_check.set_active(True)
+        self.load_meta_check=gtk.CheckButton("Load image metadata")
         self.load_meta_check.set_active(True)
-        self.use_internal_thumbnails_check=gtk.CheckButton("Use Embedded Thumbnails if Available")
+        self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
-        self.store_thumbnails_check=gtk.CheckButton("Store Thumbnails in Cache") #todo: need to implement in backend
+        self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
-        self.monitor_images_check=gtk.CheckButton("Monitor Image Folders for Changes") #todo: need to implement in backend
+        self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
         self.monitor_images_check.set_active(True)
+        self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
@@ -293,6 +301,7 @@ class NewLocalStoreWidget(gtk.VBox):
                 'name': self.name_entry.get_text().strip(),
                 'image_dirs': [self.path_entry.get_path()],
                 'recursive': self.recursive_button.get_active(),
+                'rescan_at_open': self.rescan_check.get_active(),
                 'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
@@ -305,6 +314,7 @@ class NewLocalStoreWidget(gtk.VBox):
         if len(val_dict['image_dirs'])>0:
             self.path_entry.set_path(val_dict['image_dirs'][0])
         self.recursive_button.set_active(val_dict['recursive'])
+        self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
@@ -360,7 +370,7 @@ class Collection(baseobjects.CollectionBase):
     user_creatable=True
     view_class=simpleview.SimpleView
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs')
+                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs','rescan_at_open')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self,prefs)
@@ -378,6 +388,7 @@ class Collection(baseobjects.CollectionBase):
         self.trash_location=None #none defaults to <collection dir>/.trash
         self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
         self.monitor_image_dirs=True
+        self.rescan_at_open=True
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
         self.monitor=None
@@ -477,6 +488,10 @@ class Collection(baseobjects.CollectionBase):
             print tb_text
             return False
         return True
+
+    def rescan(self,thead_manager):
+        sj=backend.WalkDirectoryJob(thead_manager,self,self.browser)
+        thead_manager.queue_job_instance(sj)
 
     ''' ************************************************************************
                             MONITORING THE COLLECTION

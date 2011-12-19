@@ -344,7 +344,8 @@ class LoadCollectionJob(WorkerJob):
             print 'OPENED',collection.id,collection.image_dirs[0]
             if os.path.exists(collection.image_dirs[0]):
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
-                self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
+                if collection.rescan_at_open:
+                    self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
             log.info('Loaded collection with '+str(len(collection))+' images')

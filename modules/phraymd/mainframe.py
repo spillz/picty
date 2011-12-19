@@ -178,13 +178,6 @@ class MainFrame(gtk.VBox):
         self.info_bar.show()
 
         self.sort_order=gtk.combo_box_new_text()
-#        i=0
-#        for s in viewsupport.sort_keys:
-#            self.sort_order.append_text(s)
-#            if s=='Relevance':
-#                self.sort_order_relevance_ind=i
-#            i+=1
-#        self.sort_order.set_active(0)
         self.sort_order.set_property("can-focus",False)
         self.sort_order.connect("changed",self.set_sort_key)
         self.sort_order.show()
@@ -193,18 +186,6 @@ class MainFrame(gtk.VBox):
         self.filter_entry.entry.connect("activate",self.set_filter_text)
         self.filter_entry.entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
-
-#        try:
-#            self.filter_entry.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,gtk.STOCK_CLEAR)
-#            self.filter_entry.connect("icon-press",self.clear_filter)
-#            entry_no_icons=False
-#        except:
-#            print 'ERROR SETTING FILTER ENTRY'
-#            import sys,traceback
-#            tb_text=traceback.format_exc(sys.exc_info()[2])
-#            print tb_text
-#            entry_no_icons=True
-        #self.filter_entry.set_width_chars(40)
 
         self.selection_menu_button=gtk.Button('_Selection')
         self.selection_menu_button.connect("clicked",self.selection_popup)
@@ -229,24 +210,13 @@ class MainFrame(gtk.VBox):
 
         self.selection_menu.show()
 
-#        self.sidebar_menu_button=gtk.ToggleButton('Side_bar')
-#        self.sidebar_menu_button.connect("clicked",self.activate_sidebar)
-#        self.sidebar_menu_button.show()
-
         self.toolbar1=gtk.Toolbar()
-#            add_widget(self.toolbar,gtk.Label("Sidebar: "),None,None,None)
         self.sidebar_toggle=gtk.ToggleToolButton('phraymd-sidebar')
         add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
-#        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_OPEN),self.activate_starttab,"Open Collection","Open a photo collection")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_PREFERENCES),self.open_preferences,"Preferences","Open the global settings and configuration dialog")
         self.toolbar1.add(gtk.SeparatorToolItem())
-#            add_widget(self.toolbar,gtk.Label("Changes: "),None,None,None)
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
-
-        ##THIS IS A TEST OF OPENING AN IMAGE AT STARTUP (NEED REGISTERED DESKTOP FILE OTHERWISE)
-        #add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_ADD),lambda widget:self.open_uri('file:///home/damien/Pictures/dining_after.jpg'),"TEST IMAGE VIEWER", "")
-
 
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
@@ -262,22 +232,9 @@ class MainFrame(gtk.VBox):
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
         add_item(self.toolbar1,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
         self.toolbar1.add(gtk.SeparatorToolItem())
+        self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
+        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_REFRESH),self.collection_rescan,"Rescan Collection", "Rescan the source for changes to images")
         self.toolbar1.show_all()
-
-##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,0,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
-##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_REVERT_TO_SAVED),self.revert_all_changes,1,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)")
-##        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,2,None,None)
-##        insert_item(self.toolbar,gtk.ToggleToolButton(gtk.STOCK_LEAVE_FULLSCREEN),self.activate_sidebar,3,None,"Toggle the Sidebar")
-##        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,4)
-##        item=gtk.ToolItem()
-##        item.add(self.sort_order)
-##        insert_item(self.toolbar,item,None,5,None, "Set the image attribute that determines the order images appear in")
-##        insert_item(self.toolbar,gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING),self.reverse_sort_order,6,"Reverse Sort Order", "Reverse the order that images appear in")
-##        insert_item(self.toolbar,gtk.SeparatorToolItem(),None,7)
-##        item=gtk.ToolItem()
-##        item.add(self.filter_entry)
-##        insert_item(self.toolbar,item,None,8,None,"Filter the view to images that contain the search text, press enter to activate")
-##        insert_item(self.toolbar,gtk.ToolButton(gtk.STOCK_CLEAR),self.clear_filter,9,"Clear Filter","Clear the filter and reset the view to the entire collection")
 
         accel_group = gtk.AccelGroup()
         window.add_accel_group(accel_group)
@@ -295,7 +252,6 @@ class MainFrame(gtk.VBox):
         self.hpane_ext=gtk.HPaned()
         self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
         self.sidebar.set_scrollable(True)
-        #self.sidebar.set_show_tabs(False)
 
         self.hpane_ext.add1(self.browser_nb)
         self.hpane_ext.add2(self.iv)
@@ -379,7 +335,6 @@ class MainFrame(gtk.VBox):
         pluginmanager.mgr.callback('plugin_shutdown',True)
         print 'main frame destroyed'
         return False
-
 
     def add_browser(self,collection):
         c=collection
@@ -550,6 +505,12 @@ class MainFrame(gtk.VBox):
         page.grab_focus()
 
 
+    def collection_rescan(self,widget):
+        coll=self.active_collection
+        if coll==None:
+            return
+        coll.rescan(self.tm)
+
     def collection_open(self,id):
         print 'OPENING COLLECTION',id
         c=self.coll_set[id]
@@ -586,7 +547,6 @@ class MainFrame(gtk.VBox):
         prefs=dialog.get_values()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
-            print 'ACCEPTED PREF CHANGE'
             self.coll_set.change_prefs(c,prefs)
 
     def collection_context_menu(self,widget,coll_id):

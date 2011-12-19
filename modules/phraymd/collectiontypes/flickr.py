@@ -366,7 +366,9 @@ class FlickrPrefWidget(gtk.VBox):
         gtk.VBox.__init__(self)
         box,self.name_entry=dialogs.box_add(self,[(gtk.Entry(),True,None)],'Collection Name: ')
         self.name_entry.connect("changed",self.name_changed)
-
+        self.rescan_check=gtk.CheckButton("Rescan flickr account for changes after opening")
+        self.rescan_check.set_active(True)
+        self.pack_start(self.rescan_check,False)
         self.show_all()
         if value_dict:
             self.set_values(value_dict)
@@ -379,10 +381,12 @@ class FlickrPrefWidget(gtk.VBox):
         return {
                 'name': name,
                 'verify_after_walk': True,
+                'rescan_at_open': self.rescan_check.get_active(),
                 }
 
     def set_values(self,val_dict):
         self.name_entry.set_text(val_dict['name'])
+        self.rescan_check.set_active(val_dict['rescan_at_open'])
 
 
 class NewFlickrAccountWidget(gtk.VBox):
@@ -394,6 +398,9 @@ class NewFlickrAccountWidget(gtk.VBox):
         self.pack_start(label,False)
         box,self.name_entry=dialogs.box_add(self,[(gtk.Entry(),True,None)],'Collection Name: ')
         self.name_entry.connect("changed",self.name_changed)
+        self.rescan_check=gtk.CheckButton("Rescan for changes after opening")
+        self.rescan_check.set_active(True)
+        self.pack_start(self.rescan_check,False)
         self.show_all()
 
         if value_dict:
@@ -417,10 +424,12 @@ class NewFlickrAccountWidget(gtk.VBox):
         return {
                 'name': self.name_entry.get_text().strip(),
                 'verify_after_walk': True,
+                'rescan_at_open': self.rescan_check.get_active(),
                 }
 
     def set_values(self,val_dict):
         self.name_entry.set_text(val_dict['name'])
+        self.rescan_check.set_active(val_dict['rescan_at_open'])
 
 
 
@@ -498,7 +507,7 @@ class FlickrCollection(baseobjects.CollectionBase):
     persistent=True
     user_creatable=True
     view_class=simpleview.SimpleView
-    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk',)
+    pref_items=baseobjects.CollectionBase.pref_items+('verify_after_walk','rescan_at_open')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self,prefs)
@@ -520,6 +529,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         self.store_images_locally=False #keep an offline copy of all images in the collections
         self.max_stored_image_size=None
         self.trash_location=None #none defaults to <collection dir>/.trash
+        self.rescan_at_open=True
 
         ##collection will be associated with a browser
         self.browser=None
@@ -627,6 +637,11 @@ class FlickrCollection(baseobjects.CollectionBase):
             return False
         return True
 
+    def rescan(self,thead_manager):
+        if not self.online:
+            return
+        sj=backend.FlickrSyncJob(thead_manager,self,self.browser)
+        thead_manager.queue_job_instance(sj)
 
     ''' ********************************************************************
             METHODS TO SYNC THE COLLECTION WITH THE FLICKR ACCOUNT

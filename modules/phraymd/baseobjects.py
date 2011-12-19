@@ -42,7 +42,6 @@ def init_collection(col_dir):
             c=registered_collection_classes[prefs['type']](prefs)
         except KeyError:
             c=registered_collection_classes['LOCALSTORE'](prefs)
-        print 'ADDING VIEW FOR',c.name,c.type
         c.add_view()
         return c
     except:
@@ -116,6 +115,25 @@ class CollectionBase:
             prefs[p]=self.__dict__[p]
         return prefs
 
+    def save_prefs(self):
+        f=open(self.pref_file(),'wb')
+        cPickle.dump(settings.version,f,-1)
+        d={}
+        for p in self.pref_items:
+            if p in self.__dict__:
+                d[p]=self.__dict__[p]
+        cPickle.dump(d,f,-1)
+        f.close()
+
+    def load_prefs(self):
+        f=open(self.pref_file(),'rb')
+        version=d=cPickle.load(f)
+        d=cPickle.load(f)
+        for p in self.pref_items:
+            if p in d:
+                self.__dict__[p]=d[p]
+        f.close()
+
     def coll_dir(self):
         return os.path.join(settings.collections_dir,self.name)
 
@@ -136,6 +154,10 @@ class CollectionBase:
 
     def close(self):
         return True
+
+    def rescan(self,thread_manager):
+        'rescan for changes in the underlying image source'
+        pass
 
     ''' ************************************************************************
                             VIEW METHODS
