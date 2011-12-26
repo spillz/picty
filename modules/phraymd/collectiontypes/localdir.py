@@ -189,6 +189,7 @@ class LocalDir(localstorebin.Collection):
         self.trash_location=None #none defaults to <collection dir>/.trash
         self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
         self.monitor_image_dirs=True
+        self.rescan_at_open=True
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
         self.monitor=None
