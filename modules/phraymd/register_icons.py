@@ -14,7 +14,6 @@ ICON_INFO = [
   ('phraymd-image-rotate', 'phraymd-image-rotate.png'),
   ('phraymd-image-write', 'phraymd-image-write.png'),
   ('phraymd-transfer', 'phraymd-transfer.png'),
-  ('phraymd-web-upload', 'phraymd-web-upload.png'),
   ('phraymd-map', 'phraymd-map.png'),
   ]
 

@@ -9,7 +9,7 @@ setup(name='phraymd',
       author_email='damien.moore@excite.com',
       url='https://launchpad.net/phraymd',
       package_dir={'':'modules'},
-      packages=['phraymd','phraymd.plugins','phraymd.plugins.webupload_services'],
+      packages=['phraymd','phraymd.plugins','phraymd.collectiontypes'],
       scripts=['bin/phraymd','bin/phraymd-import', 'bin/phraymd-open'],
       data_files=[
         ('share/applications',['desktop/phraymd.desktop','desktop/phraymd-import.desktop', 'desktop/phraymd-open.desktop']),
@@ -17,7 +17,7 @@ setup(name='phraymd',
         ('share/dbus-1/services',['desktop/org.spillz.phraymd.service']),
         ('share/phraymd/icons',['icons/phraymd-image-crop.png','icons/phraymd-image-write.png','icons/phraymd-rotate-right.png',
             'icons/phraymd-image-rotate.png','icons/phraymd-rotate-left.png','icons/phraymd-sidebar.png',
-            'icons/phraymd-polaroids-and-frame.png','icons/phraymd-import.png','icons/phraymd-web-upload.png',
+            'icons/phraymd-polaroids-and-frame.png','icons/phraymd-transfer.png',
             'icons/phraymd-map.png'])
         ]
      )
