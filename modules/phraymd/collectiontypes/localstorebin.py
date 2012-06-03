@@ -476,10 +476,6 @@ class Collection(baseobjects.CollectionBase):
         '''
         save the collection to a binary pickle file using the filename attribute of the collection
         '''
-        print 'started to close',self.name
-        print 'In Context:'
-        import traceback
-        traceback.print_stack()
         if not self.is_open:
             return True
         try:

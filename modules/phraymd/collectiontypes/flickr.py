@@ -615,9 +615,12 @@ class FlickrCollection(baseobjects.CollectionBase):
                     if 'filename' in self.items[i].__dict__:
                         self.items[i]=self.items[i].convert()
             if version>='0.6':
-                sets=cPickle.load(f)
-                gobject.idle_add(self.sets.init_sets,sets)
-                self.last_update_time=cPickle.load(f)
+                try:
+                    sets=cPickle.load(f)
+                    gobject.idle_add(self.sets.init_sets,sets)
+                    self.last_update_time=cPickle.load(f)
+                except:
+                    pass
             self.numselected=0
             return True
         except:
