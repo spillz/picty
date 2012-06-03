@@ -826,25 +826,3 @@ class TagFrame(gtk.VBox):
         self.tv.expand_row((0,),False)
         self.tv.expand_row((1,),False)
 
-if __name__=='__main__':
-    window = gtk.Window()
-    tree = TagFrame()
-    vertical_box = gtk.VBox(False, 6)
-    button_box = gtk.HButtonBox()
-    insert = gtk.Button('Tag Images')
-    description = gtk.Button('Untag Images')
-
-    vertical_box.pack_start(tree)
-    vertical_box.pack_start(button_box, False, False)
-    button_box.pack_start(insert)
-    button_box.pack_start(description)
-    window.add(vertical_box)
-
-#    insert.connect('clicked', insert_item)
-#    description.connect('clicked', show_description)
-    window.connect('destroy', lambda window: gtk.main_quit())
-
-    window.resize(400, 500)
-    window.show_all()
-
-    gtk.main()
