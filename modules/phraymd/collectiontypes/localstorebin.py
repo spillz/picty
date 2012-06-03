@@ -394,6 +394,7 @@ class Collection(baseobjects.CollectionBase):
         self.monitor=None
         self.monitor_master_callback=None
         self.browser=None
+        self.online=False
 
         if prefs:
             self.set_prefs(prefs)
@@ -403,7 +404,19 @@ class Collection(baseobjects.CollectionBase):
     ''' ************************************************************************
                             PREFERENCES, OPENING AND CLOSING
         ************************************************************************'''
-
+    def connect(self):
+        if not self.is_open:
+            return False
+        if self.online:
+            return False
+        self.start_monitor()
+        return True
+    def disconnect(self):
+        if not self.is_open:
+            return False
+        self.end_monitor()
+        self.online=False
+        return True
     def delete_store(self):
         col_dir=os.path.join(settings.collections_dir,self.name)
         try:
@@ -497,9 +510,10 @@ class Collection(baseobjects.CollectionBase):
                             MONITORING THE COLLECTION
         ************************************************************************'''
 
-    def start_monitor(self,callback):
+    def start_monitor(self,callback=None):
         if self.monitor_image_dirs:
-            self.monitor_master_callback=callback
+            if callback!=None:
+                self.monitor_master_callback=callback
             self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
 
     def end_monitor(self):

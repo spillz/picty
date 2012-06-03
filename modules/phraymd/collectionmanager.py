@@ -227,6 +227,12 @@ class CollectionSet(gobject.GObject):
         if not c.persistent:
             self.remove(id)
 
+    def collection_online(self,id):
+        pass
+
+    def collection_offline(self,id):
+        pass
+
     def init_localstores(self):
         for f in settings.get_collection_files():
             col_dir=os.path.join(settings.collections_dir,f)

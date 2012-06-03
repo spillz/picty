@@ -78,6 +78,7 @@ class ImageBrowser(gtk.HBox):
         'activate-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
         'context-click-item':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_INT,gobject.TYPE_PYOBJECT)),
         'view-changed':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()),
+        'collection-online-state':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN)),
         'view-rebuild-complete':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()),
         'status-updated':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_FLOAT,gobject.TYPE_GSTRING)),
         'tag-row-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),
@@ -215,7 +216,6 @@ class ImageBrowser(gtk.HBox):
 
     def update_status(self,progress,message):
         self.emit('status-updated',progress,message)
-        pass
 
     def key_press_signal(self,obj,event):
         ##todo: perhaps return true for some of these to prevent further emission
@@ -483,6 +483,14 @@ class ImageBrowser(gtk.HBox):
         self.update_scrollbar()
 #        self.update_info_bar()
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+
+    def collection_online(self,collection):
+        print 'BROWSER RECEIVED ONLINE MESSAGE FOR',collection.id
+        self.emit('collection-online-state',collection,True)
+
+    def collection_offline(self,collection):
+        print 'BROWSER RECEIVED OFFLINE MESSAGE FOR',collection.id
+        self.emit('collection-online-state',collection,False)
 
     def post_build_view(self):
         '''callback function to receive notification from worker that

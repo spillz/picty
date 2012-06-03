@@ -523,7 +523,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         self.items=[] #the image/video items
         self.sets=Sets()
 
-        ##and has the following properties (which are stored in the collection file if it exists)
+        ##and has the following properties (which are stored in the collection pref file if it exists)
         self.image_dirs=[]
         self.sync_at_login=True #try to synchronize with Flickr after start up
         self.store_images_locally=False #keep an offline copy of all images in the collections
@@ -533,6 +533,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 
         ##collection will be associated with a browser
         self.browser=None
+        self.online=False
 
         if prefs:
             self.set_prefs(prefs)
@@ -543,6 +544,19 @@ class FlickrCollection(baseobjects.CollectionBase):
                             PREFERENCES, OPENING AND CLOSING
         ************************************************************************'''
 
+    def connect(self):
+        if not self.is_open:
+            return False
+        if self.online:
+            return False
+        return self.login()
+    def disconnect(self):
+        if not self.is_open:
+            return False
+        if not self.offline:
+            return False
+        self.online=False
+        return True
     def create_store(self):
         if not create_empty_collection(self.name,self.get_prefs()):
             return False
@@ -571,7 +585,12 @@ class FlickrCollection(baseobjects.CollectionBase):
             return False
 
     def open(self,thread_manager,browser=None):
-        self.login()
+        if self.login():
+            if self.browser!=None:
+                gobject.idle_add(self.browser.collection_online,self) ##should probably call worker.coll_set method as well?
+        else:
+            if self.browser!=None:
+                gobject.idle_add(self.browser.collection_offline,self) ##should probably call worker.coll_set method as well?
         j=LoadFlickrCollectionJob(thread_manager,self,browser)
         thread_manager.queue_job_instance(j)
 
@@ -629,6 +648,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             cPickle.dump(self.last_update_time,f,-1)
             f.close()
             self.empty()
+            self.online=False
         except:
             import traceback,sys
             tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -679,6 +699,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             print 'Error logging into flickr'
             print tb_text
             self.flickr_client=None
+            self.online=False
             return False
 
     def get_collections(self):

@@ -232,8 +232,9 @@ class MainFrame(gtk.VBox):
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
         add_item(self.toolbar1,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
         self.toolbar1.add(gtk.SeparatorToolItem())
-        self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_REFRESH),self.collection_rescan,"Rescan Collection", "Rescan the source for changes to images")
+        self.connect_toggle=gtk.ToggleToolButton(gtk.STOCK_CONNECT)
+        add_item(self.toolbar1,self.connect_toggle,self.connect_toggled,"Connect to Source", "Connect or disconnect to the source of the images in this collection (you can only read from and modify the collection when connected)")
         self.toolbar1.show_all()
 
         accel_group = gtk.AccelGroup()
@@ -347,6 +348,7 @@ class MainFrame(gtk.VBox):
         c.browser.connect("context-click-item",self.popup_item)
         c.browser.connect("status-updated",self.update_status)
         c.browser.connect("view-changed",self.view_changed)
+        c.browser.connect("collection-online-state",self.update_connection_state)
 ##        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
 
         c.browser.add_events(gtk.gdk.KEY_PRESS_MASK)
@@ -863,6 +865,19 @@ class MainFrame(gtk.VBox):
         if progress>=1.0:
             self.status_bar.hide()
         self.status_bar.set_text(message)
+
+    def connect_toggled(self,widget):
+        print 'CONNECT TOGGLED',widget.get_active()
+        if self.active_collection!=None:
+            job=backend.SetOnlineStatusJob(self.tm,self.active_collection,self.active_browser(),widget.get_active())
+            self.tm.queue_job_instance(job)
+
+    def update_connection_state(self,browser,collection,coll_state):
+        print 'CONNECTION UPDATE NOTIFICATION',collection.id,coll_state
+        if collection==self.active_collection:
+            self.connect_toggle.handler_block_by_func(self.connect_toggled)
+            self.connect_toggle.set_active(coll_state)
+            self.connect_toggle.handler_unblock_by_func(self.connect_toggled)
 
     def key_press_signal(self,obj,event,browser=None):
         keyname = gtk.gdk.keyval_name(event.keyval)

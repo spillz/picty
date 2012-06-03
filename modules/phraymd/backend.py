@@ -69,7 +69,7 @@ class WorkerJob:
          worker.jobs.get_highest() (which returns the job with the highest priority)
        * if the job is unfinished it should promptly return False (unless cancelled) - the job will be resumed
          when no higher priority tasks are running
-       * when a job is complete or cancelled it should return True signalling that it should be removed the queue
+       * when a job is complete or cancelled it should return True signalling that it should be removed from the queue
     The helper function Worker.queue_job(job_class,*args) can be used to instantiate and queue a job and passing
     in default worker, collection, browser arguments (plus optional arguments in args)
     '''
@@ -343,15 +343,48 @@ class LoadCollectionJob(WorkerJob):
         if collection._open():
             print 'OPENED',collection.id,collection.image_dirs[0]
             if os.path.exists(collection.image_dirs[0]):
+                collection.online=True
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
                 self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 if collection.rescan_at_open:
                     self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
+            else:
+                collection.online=False
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             log.error('Load collection failed')
         self.collection_file=''
+        return True
+
+
+class SetOnlineStatusJob(WorkerJob):
+    def __init__(self,worker,collection,browser,status=True):
+        WorkerJob.__init__(self,'SETONLINESTATUS',880,worker,collection,browser)
+        self.status=status
+
+    def __call__(self):
+        if self.status:
+            if self.collection.connect():
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
+            else:
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
+            ##notify plugins?
+        else:
+            if self.collection.disconnect():
+                ##TODO: KILL ANY JOBS THAT RELY ON THE COLLECTION BEING ONLINE
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
+            else:
+                if self.browser!=None:
+                    gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
+            ##notify plugins?
         return True
 
 #class CloseCollectionJob(WorkerJob):
@@ -383,7 +416,8 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
         print 'started save job on',self.collection.id
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
-        self.collection.empty(True) ##todo: should be called in close (otherwise close is really just save)
+        self.collection.online=False
+        self.collection.empty(True)
         idle_add(self.worker.coll_set.collection_closed,self.collection.id)
         idle_add(self.browser.update_status,None,1.5,'Closed Collection')
         return True
