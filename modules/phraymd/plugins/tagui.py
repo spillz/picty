@@ -802,7 +802,12 @@ class TagFrame(gtk.VBox):
                     print k
                     print self.user_tags
         tag_cloud_list=[(t.lower(),t) for t in tag_cloud.tags]
-        tag_cloud_list.sort()
+        try:
+            tag_cloud_list.sort()
+        except UnicodeDecodeError: ##AN ATTEMPT TO HANDLE THE CASE WHERE TAGS ARE NOT VALID UNICODE (BUG #1007172 ON LAUNCHPAD)
+            tag_cloud_list=[(t.decode('utf8').lower(),t) for t in tag_cloud.tags]
+            tag_cloud_list.sort()
+
         tag_cloud_list=[t[1] for t in tag_cloud_list]
         for k in tag_cloud_list:
             if k in self.user_tags:
