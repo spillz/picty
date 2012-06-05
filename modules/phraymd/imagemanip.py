@@ -623,6 +623,7 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
             os.remove(thumb_uri)
     if not force and item.thumb==False:
         return False
+    delete_thumb(item)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
     print 'MAKING THUMB FOR',item.uid
@@ -681,8 +682,6 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
             if not os.path.exists(cache):
                 os.makedirs(cache)
             item.thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
-            print 'Making thumb in cache',cache
-            print 'thumb location',item.thumburi
             thumb_pb.save(item.thumburi,"png")
     except:
         print 'creating FAILED thumbnail',item

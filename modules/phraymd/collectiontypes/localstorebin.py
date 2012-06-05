@@ -721,6 +721,7 @@ class Collection(baseobjects.CollectionBase):
                 if os.path.exists(dest):
                     os.remove(dest)
                 os.renames(item.uid,dest)
+            self.delete_thumbnail(item)
             self.delete(item) ##todo: lock the image browser??
             return True
         except:
@@ -748,6 +749,9 @@ class Collection(baseobjects.CollectionBase):
 ## TODO: Why was the update_thumb_date call here??? Maybe a FAT issue?
 ##        imagemanip.update_thumb_date(item,cache=self.thumbnail_cache_dir)
         return
+    def delete_thumbnail(self,item):
+        'clear out the thumbnail and delete the file from the users gnome desktop caache'
+        imagemanip.delete_thumb(item)
     def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
         '''
         rotates thumbnail of item 90 degrees right (clockwise) or left (anti-clockwise)

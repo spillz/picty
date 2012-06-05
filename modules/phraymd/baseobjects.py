@@ -428,7 +428,7 @@ class Item(str):
         return odict
     def __setstate__(self,dict):
         self.__dict__.update(dict)   # update attributes
-        self.thumb=None
+##        self.thumb=None
         self.qview=None
         self.image=None
         self.selected=False
