@@ -242,7 +242,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
-        self.store_thumbs_with_images.set_form_data(val_dict['store_thumbs_with_images']),
+        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
 
 class NewLocalStoreWidget(gtk.VBox):
     def __init__(self,main_dialog,value_dict):
