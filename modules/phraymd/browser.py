@@ -711,7 +711,7 @@ class ImageBrowser(gtk.HBox):
             fail_item=False
             #print item,item.meta,item.thumb,item.cannot_thumb
             if item.thumb==None:
-                if not imagemanip.load_thumb(item):
+                if not self.active_collection.load_thumbnail(item):
                     request_thumbs=True
             if item.thumb:
                 th=self.active_view(i).thumb

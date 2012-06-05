@@ -33,9 +33,9 @@ import gtk
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
 
-def load_metadata(item,filename=None,thumbnail=False):
-    if item.meta==False:
-        return
+def load_metadata(item,filename=None,thumbnail=False,missing_only=False):
+##    if item.meta==False:
+##        return
     try:
         if not filename:
             filename=item.uid
@@ -54,19 +54,47 @@ def load_metadata(item,filename=None,thumbnail=False):
                 h=pb.get_height()
                 a=max(128,w,h)
                 item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
-            except IOError:
-                print 'Load thumbnail failed',item.uid
             except:
                 print 'Load thumbnail failed',item.uid
                 import traceback,sys
                 print traceback.format_exc(sys.exc_info()[2])
-                item.thumb=None
+                item.thumb=False
     except:
         print 'Error reading metadata for',filename
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
-        item.meta=False
+##        item.meta=False
+        return False
     item.mark_meta_saved()
+    return True
+
+def load_thumbnail(item,filename=None):
+    try:
+        if not filename:
+            filename=item.uid
+        rawmeta = pyexiv2.Image(filename)
+        rawmeta.readMetadata()
+        try:
+            ttype,tdata=rawmeta.getThumbnailData()
+            pbloader = gtk.gdk.PixbufLoader() ##todo: gtk stuff doesn't belong here -- shift it to image manip (i.e. just return the binary data)
+            pbloader.write(tdata)
+            pb=pbloader.get_pixbuf()
+            pbloader.close()
+            w=pb.get_width()
+            h=pb.get_height()
+            a=max(128,w,h)
+            item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+        except:
+            print 'Load thumbnail failed',item.uid
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])
+            item.thumb=False
+            return False
+    except:
+        print 'Error reading metadata for',filename
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        return False
     return True
 
 

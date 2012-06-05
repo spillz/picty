@@ -36,7 +36,9 @@ import baseobjects
 import io
 import pluginmanager
 
-##todo: move to imagemanip to eliminate the Image dependency
+import uuid
+muuid = lambda x:str(uuid.uuid5(uuid.NAMESPACE_URL,x))
+
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
 '''
   1        2       3      4         5            6           7          8
@@ -240,24 +242,24 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing
     return result
 
 
-def save_metadata(item):
+def save_metadata(item,cache=None):
     '''
     save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
     '''
     if metadata.save_metadata(item):
         item.mtime=io.get_mtime(item.uid) ##todo: this and the next line should be a method of the image class
-        update_thumb_date(item)
+        update_thumb_date(item,cache)
         return True
     return False
 
 
-def save_metadata_key(item,key,value):
+def save_metadata_key(item,key,value,cache=None):
     '''
     sets the metadata key to value and saves the change in the image
     '''
     if metadata.save_metadata_key(item,key,value):
         item.mtime=io.get_mtime(item.uid)
-        update_thumb_date(item)
+        update_thumb_date(item,cache)
         return True
     return False
 
@@ -519,13 +521,13 @@ def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size ima
     return False
 
 
-def has_thumb(item):
+def has_thumb(item,cache=None):
     '''
     returns true if the item has a thumbnail image in the cache
     '''
     if item.thumburi and os.path.exists(item.thumburi):
         return True
-    if not settings.maemo:
+    if cache==None:
         uri = io.get_uri(item.uid)
         item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
@@ -541,13 +543,13 @@ def delete_thumb(item):
     if item.thumb:
         item.thumb=None
     if item.thumburi:
-        os.remove(item.thumburi)
-        thumburi=thumb_factory.lookup(uri,int(item.mtime))
-        os.remove(thumburi)
+        io.remove_file(item.thumburi) ##TODO: What if item is in gnome cache? (This will probably work, but maybe not the best way to remove items from cache?) commented code below doesn't look right (deleting twice?)
+##        thumburi=thumb_factory.lookup(uri,int(item.mtime))
+##        os.remove(thumburi)
         item.thumburi=None
 
 
-def update_thumb_date(item,interrupt_fn=None,remove_old=True):
+def update_thumb_date(item,interrupt_fn=None,remove_old=True,cache=None):
     '''
     sets the internal date of the cached thumbnail image to that of the image file
     if the thumbnail name the thumbnail name will be updated
@@ -562,12 +564,18 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True):
         if not item.thumb:
             load_thumb(item)
         uri = io.get_uri(item.uid)
-        thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
-        item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+        if cache==None:
+            thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
+            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+        else:
+            if not os.path.exists(cache):
+                os.makedirs(cache)
+            item.thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            item.thumb.save(item.thumburi,"png")
         if remove_old and oldthumburi!=item.thumburi:
             io.remove_file(oldthumburi)
         return True
-    return make_thumb(item,interrupt_fn)
+    return make_thumb(item,interrupt_fn,cache=cache)
 
 
 
@@ -596,23 +604,25 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 
-def make_thumb(item,interrupt_fn=None,force=False):
+def make_thumb(item,interrupt_fn=None,force=False,cache=None):
     '''
     create a thumbnail from the original image using either PIL or dcraw
     interrupt_fn = callback that returns False if routine should cancel (not implemented)
     force = True if thumbnail should be recreated even if already present
     affects thumb, thumburi members of item
     '''
-    if thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
+    if cache==None and thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
         if not force:
             item.thumb=False
-            return
+            return False
         print 'forcing thumbnail creation'
         uri = io.get_uri(item.uid)
         thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
         if thumb_uri:
             print 'removing failed thumb',thumb_uri
             os.remove(thumb_uri)
+    if not force and item.thumb==False:
+        return False
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
     print 'MAKING THUMB FOR',item.uid
@@ -621,14 +631,10 @@ def make_thumb(item,interrupt_fn=None,force=False):
         uri = io.get_uri(item.uid)
         mimetype=io.get_mime_type(item.uid)
         thumb_pb=None
-#        thumb_pb=thumb_factory.generate_thumbnail(uri,mimetype)
         if mimetype.lower().startswith('video'):
             cmd=settings.video_thumbnailer%(item.uid,)
             imdata=os.popen(cmd).read()
             image=Image.open(StringIO.StringIO(imdata))
-#                p = ImageFile.Parser()
-#                p.feed(imdata)
-#                image = p.close()
             image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
         else:
             try:
@@ -657,15 +663,39 @@ def make_thumb(item,interrupt_fn=None,force=False):
         if thumb_pb==None:
             raise TypeError
     except:
-        print 'creating FAILED thumbnail',item
         item.thumb=False
-        thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
+        item.thumburi=None
+        if cache==None:
+            print 'creating FAILED thumbnail',item
+            thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
     uri = io.get_uri(item.uid)
-    thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
-    item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+    #save the new thumbnail
+    try:
+        if cache==None:
+            thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+        else:
+            if not os.path.exists(cache):
+                os.makedirs(cache)
+            item.thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            print 'Making thumb in cache',cache
+            print 'thumb location',item.thumburi
+            thumb_pb.save(item.thumburi,"png")
+    except:
+        print 'creating FAILED thumbnail',item
+        import sys
+        import traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print 'Error loading thumb from preview icon',item.uid
+        print tb_text
+        item.thumb=False
+        item.thumburi=None
+        if cache==None:
+            thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
+        return False
     item.thumb=thumb_pb
     cache_thumb(item)
     return True
@@ -697,7 +727,13 @@ def load_thumb_from_preview_icon(item):
         item.thumb=None
         return False
 
-def load_thumb(item):
+def load_embedded_thumb(item):
+    if metadata.load_thumbnail(item):
+        item.thumb=orient_pixbuf(item.thumb,item.meta)
+        return True
+    return False
+
+def load_thumb(item,cache=None):
     '''
     load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
     affects thumbnail, thumburi members of item
@@ -709,7 +745,11 @@ def load_thumb(item):
     image=None
     try:
         uri = io.get_uri(item.uid)
-        if not item.thumburi:
+        if cache!=None:
+            thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            if os.path.exists(thumburi):
+                item.thumburi=thumburi
+        if item.thumb!=False and not item.thumburi:
             item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
             image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
@@ -736,6 +776,4 @@ def load_thumb(item):
         cache_thumb(item)
         return True
     else:
-#        item.thumburi=None
-#        item.thumb=None
         return False

@@ -937,7 +937,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             print tb_text
             return False
 
-    def load_thumbnail(self,item):
+    def load_thumbnail(self,item,fast_only=True):
         'load the thumbnail from the local cache'
         return imagemanip.load_thumb(item)
 

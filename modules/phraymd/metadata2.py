@@ -84,19 +84,64 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
                     a=max(128,w,h)
                     item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
                 else:
-                    item.thumb=None
+                    item.thumb=False
 
             except:
                 print 'Load thumbnail failed',item.uid
                 import traceback,sys
                 print traceback.format_exc(sys.exc_info()[2])
-                item.thumb=None
+                item.thumb=False
     except:
         print 'Error reading metadata for',filename
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
+        return False
 ##        item.meta=False
     item.mark_meta_saved()
+    return True
+
+
+def load_thumbnail(item=None,filename=None):
+    '''
+    load the metadata from the image and convert the keys to a subset that phraymd understands
+    item - the item to load metadata for
+    filename - if specified, metadata is loaded from this file
+    thumbnail - if True, load the thumbnail from the file
+    missing_only - if True, will set keys that aren't already present in the item
+    '''
+##    if item.meta==False:
+##        return
+    try:
+        if not filename:
+            filename=item.uid
+        rawmeta = Exiv2Metadata(filename)
+        rawmeta.read()
+        try:
+            previews = rawmeta.previews
+            if previews:
+                preview = previews[-1]
+                pbloader = gtk.gdk.PixbufLoader()
+                pbloader.write(preview.data)
+                pb = pbloader.get_pixbuf()
+                pbloader.close()
+                w=pb.get_width()
+                h=pb.get_height()
+                a=max(128,w,h)
+                item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+            else:
+                item.thumb=False
+                return False
+        except:
+            print 'Load thumbnail failed',item.uid
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])
+            item.thumb=False
+            return False
+    except:
+        print 'Error reading metadata for',filename
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        return False
     return True
 
 

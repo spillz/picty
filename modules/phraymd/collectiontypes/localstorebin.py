@@ -201,12 +201,15 @@ class LocalStorePrefWidget(gtk.VBox):
         self.load_meta_check.set_active(True)
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
+        self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
+        self.store_thumbs_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
         self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        self.a_box.pack_start(self.store_thumbs_with_images,False)
         self.pack_start(self.a_frame,False)
         self.show_all()
         if value_dict:
@@ -228,6 +231,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
+                'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
                 }
 
     def set_values(self,val_dict):
@@ -238,7 +242,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
-
+        self.store_thumbs_with_images.set_form_data(val_dict['store_thumbs_with_images']),
 
 class NewLocalStoreWidget(gtk.VBox):
     def __init__(self,main_dialog,value_dict):
@@ -264,6 +268,8 @@ class NewLocalStoreWidget(gtk.VBox):
         self.load_meta_check.set_active(True)
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
+        self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
+        self.store_thumbs_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
         self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
@@ -271,6 +277,7 @@ class NewLocalStoreWidget(gtk.VBox):
         self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.monitor_images_check,False)
         #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
@@ -306,6 +313,7 @@ class NewLocalStoreWidget(gtk.VBox):
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
                 'monitor_image_dirs':self.monitor_images_check.get_active(),
+                'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
                 }
 
@@ -318,6 +326,7 @@ class NewLocalStoreWidget(gtk.VBox):
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
+        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
 
@@ -370,10 +379,10 @@ class Collection(baseobjects.CollectionBase):
     user_creatable=True
     view_class=simpleview.SimpleView
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs','rescan_at_open')
+                'load_preview_icons','trash_location','thumbnail_cache_dir','monitor_image_dirs','rescan_at_open','store_thumbs_with_images')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
-        baseobjects.CollectionBase.__init__(self,prefs)
+        baseobjects.CollectionBase.__init__(self)
 
 #        ##the collection consists of an array of entries for images, which are cached in the collection file
         self.items=[] #the image/video items
@@ -386,8 +395,9 @@ class Collection(baseobjects.CollectionBase):
         self.load_embedded_thumbs=False #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
         self.trash_location=None #none defaults to <collection dir>/.trash
-        self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
+        self.thumbnail_cache_dir=None #use gnome/freedesktop if none, otherwise specifies a directory (usually a hidden folder below the image collection folder)
         self.monitor_image_dirs=True
+        self.store_thumbs_with_images=False
         self.rescan_at_open=True
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
@@ -404,6 +414,12 @@ class Collection(baseobjects.CollectionBase):
     ''' ************************************************************************
                             PREFERENCES, OPENING AND CLOSING
         ************************************************************************'''
+    def set_prefs(self,prefs):
+        baseobjects.CollectionBase.set_prefs(self,prefs)
+        if self.store_thumbs_with_images:
+            self.thumbnail_cache_dir=os.path.join(self.image_dirs[0],'.thumbnails')
+        else:
+            self.thumbnail_cache_dir=None
     def connect(self):
         if not self.is_open:
             return False
@@ -685,7 +701,7 @@ class Collection(baseobjects.CollectionBase):
                 self.load_metadata(item,notify_plugins=False)
             else:
                 self.load_metadata(item,missing_only=True,notify_plugins=False)
-            self.make_thumbnail(item)
+            self.make_thumbnail(item,cache=self.thumbnail_cache_dir)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
         except:
@@ -713,20 +729,24 @@ class Collection(baseobjects.CollectionBase):
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print tb_text
             return False
-    def load_thumbnail(self,item):
+    def load_thumbnail(self,item,fast_only=True):
         'load the thumbnail from the local cache'
         if self.load_preview_icons:
             if imagemanip.load_thumb_from_preview_icon(item):
-                return
-        return imagemanip.load_thumb(item)
+                return True
+        if fast_only and self.load_embedded_thumbs:
+            if imagemanip.load_embedded_thumb(item):
+                return True
+        return imagemanip.load_thumb(item,self.thumbnail_cache_dir)
     def has_thumbnail(self,item):
         return imagemanip.has_thumb(item)
     def make_thumbnail(self,item,interrupt_fn=None,force=False):
         'create a cached thumbnail of the image'
         if not force and (self.load_embedded_thumbs or self.load_preview_icons):
             return False
-        imagemanip.make_thumb(item,interrupt_fn,force)
-        imagemanip.update_thumb_date(item)
+        imagemanip.make_thumb(item,interrupt_fn,force,self.thumbnail_cache_dir)
+## TODO: Why was the update_thumb_date call here??? Maybe a FAT issue?
+##        imagemanip.update_thumb_date(item,cache=self.thumbnail_cache_dir)
         return
     def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
         '''
@@ -734,16 +754,27 @@ class Collection(baseobjects.CollectionBase):
         right - rotate right if True else left
         interrupt_fn - callback that returns False if job should be interrupted
         '''
-        if imagemanip.thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
+        if item.thumb==False:
             return False
+##      TODO: NOT SURE THIS IS NECESSARY - COMMENTING FOR NOW
+##        if imagemanip.thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
+##            return False
         thumb_pb=imagemanip.rotate_thumb(item,right,interrupt_fn)
         if not thumb_pb:
             return  False
 #        width=thumb_pb.get_width()
 #        height=thumb_pb.get_height()
         uri = io.get_uri(item.uid)
-        imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
-        item.thumburi=imagemanip.thumb_factory.lookup(uri,int(item.mtime))
+        if self.thumbnail_cache_dir==None:
+            imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+            item.thumburi=imagemanip.thumb_factory.lookup(uri,int(item.mtime))
+        else:
+            cache=self.thumbnail_cache_dir
+            if not os.path.exists(cache):
+                os.makedirs(cache)
+##            item.thumburi=os.path.join(cache,imagemanip.muuid(uri))
+            item.thumb.save(item.thumburi,"png")
+
         if item.thumb:
             item.thumb=thumb_pb
             imagemanip.cache_thumb(item)
@@ -765,7 +796,7 @@ class Collection(baseobjects.CollectionBase):
         return result
     def write_metadata(self,item):
         'write metadata for an item to the source'
-        return imagemanip.save_metadata(item)
+        return imagemanip.save_metadata(item,cache=self.thumbnail_cache_dir)
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         draft_mode=False

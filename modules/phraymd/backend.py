@@ -228,7 +228,7 @@ class ThumbnailJob(WorkerJob):
             item=self.queue_onscreen.pop(0)
             if item.thumb:
                 continue
-            if not imagemanip.load_thumb(item):
+            if not self.collection.load_thumbnail(item,False):
                 if item.thumb!=False and not self.collection.has_thumbnail(item):
                     self.cu_job_queue.append(item)
                     continue
@@ -522,6 +522,7 @@ class WalkDirectoryJob(WorkerJob):
                 self.worker.queue_job_instance(VerifyImagesJob(self.worker,self.collection,self.browser))
             return True
         log.debug('Directory walk pausing '+collection.image_dirs[0])
+        print jobs.gethighest()
         return False
 
 

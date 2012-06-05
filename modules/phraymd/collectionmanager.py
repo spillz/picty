@@ -552,8 +552,8 @@ class CollectionStartPage(gtk.VBox):
 
         self.set_spacing(30)
         self.pack_start(h,False)
-        self.pack_start(b1)
         self.pack_start(b2,False)
+        self.pack_start(b1)
 #        self.pack_start(b3,False)
         self.show_all()
 
