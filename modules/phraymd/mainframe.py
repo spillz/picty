@@ -90,7 +90,6 @@ class MainFrame(gtk.VBox):
         self.collections_init()
         self.float_mgr=floats.FloatingPanelManager(self)
 
-        print 'SETTING RC STRING'
         ## thank you to tadeboro http://www.gtkforums.com/post-10694.html#10694
         gtk.rc_parse_string ('''
                     style "tab-close-button-style"
@@ -103,7 +102,6 @@ class MainFrame(gtk.VBox):
                     widget "*.tab-close-button" style "tab-close-button-style"
                     ''');
         ##
-        print 'SET RC STRING'
 
         ##plugin-todo: instantiate plugins
         self.plugmgr=pluginmanager.mgr
@@ -309,10 +307,6 @@ class MainFrame(gtk.VBox):
             if c!=None:
                 id=c.id
         if id:
-#        if not id:
-#            self.create_new_collection(None,True)
-#        else:
-            print 'opening collection',id
             self.collection_open(c.id)
 
     def activate_starttab(self,button):
@@ -334,7 +328,6 @@ class MainFrame(gtk.VBox):
             print tb_text
         self.tm.quit()
         pluginmanager.mgr.callback('plugin_shutdown',True)
-        print 'main frame destroyed'
         return False
 
     def add_browser(self,collection):
@@ -343,7 +336,6 @@ class MainFrame(gtk.VBox):
         c.browser.tm=self.tm
         c.browser.active_collection=c
         c.browser.active_view=c.get_active_view()
-        print 'ADD BROWSER VIEW',c.browser.active_view
         c.browser.connect("activate-item",self.activate_item)
         c.browser.connect("context-click-item",self.popup_item)
         c.browser.connect("status-updated",self.update_status)
@@ -418,20 +410,13 @@ class MainFrame(gtk.VBox):
             c=self.coll_set.new_collection(prefs)
             if not c:
                 print 'Create localdir failed'
-            print 'Create localdir success',c.id,c.name,c.get_prefs()
+                return False
             self.collection_open(c.id)
 
     def create_new_collection(self,combo,first_start=False):
         old_id=''
         if self.active_collection:
             old_id=self.active_collection.id
-##TODO: default to creating a localstore on first startup
-#        if first_start:
-#            prefs=dialog.get_values()
-#            prefs['name']='main'
-#            prefs['image_dirs']=[os.path.join(os.environ['HOME'],'Pictures')]
-#            dialog=dialogs.NewCollectionDialog(type='LOCALSTORE',pref_dict=prefs,title='Create A Local Collection')
-#        else:
         dialog=dialogs.NewCollectionDialog()
         response=dialog.run()
         prefs=dialog.get_values()
@@ -481,12 +466,7 @@ class MainFrame(gtk.VBox):
 
         if coll.persistent:
             settings.active_collection_id=coll.id
-#        ind=self.browser_nb.get_current_page()
-#        need_ind=self.browser_nb.page_num(coll.browser)
-#        if ind!=need_ind:
-#            self.browser_nb.set_current_page(need_ind)
 
-        print 'BROWSER SWITCH',coll.type,coll.id
         self.sort_order.handler_block_by_func(self.set_sort_key)
         sort_model=self.sort_order.get_model()
         sort_model.clear()
@@ -514,7 +494,6 @@ class MainFrame(gtk.VBox):
         coll.rescan(self.tm)
 
     def collection_open(self,id):
-        print 'OPENING COLLECTION',id
         c=self.coll_set[id]
         if c!=None:
             if c.browser!=None:
@@ -609,7 +588,6 @@ class MainFrame(gtk.VBox):
         self.sidebar_toggle.set_active(not self.sidebar_toggle.get_active())
 
     def set_layout(self,layout):
-        print 'LAYOUT',layout
         sort_model=self.sort_order.get_model()
 
         for c in self.coll_set.iter_coll():
@@ -665,7 +643,6 @@ class MainFrame(gtk.VBox):
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane.get_position()
         layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
-        print 'LAYOUT',layout
         return layout
 
     def activate_item(self,browser,ind,item):
@@ -784,7 +761,7 @@ class MainFrame(gtk.VBox):
         self.tm.select_all_items(backend.DESELECT)
 
     def select_upload(self,widget):
-        print 'upload',widget
+        pass
 
     def dir_pick(self,prompt):
         sel_dir=''
@@ -867,13 +844,11 @@ class MainFrame(gtk.VBox):
         self.status_bar.set_text(message)
 
     def connect_toggled(self,widget):
-        print 'CONNECT TOGGLED',widget.get_active()
         if self.active_collection!=None:
             job=backend.SetOnlineStatusJob(self.tm,self.active_collection,self.active_browser(),widget.get_active())
             self.tm.queue_job_instance(job)
 
     def update_connection_state(self,browser,collection,coll_state):
-        print 'CONNECTION UPDATE NOTIFICATION',collection.id,coll_state
         if collection==self.active_collection:
             self.connect_toggle.handler_block_by_func(self.connect_toggled)
             self.connect_toggle.set_active(coll_state)
@@ -1036,7 +1011,6 @@ class MainFrame(gtk.VBox):
 
 
     def view_image(self,item,fullwindow=False):
-        print 'VIEW IMAGE REQUEST',item
         browser=self.active_browser()
         visible=self.iv.get_property('visible')
         self.iv.show()
@@ -1154,18 +1128,6 @@ class MainFrame(gtk.VBox):
         menu_add(smenu,"Re_load Metadata",self.select_reload_metadata)
         menu_add(smenu,"Recreate Thumb_nails",self.select_recreate_thumb)
 
-        #menu_add(smenu,"_Batch Manipulation",self.select_batch)
-
-#        smenu_item=gtk.MenuItem("Selected")
-#        smenu_item.show()
-#        smenu_item.set_submenu(smenu)
-#        rootmenu.append(smenu_item)
-
-#        menu_item=gtk.MenuItem("This Image")
-#        menu_item.show()
-#        menu_item.set_submenu(menu)
-#        rootmenu.append(menu_item)
-
         rootmenu.append(gtk.SeparatorMenuItem())
         menu_add(rootmenu,"Select _All",self.select_all)
         menu_add(rootmenu,"Select _None",self.select_none)
@@ -1180,7 +1142,6 @@ class MainFrame(gtk.VBox):
         self.tm.reload_metadata(item)
 
     def mime_open(self,widget,app_cmd,uri):
-        print 'mime_open',app_cmd,uri
         if uri:
             app_cmd.launch_uris([uri])
         else:
@@ -1195,7 +1156,6 @@ class MainFrame(gtk.VBox):
         ext=os.path.splitext(fullname)[1]
         app_cmd=Template(app_cmd_template).substitute(
             {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
-        print 'mime_open',app_cmd,item
         subprocess.Popen(app_cmd,shell=True)
 
     def save_item(self,widget,item):
@@ -1244,14 +1204,14 @@ class MainFrame(gtk.VBox):
                 cmd=Template(app[1]).substitute(
                     {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
                 if cmd:
-                    print 'mime_open',cmd
+                    print 'Running Command:',cmd
                     subprocess.Popen(cmd,shell=True)
                     return
         app=io.app_info_get_default_for_type(mime)
         if app:
             app.launch_uris([item.uid])
         else:
-            print 'no known command for ',item.uid,' mimetype',mime
+            print 'Error: no known command for',item.uid,'mimetype',mime
 
     def edit_item(self,widget,item):
 #        dlg=dialogs.MetaDialog(item,self.active_collection)
