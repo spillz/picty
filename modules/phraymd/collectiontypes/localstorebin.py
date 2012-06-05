@@ -209,7 +209,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
-        self.a_box.pack_start(self.store_thumbs_with_images,False)
+        self.a_box.pack_start(self.store_thumbs_combo,False)
         self.pack_start(self.a_frame,False)
         self.show_all()
         if value_dict:
