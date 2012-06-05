@@ -805,8 +805,18 @@ class TagFrame(gtk.VBox):
         try:
             tag_cloud_list.sort()
         except UnicodeDecodeError: ##AN ATTEMPT TO HANDLE THE CASE WHERE TAGS ARE NOT VALID UNICODE (BUG #1007172 ON LAUNCHPAD)
-            tag_cloud_list=[(t.decode('utf8').lower(),t) for t in tag_cloud.tags]
-            tag_cloud_list.sort()
+            def decode(s):
+                try:
+                    s.decode('utf8').lower()
+                except:
+                    print 'Warning: bad decode of tag',s
+                    return ''
+            tag_cloud_list=[(decode(t),t) for t in tag_cloud.tags]
+            try:
+                tag_cloud_list.sort()
+            except:
+                print 'Error sorting tags'
+                print tag_cloud_list
 
         tag_cloud_list=[t[1] for t in tag_cloud_list]
         for k in tag_cloud_list:
