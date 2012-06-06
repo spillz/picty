@@ -418,7 +418,8 @@ class ImageViewer(gtk.VBox):
         cmd=self.get_hover_command(x, y)
         if cmd>=0:
             cmd=self.hover_cmds[cmd]
-            tooltip.set_text(cmd.tooltip)
+            if cmd.tooltip:
+                tooltip.set_text(cmd.tooltip)
             return True
 
     def configure_signal(self,obj,event):
