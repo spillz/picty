@@ -68,7 +68,7 @@ class MetaDataViewer(pluginbase.Plugin):
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Metadata Viewer',self.metadata_button_callback,shortcut_commands.default_active_callback,gtk.STOCK_INFO,'View detailed metadata for this image',priority=45)
+        shortcut_commands.register_tool_for_plugin(self,'Metadata Viewer',self.metadata_button_callback,shortcut_commands.default_active_callback,[gtk.STOCK_INFO],'View detailed metadata for this image',priority=45)
 
     def viewer_item_opening(self,item):
         if self.item!=None and self.item!=item:

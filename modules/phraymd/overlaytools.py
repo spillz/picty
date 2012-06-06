@@ -60,7 +60,7 @@ class OverlayGroup:
     Call containing the collection of Overlay tool buttons display over a thumbnail or fullsize image
     '''
     def default_active_callback(self,item,hover):
-        return hover
+        return int(hover)-1
     def __init__(self,widget_render_source,size=gtk.ICON_SIZE_LARGE_TOOLBAR):
         '''
         widget_render_source -- should be a gtk.Widget with a valid render_icon method
@@ -126,7 +126,7 @@ class OverlayGroup:
             t=self.tools[i]
             adjx,adjy=0,0
             active=t.is_active(item,hover_data)
-            if active>=0 and t.icons:
+            if active>=0 and t.icons and len(t.icons)>0:
                 if i==highlight_ind:
                     w,h=t.icons[active].get_width(),t.icons[active].get_height()
                     if button_down:

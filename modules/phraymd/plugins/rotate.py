@@ -69,7 +69,7 @@ class RotatePlugin(pluginbase.Plugin):
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_commands.default_active_callback,'phraymd-image-rotate','Rotate or straighten this image',43)
+        shortcut_commands.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_commands.default_active_callback,['phraymd-image-rotate'],'Rotate or straighten this image',43)
 
     def rotate_button_callback(self,cmd,item):
         #the user has entered rotate mode

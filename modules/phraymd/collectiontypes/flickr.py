@@ -675,8 +675,6 @@ class FlickrCollection(baseobjects.CollectionBase):
         initialize flickr client object and log into the flickr account
         '''
         print '#########FLICKR LOGIN#########'
-#        if self.flickr_client!=None:
-#            return True
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret, username=self.name)
         tokenpath = os.path.join(self.coll_dir(),'flickr-token')
         try:

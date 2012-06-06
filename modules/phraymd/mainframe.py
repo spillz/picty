@@ -123,7 +123,7 @@ class MainFrame(gtk.VBox):
                         ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,['phraymd-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',self.rotate_item_right,show_on_hover,['phraymd-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
-                        ('Delete',self.delete_item,show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark the item for deletion (not final until you save the change)')
+                        ('Delete',self.delete_item,show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark the item for deletion (not final confirmed)')
                         ]
         for tool in tools:
             self.hover_cmds.register_tool(*tool)
@@ -134,8 +134,9 @@ class MainFrame(gtk.VBox):
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Close',self.close_viewer,show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
                         ('Locate in Browser',self.show_viewed_item,show_on_hover,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
-                        ('Save',self.save_item,lambda item,hover:item.is_meta_changed(),[gtk.STOCK_SAVE],'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,lambda item,hover:hover and item.is_meta_changed(),[gtk.STOCK_REVERT_TO_SAVED],'Main','Revert changes to the metadata in this image'),
+                        ('Save',self.save_item,show_and_changed,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
+                        ('Revert',self.revert_item,show_and_changed,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
+                        ('Delete',self.delete_item,show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
                         ('Launch',self.launch_item,show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
                         ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',self.rotate_item_left,show_on_hover,['phraymd-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
@@ -144,8 +145,7 @@ class MainFrame(gtk.VBox):
                         ('Zoom 100%',self.zoom_item_100,show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
                         ('Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
                         ('Zoom Out',self.zoom_item_out,show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
-                        ('Stub',None,lambda item,hover:False,[None],'Main',''),
-                        ('Delete',self.delete_item,show_on_hover,[gtk.STOCK_DELETE],'Main','Move this image to the collection trash folder'),
+                        ('Stub',None,lambda item,hover:False,[],'Main',''),
                         ]
         for tool in viewer_tools:
             self.viewer_hover_cmds.register_tool(*tool)
