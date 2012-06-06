@@ -411,7 +411,7 @@ class MainFrame(gtk.VBox):
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:
             c=self.coll_set.new_collection(prefs)
-            if not c:
+            if c==False:
                 print 'Create localdir failed'
                 return False
             self.collection_open(c.id)
