@@ -703,7 +703,7 @@ class Collection(baseobjects.CollectionBase):
                 self.load_metadata(item,notify_plugins=False)
             else:
                 self.load_metadata(item,missing_only=True,notify_plugins=False)
-            self.make_thumbnail(item,cache=self.thumbnail_cache_dir)
+            self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
         except:

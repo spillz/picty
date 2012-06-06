@@ -1148,7 +1148,7 @@ class DirectoryUpdateJob(WorkerJob):
                         collection.add(item)
                         self.browser.lock.release()
                         if not collection.has_thumbnail(item):
-                            collection.make_thumb(item) ##todo: queue this onto lower priority job
+                            collection.make_thumbnail(item) ##todo: queue this onto lower priority job
                         idle_add(self.browser.resize_and_refresh_view,self.collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':
