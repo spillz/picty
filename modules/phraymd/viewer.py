@@ -420,7 +420,7 @@ class ImageViewer(gtk.VBox):
             cmd=self.hover_cmds[cmd]
             if cmd.tooltip:
                 tooltip.set_text(cmd.tooltip)
-            return True
+                return True
 
     def configure_signal(self,obj,event):
         if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
