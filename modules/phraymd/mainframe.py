@@ -213,8 +213,14 @@ class MainFrame(gtk.VBox):
         add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
         add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_PREFERENCES),self.open_preferences,"Preferences","Open the global settings and configuration dialog")
         self.toolbar1.add(gtk.SeparatorToolItem())
-        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_SAVE),self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
-        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_UNDO),self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
+        self.connect_toggle=gtk.ToggleToolButton(gtk.STOCK_CONNECT)
+        add_item(self.toolbar1,self.connect_toggle,self.connect_toggled,"Connect to Source", "Connect or disconnect to the source of the images in this collection (you can only read from and modify the collection when connected)")
+        self.refresh_button=gtk.ToolButton(gtk.STOCK_REFRESH)
+        add_item(self.toolbar1,self.refresh_button,self.collection_rescan,"Rescan Collection", "Rescan the source for changes to images")
+        self.save_button=gtk.ToolButton(gtk.STOCK_SAVE)
+        add_item(self.toolbar1,self.save_button,self.save_all_changes,"Save Changes", "Saves all changes to metadata for images in the current view (description, tags, image orientation etc)")
+        self.revert_button=gtk.ToolButton(gtk.STOCK_UNDO)
+        add_item(self.toolbar1,self.revert_button,self.revert_all_changes,"Revert Changes", "Reverts all unsaved changes to metadata for all images in the current view (description, tags, image orientation etc)") ##STOCK_REVERT_TO_SAVED
 
         self.toolbar1.add(gtk.SeparatorToolItem())
         add_widget(self.toolbar1,gtk.Label("Search: "),None,None,None)
@@ -230,9 +236,6 @@ class MainFrame(gtk.VBox):
         self.sort_toggle=gtk.ToggleToolButton(gtk.STOCK_SORT_ASCENDING)
         add_item(self.toolbar1,self.sort_toggle,self.reverse_sort_order,"Reverse Sort Order", "Reverse the order that images appear in")
         self.toolbar1.add(gtk.SeparatorToolItem())
-        add_item(self.toolbar1,gtk.ToolButton(gtk.STOCK_REFRESH),self.collection_rescan,"Rescan Collection", "Rescan the source for changes to images")
-        self.connect_toggle=gtk.ToggleToolButton(gtk.STOCK_CONNECT)
-        add_item(self.toolbar1,self.connect_toggle,self.connect_toggled,"Connect to Source", "Connect or disconnect to the source of the images in this collection (you can only read from and modify the collection when connected)")
         self.toolbar1.show_all()
 
         accel_group = gtk.AccelGroup()
@@ -458,6 +461,7 @@ class MainFrame(gtk.VBox):
             self.filter_entry.set_text('')
             self.sort_order.set_active(-1)
             self.sort_toggle.set_active(False)
+            self.update_widget_states()
             return
 
         coll=self.coll_set[id]
@@ -481,11 +485,30 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.set_active(page.active_view.reverse)
         self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
         self.filter_entry.entry.set_text(page.active_view.filter_text)
+        self.connect_toggle.handler_block_by_func(self.connect_toggled)
+        self.connect_toggle.set_active(self.active_collection.online)
+        self.connect_toggle.handler_unblock_by_func(self.connect_toggled)
         self.view_changed2(page)
 
+        self.update_widget_states()
         pluginmanager.mgr.callback('collection_activated',coll)
         page.grab_focus()
 
+    def update_widget_states(self):
+        if self.active_collection:
+            online=self.active_collection.online
+            coll=True
+        else:
+            online=False
+            coll=False
+        self.save_button.set_sensitive(online)
+        self.refresh_button.set_sensitive(online)
+
+        self.connect_toggle.set_sensitive(coll)
+        self.revert_button.set_sensitive(coll)
+        self.sort_order.set_sensitive(coll)
+        self.sort_toggle.set_sensitive(coll)
+        self.filter_entry.set_sensitive(coll)
 
     def collection_rescan(self,widget):
         coll=self.active_collection
@@ -853,6 +876,7 @@ class MainFrame(gtk.VBox):
             self.connect_toggle.handler_block_by_func(self.connect_toggled)
             self.connect_toggle.set_active(coll_state)
             self.connect_toggle.handler_unblock_by_func(self.connect_toggled)
+            self.update_widget_states()
 
     def key_press_signal(self,obj,event,browser=None):
         keyname = gtk.gdk.keyval_name(event.keyval)
@@ -1211,7 +1235,7 @@ class MainFrame(gtk.VBox):
         if app:
             app.launch_uris([item.uid])
         else:
-            print 'Error: no known command for',item.uid,'mimetype',mime
+            print 'Error: no known command for',item.uid,'with mimetype',mime
 
     def edit_item(self,widget,item):
 #        dlg=dialogs.MetaDialog(item,self.active_collection)

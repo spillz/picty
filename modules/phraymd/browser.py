@@ -485,12 +485,10 @@ class ImageBrowser(gtk.HBox):
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def collection_online(self,collection):
-        print 'BROWSER RECEIVED ONLINE MESSAGE FOR',collection.id
-        self.emit('collection-online-state',collection,True)
+        self.emit('collection-online-state',collection,collection.online)
 
     def collection_offline(self,collection):
-        print 'BROWSER RECEIVED OFFLINE MESSAGE FOR',collection.id
-        self.emit('collection-online-state',collection,False)
+        self.emit('collection-online-state',collection,collection.online)
 
     def post_build_view(self):
         '''callback function to receive notification from worker that

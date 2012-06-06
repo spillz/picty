@@ -425,6 +425,7 @@ class Collection(baseobjects.CollectionBase):
             return False
         if self.online:
             return False
+        self.online=True
         self.start_monitor()
         return True
     def disconnect(self):

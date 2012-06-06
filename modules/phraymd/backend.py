@@ -369,22 +369,11 @@ class SetOnlineStatusJob(WorkerJob):
 
     def __call__(self):
         if self.status:
-            if self.collection.connect():
-                if self.browser!=None:
-                    gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-            else:
-                if self.browser!=None:
-                    gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
-            ##notify plugins?
+            self.collection.connect()
+            gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
         else:
-            if self.collection.disconnect():
-                ##TODO: KILL ANY JOBS THAT RELY ON THE COLLECTION BEING ONLINE
-                if self.browser!=None:
-                    gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
-            else:
-                if self.browser!=None:
-                    gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-            ##notify plugins?
+            self.collection.disconnect()
+            gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
         return True
 
 #class CloseCollectionJob(WorkerJob):
