@@ -403,7 +403,7 @@ class MainFrame(gtk.VBox):
     def browse_dir_as_collection(self,combo):
         #prompt for path
         old_id=''
-        if self.active_collection:
+        if self.active_collection is not None:
             old_id=self.active_collection.id
         dialog=dialogs.NewCollectionDialog(type='LOCALDIR',title='Browse A Directory',button_label='Browse')
         response=dialog.run()
@@ -418,7 +418,7 @@ class MainFrame(gtk.VBox):
 
     def create_new_collection(self,combo,first_start=False):
         old_id=''
-        if self.active_collection:
+        if self.active_collection is not None:
             old_id=self.active_collection.id
         dialog=dialogs.NewCollectionDialog()
         response=dialog.run()
@@ -447,6 +447,7 @@ class MainFrame(gtk.VBox):
             self.browser_nb.reorder_child(page,page_num-1)
 
     def browser_page_switch(self,notebook,page,page_num):
+        print 'switch',page_num
         id=None
         if page_num>=0:
             page=self.browser_nb.get_nth_page(page_num)
@@ -455,7 +456,7 @@ class MainFrame(gtk.VBox):
             else:
                 id=page.active_collection.id
 
-        if not id:
+        if id is None:
             self.active_collection=None
             self.tm.set_active_collection(None)
             self.filter_entry.set_text('')
@@ -489,13 +490,12 @@ class MainFrame(gtk.VBox):
         self.connect_toggle.set_active(self.active_collection.online)
         self.connect_toggle.handler_unblock_by_func(self.connect_toggled)
         self.view_changed2(page)
-
         self.update_widget_states()
         pluginmanager.mgr.callback('collection_activated',coll)
         page.grab_focus()
 
     def update_widget_states(self):
-        if self.active_collection:
+        if self.active_collection is not None:
             online=self.active_collection.online
             coll=True
         else:
@@ -524,6 +524,7 @@ class MainFrame(gtk.VBox):
                 return
             browser=self.add_browser(c)
             c.open(self.tm,browser)
+            self.update_widget_states()
 
     def collection_open_cb(self,widget,id):
         self.collection_open(id)
@@ -821,14 +822,14 @@ class MainFrame(gtk.VBox):
         self.tm.rotate_selected_thumbs(False)
 
     def filter_text_changed(self,widget):
-        if self.active_collection!=None:
+        if self.active_collection is not None:
             self.active_collection.get_active_view().filter_text=widget.get_text()
 
     def set_filter_text(self,widget):
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.entry.get_text()
-        if self.active_collection!=None and self.active_browser().active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
+        if self.active_collection is not None and self.active_browser().active_view!=None:# and self.browser.active_view.filter_text!=filter_text:
             self.tm.rebuild_view(key,filter_text)
 
     def clear_filter(self,widget,*args):
@@ -841,7 +842,7 @@ class MainFrame(gtk.VBox):
         self.active_browser().grab_focus()
         key=self.sort_order.get_active_text()
         filter_text=self.filter_entry.entry.get_text()
-        if self.active_collection!=None and self.active_browser().active_view!=None and (self.active_browser().active_view.sort_key_text!=key):
+        if self.active_collection is not None and self.active_browser().active_view!=None and (self.active_browser().active_view.sort_key_text!=key):
             self.tm.rebuild_view(key,filter_text)
 
     def add_filter(self,widget):
@@ -867,7 +868,7 @@ class MainFrame(gtk.VBox):
         self.status_bar.set_text(message)
 
     def connect_toggled(self,widget):
-        if self.active_collection!=None:
+        if self.active_collection is not None:
             job=backend.SetOnlineStatusJob(self.tm,self.active_collection,self.active_browser(),widget.get_active())
             self.tm.queue_job_instance(job)
 
@@ -890,7 +891,7 @@ class MainFrame(gtk.VBox):
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.iv.ImageNormal()
                         self.view_image(self.iv.item)
-                        if self.active_collection:
+                        if self.active_collection is not None:
                             self.active_browser().show()
                         self.hpane_ext.show()
                         self.toolbar1.show()

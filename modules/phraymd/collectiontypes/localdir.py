@@ -192,6 +192,7 @@ class LocalDir(localstorebin.Collection):
         self.monitor_image_dirs=True
         self.rescan_at_open=True
         self.store_thumbs_with_images=False
+        self.online=True
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
         self.monitor=None
