@@ -226,7 +226,7 @@ class CollectionSet(gobject.GObject):
         c=self[id]
         c.is_open=False
         self.model.coll_closed(id)
-        if not c.persistent:
+        if not c.persistent and not c.type=='DEVICE': ##TODO: Second part is redundant because Devices are set to be persistent
             self.remove(id)
 
     def collection_online(self,id):

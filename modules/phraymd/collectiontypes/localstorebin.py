@@ -27,6 +27,7 @@ import os.path
 import re
 import cPickle
 import string
+import tempfile
 
 import gtk
 

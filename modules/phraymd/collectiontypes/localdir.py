@@ -171,7 +171,7 @@ class LocalDir(localstorebin.Collection):
     pref_widget=LocalDirPrefWidget
     add_widget=NewLocalDirWidget
     user_creatable=False
-    persistent=False
+    persistent=True
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
                 'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs','store_thumbs_with_images')
     def __init__(self,prefs): #todo: store base path for the collection
@@ -228,7 +228,7 @@ class Device(LocalDir):
     type_descr='Device'
     pref_widget=LocalDirPrefWidget
     add_widget=None
-    persistent=True
+    persistent=False
     def __init__(self,prefs):
         LocalDir.__init__(self,prefs)
         self.pixbuf=prefs['pixbuf'] #device pixbuf varies depending on the device

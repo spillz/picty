@@ -567,7 +567,7 @@ class MainFrame(gtk.VBox):
         menu_add(menu,"Open",self.collection_open_cb,coll_id)
         if c.is_open:
             menu_add(menu,"Close",self.collection_close_cb,coll_id)
-        if c!=None and c.persistent and not c.is_open:
+        if c!=None and c.persistent and c.type!='DEVICE' and not c.is_open:
             menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
         if c!=None and c.browser==None and c.pref_widget and not c.is_open:
             menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
