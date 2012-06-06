@@ -475,7 +475,7 @@ class WalkDirectoryJob(WorkerJob):
                         if collection.load_meta:
                             collection.load_metadata(item,notify_plugins=False)
                         elif collection.load_preview_icons:
-                            collection.load_thumb(item)
+                            collection.load_thumbnail(item)
                             if not item.thumb:
                                 item.thumb=False
                         self.browser.lock.acquire()
