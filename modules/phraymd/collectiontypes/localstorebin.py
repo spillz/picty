@@ -496,6 +496,8 @@ class Collection(baseobjects.CollectionBase):
         '''
         if not self.is_open:
             return True
+        if not self.persistent:
+            return True
         try:
             col_dir=os.path.join(settings.collections_dir,self.name)
             if os.path.isfile(col_dir):
