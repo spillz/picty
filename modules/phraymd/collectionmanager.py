@@ -161,6 +161,8 @@ class CollectionSet(gobject.GObject):
         return sum([1 for id in self.iter_id(type)])
 
     def add_collection(self,collection):
+        if collection.type=='DEVICE' and self.count('DEVICE')==0:
+            self.model.first_mount_added()
         self.collections[collection.id]=collection
         self.collection_added(collection.id)
 
@@ -265,8 +267,6 @@ class CollectionSet(gobject.GObject):
             c.load_meta=True
             c.load_preview_icons=False
             c.store_thumbnails=False
-        if self.count('DEVICE')==0:
-            self.model.first_mount_added()
         self.add_collection(c)
         return c
 
