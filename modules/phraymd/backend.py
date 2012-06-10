@@ -1117,14 +1117,14 @@ class DirectoryUpdateJob(WorkerJob):
             pluginmanager.mgr.suspend_collection_events(self.collection)
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             collection,fullpath,action=self.queue.pop(0)
-            relpath=self.collection.get_relpath(fullpath)
+            relpath=collection.get_relpath(fullpath)
             if action in ('DELETE','MOVED_FROM'):
                 log.info('deleting '+fullpath)
                 if not os.path.exists(fullpath):
                     self.browser.lock.acquire()
                     collection.delete(relpath)
                     self.browser.lock.release()
-                    idle_add(self.browser.resize_and_refresh_view,self.collection)
+                    idle_add(self.browser.resize_and_refresh_view,collection)
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
                     mimetype=io.get_mime_type(fullpath)
@@ -1153,7 +1153,7 @@ class DirectoryUpdateJob(WorkerJob):
                         self.browser.lock.release()
                         if not collection.has_thumbnail(item):
                             collection.make_thumbnail(item) ##todo: queue this onto lower priority job
-                        idle_add(self.browser.resize_and_refresh_view,self.collection)
+                        idle_add(self.browser.resize_and_refresh_view,collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':
                         self.worker.queue_job_instance(WalkSubDirectoryJob(self.worker,collection,self.browser,fullpath))
