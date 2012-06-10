@@ -746,23 +746,16 @@ def load_embedded_thumb(item,collection):
 
 def load_thumb(item,collection,cache=None):
     '''
-    load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
+    load thumbnail from a cache location (optionally using the
+    thumbnailing methods provieded in gnome.ui if cache is None)
     affects thumbnail, thumburi members of item
     '''
     ##todo: rename load_thumb_from_cache
     ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon and load_metadata
-    itemfile=collection.get_path(item)
     if item.thumb==False:
         return
     image=None
     try:
-        uri = io.get_uri(itemfile)
-        if cache!=None:
-            thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
-            if os.path.exists(thumburi):
-                item.thumburi=thumburi
-        if item.thumb!=False and not item.thumburi:
-            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
             image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
             s=(image.get_width(),image.get_height())
@@ -772,18 +765,26 @@ def load_thumb(item,collection,cache=None):
                 h=s[1]*128/m
                 image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
         else:
-            thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
+            if cache!=None:
+                thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
+                if os.path.exists(thumburi):
+                    item.thumburi=thumburi
+            elif collection.local_filesystem:
+                itemfile=collection.get_path(item)
+                uri = io.get_uri(itemfile)
+                item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+                if not item.thumburi:
+                    thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
             if thumburi:
-                try:
-                    image = Image.open(thumburi)
-                    image.thumbnail((128,128))
-                    image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
-                except:
-                    image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
-                    image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
+                image = Image.open(thumburi)
+                image.thumbnail((128,128))
+                image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
+            elif item.thumburi:
+                image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+                image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
     except:
         image=None
-    if image!=None:
+    if image is not None:
         item.thumb=image
         cache_thumb(item)
         return True
