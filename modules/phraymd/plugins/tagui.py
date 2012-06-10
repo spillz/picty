@@ -320,10 +320,7 @@ class TagFrame(gtk.VBox):
         self.pack_start(scrolled_window)
 
         button_box = gtk.HButtonBox()
-        tag_sel_button= gtk.Button('_Add Tags')
-        tag_sel_button.connect("clicked",self.tag_selected_signal)
-        tag_sel_button.set_tooltip_text('Adds selected tags above to the selected images in the view')
-        button_box.pack_start(tag_sel_button)
+#        button_box.pack_start(tag_sel_button)
 #        tag_mode_button= gtk.ToggleButton('Tag Mode')
 #        tag_mode_button.connect("toggled",self.tag_mode_toggle_signal)
 #        tag_mode_button.set_tooltip_text('When this button is depressed, clicking on images in the browser adds the checked tags above, CTRL+click removes the tags')
@@ -472,15 +469,6 @@ class TagFrame(gtk.VBox):
 #        else:
 #            self.mainframe.active_browser().mode=self.browser.MODE_NORMAL
         self.mainframe.active_browser().imarea.grab_focus()
-
-    def tag_selected_signal(self, button):
-        tags=self.get_checked_tags()
-        keyword_string=''
-        for t in tags:
-            keyword_string+='"%s" '%(t,)
-        if keyword_string:
-            self.worker.keyword_edit(keyword_string)
-        self.mainframe.active_browser().grab_focus()
 
     def iter_all_children(self,iter_node):
         '''iterate all rows from iter_node and their children'''
