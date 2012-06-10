@@ -119,7 +119,7 @@ class Worker:
             if self.cb:
                 gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Moving '+item.uid)
             try:
-                os.renames(item.uid,os.path.join(self.destdir,os.path.split(item.uid)[1]))
+                os.renames(self.collection.get_path(item),os.path.join(self.destdir,os.path.split(item.uid)[1]))
             except:
                 fileoperrors.append(('move',item,self.destdir))
         if self.cb:

@@ -98,11 +98,11 @@ def load_thumbnail(item,filename=None):
     return True
 
 
-def save_metadata(item):
+def save_metadata(item,filename):
     if item.meta==False:
         return False
     try:
-        rawmeta = pyexiv2.Image(item.uid)
+        rawmeta = pyexiv2.Image(filename)
         rawmeta.readMetadata()
         meta=item.meta.copy()
         set_exiv2_meta(meta,rawmeta)
@@ -116,7 +116,7 @@ def save_metadata(item):
     return True
 
 
-def copy_metadata(src_item,destination_file):
+def copy_metadata(src_meta,src_file,destination_file):
     '''
     copy metadata from a source item to a destination file
     due to bugs in pyexiv2|exiv2, only the metadata in the
@@ -127,10 +127,10 @@ def copy_metadata(src_item,destination_file):
         return False
     try:
         print 'reading src_item metadata'
-        rawmeta_src = pyexiv2.Image(src_item.uid)
+        rawmeta_src = pyexiv2.Image(src_file)
         rawmeta_src.readMetadata()
     except:
-        print 'Error reading metadata for',src_item.uid
+        print 'Error reading metadata for',src_file
         return False
     try:
         rawmeta_dest = pyexiv2.Image(destination_file)
@@ -147,21 +147,21 @@ def copy_metadata(src_item,destination_file):
                     rawmeta_dest[k]=rawmeta_src[k]
             except:
                 pass
-        set_exiv2_meta(src_item.meta,rawmeta_dest)
+        set_exiv2_meta(src_meta,rawmeta_dest)
         rawmeta_dest.writeMetadata()
     except:
         print 'Error changing metadata in destination file',destination_file
     return True
 
 
-def save_metadata_key(item,key,value):
+def save_metadata_key(filename,key,value):
     try:
-        rawmeta = pyexiv2.Image(item.uid)
+        rawmeta = pyexiv2.Image(filename)
         rawmeta.readMetadata()
         rawmeta[key]=value
         rawmeta.writeMetadata()
     except:
-        print 'Error writing metadata for',item.uid
+        print 'Error writing metadata for',filename
 
 
 

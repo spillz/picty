@@ -256,7 +256,7 @@ class CollectionUpdateJob(WorkerJob):
             item=self.queue.pop(0)
             if item.meta==None:
                 it=baseobjects.Item(item)
-                it.meta=item.meta.copy()
+                ##it.meta=item.meta.copy() ##Already none !!!
                 c.load_metadata(item)
                 self.browser.lock.acquire()
                 if self.view.del_item(it):
@@ -436,6 +436,7 @@ class WalkDirectoryJob(WorkerJob):
             log.error('Aborted directory walk on '+collection.image_dirs[0])
             return True
         log.debug('starting directory walk on '+collection.image_dirs[0])
+        scan_dir=collection.image_dirs[0]
         while jobs.ishighestpriority(self):
             try:
                 root,dirs,files=self.collection_walker.next()
@@ -458,19 +459,20 @@ class WalkDirectoryJob(WorkerJob):
                 if r<=0:
                     continue
                 fullpath=os.path.join(root, p)
+                relpath=os.path.relpath(os.path.join(root, p),scan_dir)
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
-                    log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
+##                    log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
                     continue
                 mtime=io.get_mtime(fullpath)
                 st=os.stat(fullpath)
                 if os.path.isdir(fullpath):
-                    log.warning('Directory Walk: item '+fullpath+' is a directory')
+##                    log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
-                item=baseobjects.Item(fullpath)
+                item=baseobjects.Item(relpath)
                 item.mtime=mtime
                 if collection.find(item)<0:
-                    print 'found new item',item.uid
+                    print 'Found new item',item.uid
                     if not collection.verify_after_walk:
                         if collection.load_meta:
                             collection.load_metadata(item,notify_plugins=False)
@@ -510,7 +512,7 @@ class WalkDirectoryJob(WorkerJob):
             if collection.verify_after_walk:
                 self.worker.queue_job_instance(VerifyImagesJob(self.worker,self.collection,self.browser))
             return True
-        log.debug('Directory walk pausing '+collection.image_dirs[0])
+        ##log.debug('Directory walk pausing '+collection.image_dirs[0])
         print jobs.gethighest()
         return False
 
@@ -558,6 +560,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 if r<=0:
                     continue
                 fullpath=os.path.join(root, p)
+                relpath=os.path.relpath(os.path.join(root, p),scan_dir)
                 mimetype=io.get_mime_type(fullpath)
                 if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                     log.debug('Directory walk found invalid mimetype '+mimetype+' for '+fullpath)
@@ -567,7 +570,7 @@ class WalkSubDirectoryJob(WorkerJob):
                 if os.path.isdir(fullpath):
                     log.warning('Directory Walk: item '+fullpath+' is a directory')
                     continue
-                item=baseobjects.Item(fullpath,mtime)
+                item=baseobjects.Item(relpath,mtime)
                 if collection.find(item)<0:
                     collection.load_metadata(item,notify_plugins=False) ##todo: check if exists already
                     self.browser.lock.acquire()
@@ -1038,14 +1041,14 @@ class VerifyImagesJob(WorkerJob):
                 collection.add(item)
                 self.browser.lock.release()
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
-            if not os.path.exists(item.uid) or os.path.isdir(item.uid) or item.uid!=io.get_true_path(item.uid):  ##todo: what if mimetype or size changed?
+            if not os.path.exists(collection.get_path(item)) or os.path.isdir(collection.get_path(item)) or collection.get_path(item)!=io.get_true_path(collection.get_path(item)):  ##todo: what if mimetype or size changed?
                 print 'verify delete missing item',item.uid
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
                 continue
-            mtime=io.get_mtime(item.uid)
+            mtime=io.get_mtime(collection.get_path(item))
             if mtime!=item.mtime:
                 print 'verify mtime changed',item.uid,item.mtime,mtime
                 self.browser.lock.acquire()
@@ -1114,11 +1117,12 @@ class DirectoryUpdateJob(WorkerJob):
             pluginmanager.mgr.suspend_collection_events(self.collection)
         while jobs.ishighestpriority(self) and len(self.queue)>0:
             collection,fullpath,action=self.queue.pop(0)
+            relpath=self.collection.get_relpath(fullpath)
             if action in ('DELETE','MOVED_FROM'):
                 log.info('deleting '+fullpath)
                 if not os.path.exists(fullpath):
                     self.browser.lock.acquire()
-                    collection.delete(fullpath)
+                    collection.delete(relpath)
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
             if action in ('MOVED_TO','MODIFY','CREATE'):
@@ -1126,7 +1130,7 @@ class DirectoryUpdateJob(WorkerJob):
                     mimetype=io.get_mime_type(fullpath)
                     if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                         continue
-                    i=collection.find(fullpath)
+                    i=collection.find(relpath)
                     if i>=0:
                         if io.get_mtime(fullpath)!=collection[i].mtime:
                             item=collection[i]
@@ -1141,7 +1145,7 @@ class DirectoryUpdateJob(WorkerJob):
                             self.browser.lock.release()
                             idle_add(self.browser.resize_and_refresh_view,self.collection)
                     else:
-                        item=baseobjects.Item(fullpath)
+                        item=baseobjects.Item(relpath)
                         item.mtime=io.get_mtime(fullpath)
                         collection.load_metadata(item,notify_plugins=False)
                         self.browser.lock.acquire()

@@ -230,7 +230,10 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing
         meta=item.meta.copy()
     else:
         meta=item.meta
-    result=metadata.load_metadata(item,item.uid,get_thumbnail,missing_only)
+    if filename is None:
+        if collection is not None:
+            filename=collection.get_path(item)
+    result=metadata.load_metadata(item,filename,get_thumbnail,missing_only)
     if result:
 ##PICKLED DICT
 #        if isinstance(item.meta,dict):
@@ -242,24 +245,26 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing
     return result
 
 
-def save_metadata(item,cache=None):
+def save_metadata(item,collection,cache=None):
     '''
     save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
     '''
-    if metadata.save_metadata(item):
-        item.mtime=io.get_mtime(item.uid) ##todo: this and the next line should be a method of the image class
-        update_thumb_date(item,cache)
+    fname=collection.get_path(item)
+    if metadata.save_metadata(item,filename=fname):
+        item.mtime=io.get_mtime(fname) ##todo: this and the next line should be a method of the image class
+        update_thumb_date(item,collection,cache)
         return True
     return False
 
 
-def save_metadata_key(item,key,value,cache=None):
+def save_metadata_key(item,collection,key,value,cache=None):
     '''
     sets the metadata key to value and saves the change in the image
     '''
-    if metadata.save_metadata_key(item,key,value):
-        item.mtime=io.get_mtime(item.uid)
-        update_thumb_date(item,cache)
+    fname=collection.get_path(item)
+    if metadata.save_metadata_key(fname,key,value):
+        item.mtime=io.get_mtime(fname)
+        update_thumb_date(item,collection,cache)
         return True
     return False
 
@@ -341,13 +346,15 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def get_jpeg_or_png_image_file(item,size,strip_metadata,filename=''):
+def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,filename=''):
     '''
     writes a temporary copy of the image to disk
     '''
     import tempfile
+    itemfile=None
     if not filename:
-        filename=item.uid
+        itemfile=collection.get_path(item)
+        filename=itemfile
     src_filename=filename
     try:
         image=Image.open(filename)
@@ -370,20 +377,20 @@ def get_jpeg_or_png_image_file(item,size,strip_metadata,filename=''):
         size=tuple(int(dim) for dim in size.split('x'))
         if len(size)>0 and size[0]>0 and size[1]>0:
             image.thumbnail(size,Image.ANTIALIAS)
-            if item.uid==filename:
+            if itemfile==filename:
                 h,filename=tempfile.mkstemp('.jpg')
     if image.format not in ['JPEG','PNG']:
-        if item.uid==filename:
+        if itemfile==filename:
             h,filename=tempfile.mkstemp('.jpg')
     if strip_metadata:
-        if item.uid==filename:
+        if itemfile==filename:
             h,filename=tempfile.mkstemp('.jpg')
     if filename!=src_filename:
         if strip_metadata:
             image=orient_image(image,item.meta)
         image.save(filename,quality=95)
         if not strip_metadata:
-            metadata.copy_metadata(item.uid)
+            metadata.copy_metadata(item.meta,src_filename,filename)
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
 def orient_image(image,meta):
@@ -400,21 +407,22 @@ def orient_image(image,meta):
     return image
 
 
-def load_image(item,interrupt_fn,draft_mode=False):
+def load_image(item,collection,interrupt_fn,draft_mode=False):
     '''
     load a PIL image and store it in item.image
     '''
+    itemfile=collection.get_path(item)
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
-        if io.get_mime_type(item.uid)=='image/x-adobe-dng': ##for extraction with dcraw
+        if io.get_mime_type(itemfile)=='image/x-adobe-dng': ##for extraction with dcraw
             raise TypeError
-        image=Image.open(item.uid) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+        image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
         print 'opened image',item.uid,image
 #        parsed version
         if not draft_mode and image.format=='JPEG':
             #parser doesn't seem to work correctly on anything but JPEGs
-            f=open(item.uid,'rb')
+            f=open(itemfile,'rb')
             imdata=f.read(10000)
             p = ImageFile.Parser()
             while imdata and len(imdata)>0:
@@ -427,10 +435,10 @@ def load_image(item,interrupt_fn,draft_mode=False):
             print 'parsed image with PIL'
     except:
         try:
-            cmd=settings.dcraw_cmd%(item.uid,)
+            cmd=settings.dcraw_cmd%(itemfile,)
             imdata=os.popen(cmd).read()
             if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(item.uid,)
+                cmd=settings.dcraw_backup_cmd%(itemfile,)
                 imdata=os.popen(cmd).read()
                 if not interrupt_fn():
                     return False
@@ -521,14 +529,15 @@ def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size ima
     return False
 
 
-def has_thumb(item,cache=None):
+def has_thumb(item,collection,cache=None):
     '''
     returns true if the item has a thumbnail image in the cache
     '''
+    fname=collection.get_path(item)
     if item.thumburi and os.path.exists(item.thumburi):
         return True
     if cache==None:
-        uri = io.get_uri(item.uid)
+        uri = io.get_uri(fname)
         item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         if item.thumburi:
             return True
@@ -549,7 +558,7 @@ def delete_thumb(item):
         item.thumburi=None
 
 
-def update_thumb_date(item,interrupt_fn=None,remove_old=True,cache=None):
+def update_thumb_date(item,collection,interrupt_fn=None,remove_old=True,cache=None):
     '''
     sets the internal date of the cached thumbnail image to that of the image file
     if the thumbnail name the thumbnail name will be updated
@@ -558,24 +567,25 @@ def update_thumb_date(item,interrupt_fn=None,remove_old=True,cache=None):
     remove_old - if the item name has changed, removes the old thumbnail
     affects mtime, thumb, thumburi members of item
     '''
-    item.mtime=io.get_mtime(item.uid)
+    itemfile=collection.get_path(item)
+    item.mtime=io.get_mtime(itemfile)
     if item.thumburi:
         oldthumburi=item.thumburi
         if not item.thumb:
-            load_thumb(item)
-        uri = io.get_uri(item.uid)
+            load_thumb(item,collection)
+        uri = io.get_uri(itemfile)
         if cache==None:
             thumb_factory.save_thumbnail(item.thumb,uri,int(item.mtime))
             item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
         else:
             if not os.path.exists(cache):
                 os.makedirs(cache)
-            item.thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
             item.thumb.save(item.thumburi,"png")
         if remove_old and oldthumburi!=item.thumburi:
             io.remove_file(oldthumburi)
         return True
-    return make_thumb(item,interrupt_fn,cache=cache)
+    return make_thumb(item,collection,interrupt_fn,cache=cache)
 
 
 
@@ -604,19 +614,20 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 
 
-def make_thumb(item,interrupt_fn=None,force=False,cache=None):
+def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
     '''
     create a thumbnail from the original image using either PIL or dcraw
     interrupt_fn = callback that returns False if routine should cancel (not implemented)
     force = True if thumbnail should be recreated even if already present
     affects thumb, thumburi members of item
     '''
-    if cache==None and thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
+    itemfile=collection.get_path(item)
+    if cache==None and thumb_factory.has_valid_failed_thumbnail(itemfile,int(item.mtime)):
         if not force:
             item.thumb=False
             return False
         print 'forcing thumbnail creation'
-        uri = io.get_uri(item.uid)
+        uri = io.get_uri(itemfile)
         thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
         if thumb_uri:
             print 'removing failed thumb',thumb_uri
@@ -626,26 +637,26 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
     delete_thumb(item)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
-    print 'MAKING THUMB FOR',item.uid
+    print 'MAKING THUMB FOR',item.uid,itemfile
     t=time.time()
     try:
-        uri = io.get_uri(item.uid)
-        mimetype=io.get_mime_type(item.uid)
+        uri = io.get_uri(itemfile)
+        mimetype=io.get_mime_type(itemfile)
         thumb_pb=None
         if mimetype.lower().startswith('video'):
-            cmd=settings.video_thumbnailer%(item.uid,)
+            cmd=settings.video_thumbnailer%(itemfile,)
             imdata=os.popen(cmd).read()
             image=Image.open(StringIO.StringIO(imdata))
             image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
         else:
             try:
-                image=Image.open(item.uid)
+                image=Image.open(itemfile)
                 image.thumbnail((128,128),Image.ANTIALIAS)
             except:
-                cmd=settings.dcraw_cmd%(item.uid,)
+                cmd=settings.dcraw_cmd%(itemfile,)
                 imdata=os.popen(cmd).read()
                 if not imdata or len(imdata)<100:
-                    cmd=settings.dcraw_backup_cmd%(item.uid,)
+                    cmd=settings.dcraw_backup_cmd%(itemfile,)
                     imdata=os.popen(cmd).read()
 #                pipe = subprocess.Popen(cmd, shell=True,
 #                        stdout=PIPE) ##, close_fds=True
@@ -668,11 +679,11 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
         item.thumburi=None
         if cache==None:
             print 'creating FAILED thumbnail',item
-            thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
+            thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
-    uri = io.get_uri(item.uid)
+    uri = io.get_uri(itemfile)
     #save the new thumbnail
     try:
         if cache==None:
@@ -681,7 +692,7 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
         else:
             if not os.path.exists(cache):
                 os.makedirs(cache)
-            item.thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
             thumb_pb.save(item.thumburi,"png")
     except:
         print 'creating FAILED thumbnail',item
@@ -693,21 +704,22 @@ def make_thumb(item,interrupt_fn=None,force=False,cache=None):
         item.thumb=False
         item.thumburi=None
         if cache==None:
-            thumb_factory.create_failed_thumbnail(item.uid,int(item.mtime))
+            thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
         return False
     item.thumb=thumb_pb
     cache_thumb(item)
     return True
 
 
-def load_thumb_from_preview_icon(item):
+def load_thumb_from_preview_icon(item,collection):
     '''
     try to load a thumbnail embbeded in a picture using gio provided method g_preview_icon_data
     affects thumb member of item
     '''
     try:
+        itemfile=collection.get_path(item)
         print 'loading thumb from preview icon',item.uid
-        data,dtype=io.get_preview_icon_data(item.uid)
+        data,dtype=io.get_preview_icon_data(itemfile)
         loader = gtk.gdk.PixbufLoader()
         loader.write(data.read())
         pb = loader.get_pixbuf()
@@ -726,26 +738,27 @@ def load_thumb_from_preview_icon(item):
         item.thumb=None
         return False
 
-def load_embedded_thumb(item):
-    if metadata.load_thumbnail(item):
+def load_embedded_thumb(item,collection):
+    if metadata.load_thumbnail(item,collection.get_path(item)):
         item.thumb=orient_pixbuf(item.thumb,item.meta)
         return True
     return False
 
-def load_thumb(item,cache=None):
+def load_thumb(item,collection,cache=None):
     '''
     load thumbnail from a cache location (currently using the thumbnailing methods provieded in gnome.ui)
     affects thumbnail, thumburi members of item
     '''
     ##todo: rename load_thumb_from_cache
     ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon and load_metadata
+    itemfile=collection.get_path(item)
     if item.thumb==False:
         return
     image=None
     try:
-        uri = io.get_uri(item.uid)
+        uri = io.get_uri(itemfile)
         if cache!=None:
-            thumburi=os.path.join(cache,muuid(uri+str(int(item.mtime))))+'.png'
+            thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
             if os.path.exists(thumburi):
                 item.thumburi=thumburi
         if item.thumb!=False and not item.thumburi:

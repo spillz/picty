@@ -82,7 +82,7 @@ class CollectionBase:
     '''
     type=None #unique string usd to identify the type of the collection
     type_descr=None #human readable string
-    local_filesystem=False #True is image files are stored in the local filesystem (uid assumed to be path to files)
+    local_filesystem=False #True if image files are stored in the local filesystem (uid assumed to be path to files)
     pref_items=('type','name','pixbuf','id') ##the list of variables that will be saved
     persistent=False
     user_creatable=False

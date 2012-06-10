@@ -824,12 +824,14 @@ class FlickrCollection(baseobjects.CollectionBase):
             name=os.path.split(src_item.uid)[1] ##this could be a problem for some uid's
             temp_filename=''
             temp_dir=''
-            src_filename=src_item.uid
+            src_filename=None
+            if src_collection.local_filesystem:
+                src_filename=src_collection.get_path(src_item)
             temp_dir=tempfile.mkdtemp('','.image-')
             temp_filename=os.path.join(temp_dir,name)
             try:
                 if src_collection.local_filesystem:
-                    io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
+                    io.copy_file(src_collection.get_path(src_item),temp_filename) ##todo: this may be a desirable alternative for local images
                 else:
                     open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
             except IOError:
@@ -838,7 +840,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                 return False
             src_filename=temp_filename
             imagemanip.load_metadata(src_item,src_collection,src_filename)
-            filename=imagemanip.get_jpeg_or_png_image_file(src_item,prefs['upload_size'],prefs['metadata_strip'],src_filename)
+            filename=imagemanip.get_jpeg_or_png_image_file(src_item,self,prefs['upload_size'],prefs['metadata_strip'],src_filename)
 
             #specify metadata
             print 'src_meta',src_item.meta
@@ -937,7 +939,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 
     def load_thumbnail(self,item,fast_only=True):
         'load the thumbnail from the local cache'
-        return imagemanip.load_thumb(item)
+        return imagemanip.load_thumb(item,self)
 
     def has_thumbnail(self,item):
         return item.thumburi

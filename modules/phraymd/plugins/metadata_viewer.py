@@ -141,7 +141,7 @@ class MetaDataViewer(pluginbase.Plugin):
         except:
             self.button_save.set_sensitive(False)
             self.button_revert.set_sensitive(False)
-        self.meta_table.data_items['FullPath'][1].set_text(item.uid)
+        self.meta_table.data_items['FullPath'][1].set_text(self.viewer.browser.collection.get_path(item))
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for t in metadata.apptags:

@@ -19,6 +19,9 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+__version__='0.7'
+
+
 ##standard imports
 import bisect
 from datetime import datetime
@@ -51,6 +54,16 @@ EXIST_SKIP=0
 EXIST_RENAME=1
 EXIST_OVERWRITE=2
 EXIST_OVERWRITE_NEWER=3
+
+
+def update_legacy_item(item,image_dir):
+    uid=os.path.relpath(item,image_dir)
+    print item.uid,'-->',uid
+    new_item=baseobjects.Item(uid)
+    new_item.mtime=item.mtime ##todo: move this to the meta dictionary
+    new_item.thumburi=item.thumburi
+    new_item.meta=item.meta ##a copy of new_item.meta will be stored as new_item.meta_backup if meta has been changed but not saved
+    return new_item
 
 
 class NamingTemplate(string.Template):
@@ -480,6 +493,10 @@ class Collection(baseobjects.CollectionBase):
             print 'Loaded collection version',version
             if version>='0.5':
                 self.items=cPickle.load(f)
+            if version<'0.7':
+                print 'Updating legacy collection'
+                self.items=[update_legacy_item(i,self.image_dirs[0]) for i in self.items]
+                print 'Update complete'
             self.numselected=0
             return True
         except:
@@ -506,7 +523,7 @@ class Collection(baseobjects.CollectionBase):
                 os.makedirs(col_dir)
             #self.save_prefs()
             f=open(self.data_file(),'wb')
-            cPickle.dump(settings.version,f,-1)
+            cPickle.dump(__version__,f,-1)
             cPickle.dump(self.items,f,-1)
             f.close()
             self.empty()
@@ -597,6 +614,18 @@ class Collection(baseobjects.CollectionBase):
             return i
         return -1
 
+    def get_mtime(self,item):
+        return io.get_mtime(self.get_path(item))
+
+    def get_path(self,item):
+        return os.path.join(self.image_dirs[0],item.uid)
+
+    def item_exists(self,item):
+        return os.path.exists(self.get_path(item))
+
+    def get_relpath(self,path):
+        return os.path.relpath(path,self.image_dirs[0])
+
     def __call__(self,ind):
         return self.items[ind]
 
@@ -624,7 +653,9 @@ class Collection(baseobjects.CollectionBase):
         try:
             name=os.path.split(src_item.uid)[1]
             dest_dir=prefs['base_dest_dir']
-            src_filename=src_item.uid
+            src_filename=None
+            if src_collection.local_filesystem:
+                src_filename=src_collection.get_path(src_item)
             temp_filename=''
             temp_dir=''
             name_scheme=naming_schemes[prefs['name_scheme']]
@@ -636,7 +667,7 @@ class Collection(baseobjects.CollectionBase):
                 temp_filename=os.path.join(temp_dir,name)
                 try:
                     if src_collection.local_filesystem:
-                        io.copy_file(src_item.uid,temp_filename) ##todo: this may be a desirable alternative for local images
+                        io.copy_file(src_filename,temp_filename) ##todo: this may be a desirable alternative for local images
                     else:
                         open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
@@ -695,16 +726,16 @@ class Collection(baseobjects.CollectionBase):
                 tb_text=traceback.format_exc(sys.exc_info()[2])
                 print tb_text
 
-            item=baseobjects.Item(dest_filename)
-            item.mtime=io.get_mtime(item.uid)
+            item=baseobjects.Item(self.get_relpath(dest_filename))
+            item.mtime=io.get_mtime(dest_filename)
             item.selected=src_item.selected
             ##TODO: Do we need to do this for all non-local filesystems? (Apparently yes for flickr)
             if not src_collection.local_filesystem:
                 item.init_meta(src_item.meta.copy(),self)
                 self.write_metadata(item)
-                self.load_metadata(item,notify_plugins=False)
+                self.load_metadata(item,self,notify_plugins=False)
             else:
-                self.load_metadata(item,missing_only=True,notify_plugins=False)
+                self.load_metadata(item,self,missing_only=True,notify_plugins=False)
             self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
@@ -718,13 +749,13 @@ class Collection(baseobjects.CollectionBase):
         'remove the item from the collection and the underlying filestore'
         try:
             trashdir=os.path.join(self.image_dirs[0],'.trash')
-            empty,imdir,relpath=item.uid.partition(self.image_dirs[0])
+            empty,imdir,relpath=self.get_path(item).partition(self.image_dirs[0])
             relpath=relpath.strip('/')
             if relpath:
                 dest=os.path.join(trashdir,relpath)
                 if os.path.exists(dest):
                     os.remove(dest)
-                os.renames(item.uid,dest)
+                os.renames(self.get_path(item),dest)
             self.delete_thumbnail(item)
             self.delete(item) ##todo: lock the image browser??
             return True
@@ -737,19 +768,19 @@ class Collection(baseobjects.CollectionBase):
     def load_thumbnail(self,item,fast_only=True):
         'load the thumbnail from the local cache'
         if self.load_preview_icons:
-            if imagemanip.load_thumb_from_preview_icon(item):
+            if imagemanip.load_thumb_from_preview_icon(item,self):
                 return True
         if fast_only and self.load_embedded_thumbs:
-            if imagemanip.load_embedded_thumb(item):
+            if imagemanip.load_embedded_thumb(item,self):
                 return True
-        return imagemanip.load_thumb(item,self.thumbnail_cache_dir)
+        return imagemanip.load_thumb(item,self,self.thumbnail_cache_dir)
     def has_thumbnail(self,item):
-        return imagemanip.has_thumb(item)
+        return imagemanip.has_thumb(item,self)
     def make_thumbnail(self,item,interrupt_fn=None,force=False):
         'create a cached thumbnail of the image'
         if not force and (self.load_embedded_thumbs or self.load_preview_icons):
             return False
-        imagemanip.make_thumb(item,interrupt_fn,force,self.thumbnail_cache_dir)
+        imagemanip.make_thumb(item,self,interrupt_fn,force,self.thumbnail_cache_dir)
 ## TODO: Why was the update_thumb_date call here??? Maybe a FAT issue?
 ##        imagemanip.update_thumb_date(item,cache=self.thumbnail_cache_dir)
         return
@@ -764,15 +795,12 @@ class Collection(baseobjects.CollectionBase):
         '''
         if item.thumb==False:
             return False
-##      TODO: NOT SURE THIS IS NECESSARY - COMMENTING FOR NOW
-##        if imagemanip.thumb_factory.has_valid_failed_thumbnail(item.uid,int(item.mtime)):
-##            return False
         thumb_pb=imagemanip.rotate_thumb(item,right,interrupt_fn)
         if not thumb_pb:
             return  False
 #        width=thumb_pb.get_width()
 #        height=thumb_pb.get_height()
-        uri = io.get_uri(item.uid)
+        uri = io.get_uri(self.get_path(item))
         if self.thumbnail_cache_dir==None:
             imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
             item.thumburi=imagemanip.thumb_factory.lookup(uri,int(item.mtime))
@@ -780,7 +808,6 @@ class Collection(baseobjects.CollectionBase):
             cache=self.thumbnail_cache_dir
             if not os.path.exists(cache):
                 os.makedirs(cache)
-##            item.thumburi=os.path.join(cache,imagemanip.muuid(uri))
             item.thumb.save(item.thumburi,"png")
 
         if item.thumb:
@@ -796,26 +823,26 @@ class Collection(baseobjects.CollectionBase):
         'retrieve metadata for an item from the source'
         c=self if notify_plugins else None
         if self.load_embedded_thumbs:
-            result=imagemanip.load_metadata(item,c,None,True,missing_only)
+            result=imagemanip.load_metadata(item,c,self.get_path(item),True,missing_only)
         else:
-            result=imagemanip.load_metadata(item,c,None,False,missing_only)
+            result=imagemanip.load_metadata(item,c,self.get_path(item),False,missing_only)
         if self.load_embedded_thumbs and not item.thumb:
             item.thumb=False
         return result
     def write_metadata(self,item):
         'write metadata for an item to the source'
-        return imagemanip.save_metadata(item,cache=self.thumbnail_cache_dir)
+        return imagemanip.save_metadata(item,self,cache=self.thumbnail_cache_dir)
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         draft_mode=False
-        return imagemanip.load_image(item,interrupt_fn,draft_mode)
+        return imagemanip.load_image(item,self,interrupt_fn,draft_mode)
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
-        return open(item.uid,'rb')
+        return open(self.get_path(item),'rb')
     def write_file_data(self,dest_item,src_stream):
         'write the entire photo file (as a stream) to the source (as binary stream)'
         try:
-            f=open(dest_item.uid,'wb')
+            f=open(self.get_path(dest_item),'wb')
             f.write(src_stream.read())
             f.close()
             return True
@@ -830,7 +857,7 @@ class Collection(baseobjects.CollectionBase):
                 header=os.path.split(item.uid)[1]
         details=''
         if settings.overlay_show_path:
-            details+=os.path.split(item.uid)[0]
+            details+=os.path.split(self.get_path(item))[0]
         if settings.overlay_show_tags:
             val=viewsupport.get_keyword(item)
             if val:
@@ -873,7 +900,7 @@ class Collection(baseobjects.CollectionBase):
         ##HEADER TEXT
         header=''
         #show title
-        path,filename=os.path.split(item.uid)
+        path,filename=os.path.split(self.get_path(item))
         try:
             header=item.meta['Title']
             title=True

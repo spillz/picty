@@ -1083,7 +1083,7 @@ class MainFrame(gtk.VBox):
             menu.append(item)
 #            item.show()
         try:
-            itype=io.get_mime_type(item.uid) ##todo: need a collection based method to handle this
+            itype=io.get_mime_type(self.active_collection.get_path(item)) ##todo: need a collection based method to handle this
         except:
             itype='unknown'
         launch_menu=gtk.Menu()
@@ -1092,7 +1092,7 @@ class MainFrame(gtk.VBox):
                 menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
         launch_menu.append(gtk.SeparatorMenuItem())
         for app in io.app_info_get_all_for_type(itype):
-            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(item.uid))
+            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(self.active_collection.get_path(item)))
         for app in settings.custom_launchers['default']:
             menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
 
@@ -1170,15 +1170,14 @@ class MainFrame(gtk.VBox):
         if uri:
             app_cmd.launch_uris([uri])
         else:
-            app_cmd.launch_uris([io.get_uri(item.uid) for item in browser.active_view.get_selected_items()])
+            app_cmd.launch_uris([io.get_uri(self.active_collection.get_path(item))
+                    for item in browser.active_view.get_selected_items()])
 
     def custom_mime_open(self,widget,app_cmd_template,item):
         from string import Template
-        fullpath=item.uid
-        directory=os.path.split(item.uid)[0]
-        fullname=os.path.split(item.uid)[1]
-        name=os.path.splitext(fullname)[0]
-        ext=os.path.splitext(fullname)[1]
+        fullpath=self.active_collection.get_path(item)
+        directory,fullname=os.path.split(fullpath)
+        name,ext=os.path.splitext(fullname)
         app_cmd=Template(app_cmd_template).substitute(
             {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
         subprocess.Popen(app_cmd,shell=True)
@@ -1215,17 +1214,16 @@ class MainFrame(gtk.VBox):
         self.active_browser().redraw_view()
 
     def launch_item(self,widget,item):
-        uri=io.get_uri(item.uid)
-        mime=io.get_mime_type(item.uid)
+        fullpath=self.active_collection.get_path(item)
+        uri=io.get_uri(fullpath)
+        mime=io.get_mime_type(fullpath)
         cmd=None
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
                 from string import Template
-                fullpath=item.uid
-                directory=os.path.split(item.uid)[0]
-                fullname=os.path.split(item.uid)[1]
-                name=os.path.splitext(fullname)[0]
-                ext=os.path.splitext(fullname)[1]
+                fullpath=self.active_collection.get_path(item)
+                directory,fullname=os.path.split(fullpath)
+                name,ext=os.path.splitext(fullname)
                 cmd=Template(app[1]).substitute(
                     {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
                 if cmd:
@@ -1234,7 +1232,7 @@ class MainFrame(gtk.VBox):
                     return
         app=io.app_info_get_default_for_type(mime)
         if app:
-            app.launch_uris([item.uid])
+            app.launch_uris([fullpath]) ##TODO: Does this want a uri or a path (does it matter?)
         else:
             print 'Error: no known command for',item.uid,'with mimetype',mime
 

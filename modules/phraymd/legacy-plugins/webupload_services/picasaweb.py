@@ -156,7 +156,8 @@ class PicasaService(UploadServiceBase):
             #photo.media.credit = gdata.media.Credit(text=preferences[MODEL_COL_PICASA_AUTHOR])
             photo=self.gd_c.InsertPhoto(album_url, photo, filename, io.get_mime_type(filename))
             if filename!=item.uid:
-                os.remove(filename)
+                print 'WARNING: NOT REMOVING ITEM',item.uid
+                ##os.remove(filename) ##TODO: Not safe to do this now that item.uid is stored as a relpath
 
             self.t_notify_photo_uploaded(item,True,'Successful upload')
         except:

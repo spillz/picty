@@ -214,8 +214,11 @@ class UploadQueue(gtk.HBox):
         if uris: ##todo: all of this should be done on the worker thread, with a notification to add items to the list when done
             for uri in uris:
                 path=io.get_path_from_uri(uri)
+                if not self.upload_collection.local_filesystem:
+                    continue
+                relpath=self.upload_collection.get_relpath(path)
                 from phraymd import baseobjects
-                item=baseobjects.Item(path,0)
+                item=baseobjects.Item(relpath,0)
                 ind=self.upload_collection.find(item) #don't include items already in the list
                 if ind>=0:
                     continue
@@ -224,7 +227,7 @@ class UploadQueue(gtk.HBox):
                     continue
                 item=self.worker.active_collection(ind)
                 if not item.thumb:
-                    image_manip.load_thumb(item)
+                    image_manip.load_thumb(item,self.worker.active_collection)
                 thumb_pb=item.thumb
                 if thumb_pb:
                     width,height=gtk.icon_size_lookup(gtk.ICON_SIZE_MENU)

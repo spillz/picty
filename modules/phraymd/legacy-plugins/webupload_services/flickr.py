@@ -191,7 +191,8 @@ class FlickrService(UploadServiceBase):
                 self.flickr_client.photosets_addPhoto(photoset_id=photoset_id,photo_id=photo_id)
 
             if filename!=item.uid:
-                os.remove(filename)
+                print 'WARNING: NOT REMOVING ITEM',item.uid
+                ##os.remove(filename) ##TODO: Not safe to do this now that item.uid is stored as a relpath
 
             self.t_notify_photo_uploaded(item,True,'Successful upload')
         except:

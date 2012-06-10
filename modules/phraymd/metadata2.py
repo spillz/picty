@@ -87,7 +87,7 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
                     item.thumb=False
 
             except:
-                print 'Load thumbnail failed',item.uid
+                print 'Load thumbnail failed for',item.uid
                 import traceback,sys
                 print traceback.format_exc(sys.exc_info()[2])
                 item.thumb=False
@@ -145,14 +145,14 @@ def load_thumbnail(item=None,filename=None):
     return True
 
 
-def save_metadata(item):
+def save_metadata(item,filename):
     '''
     write the metadata in item to the underlying file converting keys from the phraymd representation to the relevant standard
     '''
     if item.meta==False:
         return False
     try:
-        rawmeta = Exiv2Metadata(item.uid)
+        rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         meta=item.meta.copy()
         set_exiv2_meta(meta,rawmeta)
@@ -166,21 +166,21 @@ def save_metadata(item):
     return True
 
 
-def copy_metadata(src_item,destination_file):
+def copy_metadata(src_meta,src_file,destination_file):
     '''
     copy metadata from a source item to a destination file
     due to bugs in pyexiv2|exiv2, only the metadata in the
     module list 'apptags' are written
     '''
     print 'copy metadata'
-    if src_item.meta==False:
+    if src_meta==False:
         return False
     try:
         print 'reading src_item metadata'
-        rawmeta_src = Exiv2Metadata(src_item.uid)
+        rawmeta_src = Exiv2Metadata(src_file)
         rawmeta_src.read()
     except:
-        print 'Error reading metadata for',src_item.uid
+        print 'Error reading metadata for',src_file
         return False
     try:
         rawmeta_dest = Exiv2Metadata(destination_file)
@@ -197,24 +197,24 @@ def copy_metadata(src_item,destination_file):
                     rawmeta_dest[k]=rawmeta_src[k]
             except:
                 pass
-        set_exiv2_meta(src_item.meta,rawmeta_dest)
+        set_exiv2_meta(src_meta,rawmeta_dest)
         rawmeta_dest.write()
     except:
         print 'Error changing metadata in destination file',destination_file
     return True
 
 
-def save_metadata_key(item,key,value):
+def save_metadata_key(filename,key,value):
     '''
     write a single exiv2 native key value to the image file associated with item
     '''
     try:
-        rawmeta = Exiv2Metadata(item.uid)
+        rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         rawmeta[key]=value
         rawmeta.write()
     except:
-        print 'Error writing metadata for',item.uid
+        print 'Error writing metadata for',filename
 
 
 
