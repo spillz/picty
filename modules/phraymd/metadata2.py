@@ -286,7 +286,7 @@ def conv_int(metaobject,keys,value=None):
             pass
     return None
 
-def tag_split(tag_str):
+def tag_split(tag_str,sep=' '):
     quoted=False
     tags=[]
     curtag=''
@@ -297,7 +297,7 @@ def tag_split(tag_str):
                 tags.append(curtag)
                 curtag=''
             continue
-        if (x==' ' or x=='\n') and not quoted:
+        if (x==sep or x=='\n') and not quoted:
             if curtag:
                 tags.append(curtag)
                 curtag=''
@@ -316,6 +316,11 @@ def tag_bind(tags,sep=' '):
     return sep.join(pretag)
 
 def conv_keywords(metaobject,keys,value=None):
+    '''
+    converts the Keyword metadata field to/from xmp or iptc key
+    will also read from the exif tag as a fallback
+    Note that this will overwrite the relevant Iptc and Xmp fields (as specified in apptags)
+    '''
     if value!=None:
         if keys[0] in metaobject.xmp_keys or keys[1] in metaobject.iptc_keys or len(value)>0:
             metaobject[keys[0]]=value
@@ -339,6 +344,37 @@ def conv_keywords(metaobject,keys,value=None):
             return vals
         except:
             return None
+
+def tag_split_c(t):
+    return tag_split(t,',')
+
+def tag_bind_c(t):
+    return tag_bind(t,',')
+
+def conv_artist(metaobject,keys,value=None):
+    '''
+    converts the Artist metadata field to/from xmp or iptc key
+    will also read from the exif tag as a fallback
+    Note that this will overwrite the relevant Iptc and Xmp fields (as specified in apptags)
+    '''
+    if value!=None:
+        if keys[0] in metaobject.xmp_keys or keys[1] in metaobject.iptc_keys or len(value)>0:
+            metaobject[keys[0]]=value
+            metaobject[keys[1]]=[tag_bind_c(value)] #Apparently IPTC Credit tag is not repeatable
+        return True
+    try:
+        val=None
+        if keys[0] in metaobject.xmp_keys:
+            val=metaobject[keys[0]].value
+        elif keys[1] in metaobject.iptc_keys:
+            val=tag_split_c(metaobject[keys[1]].values)
+        elif keys[2] in metaobject.exif_keys:
+            val=metaobject[keys[2]].value
+        if type(val)==str: #todo: shouldn't need this check with the new pyexiv2 api
+            return [val]
+        return list(val)
+    except:
+        return None
 
 def conv_rational(metaobject,keys,value=None):
     if value!=None:
@@ -449,7 +485,7 @@ apptags=(
 ("Title","Title",True,conv_str,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",)),
 ("ImageDescription","Image Description",True,conv_str,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
 ("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-("Artist","Artist",True,conv_str,None,None,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist")),
+("Artist","Artist",True,conv_artist,tag_bind_c,tag_split_c,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist")),
 ("Copyright","Copyright",True,conv_str,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
 ("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",)),
@@ -467,9 +503,9 @@ apptags=(
 ("Flash","Flash",False,conv_int,None,None,None,("Exif.Photo.Flash",)),
 ("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Exif.Photo.SensingMethod",)),
 ("WhiteBalance","White Balance",False,conv_int,None,None,None,("Exif.Photo.WhiteBalance",)),
-("DigitalZoomRatio","Digital Zoom Ratio",False,conv_str,None,None,None,("Exif.Photo.DigitalZoomRatio",)),
+("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Exif.Photo.DigitalZoomRatio",)),
 ("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Exif.Photo.SceneCaptureType",)),
-("GainControl","Gain Control",False,conv_str,None,None,None,("Exif.Photo.GainControl",)),
+("GainControl","Gain Control",False,conv_int,None,None,None,("Exif.Photo.GainControl",)),
 ("Contrast","Contrast",False,conv_int,None,None,None,("Exif.Photo.Contrast",)),
 ("Saturation","Saturation",False,conv_int,None,None,None,("Exif.Photo.Saturation",)),
 ("Sharpness","Sharpness",False,conv_int,None,None,None,("Exif.Photo.Sharpness",)),
@@ -540,155 +576,8 @@ def app_key_as_sortable(app_meta,key):
         except:
             return None
 
-#apptags=(
-#("DateTaken","Date Taken",False,conv_date_taken,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
-#("Title","Title",True,conv_str,("Xmp.dc.title",)),
-#("ImageDescription","Image Description",True,conv_str,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
-#("Tags","Tags",True,conv_keywords,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-#("Artist","Artist",True,conv_str,("Iptc.Application2.Credit","Exif.Image.Artist")),
-#("Copyright","Copyright",True,conv_str,("Iptc.Application2.Copyright","Exif.Image.Copyright",)),
-#("Rating",True,conv_int,("Xmp.xmp.Rating")),
-#("Album",True,conv_str,("Xmp.xmp.Label","Iptc.Application2.Subject")),
-#("Make","Make",False,conv_str,("Exif.Image.Make",)),
-#("Model","Model",False,conv_str,("Exif.Image.Model",)),
-#("Orientation","Orientation",False,conv_int_tuple,("Exif.Image.Orientation",)),
-#("Exposure Time","Exposure Time",False,conv_int_tuple,("Exif.Photo.ExposureTime",)),
-#("FNumber","FNumber",False,conv_int_tuple,("Exif.Photo.FNumber",)),
-#("ExposureProgram","ExposureProgram",False,conv_str,("Exif.Photo.ExposureProgram",)),
-#("ExposureBiasValue","ExposureBiasValue",False,conv_str,("Exif.Photo.ExposureBiasValue",)),
-#("MeteringMode","MeteringMode",False,conv_str,("Exif.Photo.MeteringMode",)),
-#("Flash","Flash",False,conv_str,("Exif.Photo.Flash",)),
-#("FocalLength","FocalLength",False,conv_str,("Exif.Photo.FocalLength",)),
-#("SensingMethod","SensingMethod",False,conv_str,("Exif.Photo.SensingMethod",)),
-#("ExposureMode","ExposureMode",False,conv_str,("Exif.Photo.ExposureMode",)),
-#("WhiteBalance","WhiteBalance",False,conv_str,("Exif.Photo.WhiteBalance",)),
-#("DigitalZoomRatio","DigitalZoomRatio",False,conv_str,("Exif.Photo.DigitalZoomRatio",)),
-#("SceneCaptureType","SceneCaptureType",False,conv_str,("Exif.Photo.SceneCaptureType",)),
-#("GainControl","GainControl",False,conv_str,("Exif.Photo.GainControl",)),
-#("Contrast","Contrast",False,conv_str,("Exif.Photo.Contrast",)),
-#("Saturation","Saturation",False,conv_str,("Exif.Photo.Saturation",)),
-#("Sharpness","Sharpness",False,conv_str,("Exif.Photo.Sharpness",)),
-#("SubjectDistanceRange","SubjectDistanceRange",False,conv_str,("Exif.Photo.SubjectDistanceRange",)),
-#("Software","Software",False,conv_str,("Exif.Image.Software",)),
-#("IPTCNAA","IPTCNAA",False,conv_str,("Exif.Image.IPTCNAA",)),
-#("ImageUniqueID","ImageUniqueID",False,conv_str,("Exif.Photo.ImageUniqueID",)),
-#("Processing Software","Processing Software",conv_str,False,("Exif.Image.ProcessingSoftware",))
-#)
 
 
-
-
-#tag tuples: long name, short name, writeable
-tags=(
-#("Exif.Image.DateTime","DateTime"),
-("Exif.Photo.DateTimeOriginal","DateTimeOriginal",False),
-("Exif.Photo.DateTimeDigitized","DateTimeDigitized",False),
-#("Exif.Image.DocumentName","Document Name"),
-("Xmp.dc.title","Title",True),
-("Exif.Image.ImageDescription","Image Description",True),
-("Xmp.dc.subject","Tags",True),
-("Iptc.Application2.Keywords","Keywords",True),
-("Exif.Photo.UserComment","UserComment",True),
-("Exif.Image.Artist","Artist",True),
-("Exif.Image.Copyright","Copyright",True),
-("Exif.Image.Make","Make",False),
-("Exif.Image.Model","Model",False),
-("Exif.Image.ImageWidth","Width",False),
-("Exif.Image.ImageLength","Height",False),
-("Exif.Image.Orientation","Orientation",False),
-("Exif.Photo.ExposureTime","Exposure Time",False),
-("Exif.Photo.FNumber","FNumber",False),
-("Exif.Pentax.ISO","ISO Speed",False),
-("Exif.Photo.ExposureProgram","ExposureProgram",False),
-#("Exif.Photo.ShutterSpeedValue","ShutterSpeedValue"),
-#("Exif.Photo.ApertureValue","ApertureValue"),
-#("Exif.Photo.BrightnessValue","BrightnessValue"),
-("Exif.Photo.ExposureBiasValue","ExposureBiasValue",False),
-#("Exif.Photo.MaxApertureValue","MaxApertureValue"),
-#("Exif.Photo.SubjectDistance","SubjectDistance"),
-("Exif.Photo.MeteringMode","MeteringMode",False),
-#("Exif.Photo.LightSource","LightSource"),
-("Exif.Photo.Flash","Flash",False),
-("Exif.Photo.FocalLength","FocalLength",False),
-#("Exif.Photo.SubjectArea","SubjectArea"),
-#("Exif.Photo.RelatedSoundFile","RelatedSoundFile"),
-#("Exif.Photo.FlashEnergy","FlashEnergy"),
-#("Exif.Photo.SubjectLocation","SubjectLocation"),
-#("Exif.Photo.ExposureIndex","ExposureIndex"),
-("Exif.Photo.SensingMethod","SensingMethod",False),
-("Exif.Photo.ExposureMode","ExposureMode",False),
-("Exif.Photo.WhiteBalance","WhiteBalance",False),
-("Exif.Photo.DigitalZoomRatio","DigitalZoomRatio",False),
-("Exif.Photo.FocalLengthIn35mmFilm","FocalLengthIn35mmFilm",False),
-("Exif.Photo.SceneCaptureType","SceneCaptureType",False),
-("Exif.Photo.GainControl","GainControl",False),
-("Exif.Photo.Contrast","Contrast",False),
-("Exif.Photo.Saturation","Saturation",False),
-("Exif.Photo.Sharpness","Sharpness",False),
-("Exif.Photo.SubjectDistanceRange","SubjectDistanceRange",False),
-("Exif.Image.Software","Software",False),
-("Exif.Image.IPTCNAA","IPTCNAA",False),
-("Exif.Photo.ImageUniqueID","ImageUniqueID",False),
-("Exif.Image.ProcessingSoftware","Processing Software",False),
-("Exif.GPSInfo.LatitudeRef","LatitudeRef",False),
-("Exif.GPSInfo.Latitude","Latitude",False),
-("Exif.GPSInfo.LongitudeRef","LongitudeRef",False),
-("Exif.GPSInfo.Longitude","Longitude",False),
-("Exif.GPSInfo.AltitudeRef","AltitudeRef",False),
-("Exif.GPSInfo.Altitude","Altitude",False),
-("Exif.GPSInfo.GPSTimeStamp","GPSTimeStamp",False),
-)
-
-
-'''
-tags={
-"Exif.Image.ProcessingSoftware":"Processing Software",
-"Exif.Image.ImageWidth":"Width",
-"Exif.Image.ImageLength":"Height",
-"Exif.Image.DocumentName":"Document Name",
-"Exif.Image.ImageDescription":"Image Description",
-"Exif.Image.Make":"Make",
-"Exif.Image.Model":"Model",
-"Exif.Image.Orientation":"Orientation",
-"Exif.Image.Software":"Software",
-"Exif.Image.DateTime":"DateTime",
-"Exif.Image.Artist":"Artist",
-"Exif.Image.Copyright":"Copyright",
-"Exif.Image.IPTCNAA":"IPTCNAA",
-"Exif.Photo.ExposureTime":"Exposure Time",
-"Exif.Photo.FNumber":"FNumber",
-"Exif.Photo.ExposureProgram":"ExposureProgram",
-"Exif.Photo.DateTimeOriginal":"DateTimeOriginal",
-"Exif.Photo.ShutterSpeedValue":"ShutterSpeedValue",
-"Exif.Photo.ApertureValue":"ApertureValue",
-"Exif.Photo.BrightnessValue":"BrightnessValue",
-"Exif.Photo.ExposureBiasValue":"ExposureBiasValue",
-"Exif.Photo.MaxApertureValue":"MaxApertureValue",
-"Exif.Photo.SubjectDistance":"SubjectDistance",
-"Exif.Photo.MeteringMode":"MeteringMode",
-"Exif.Photo.LightSource":"LightSource",
-"Exif.Photo.Flash":"Flash",
-"Exif.Photo.FocalLength":"FocalLength",
-"Exif.Photo.SubjectArea":"SubjectArea",
-"Exif.Photo.UserComment":"UserComment",
-"Exif.Photo.RelatedSoundFile":"RelatedSoundFile",
-"Exif.Photo.FlashEnergy":"FlashEnergy",
-"Exif.Photo.SubjectLocation":"SubjectLocation",
-"Exif.Photo.ExposureIndex":"ExposureIndex",
-"Exif.Photo.SensingMethod":"SensingMethod",
-"Exif.Photo.ExposureMode":"ExposureMode",
-"Exif.Photo.WhiteBalance":"WhiteBalance",
-"Exif.Photo.DigitalZoomRatio":"DigitalZoomRatio",
-"Exif.Photo.FocalLengthIn35mmFilm":"FocalLengthIn35mmFilm",
-"Exif.Photo.SceneCaptureType":"SceneCaptureType",
-"Exif.Photo.GainControl":"GainControl",
-"Exif.Photo.Contrast":"Contrast",
-"Exif.Photo.Saturation":"Saturation",
-"Exif.Photo.Sharpness":"Sharpness",
-"Exif.Photo.SubjectDistanceRange":"SubjectDistanceRange",
-"Exif.Photo.ImageUniqueID":"ImageUniqueID"
-}
-'''
 
 
 '''
