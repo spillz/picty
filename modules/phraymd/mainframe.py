@@ -911,6 +911,9 @@ class MainFrame(gtk.VBox):
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
                         self.is_iv_fullscreen=False
+                        self.browser_box.remove(self.iv)
+                        if self.active_browser() is not None:
+                            self.active_browser().add_viewer(self.iv)
                         if self.is_fullscreen:
                             self.window.unfullscreen()
                             self.is_fullscreen=False
@@ -927,7 +930,7 @@ class MainFrame(gtk.VBox):
                 self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
                 self.active_browser().resize_and_refresh_view(self.active_collection)
             elif event.keyval==65293: #enter
-                if self.iv.item:
+                if self.iv.item is not None and self.active_browser() is not None:
                     if self.is_iv_fullscreen:
                         ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                         self.iv.ImageNormal()
@@ -935,14 +938,17 @@ class MainFrame(gtk.VBox):
                             self.window.unfullscreen()
                             self.is_fullscreen=False
                         self.view_image(self.iv.item)
-                        self.hpane_ext.show()
                         self.info_bar.show()
                         self.browser_nb.show()
                         if self.sidebar_toggle.get_active():
                             self.sidebar.show()
                         self.toolbar1.show()
+                        self.browser_box.remove(self.iv)
+                        self.active_browser().add_viewer(self.iv)
                         self.is_iv_fullscreen=False
                     else:
+                        self.active_browser().remove_viewer(self.iv)
+                        self.browser_box.pack_start(self.iv,True)
                         self.iv.ImageFullscreen()
                         self.view_image(self.iv.item)
                         self.toolbar1.hide()
@@ -1046,8 +1052,8 @@ class MainFrame(gtk.VBox):
         self.iv.SetItem(item,browser,self.active_collection)
         self.is_iv_showing=True
         browser.update_geometry(True)
-        if not visible:
-            self.resize_browser_pane()
+###        if not visible:
+###            browser.resize_pane()
         if self.iv.item!=None:
             ind=browser.item_to_view_index(self.iv.item)
             browser.center_view_offset(ind)
