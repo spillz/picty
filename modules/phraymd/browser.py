@@ -138,8 +138,15 @@ class ImageBrowser(gtk.HBox):
         self.vbox.pack_start(self.imarea)
         self.vbox.show()
 
-        self.pack_start(self.vbox)
-        self.pack_start(self.vscroll,False)
+        self.bbox=gtk.HBox()
+        self.bbox.pack_start(self.vbox)
+        self.bbox.pack_start(self.vscroll,False)
+        self.bbox.show()
+
+        self.hpane=gtk.HPaned()
+        self.hpane.add1(self.bbox)
+        self.hpane.show()
+        self.pack_start(self.hpane)
 
         self.imarea.connect("realize",self.realize_signal)
         self.imarea.connect("configure_event",self.configure_signal)
@@ -190,6 +197,20 @@ class ImageBrowser(gtk.HBox):
         self.imarea.show()
         self.vscroll.show()
         self.imarea.grab_focus()
+
+    def resize_pane(self):
+        w,h=self.hpane.window.get_size()
+        if self.geo_thumbwidth+2*self.geo_pad>=w:
+            self.hpane.set_position(w/2)
+        else:
+            self.hpane.set_position(self.geo_thumbwidth+2*self.geo_pad)
+
+    def add_viewer(self,viewer):
+        self.hpane.add2(viewer)
+##        self.resize_pane()
+
+    def remove_viewer(self,viewer):
+        self.hpane.remove(viewer)
 
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
         if self.hover_ind<0:

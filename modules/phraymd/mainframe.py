@@ -255,15 +255,15 @@ class MainFrame(gtk.VBox):
         self.sidebar=gtk.Notebook() ##todo: make the sidebar a class and embed pages in a scrollable to avoid ugly rendering when the pane gets small
         self.sidebar.set_scrollable(True)
 
-        self.hpane_ext.add1(self.browser_nb)
-        self.hpane_ext.add2(self.iv)
-        self.hpane_ext.show()
+##        self.hpane_ext.add1(self.browser_nb)
+##        self.hpane_ext.add2(self.iv)
+##        self.hpane_ext.show()
 
         ##self.browser.show() #don't show the browser by default (it will be shown when a collection is activated)
         self.browser_box=gtk.VBox()
-        self.browser_box.show()
-        self.browser_box.pack_start(self.hpane_ext,True)
+        self.browser_box.pack_start(self.browser_nb,True)
         self.browser_box.pack_start(self.status_bar,False)
+        self.browser_box.show()
 
         self.hpane.add1(self.sidebar)
         self.hpane.add2(self.browser_box)
@@ -447,7 +447,7 @@ class MainFrame(gtk.VBox):
             self.browser_nb.reorder_child(page,page_num-1)
 
     def browser_page_switch(self,notebook,page,page_num):
-        print 'switch',page_num
+        print 'SWITCH',page_num,self.browser_nb.get_current_page()
         id=None
         if page_num>=0:
             page=self.browser_nb.get_nth_page(page_num)
@@ -455,6 +455,15 @@ class MainFrame(gtk.VBox):
                 id=None
             else:
                 id=page.active_collection.id
+
+        curpagenum=self.browser_nb.get_current_page()
+        curpage=self.browser_nb.get_nth_page(curpagenum)
+        if page_num!=curpagenum:
+            if curpage!=self.startpage:
+                curpage.remove_viewer(self.iv)
+            if page!=self.startpage:
+                page.add_viewer(self.iv)
+
 
         if id is None:
             self.active_collection=None
@@ -1005,12 +1014,6 @@ class MainFrame(gtk.VBox):
 #            else:
 #                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
-    def resize_browser_pane(self):
-        w,h=self.hpane_ext.window.get_size()
-        if self.active_browser().geo_thumbwidth+2*self.active_browser().geo_pad>=w:
-            self.hpane_ext.set_position(w/2)
-        else:
-            self.hpane_ext.set_position(self.active_browser().geo_thumbwidth+2*self.active_browser().geo_pad)
 
     def close_viewer(self,widget,item):
         self.hide_image()
@@ -1033,7 +1036,6 @@ class MainFrame(gtk.VBox):
             b.update_required_thumbs()
             b.focal_item=item
             b.resize_and_refresh_view(self.active_collection)
-
 
     def view_image(self,item,fullwindow=False):
         browser=self.active_browser()
