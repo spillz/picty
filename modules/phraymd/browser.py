@@ -656,16 +656,19 @@ class ImageBrowser(gtk.HBox):
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
         grey = colormap.alloc_color(0x5000,0x5000,0x5000)
-        lgrey = colormap.alloc_color(0x8900,0x8900,0x8900)
-        gc_s = drawable.new_gc(foreground=grey,background=grey)
-        gc_h = drawable.new_gc(foreground=lgrey,background=lgrey)
+        lgrey = colormap.alloc_color(0xB000,0xB000,0xB000)
+        lblue = colormap.alloc_color(0x5000,0x8000,0xD000)
+        blue = colormap.alloc_color(0x0500,0x0500,0xA000)
+        dblue = colormap.alloc_color(0x1000,0x1000,0x5000)
+        gold = colormap.alloc_color(0xEF00,0xF700,0x4900)
         white = colormap.alloc_color('white')
-        gc_v = drawable.new_gc(foreground=white)
-        colormap=drawable.get_colormap()
         black = colormap.alloc_color('black')
         green = colormap.alloc_color('green')
+        red = colormap.alloc_color('red')
+        gc_s = drawable.new_gc(foreground=lgrey,background=lgrey)
+        gc_h = drawable.new_gc(foreground=lblue,background=lblue)
+        gc_v = drawable.new_gc(foreground=gold)
         gc_g = drawable.new_gc(foreground=green)
-        red= colormap.alloc_color('red')
         gc_r = drawable.new_gc(foreground=red)
 
 
@@ -721,9 +724,9 @@ class ImageBrowser(gtk.HBox):
                 try:
                     th=self.active_view(i).thumb
                     (thumbwidth,thumbheight)=th.get_width(),th.get_height()
-                    adjy=self.geo_pad/2+(128-thumbheight)/2-3
-                    adjx=self.geo_pad/2+(128-thumbwidth)/2-3
-                    drawable.draw_rectangle(gc_v, True, int(x+adjx), int(y+adjy), thumbwidth+6, thumbheight+6)
+                    adjy=self.geo_pad/2+(128-thumbheight)/2-6
+                    adjx=self.geo_pad/2+(128-thumbwidth)/2-6
+                    drawable.draw_rectangle(gc_v, True, int(x+adjx), int(y+adjy), thumbwidth+12, thumbheight+12)
                 except:
                     pass
 #            drawable.draw_rectangle(gc, True, x+self.geo_pad/4, y+self.geo_pad/4, self.geo_thumbwidth+self.geo_pad/2, self.geo_thumbheight+self.geo_pad/2)
