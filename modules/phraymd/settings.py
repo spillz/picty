@@ -63,6 +63,14 @@ layout={}  #the layout of the user interface
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
 dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
+raw_image_types = {
+'image/x-adobe-dng':[dcraw_cmd],
+'image/x-canon-crw':[dcraw_cmd],
+'image/x-canon-cr2':[dcraw_cmd],
+'image/x-nikon-nef':[dcraw_cmd],
+'image/x-pentax-pef':[dcraw_cmd],
+'image/x-olympus-orf':[dcraw_cmd],
+}
 video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
 
 

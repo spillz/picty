@@ -407,18 +407,25 @@ def orient_image(image,meta):
     return image
 
 
+
 def load_image(item,collection,interrupt_fn,draft_mode=False):
     '''
     load a PIL image and store it in item.image
     '''
     itemfile=collection.get_path(item)
+    mimetype=io.get_mime_type(itemfile)
+    oriented=False
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
-        if io.get_mime_type(itemfile)=='image/x-adobe-dng': ##for extraction with dcraw
+        if not mimetype.startswith('image'):
+            print 'No image available for item',item,'with mimetype',mimetype
+            item.image=False
+            return False
+        print 'Loading Image:',item,mimetype
+        if io.get_mime_type(itemfile) in settings.raw_image_types: ##for extraction with dcraw
             raise TypeError
         image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
-        print 'opened image',item.uid,image
 #        parsed version
         if not draft_mode and image.format=='JPEG':
             #parser doesn't seem to work correctly on anything but JPEGs
@@ -432,27 +439,40 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
                 imdata=f.read(10000)
             f.close()
             image = p.close()
-            print 'parsed image with PIL'
+            print 'Parsed image with PIL'
     except:
         try:
-            cmd=settings.dcraw_cmd%(itemfile,)
+            if mimetype in settings.raw_image_types:
+                cmd=settings.raw_image_types[mimetype][0]%(itemfile,)
+            else:
+                cmd=settings.dcraw_cmd%(itemfile,)
             imdata=os.popen(cmd).read()
             if not imdata or len(imdata)<100:
                 cmd=settings.dcraw_backup_cmd%(itemfile,)
+                oriented=True
                 imdata=os.popen(cmd).read()
                 if not interrupt_fn():
                     return False
             p = ImageFile.Parser()
             p.feed(imdata)
             image = p.close()
-            print 'parsed image with DCRAW'
+            print 'Parsed image with DCRAW'
         except:
+            import sys
+            import traceback
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print 'Error Loading Image',item,mimetype
+            print tb_text
             item.image=False
             return False
+    print item.meta
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
     if interrupt_fn():
-        item.image=orient_image(image,item.meta)
+        if oriented:
+            item.image=orient_image(image,{})
+        else:
+            item.image=orient_image(image,item.meta)
     try:
         item.imagergba='A' in item.image.getbands()
     except:
