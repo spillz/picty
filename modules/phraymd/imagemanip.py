@@ -426,6 +426,7 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
         if io.get_mime_type(itemfile) in settings.raw_image_types: ##for extraction with dcraw
             raise TypeError
         image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+        raise
 #        parsed version
         if not draft_mode and image.format=='JPEG':
             #parser doesn't seem to work correctly on anything but JPEGs
@@ -442,21 +443,28 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
             print 'Parsed image with PIL'
     except:
         try:
-            if mimetype in settings.raw_image_types:
-                cmd=settings.raw_image_types[mimetype][0]%(itemfile,)
+            if mimetype in gdk_mime_types:
+                image_pb=gtk.gdk.pixbuf_new_from_file(itemfile)
+                image_pb=orient_pixbuf(image_pb,item.meta)
+                width,height = image_pb.get_width(),image_pb.get_height()
+                image=Image.fromstring("RGB",(width,height),image_pb.get_pixels() ) ##TODO: What about RGBA and grey scale images?
+                print 'Parsed image with GDK'
             else:
-                cmd=settings.dcraw_cmd%(itemfile,)
-            imdata=os.popen(cmd).read()
-            if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(itemfile,)
-                oriented=True
+                if mimetype in settings.raw_image_types:
+                    cmd=settings.raw_image_types[mimetype][0]%(itemfile,)
+                else:
+                    cmd=settings.dcraw_cmd%(itemfile,)
                 imdata=os.popen(cmd).read()
-                if not interrupt_fn():
-                    return False
-            p = ImageFile.Parser()
-            p.feed(imdata)
-            image = p.close()
-            print 'Parsed image with DCRAW'
+                if not imdata or len(imdata)<100:
+                    cmd=settings.dcraw_backup_cmd%(itemfile,)
+                    oriented=True
+                    imdata=os.popen(cmd).read()
+                    if not interrupt_fn():
+                        return False
+                p = ImageFile.Parser()
+                p.feed(imdata)
+                image = p.close()
+                print 'Parsed image with DCRAW'
         except:
             import sys
             import traceback
@@ -632,7 +640,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
             return False
     return False
 
-
+gdk_mime_types=set([m for n in gtk.gdk.pixbuf_get_formats() for m in n['mime_types']])
 
 def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
     '''
@@ -642,22 +650,22 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
     affects thumb, thumburi members of item
     '''
     itemfile=collection.get_path(item)
+    thumb_pb=None
     if cache==None and thumb_factory.has_valid_failed_thumbnail(itemfile,int(item.mtime)):
         if not force:
             item.thumb=False
             return False
-        print 'forcing thumbnail creation'
+        print 'Forcing thumbnail creation'
         uri = io.get_uri(itemfile)
         thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
         if thumb_uri:
-            print 'removing failed thumb',thumb_uri
             os.remove(thumb_uri)
     if not force and item.thumb==False:
         return False
     delete_thumb(item)
     ##todo: could also try extracting the thumb from the image (essential for raw files)
     ## would not need to make the thumb in that case
-    print 'MAKING THUMB FOR',item.uid,itemfile
+    print 'Creating thumbnail for',item.uid,itemfile
     t=time.time()
     try:
         uri = io.get_uri(itemfile)
@@ -673,33 +681,43 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
                 image=Image.open(itemfile)
                 image.thumbnail((128,128),Image.ANTIALIAS)
             except:
-                cmd=settings.dcraw_cmd%(itemfile,)
-                imdata=os.popen(cmd).read()
-                if not imdata or len(imdata)<100:
-                    cmd=settings.dcraw_backup_cmd%(itemfile,)
+                mime=io.get_mime_type(itemfile)
+                if mime in gdk_mime_types:
+                    thumb_pb=gtk.gdk.pixbuf_new_from_file_at_size(itemfile,128,128)
+                    thumb_pb=orient_pixbuf(thumb_pb,item.meta)
+                    image=None
+                else:
+                    cmd=settings.dcraw_cmd%(itemfile,)
                     imdata=os.popen(cmd).read()
-#                pipe = subprocess.Popen(cmd, shell=True,
-#                        stdout=PIPE) ##, close_fds=True
-#                print pipe
-#                pipe=pipe.stdout
-#                print 'pipe opened'
-#                imdata=pipe.read()
-#                print 'pipe read'
-                p = ImageFile.Parser()
-                p.feed(imdata)
-                image = p.close()
-                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-            image=orient_image(image,item.meta)
-        thumbsize=image.size
-        thumb_pb=image_to_pixbuf(image)
+                    if not imdata or len(imdata)<100:
+                        cmd=settings.dcraw_backup_cmd%(itemfile,)
+                        imdata=os.popen(cmd).read()
+    #                pipe = subprocess.Popen(cmd, shell=True,
+    #                        stdout=PIPE) ##, close_fds=True
+    #                print pipe
+    #                pipe=pipe.stdout
+    #                print 'pipe opened'
+    #                imdata=pipe.read()
+    #                print 'pipe read'
+                    p = ImageFile.Parser()
+                    p.feed(imdata)
+                    image = p.close()
+                    image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+                    image=orient_image(image,item.meta)
+        if image is not None:
+            thumb_pb=image_to_pixbuf(image)
         if thumb_pb==None:
             raise TypeError
     except:
         item.thumb=False
         item.thumburi=None
         if cache==None:
-            print 'creating FAILED thumbnail',item
             thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
+        print 'Error creating thumbnail for',item
+        import sys
+        import traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print tb_text
         return False
     width=thumb_pb.get_width()
     height=thumb_pb.get_height()
@@ -715,11 +733,10 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
             item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
             thumb_pb.save(item.thumburi,"png")
     except:
-        print 'creating FAILED thumbnail',item
+        print 'Error writing thumbnnail for',item
         import sys
         import traceback
         tb_text=traceback.format_exc(sys.exc_info()[2])
-        print 'Error loading thumb from preview icon',item.uid
         print tb_text
         item.thumb=False
         item.thumburi=None
