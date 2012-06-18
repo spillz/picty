@@ -187,7 +187,7 @@ class LocalDir(localstorebin.Collection):
         self.load_meta=True #image will be loaded into the collection and view without metadata
         self.load_embedded_thumbs=True #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
-        self.trash_location=None #none defaults to <collection dir>/.trash
+        self.trash_location='OPEN-DESKTOP' #none defaults to <collection dir>/.trash
         self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
         self.monitor_image_dirs=True
         self.rescan_at_open=True

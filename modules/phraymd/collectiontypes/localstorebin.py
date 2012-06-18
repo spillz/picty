@@ -217,13 +217,17 @@ class LocalStorePrefWidget(gtk.VBox):
         self.use_internal_thumbnails_check.set_active(False)
         self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
         self.store_thumbs_combo.set_form_data(0)
+        self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
+        self.trash_location_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
-        self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.recursive_button,False)
+        self.a_box.pack_start(self.rescan_check,False)
+##        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
+        self.a_box.pack_start(self.trash_location_combo,False)
         self.pack_start(self.a_frame,False)
         self.show_all()
         if value_dict:
@@ -244,6 +248,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'trash_location':'OPEN-DESKTOP' if self.trash_location_combo.get_form_data()==0 else None,
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
                 'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
                 }
@@ -257,6 +262,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
+        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1),
 
 class NewLocalStoreWidget(gtk.VBox):
     def __init__(self,main_dialog,value_dict):
@@ -288,12 +294,17 @@ class NewLocalStoreWidget(gtk.VBox):
         self.store_thumbnails_check.set_active(True)
         self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
         self.monitor_images_check.set_active(True)
-        self.a_box.pack_start(self.rescan_check,False)
+        self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
+        self.trash_location_combo.set_form_data(0)
+
+
         self.a_box.pack_start(self.recursive_button,False)
+        self.a_box.pack_start(self.rescan_check,False)
+##        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
-        self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
-        self.a_box.pack_start(self.monitor_images_check,False)
+        self.a_box.pack_start(self.store_thumbs_combo,False)
+        self.a_box.pack_start(self.trash_location_combo,False)
         #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
 
         self.pack_start(self.a_frame,False)
@@ -329,6 +340,7 @@ class NewLocalStoreWidget(gtk.VBox):
                 'monitor_image_dirs':self.monitor_images_check.get_active(),
                 'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
+                'trash_location':'OPEN-DESKTOP' if self.trash_location_combo.get_form_data()==0 else None,
                 }
 
     def set_values(self,val_dict):
@@ -342,6 +354,7 @@ class NewLocalStoreWidget(gtk.VBox):
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
         self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1),
 
 
 def create_empty_localstore(name,prefs,overwrite_if_exists=False):
@@ -408,7 +421,7 @@ class Collection(baseobjects.CollectionBase):
         self.load_meta=True #image will be loaded into the collection and view without metadata
         self.load_embedded_thumbs=False #only relevant if load_metadata is true
         self.load_preview_icons=False #only relevant if load_metadata is false
-        self.trash_location=None #none defaults to <collection dir>/.trash
+        self.trash_location='OPEN-DESKTOP' #none defaults to <collection dir>/.trash
         self.thumbnail_cache_dir=None #use gnome/freedesktop if none, otherwise specifies a directory (usually a hidden folder below the image collection folder)
         self.monitor_image_dirs=True
         self.store_thumbs_with_images=False
@@ -422,6 +435,8 @@ class Collection(baseobjects.CollectionBase):
 
         if prefs:
             self.set_prefs(prefs)
+
+        print '########################TRASH',self.trash_location
 
         self.id=self.name
 
@@ -748,14 +763,17 @@ class Collection(baseobjects.CollectionBase):
     def delete_item(self,item):
         'remove the item from the collection and the underlying filestore'
         try:
-            trashdir=os.path.join(self.image_dirs[0],'.trash')
-            empty,imdir,relpath=self.get_path(item).partition(self.image_dirs[0])
-            relpath=relpath.strip('/')
-            if relpath:
-                dest=os.path.join(trashdir,relpath)
-                if os.path.exists(dest):
-                    os.remove(dest)
-                os.renames(self.get_path(item),dest)
+            if self.trash_location is None:
+                trashdir=os.path.join(self.image_dirs[0],'.trash')
+                empty,imdir,relpath=self.get_path(item).partition(self.image_dirs[0])
+                relpath=relpath.strip('/')
+                if relpath:
+                    dest=os.path.join(trashdir,relpath)
+                    if os.path.exists(dest):
+                        os.remove(dest)
+                    os.renames(self.get_path(item),dest)
+            elif self.trash_location=='OPEN-DESKTOP':
+                io.trash_file(self.get_path(item))
             self.delete_thumbnail(item)
             self.delete(item) ##todo: lock the image browser??
             return True

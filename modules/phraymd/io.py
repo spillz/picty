@@ -151,6 +151,12 @@ try:
         except gio.Error:
             raise IOError ##todo: reuse the error message
 
+    def trash_file(dest):
+        try:
+            gio.File.trash(gio.File(dest))
+        except gio.Error:
+            raise IOError ##todo: reuse the error message
+
 except ImportError:
     import gnomevfs
     import subprocess
