@@ -52,9 +52,9 @@ def get_true_path(path):
         return None
 
 try:
-    print 'Using gio'
     import gio
     import gobject
+    print 'Using gio'
 
     def get_preview_icon_data(path):
         ifile=gio.File(path)
@@ -161,6 +161,7 @@ except ImportError:
     import gnomevfs
     import subprocess
     import gobject
+    import datetime
     print 'Using gnomevfs'
 
     def get_uri(path):
@@ -200,6 +201,29 @@ except ImportError:
 
     def remove_file(dest):
         os.remove(dest)
+
+    def trash_file(src):
+        dest_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/files')
+        fname=os.path.split(src)[1]
+        dest=os.path.join(dest_dir,fname)
+        dest1=dest
+        i=1
+        while os.path.exists(dest1):
+            dest1=dest+'.%i'%(i,)
+            i+=1
+        now=datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        move_file(src,dest1)
+
+        info_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/info')
+        info=os.path.join(info_dir,fname+'.trashinfo')
+        info_content='''[Trash Info]
+Path=%s
+DeletionDate=%s
+'''%(src,now)
+        f=open(info,'wb')
+        f.write(info_content)
+        f.close()
+
 
     class VolumeMonitor(gobject.GObject):
         __gsignals__={
