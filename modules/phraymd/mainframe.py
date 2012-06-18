@@ -275,6 +275,8 @@ class MainFrame(gtk.VBox):
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
+        ##window.add_events(gtk.gdk.WINDOW_STATE)
+        window.connect("window-state-event", self.iv.window_state_changed)
         self.plugmgr.init_plugins(self)
 
         if len(settings.layout)>0:
@@ -949,7 +951,7 @@ class MainFrame(gtk.VBox):
                     else:
                         self.active_browser().remove_viewer(self.iv)
                         self.browser_box.pack_start(self.iv,True)
-                        self.iv.ImageFullscreen()
+                        self.iv.ImageFullscreen(self.window.get_size())
                         self.view_image(self.iv.item)
                         self.toolbar1.hide()
                         self.info_bar.hide()

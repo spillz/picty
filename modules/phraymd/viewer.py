@@ -274,8 +274,16 @@ class ImageViewer(gtk.VBox):
         self.imarea.grab_focus()
         return True
 
-    def ImageFullscreen(self):
+    def ImageFullscreen(self,size):
         self.fullscreen=True
+        screen=gtk.gdk.screen_get_default()
+        if screen is not None:
+            w=screen.get_width()
+            h=screen.get_height()
+            if w>0 and h>0:
+                self.resize_and_refresh_view(w,h,'fit')
+        self.freeze_image_refresh=True
+        self.fullscreen_size_hint=size
 
     def ImageNormal(self):
         self.fullscreen=False
@@ -400,8 +408,15 @@ class ImageViewer(gtk.VBox):
             return -1
         return self.hover_cmds.get_command(x,y,4,4,4,self.item,True)
 
+    def window_state_changed(self, widget, event):
+        if event.changed_mask & gtk.gdk.WINDOW_STATE_FULLSCREEN:
+            self.freeze_image_refresh=False
+            self.resize_and_refresh_view()
+
     def resize_and_refresh_view(self,w=None,h=None,zoom=None):
         #forces an image to be resized with a call to the worker thread
+        if self.freeze_image_refresh:
+            return
         if zoom==None:
             zoom=self.zoom_level
         if w==None:
@@ -412,6 +427,8 @@ class ImageViewer(gtk.VBox):
 
     def redraw_view(self):
         #forces an image to be resized with a call to the worker thread
+        if self.freeze_image_refresh:
+            return
         self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 
     def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
@@ -423,7 +440,7 @@ class ImageViewer(gtk.VBox):
                 return True
 
     def configure_signal(self,obj,event):
-        if not self.freeze_image_refresh and (self.geo_width!=event.width or self.geo_height!=event.height):
+        if (self.geo_width!=event.width or self.geo_height!=event.height):
             self.geo_width=event.width
             self.geo_height=event.height
             self.update_scrollbars()
@@ -435,6 +452,8 @@ class ImageViewer(gtk.VBox):
         self.realize_signal(event)
 
     def realize_signal(self,event):
+        if self.freeze_image_refresh:
+            return
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()

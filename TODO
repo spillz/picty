@@ -51,6 +51,10 @@ As stuff is completed or plans change the list should be updated.
   * lossless image manipulation options (keep record of changes, and a cached version
     of the altered image)
   * support for XMP sidecars (for images that don't support metadata read/write)
+    * XMP sidecar policies
+        1. Copy all metadata from source image/Store only changes from the source image
+        2. Use for images that don't support write/Use for all images
+    * XMP
 
 * Update the browser
     * be more consistent with user theme (colors, look and feel)

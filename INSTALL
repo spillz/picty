@@ -31,6 +31,8 @@ Installing using your package manager
 You can also use checkinstall to create a package that is compatible with many
 linux package management systems (for example, RPM, Deb)
 
+(Make sure you do not already have phraymd installed into the system folders before running these steps)
+
 Run the following as root:
 
 checkinstall --pkgversion=0.2 --maintainer="joebloggs@freesoftware" \
