@@ -678,35 +678,38 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
             image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
         else:
             try:
-                image=Image.open(itemfile)
-                image.thumbnail((128,128),Image.ANTIALIAS)
-            except:
                 mime=io.get_mime_type(itemfile)
                 if mime in gdk_mime_types:
                     thumb_pb=gtk.gdk.pixbuf_new_from_file_at_size(itemfile,128,128)
                     thumb_pb=orient_pixbuf(thumb_pb,item.meta)
                     image=None
+                    print 'Opened with GDK'
                 else:
-                    cmd=settings.dcraw_cmd%(itemfile,)
+                    image=Image.open(itemfile)
+                    image.thumbnail((128,128),Image.ANTIALIAS)
+                    print 'Opened with PIL'
+            except:
+                cmd=settings.dcraw_cmd%(itemfile,)
+                imdata=os.popen(cmd).read()
+                if not imdata or len(imdata)<100:
+                    cmd=settings.dcraw_backup_cmd%(itemfile,)
                     imdata=os.popen(cmd).read()
-                    if not imdata or len(imdata)<100:
-                        cmd=settings.dcraw_backup_cmd%(itemfile,)
-                        imdata=os.popen(cmd).read()
-    #                pipe = subprocess.Popen(cmd, shell=True,
-    #                        stdout=PIPE) ##, close_fds=True
-    #                print pipe
-    #                pipe=pipe.stdout
-    #                print 'pipe opened'
-    #                imdata=pipe.read()
-    #                print 'pipe read'
-                    p = ImageFile.Parser()
-                    p.feed(imdata)
-                    image = p.close()
-                    image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
-                    image=orient_image(image,item.meta)
+#                pipe = subprocess.Popen(cmd, shell=True,
+#                        stdout=PIPE) ##, close_fds=True
+#                print pipe
+#                pipe=pipe.stdout
+#                print 'pipe opened'
+#                imdata=pipe.read()
+#                print 'pipe read'
+                p = ImageFile.Parser()
+                p.feed(imdata)
+                image = p.close()
+                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+                image=orient_image(image,item.meta)
+                print 'Opened with DCRAW'
         if image is not None:
             thumb_pb=image_to_pixbuf(image)
-        if thumb_pb==None:
+        if thumb_pb is None:
             raise TypeError
     except:
         item.thumb=False
