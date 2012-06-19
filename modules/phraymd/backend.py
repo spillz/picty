@@ -337,11 +337,10 @@ class LoadCollectionJob(WorkerJob):
         jobs=self.worker.jobs
         jobs.clear(None,self.collection,self)
         collection=self.collection
-        log.info('Loading collection '+self.collection_file)
+        log.info('Loading collection file %s with type %s',self.collection_file,collection.type)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
-        print 'OPENING COLLECTION',collection.id,collection.type
         if collection._open():
-            print 'OPENED',collection.id,collection.image_dirs[0]
+            log.info('Collection opened %s, with collection location %s',collection.id,collection.image_dirs[0])
             if os.path.exists(collection.image_dirs[0]):
                 collection.online=True
                 if self.browser!=None:
@@ -357,7 +356,7 @@ class LoadCollectionJob(WorkerJob):
             gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
-            log.error('Load collection failed')
+            log.error('Load collection failed %s %s',collection.id,collection.type)
         self.collection_file=''
         return True
 
@@ -401,8 +400,7 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
     def __call__(self):
         self.worker.jobs.clear(None,self.collection,self)
         idle_add(self.browser.update_status,None,0.5,'Closing Collection '+self.collection.name)
-        log.info('Saving '+str(self.collection.id))
-        print 'started save job on',self.collection.id
+        log.info('Closing and saving collection %s',self.collection.id)
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.online=False
@@ -426,6 +424,7 @@ class WalkDirectoryJob(WorkerJob):
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
+                log.info('Starting directory walk on %s',collection.image_dirs[0])
                 scan_dir=self.collection.image_dirs[0]
                 self.collection_walker=os.walk(scan_dir)
                 self.done=False
@@ -433,9 +432,8 @@ class WalkDirectoryJob(WorkerJob):
         except StopIteration:
             self.notify_items=[]
             self.collection_walker=None
-            log.error('Aborted directory walk on '+collection.image_dirs[0])
+            log.error('Aborted directory walk on %s',collection.image_dirs[0])
             return True
-        log.debug('starting directory walk on '+collection.image_dirs[0])
         scan_dir=collection.image_dirs[0]
         while jobs.ishighestpriority(self):
             try:
@@ -496,7 +494,7 @@ class WalkDirectoryJob(WorkerJob):
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
                 self.notify_items=[]
         if self.done:
-            log.debug('Directory walk complete for '+collection.image_dirs[0])
+            log.info('Directory walk complete for '+collection.image_dirs[0])
             idle_add(self.browser.resize_and_refresh_view,self.collection)
             idle_add(self.browser.update_status,2,'Search complete')
             if self.notify_items:
@@ -512,8 +510,6 @@ class WalkDirectoryJob(WorkerJob):
             if collection.verify_after_walk:
                 self.worker.queue_job_instance(VerifyImagesJob(self.worker,self.collection,self.browser))
             return True
-        ##log.debug('Directory walk pausing '+collection.image_dirs[0])
-        print jobs.gethighest()
         return False
 
 
@@ -533,15 +529,15 @@ class WalkSubDirectoryJob(WorkerJob):
         self.last_update_time=time.time()
         try:
             if not self.collection_walker:
+                log.info('Starting directory walk on %s',self.sub_dir)
                 scan_dir=self.sub_dir
                 self.collection_walker=os.walk(scan_dir)
                 pluginmanager.mgr.suspend_collection_events(self.collection)
         except StopIteration:
-            log.error('Aborted directory walk on '+self.sub_dir)
+            log.error('Aborted directory walk on %s',self.sub_dir)
             self.notify_items=[]
             self.collection_walker=None
             return True
-        log.debug('starting directory walk on '+self.sub_dir)
         while jobs.ishighestpriority(self):
             try:
                 root,dirs,files=self.collection_walker.next()
@@ -578,7 +574,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,self.collection)
         if self.done:
-            log.debug('Directory walk complete for '+self.sub_dir)
+            log.info('Directory walk complete for %s',self.sub_dir)
             idle_add(self.browser.resize_and_refresh_view,self.collection)
             idle_add(self.browser.update_status,2,'Search complete')
             if self.notify_items:
@@ -592,7 +588,6 @@ class WalkSubDirectoryJob(WorkerJob):
             pluginmanager.mgr.resume_collection_events(self.collection)
             return True
         else:
-            log.debug('Directory walk pausing '+self.sub_dir)
             return False
 
 
@@ -627,13 +622,13 @@ class BuildViewJob(WorkerJob):
 #        self.cancel=True
 
     def __call__(self):
-        print 'BUILD VIEW JOB',self.sort_key,self.pos,self.filter_text
         jobs=self.worker.jobs
         collection=self.collection
         view=self.collection.get_active_view()
         i=self.pos
         self.browser.lock.acquire()
         if i==0:
+            log.info('Building view for %s with sort key %s and filter %s',collection.id,self.sort_key,self.filter_text
             if self.sort_key:
                 view.sort_key_text=self.sort_key
             if view.sort_key_text:
@@ -651,7 +646,7 @@ class BuildViewJob(WorkerJob):
                 view.clear_filter(filter_text)
             view.empty()
             pluginmanager.mgr.callback('t_view_emptied',collection,view)
-            pluginmanager.mgr.suspend_collection_events(self.collection)
+            pluginmanager.mgr.suspend_collection_events(collection)
             idle_add(self.browser.update_view)
         lastrefresh=i
         self.browser.lock.release()
@@ -663,7 +658,7 @@ class BuildViewJob(WorkerJob):
                 self.browser.lock.release()
                 if i-lastrefresh>200:
                     lastrefresh=i
-                    idle_add(self.browser.resize_and_refresh_view,self.collection)
+                    idle_add(self.browser.resize_and_refresh_view,collection)
                     idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset):  ## and jobs.ishighestpriority(self)
@@ -671,10 +666,11 @@ class BuildViewJob(WorkerJob):
             return False
         else:
             self.pos=0
-            idle_add(self.browser.resize_and_refresh_view,self.collection)
+            idle_add(self.browser.resize_and_refresh_view,collection)
             idle_add(self.browser.update_status,2,'View rebuild complete')
             idle_add(self.browser.post_build_view)
-            pluginmanager.mgr.resume_collection_events(self.collection)
+            pluginmanager.mgr.resume_collection_events(collection)
+            log.info('Rebuild view complete for %s',collection.id)
             return True
 
 
@@ -704,7 +700,7 @@ class MapImagesJob(WorkerJob):
             if imagemanip.item_in_region(item,*self.region):
                 self.collection.load_thumbnail(item)
                 if item.thumb:
-                    log.debug('Map plugin: found item '+str(item)+' with coordinates onscreen')
+                    log.debug('Map plugin: found item %s with coordinates on current map view',item)
                     pb=imagemanip.scale_pixbuf(item.thumb,40)
                     self.pblist.append((item,pb))
                     self.im_count+=1
@@ -1018,10 +1014,10 @@ class VerifyImagesJob(WorkerJob):
         self.view=self.collection.get_active_view()
 
     def __call__(self):
-        print 'running verify job'
         jobs=self.worker.jobs
         collection=self.collection
         if self.countpos<0:
+            log.info('Starting image verification job')
             self.countpos=0
             pluginmanager.mgr.suspend_collection_events(self.collection)
         i=self.countpos  ##todo: make sure this gets initialized
@@ -1032,7 +1028,7 @@ class VerifyImagesJob(WorkerJob):
             if item.meta==False: ##TODO: This is a legacy check -- should remove eventually
                 item.meta=None
             if item.meta==None:
-                print 'verify loading metadata',item.uid
+                log.debug('Verify job loading metadata %s',item.uid)
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -1042,7 +1038,7 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.release()
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
             if not os.path.exists(collection.get_path(item)) or os.path.isdir(collection.get_path(item)) or collection.get_path(item)!=io.get_true_path(collection.get_path(item)):  ##todo: what if mimetype or size changed?
-                print 'verify delete missing item',item.uid
+                log.debug('Verify job delete missing item %s',item.uid)
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -1050,7 +1046,7 @@ class VerifyImagesJob(WorkerJob):
                 continue
             mtime=io.get_mtime(collection.get_path(item))
             if mtime!=item.mtime:
-                print 'verify mtime changed',item.uid,item.mtime,mtime
+                log.debug('Verify job mtime changed %s %s %s',item.uid,item.mtime,mtime)
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
@@ -1119,14 +1115,15 @@ class DirectoryUpdateJob(WorkerJob):
             collection,fullpath,action=self.queue.pop(0)
             relpath=collection.get_relpath(fullpath)
             if action in ('DELETE','MOVED_FROM'):
-                log.info('deleting '+fullpath)
                 if not os.path.exists(fullpath):
+                    log.debug('Removiing deleted item %s from collection %s',fullpath,collection.id)
                     self.browser.lock.acquire()
                     collection.delete(relpath)
                     self.browser.lock.release()
                     idle_add(self.browser.resize_and_refresh_view,collection)
             if action in ('MOVED_TO','MODIFY','CREATE'):
                 if os.path.exists(fullpath) and os.path.isfile(fullpath):
+                    log.debug('Adding new item %s to collection %s',fullpath,collection.id)
                     mimetype=io.get_mime_type(fullpath)
                     if not mimetype.lower().startswith('image') and not mimetype.lower().startswith('video'):
                         continue
@@ -1156,6 +1153,7 @@ class DirectoryUpdateJob(WorkerJob):
                         idle_add(self.browser.resize_and_refresh_view,collection)
                 if os.path.exists(fullpath) and os.path.isdir(fullpath):
                     if action=='MOVED_TO':
+                        log.debug('Adding new directory %s to collection %s',fullpath,collection.id)
                         self.worker.queue_job_instance(WalkSubDirectoryJob(self.worker,collection,self.browser,fullpath))
         if len(self.queue)==0:
             pluginmanager.mgr.resume_collection_events(self.collection)
@@ -1179,7 +1177,7 @@ class Worker:
         self.thread.start()
 
     def _loop(self):
-        print 'worker thread started'
+        log.info('Worker thread started')
         while 1:
             try:
                 rem_jobs=self.jobs.get_removed_jobs()
@@ -1191,7 +1189,7 @@ class Worker:
                     self.event.wait()
                 job=self.jobs.gethighest()
                 if isinstance(job,QuitJob):
-                    print 'quitting worker thread!'
+                    log.info('Worker thread finished')
                     return
                 if job:
                     if job():
@@ -1238,7 +1236,6 @@ class Worker:
         self.queue_job_instance(sj)
         while self.thread.isAlive(): ##todo: replace this with a notification
             time.sleep(0.1)
-        print 'quit returned'
 
     def request_map_images(self,region,callback):
         self.queue_job(MapImagesJob,region,callback)
@@ -1291,9 +1288,8 @@ class Worker:
 
     def deferred_dir_update(self):
         self.dirlock.acquire()
-        log.info('Deferred directory monitor event')
+        log.debug('Starting deferred directory monitor event handler')
         self.queue_job_instance(DirectoryUpdateJob(self,None,self.active_collection.browser,self.deferred_dir_update_queue[:])) #queue a verify job since we won't get individual image removal notifications
-
         del self.deferred_dir_update_queue[:]
         self.dirtimer=None
         self.dirlock.release()
@@ -1302,17 +1298,17 @@ class Worker:
         homedir=os.path.normpath(collection.image_dirs[0])
         #ignore notifications on files in a hidden dir or not in the image dir
         if os.path.normpath(os.path.commonprefix([path,homedir]))!=homedir:
-            log.warning('change_notify invalid '+path+' '+action)
+            log.debug('Invalid directory change notification: %s %s',path,action)
             return
         ppath=path
         while ppath!=homedir:
             ppath,name=os.path.split(ppath)
             ppath=os.path.normpath(ppath)
             if name.startswith('.') or name=='':
-                log.warning('change_notify invalid '+path+' '+action)
+                log.debug('Invalid directory change notification: %s %s',path,action)
                 return
         if isdir:
-            log.debug('directory changed '+path+' '+action)
+            log.debug('Directory changed notification on path: %s %s',path,action)
             if action in ('MOVED_FROM','DELETE'):
                 self.queue_job_instance(VerifyImagesJob(self,collection,self.active_collection.browser)) #queue a verify job since we won't get individual image removal notifications
                 return
@@ -1328,4 +1324,4 @@ class Worker:
         self.dirtimer.start()
         self.deferred_dir_update_queue.append((collection,path,action))
         self.dirlock.release()
-        log.debug('file event '+action+' on '+path)
+        log.debug('File change event: %s %s',path,action)
