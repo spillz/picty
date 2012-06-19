@@ -629,7 +629,7 @@ class BuildViewJob(WorkerJob):
         i=self.pos
         self.browser.lock.acquire()
         if i==0:
-            log.info('Building view for %s with sort key %s and filter %s',collection.id,self.sort_key,self.filter_text
+            log.info('Building view for %s with sort key %s and filter %s',collection.id,self.sort_key,self.filter_text)
             if self.sort_key:
                 view.sort_key_text=self.sort_key
             if view.sort_key_text:
