@@ -790,7 +790,7 @@ def load_thumb(item,collection,cache=None):
     ##todo: rename load_thumb_from_cache
     ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon and load_metadata
     if item.thumb==False:
-        return
+        return False
     image=None
     try:
         if item.thumburi:

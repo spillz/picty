@@ -226,7 +226,7 @@ class ThumbnailJob(WorkerJob):
         self.worker.jobs.clear(CollectionUpdateJob,self.collection)
         while jobs.ishighestpriority(self) and len(self.queue_onscreen)>0:
             item=self.queue_onscreen.pop(0)
-            if item.thumb:
+            if item.thumb!=False and item.thumb is not None:
                 continue
             if not self.collection.load_thumbnail(item,False):
                 if item.thumb!=False and not self.collection.has_thumbnail(item):
@@ -236,7 +236,8 @@ class ThumbnailJob(WorkerJob):
             if i%20==0:
                 idle_add(self.browser.redraw_view,self.collection)
         if len(self.queue_onscreen)==0:
-            idle_add(self.browser.redraw_view,self.collection)
+            if i>0:
+                idle_add(self.browser.redraw_view,self.collection)
             if len(self.cu_job_queue)>0:
                 self.worker.queue_job_instance(CollectionUpdateJob(self.worker,self.collection,self.browser,self.cu_job_queue))
             return True
