@@ -426,7 +426,6 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
         if io.get_mime_type(itemfile) in settings.raw_image_types: ##for extraction with dcraw
             raise TypeError
         image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
-        raise
 #        parsed version
         if not draft_mode and image.format=='JPEG':
             #parser doesn't seem to work correctly on anything but JPEGs
@@ -441,11 +440,14 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
             f.close()
             image = p.close()
             print 'Parsed image with PIL'
+        else:
+            raise TypeError
     except:
         try:
             if mimetype in gdk_mime_types:
                 image_pb=gtk.gdk.pixbuf_new_from_file(itemfile)
                 image_pb=orient_pixbuf(image_pb,item.meta)
+                oriented=True
                 width,height = image_pb.get_width(),image_pb.get_height()
                 image=Image.fromstring("RGB",(width,height),image_pb.get_pixels() ) ##TODO: What about RGBA and grey scale images?
                 print 'Parsed image with GDK'
