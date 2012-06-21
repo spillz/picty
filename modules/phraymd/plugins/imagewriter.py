@@ -46,9 +46,11 @@ class ImageWriteJob(backend.WorkerJob):
             self.item.image.save(self.dest_path)
         except:
             gobject.idle_add(self.plugin.image_write_failed)
-            return
+            return True
         if not metadata.copy_metadata(self.item.meta,self.src_path,self.dest_path):
             gobject.idle_add(self.plugin.image_write_meta_failed)
+            return True
+        gobject.idle_add(self.plugin.image_write_done)
         return True
 
 
