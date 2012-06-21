@@ -23,6 +23,7 @@ License:
 import os.path
 
 import gtk
+import gobject
 import Image
 
 from phraymd import imagemanip
@@ -30,6 +31,26 @@ from phraymd import settings
 from phraymd import pluginbase
 from phraymd import dialogs
 from phraymd import metadata
+from phraymd import backend
+
+class ImageWriteJob(backend.WorkerJob):
+    def __init__(self,worker,collection,browser,plugin,item,src_path,dest_path):
+        backend.WorkerJob.__init__(self,'IMAGEWRITE',950,worker,collection,browser)
+        self.plugin=plugin
+        self.item=item
+        self.src_path=src_path
+        self.dest_path=dest_path
+
+    def __call__(self):
+        try:
+            self.item.image.save(self.dest_path)
+        except:
+            gobject.idle_add(self.plugin.image_write_failed)
+            return
+        if not metadata.copy_metadata(self.item.meta,self.src_path,self.dest_path):
+            gobject.idle_add(self.plugin.image_write_meta_failed)
+        return True
+
 
 class ImageWriterPlugin(pluginbase.Plugin):
     name='ImageWriter'
@@ -41,6 +62,7 @@ class ImageWriterPlugin(pluginbase.Plugin):
     def plugin_init(self,mainframe,app_init):
         #register a button in the viewer to enter rotate mode
         self.viewer=mainframe.iv
+        self.worker=mainframe.tm
 
         self.unrotated_screen_image=None
         self.cur_size=None
@@ -99,13 +121,12 @@ class ImageWriterPlugin(pluginbase.Plugin):
         if os.path.exists(dest_path):
             if dialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+dest_path+"?",("_Cancel","_Overwrite"),1)==0:
                 return
-        try:
-            self.item.image.save(dest_path)
-        except:
-            dialogs.prompt_dialog("Save Failed","Could not save image\n"+dest_path,("_OK",),1)
-            return
-        if not metadata.copy_metadata(self.item.meta,src_path,dest_path):
-            dialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+dest_path,("_OK",),1)
+        self.worker.queue_job_instance(ImageWriteJob(self.worker,self.viewer.collection,None,self,self.item,src_path,dest_path))
+    def image_write_failed(self):
+        dialogs.prompt_dialog("Save Failed","Could not save image\n"+dest_path,("_OK",),1)
+    def image_write_meta_failed(self):
+        dialogs.prompt_dialog("Metadata could not be written","Warning: Could not write metadata to image image\n"+dest_path,("_OK",),1)
+    def image_write_done(self):
         self.reset()
     def write_cancel_callback(self,widget):
         self.reset(True)

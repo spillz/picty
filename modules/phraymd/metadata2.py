@@ -174,37 +174,24 @@ def copy_metadata(src_meta,src_file,destination_file):
     due to bugs in pyexiv2|exiv2, only the metadata in the
     module list 'apptags' are written
     '''
-    print 'copy metadata'
     if src_meta==False:
         return False
     try:
-        print 'reading src_item metadata'
         rawmeta_src = Exiv2Metadata(src_file)
         rawmeta_src.read()
     except:
-        print 'Error reading metadata for',src_file
+        print 'Error copying metadata: reading source',src_file
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
         return False
     try:
         rawmeta_dest = Exiv2Metadata(destination_file)
         rawmeta_dest.read()
-        for k in rawmeta_src.exif_keys:
-            try:
-                if k in appkeys:
-                    rawmeta_dest[k]=rawmeta_src[k]
-            except:
-                pass
-        for k in rawmeta_src.iptc_keys:
-            try:
-                if k in appkeys:
-                    rawmeta_dest[k]=rawmeta_src[k]
-            except:
-                pass
+        rawmeta_src.copy(rawmeta_dest)
         set_exiv2_meta(src_meta,rawmeta_dest)
         rawmeta_dest.write()
     except:
-        print 'Error changing metadata in destination file',destination_file
+        print 'Error copying metadata: destination file',destination_file
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
     return True
