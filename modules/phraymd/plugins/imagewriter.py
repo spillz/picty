@@ -88,23 +88,24 @@ class ImageWriterPlugin(pluginbase.Plugin):
         self.viewer.image_box.reorder_child(self.write_bar,0)
         self.item=item
     def write_do_callback(self,widget):
-        filename=self.filename_entry.get_text()
-        path,name=os.path.split(filename)
+        dest_path=self.filename_entry.get_text()
+        path,name=os.path.split(dest_path)
+        src_path=self.viewer.collection.get_path(self.item)
         if not name:
             return
         if not path:
-            path=self.viewer.collection.get_path(item)
-            filename=os.path.join(os.path.split(path)[0],name)
-        if os.path.exists(filename):
-            if dialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+filename+"?",("_Cancel","_Overwrite"),1)==0:
+            path=self.viewer.collection.get_path(self.item)
+            dest_path=os.path.join(os.path.split(path)[0],name)
+        if os.path.exists(dest_path):
+            if dialogs.prompt_dialog("File Exists","Do you want to overwrite\n"+dest_path+"?",("_Cancel","_Overwrite"),1)==0:
                 return
         try:
-            self.item.image.save(filename)
+            self.item.image.save(dest_path)
         except:
-            dialogs.prompt_dialog("Save Failed","Could not save image\n"+filename,("_OK",),1)
+            dialogs.prompt_dialog("Save Failed","Could not save image\n"+dest_path,("_OK",),1)
             return
-        if not metadata.copy_metadata(self.item.meta,path,filename):
-            dialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+filename,("_OK",),1)
+        if not metadata.copy_metadata(self.item.meta,src_path,dest_path):
+            dialogs.prompt_dialog("Save Failed","Warning: Could not write metadata to image image\n"+dest_path,("_OK",),1)
         self.reset()
     def write_cancel_callback(self,widget):
         self.reset(True)

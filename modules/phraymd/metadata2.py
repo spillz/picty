@@ -183,6 +183,8 @@ def copy_metadata(src_meta,src_file,destination_file):
         rawmeta_src.read()
     except:
         print 'Error reading metadata for',src_file
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
         return False
     try:
         rawmeta_dest = Exiv2Metadata(destination_file)
@@ -203,6 +205,8 @@ def copy_metadata(src_meta,src_file,destination_file):
         rawmeta_dest.write()
     except:
         print 'Error changing metadata in destination file',destination_file
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
     return True
 
 
