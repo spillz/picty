@@ -95,6 +95,8 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
         print 'Error reading metadata for',filename
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
+        if item.meta is None:
+            item.meta={}
         return False
 ##        item.meta=False
     item.mark_meta_saved()

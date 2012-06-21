@@ -582,8 +582,8 @@ class Collection(baseobjects.CollectionBase):
         '''
         add an item to the collection and notify plugin
         '''
-        print '####adding',item
         try:
+            print 'Adding',item,'to collection',self
             ind=bisect.bisect_left(self.items,item)
             if len(self.items)>ind>=0 and self.items[ind]==item:
                 raise LookupError
@@ -608,10 +608,10 @@ class Collection(baseobjects.CollectionBase):
         '''
         i=self.find(item)
         if i>=0:
+            print 'Removing',item,'from collection',self
             item=self.items[i]
             self.numselected-=item.selected
             self.items.pop(i)
-            print '****REMOVING',item
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
@@ -666,6 +666,7 @@ class Collection(baseobjects.CollectionBase):
     def copy_item(self,src_collection,src_item,prefs):
         'copy an item from another collection source'
         try:
+            print 'copying item',src_item,prefs
             name=os.path.split(src_item.uid)[1]
             dest_dir=prefs['base_dest_dir']
             src_filename=None
@@ -686,11 +687,18 @@ class Collection(baseobjects.CollectionBase):
                     else:
                         open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
+                    print 'Error copying file',src_item
+                    import traceback,sys
+                    tb_text=traceback.format_exc(sys.exc_info()[2])
+                    print tb_text
                     ##todo: log an error
                     ##todo: maybe better to re-raise the exception here
                     return False
                 src_filename=temp_filename
-                imagemanip.load_metadata(src_item,self.collection,src_filename)
+                try:
+                    imagemanip.load_metadata(src_item,self.collection,src_filename)
+                except:
+                    src_item.meta={}
             dest_path,dest_name=name_item(src_item,dest_dir,dest_name_template)
             if not src_collection.local_filesystem:
                 local_name=src_collection.get_file_name(src_item)
@@ -699,8 +707,7 @@ class Collection(baseobjects.CollectionBase):
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             dest_filename=os.path.join(dest_path,dest_name)
-            print 'copying dest filename',dest_filename
-            print 'action',prefs['action_if_exists']
+            print 'copying to dest filename',dest_filename
             if os.path.exists(dest_filename):
                 if prefs['action_if_exists']==EXIST_SKIP:
                     print 'SKIPPING',src_item
@@ -748,9 +755,9 @@ class Collection(baseobjects.CollectionBase):
             if not src_collection.local_filesystem:
                 item.init_meta(src_item.meta.copy(),self)
                 self.write_metadata(item)
-                self.load_metadata(item,self,notify_plugins=False)
+                self.load_metadata(item,notify_plugins=False)
             else:
-                self.load_metadata(item,self,missing_only=True,notify_plugins=False)
+                self.load_metadata(item,missing_only=True,notify_plugins=False)
             self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True

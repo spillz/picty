@@ -257,6 +257,7 @@ class CollectionUpdateJob(WorkerJob):
             item=self.queue.pop(0)
             if item.meta==None:
                 it=baseobjects.Item(item)
+                it.mtime=item.mtime
                 ##it.meta=item.meta.copy() ##Already none !!!
                 c.load_metadata(item)
                 self.browser.lock.acquire()
@@ -286,12 +287,13 @@ class RecreateThumbJob(WorkerJob):
             item=self.queue.pop(0)
             if item.meta==None:
                 it=baseobjects.Item(item)
-                it.meta=item.meta.copy()
                 c.load_metadata(item)
-                self.browser.lock.acquire()
-                if view.del_item(it):
-                    view.add_item(item)
-                self.browser.lock.release()
+                if item.meta is not None:
+                    it.meta=item.meta.copy()
+                    self.browser.lock.acquire()
+                    if view.del_item(it):
+                        view.add_item(item)
+                    self.browser.lock.release()
             if item.meta!=None:
                 c.make_thumbnail(item,None,True) ##force creation of thumbnail (3rd arg = True)
                 c.load_thumbnail(item)
@@ -471,7 +473,6 @@ class WalkDirectoryJob(WorkerJob):
                 item=baseobjects.Item(relpath)
                 item.mtime=mtime
                 if collection.find(item)<0:
-                    print 'Found new item',item.uid
                     if not collection.verify_after_walk:
                         if collection.load_meta:
                             collection.load_metadata(item,notify_plugins=False)
