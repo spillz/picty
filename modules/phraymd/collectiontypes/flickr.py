@@ -896,20 +896,21 @@ class FlickrCollection(baseobjects.CollectionBase):
             item.meta['PermAddMeta']=prefs['privacy']['metadata']
             sid,set_name=prefs['sets']['set']
             set_sets=False
-            if sid==None:
-                result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
-                sid=result.find('photoset').attrib['id']
-                self.sets.add_set([sid,set_name,''])
-                prefs['sets']['set'][0]=sid
-            else:
-                if self.sets.is_temp(sid):
+            if set_name:
+                if sid==None:
                     result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
-                    new_sid=result.find('photoset').attrib['id']
-                    self.sets.make_perm(sid,new_sid)
-                    sid=new_sid
+                    sid=result.find('photoset').attrib['id']
+                    self.sets.add_set([sid,set_name,''])
                     prefs['sets']['set'][0]=sid
                 else:
-                    set_sets=True
+                    if self.sets.is_temp(sid):
+                        result=self.flickr_client.photosets_create(title=set_name,primary_photo_id=photo_id)
+                        new_sid=result.find('photoset').attrib['id']
+                        self.sets.make_perm(sid,new_sid)
+                        sid=new_sid
+                        prefs['sets']['set'][0]=sid
+                    else:
+                        set_sets=True
             item.meta['Sets']=[sid]
             self.write_metadata(item,set_meta=False,set_tags=False,set_perms=True,set_sets=set_sets,set_rotate=False)
             self.load_metadata(item,notify_plugins=False)
@@ -1036,7 +1037,7 @@ class FlickrCollection(baseobjects.CollectionBase):
 ##              for original image if it exists
         result=self.flickr_client.photos_getInfo(photo_id=item.uid)
         ph=result.find('photo')
-        if not ph:
+        if ph is None:
             return False
         meta={}
         item.secret=ph.attrib['secret']
