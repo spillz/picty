@@ -416,9 +416,10 @@ class CollectionCombo(gtk.VBox):
         'add-dir':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user choooses the "browse dir" button
         'add-localstore':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()), #user chooses the "new collection" button
         }
-    def __init__(self,collection_set):
+    def __init__(self,model,coll_set):
         gtk.VBox.__init__(self)
-        self.model=collection_set
+        self.model=model
+        self.coll_set=coll_set
 
         self.combo=gtk.ComboBox(self.model)
         self.combo.set_row_separator_func(self.sep_cb)
@@ -468,9 +469,14 @@ class CollectionCombo(gtk.VBox):
             return self.model[iter][COLUMN_ID]
     def set_active(self,id):
         if id:
-            self.combo.set_active_iter(self.model.create_tree_iter(id))
-        else:
             self.combo.set_active(-1)
+        it=self.model.get_iter_first()
+        while it is not None:
+            if self.model[it][COLUMN_ID]==id:
+                self.combo.set_active_iter(it)
+                return
+            it=self.model.iter_next(it)
+        self.combo.set_active(-1)
     def get_active(self):
         return self.get_choice()
     def get_active_coll(self):
