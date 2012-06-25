@@ -166,8 +166,8 @@ class TransferPlugin(pluginbase.Plugin):
             box.pack_start(hbox,False)
             return tuple([hbox]+[widget[0] for widget in widget_data])
 
-        self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'))
-        self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('OPEN_SELECTOR'))
+        self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'),mainframe.coll_set)
+        self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('OPEN_SELECTOR'),mainframe.coll_set)
         self.vbox=gtk.VBox(False,8)
         combos=wb.LabeledWidgets([
                 ('src','From:',wb.HBox([('combo',self.src_combo),('view',gtk.Button("View"),False)],False,8)),
