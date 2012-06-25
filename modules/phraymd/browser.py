@@ -775,8 +775,8 @@ class ImageBrowser(gtk.HBox):
                         if overlay_height>0 and thumbwidth>0:
                             overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,thumbwidth,overlay_height)
                             overlay_pb.fill(0x0000007f)
-                            drawable.draw_pixbuf(None,overlay_pb,0,0,x+self.geo_pad/2+(self.geo_thumbwidth-thumbwidth)/2,ly,-1,-1)
-                        drawable.draw_layout(gc,lx,ly,l,white)
+                            drawable.draw_pixbuf(None,overlay_pb,0,0,int(x+self.geo_pad/2+(self.geo_thumbwidth-thumbwidth)/2),int(ly),-1,-1)
+                        drawable.draw_layout(gc,int(lx),int(ly),l,white)
                 offx=self.geo_pad/4
                 offy=self.geo_pad/4
                 self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind if self.hover_ind==i else -1,self.command_highlight_bd,item,self.hover_ind==i,drawable,gc,x+offx,y+offy,self.geo_pad/6)
