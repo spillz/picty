@@ -127,20 +127,24 @@ try:
     def app_info_get_default_for_type(mime):
         return gio.app_info_get_default_for_type(mime)
 
-    def copy_file(src,dest,overwrite=False,follow_symlinks=False):
+    def copy_file(src,dest,overwrite=False,follow_symlinks=True):
         try:
             flags=0
-            if overwrite: flags|=gio.G_FILE_COPY_OVERWRITE
-            if follow_symlinks: flags|=gio.G_FILE_COPY_NOFOLLOW_SYMLINKS
+            if overwrite:
+                flags|=gio.FILE_COPY_OVERWRITE
+            if not follow_symlinks:
+                flags|=gio.FILE_COPY_NOFOLLOW_SYMLINKS
             gio.File.copy(gio.File(src),gio.File(dest),flags=flags)
         except gio.Error:
             raise IOError ##todo: reuse the error message
 
-    def move_file(src,dest,overwrite=False,follow_symlinks=False):
+    def move_file(src,dest,overwrite=False,follow_symlinks=True):
         try:
             flags=0
-            if overwrite: flags|=gio.G_FILE_COPY_OVERWRITE
-            if follow_symlinks: flags|=gio.G_FILE_COPY_NOFOLLOW_SYMLINKS
+            if overwrite:
+                flags|=gio.FILE_COPY_OVERWRITE
+            if not follow_symlinks:
+                flags|=gio.FILE_COPY_NOFOLLOW_SYMLINKS
             gio.File.move(gio.File(src),gio.File(dest),flags=flags)
         except gio.Error:
             raise IOError ##todo: reuse the error message

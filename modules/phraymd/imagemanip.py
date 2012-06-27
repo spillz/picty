@@ -225,35 +225,66 @@ def item_in_region(item,lat0,lon0,lat1,lon1):
 
 
 
-def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing_only=False):
-    if item.meta!=None:
+def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing_only=False,check_for_sidecar=False,notify_plugins=True):
+    if item.meta is not None:
         meta=item.meta.copy()
     else:
-        meta=item.meta
+        meta=None
     if filename is None:
         if collection is not None:
             filename=collection.get_path(item)
-    result=metadata.load_metadata(item,filename,get_thumbnail,missing_only)
+    print 'loading metadata for item',item
+    if check_for_sidecar and 'sidecar' not in item.__dict__:
+        p=os.path.splitext(collection.get_path(item))[0]+'.xmp'
+        if os.path.exists(p):
+            item.sidecar=collection.get_relpath(p)
+        else:
+            p=collection.get_path(item)+'.xmp'
+            if os.path.exists(p):
+                item.sidecar=collection.get_relpath(p)
+    if check_for_sidecar and 'sidecar' in item.__dict__:
+        if os.path.exists(collection.get_path(item.sidecar)):
+            result=metadata.load_sidecar(item,collection.get_path(item.sidecar),missing_only)
+            if get_thumbnail:
+                metadata.load_thumbnail(item,collection.get_path(item))
+        else:
+            del item.sidecar
+            result=metadata.load_metadata(item,filename,get_thumbnail,missing_only)
+    else:
+        result=metadata.load_metadata(item,filename,get_thumbnail,missing_only)
     if result:
 ##PICKLED DICT
 #        if isinstance(item.meta,dict):
 #            item.meta=imageinfo.PickledDict(item.meta)
         if item.thumb and get_thumbnail:
             item.thumb=orient_pixbuf(item.thumb,item.meta)
-        if collection!=None and item.meta!=meta:
+        if collection is not None and notify_plugins and item.meta!=meta:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,item,meta)
     return result
 
 
-def save_metadata(item,collection,cache=None):
+def save_metadata(item,collection,cache=None,sidecar_on_failure=True):
     '''
     save the writable key values in item.meta to the image (translating phraymd native keys to IPTC/XMP/Exif standard keys as necessary)
     '''
     fname=collection.get_path(item)
-    if metadata.save_metadata(item,filename=fname):
+    if 'sidecar' in item.__dict__:
+        if os.path.exists(collection.get_path(item.sidecar)):
+            result = metadata.save_sidecar(item,collection.get_path(item.sidecar))
+        else:
+            del item.sidecar
+            result = metadata.save_metadata(item,fname)
+    else:
+        result = metadata.save_metadata(item,fname)
+    if result:
         item.mtime=io.get_mtime(fname) ##todo: this and the next line should be a method of the image class
         update_thumb_date(item,collection,cache)
         return True
+    else:
+        if sidecar_on_failure and 'sidecar' not in item.__dict__:
+            item.sidecar=item.uid + '.xmp'
+            metadata.create_sidecar(item,collection.get_path(item),collection.get_path(item.sidecar))
+            return metadata.save_sidecar(item,collection.get_path(item.sidecar))
     return False
 
 

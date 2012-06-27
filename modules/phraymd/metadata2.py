@@ -29,6 +29,9 @@ representation (works with pyexiv2 version 0.2 and later)
 
 import pyexiv2
 import gtk
+import tempfile
+import io
+import os.path
 ##todo: reimplement for xmp support
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
@@ -56,8 +59,6 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
     thumbnail - if True, load the thumbnail from the file
     missing_only - if True, will set keys that aren't already present in the item
     '''
-##    if item.meta==False:
-##        return
     try:
         if not filename:
             filename=item.uid
@@ -98,7 +99,6 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
         if item.meta is None:
             item.meta={}
         return False
-##        item.meta=False
     item.mark_meta_saved()
     return True
 
@@ -111,8 +111,6 @@ def load_thumbnail(item=None,filename=None):
     thumbnail - if True, load the thumbnail from the file
     missing_only - if True, will set keys that aren't already present in the item
     '''
-##    if item.meta==False:
-##        return
     try:
         if not filename:
             filename=item.uid
@@ -151,13 +149,12 @@ def save_metadata(item,filename):
     '''
     write the metadata in item to the underlying file converting keys from the phraymd representation to the relevant standard
     '''
-    if item.meta==False:
-        return False
     try:
+        print 'Writing metadata for',item.uid
         rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         meta=item.meta.copy()
-        set_exiv2_meta(meta,rawmeta)
+        set_exiv2_meta(meta,rawmeta) #TODO: Only want to write the metadata of the keys that have changed
         rawmeta.write()
         item.mark_meta_saved()
     except:
@@ -167,6 +164,102 @@ def save_metadata(item,filename):
         return False
     return True
 
+sidecar_stub='''<?xml version="1.0" encoding="UTF-8"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 4.4.0-Exiv2">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ </rdf:RDF>
+</x:xmpmeta>'''
+
+def create_sidecar(item,src,dest):
+    try:
+        im = pyexiv2.ImageMetadata(src)
+        im.read()
+        src_data=True
+    except:
+        src_data=False
+        print 'Creating sidecar: source image %s does not have readable metadata'%(src)
+
+    try:
+        print 'Creating sidecar for',item.uid
+        f = open(dest,'wb')
+        f.write(sidecar_stub)
+        f.close()
+    except:
+        print 'Error creating sidecar stub for',item,'with filename',dest
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        return False
+    try:
+        if src_data:
+            sidecar = pyexiv2.ImageMetadata(dest)
+            sidecar.read()
+            im.copy(sidecar,comment=False)
+            sidecar.write()
+    except:
+        print 'Error creating copying metadata to sidecar for',item,'with filename',dest
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        print 'Using empty sidecar'
+        return True
+    return True
+
+def load_sidecar(item,filename,missing_only=False):
+    try:
+        print 'Loading sidecar for',item
+        rawmeta = Exiv2Metadata(filename)
+        rawmeta.read()
+        meta={}
+        get_exiv2_meta(meta,rawmeta,apptags_dict_sidecar)
+        if missing_only and item.meta!=None:
+            for k in item.meta:
+                if k in meta:
+                    del meta[k]
+        item.meta=meta
+    except:
+        print 'Error reading sidecar from',filename
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        if item.meta is None:
+            item.meta={}
+        return False
+    item.mark_meta_saved()
+    return True
+
+def save_sidecar(item,filename):
+    '''
+    write the metadata in item to the underlying file converting keys from the phraymd representation to the relevant standard
+    '''
+    try:
+        print 'Creating sidecar for',item.uid,'filename',filename
+        rawmeta = Exiv2Metadata(filename)
+        rawmeta.read()
+
+        workaround=True
+        if workaround:
+            tdir,tname=os.path.split(filename)
+            h,tfilename=tempfile.mkstemp('',tname,tdir)
+            print 'Writing sidecar using workaround, tempfile name was',tfilename
+            f=open(tfilename,'wb')
+            f.write(sidecar_stub)
+            f.close()
+            rawmeta_out = Exiv2Metadata(tfilename)
+            rawmeta_out.read()
+
+        meta=item.meta.copy()
+        set_exiv2_meta(meta,rawmeta,apptags_dict_sidecar) #TODO: Only want to write the metadata of the keys that have changed
+        if workaround:
+            rawmeta.copy(rawmeta_out,exif=False, iptc=False, xmp=True,comment=False)
+            rawmeta_out.write()
+            io.move_file(tfilename,filename,overwrite=True)
+        else:
+            rawmeta.write()
+        item.mark_meta_saved()
+    except:
+        print 'Error writing sidecar for',item.uid
+        import traceback,sys
+        print traceback.format_exc(sys.exc_info()[2])
+        return False
+    return True
 
 def copy_metadata(src_meta,src_file,destination_file):
     '''
@@ -239,9 +332,23 @@ def conv_date_taken(metaobject,keys,value=None):
             date=datetime.strptime(date)
     return date
 
+def conv_date_taken_xmp(metaobject,keys,value=None):
+    if value!=None: #todo: this should copy the local representation back to the image metadata
+        return True
+    date=None
+    if keys[0] in metaobject.xmp_keys:
+        date=metaobject[keys].value
+        if type(date)==str:
+            date=datetime.strptime(date)
+    elif keys[1] in metaobject.xmp_keys: #fallback to other datetime Exif keys
+        date=metaobject[keys].value
+        if type(date)==str:
+            date=datetime.strptime(date)
+    return date
+
 def conv_str(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!='':
+        if keys[0] in metaobject.xmp_keys or keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!='':
             if keys[0].startswith('Iptc'):
                 metaobject[keys[0]]=[value]
             else:
@@ -259,9 +366,49 @@ def conv_str(metaobject,keys,value=None):
             pass
     return None
 
+def conv_str_alt(metaobject,keys,value=None):
+    if value!=None:
+        try:
+            if keys[0] in metaobject.xmp_keys or value!='':
+                metaobject[keys[0]]=value
+            if keys[1] in metaobject.iptc_keys or value!='':
+                metaobject[keys[1]]=[value]
+            if keys[2] in metaobject.exif_keys or value!='':
+                metaobject[keys[2]]=value
+        except:
+            pass
+        return True
+    for k in keys:
+        try:
+            if k.startswith('Iptc'):
+                val=metaobject[k].values[0]
+            elif k.startswith('Xmp'):
+                val=metaobject[k].value['x-default']
+            else:
+                val=metaobject[k].value
+            return str(val)
+        except:
+            pass
+    return None
+
+
+def conv_lang_alt(metaobject,keys,value=None):
+    if value!=None:
+        if keys[0] in metaobject.xmp_keys or value!='':
+            metaobject[keys[0]]=value
+        return True
+    for k in keys:
+        try:
+            val=metaobject[k].value['x-default']
+            return str(val)
+        except:
+            pass
+    return None
+
+
 def conv_int(metaobject,keys,value=None):
     if value!=None:
-        if keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!=-1:
+        if keys[0] in metaobject.xmp_keys or keys[0] in metaobject.iptc_keys or keys[0] in metaobject.exif_keys or value!=-1:
             if keys[0].startswith('Iptc'):
                 metaobject[keys[0]]=[value]
             else:
@@ -338,6 +485,27 @@ def conv_keywords(metaobject,keys,value=None):
         except:
             return None
 
+def conv_keywords_xmp(metaobject,keys,value=None):
+    '''
+    converts the Keyword metadata field to/from xmp or iptc key
+    will also read from the exif tag as a fallback
+    Note that this will overwrite the relevant Iptc and Xmp fields (as specified in apptags)
+    '''
+    if value!=None:
+        if keys[0] in metaobject.xmp_keys or len(value)>0:
+            metaobject[keys[0]]=value
+        return True
+    try:
+        val=None
+        if keys[0] in metaobject.xmp_keys:
+            val=metaobject[keys[0]].value
+        if type(val)==str: ##todo: shouldn't need this check with the new pyexiv2 api
+            return [val]
+        return list(val)
+    except:
+        return None ##the fallback to UserComment is disabled for now
+
+
 def tag_split_c(t):
     return tag_split(t,',')
 
@@ -368,6 +536,27 @@ def conv_artist(metaobject,keys,value=None):
         return list(val)
     except:
         return None
+
+def conv_list_xmp(metaobject,keys,value=None):
+    '''
+    converts the Artist metadata field to/from xmp or iptc key
+    will also read from the exif tag as a fallback
+    Note that this will overwrite the relevant Iptc and Xmp fields (as specified in apptags)
+    '''
+    if value!=None:
+        if keys[0] in metaobject.xmp_keys:
+            metaobject[keys[0]]=value
+        return True
+    try:
+        val=None
+        if keys[0] in metaobject.xmp_keys:
+            val=metaobject[keys[0]].value
+        if type(val)==str: #todo: shouldn't need this check with the new pyexiv2 api
+            return [val]
+        return list(val)
+    except:
+        return None
+
 
 def conv_rational(metaobject,keys,value=None):
     if value!=None:
@@ -475,11 +664,11 @@ each entry in the tuple is itself a tuple containing:
 
 apptags=(
 ("DateTaken","Date Taken",False,conv_date_taken,None,None,date_as_sortable,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
-("Title","Title",True,conv_str,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",)),
-("ImageDescription","Image Description",True,conv_str,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
+("Title","Title",True,conv_str_alt,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",)),
+("ImageDescription","Image Description",True,conv_str_alt,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
 ("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
 ("Artist","Artist",True,conv_artist,tag_bind_c,tag_split_c,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist")),
-("Copyright","Copyright",True,conv_str,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+("Copyright","Copyright",True,conv_str_alt,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",)),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
 ("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",)),
 ("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
@@ -511,14 +700,56 @@ apptags=(
 ##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 
-##todo: remove this item -- currently used to define the keys to write in imagemanip.save_metadata
-writetags=[(x[0],x[1]) for x in apptags if x[3]]
-writetags.append(('Orientation','Orientation'))
+apptags_sidecar=(
+("DateTaken","Date Taken",False,conv_date_taken_xmp,None,None,date_as_sortable,("Xmp.exif.DateTimeOriginal","Xmp.exif.DateTimeDigitized")),
+("Title","Title",True,conv_lang_alt,None,None,None,("Xmp.dc.title",)),
+("ImageDescription","Image Description",True,conv_lang_alt,None,None,None,("Xmp.dc.description",)),
+("Keywords","Tags",True,conv_keywords_xmp,tag_bind,tag_split,None,("Xmp.dc.subject",)),
+("Artist","Artist",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.dc.creator",)),
+("Copyright","Copyright",True,conv_lang_alt,None,None,None,("Xmp.dc.rights",)),
+#("Rating",True,conv_int,("Xmp.xmp.Rating")),
+("Album","Album",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.photoshop.SupplementalCategories",)),
+("Make","Make",False,conv_str,None,None,None,("Xmp.tiff.Make",)),
+("Model","Model",False,conv_str,None,None,None,("Xmp.tiff.Model",)),
+("Orientation","Orientation",False,conv_int,str,int,None,("Xmp.tiff.Orientation",)),
+("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureTime",)),
+("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FNumber",)),
+("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Xmp.exif.ISOSpeedRatings",)),
+("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FocalLength",)),
+("ExposureProgram","Exposure Program",False,conv_int,None,None,None,("Xmp.exif.ExposureProgram",)),
+("ExposureBiasValue","Exposure Bias Value",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureBiasValue",)),
+("ExposureMode","Exposure Mode",False,conv_int,None,None,None,("Xmp.exif.ExposureMode",)),
+("MeteringMode","Metering Mode",False,conv_int,None,None,None,("Xmp.exif.MeteringMode",)),
+("Flash","Flash",False,conv_int,None,None,None,("Xmp.exif.Flash",)),
+("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Xmp.exif.SensingMethod",)),
+("WhiteBalance","White Balance",False,conv_int,None,None,None,("Xmp.exif.WhiteBalance",)),
+("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Xmp.exif.DigitalZoomRatio",)),
+("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Xmp.exif.SceneCaptureType",)),
+("GainControl","Gain Control",False,conv_int,None,None,None,("Xmp.exif.GainControl",)),
+("Contrast","Contrast",False,conv_int,None,None,None,("Xmp.exif.Contrast",)),
+("Saturation","Saturation",False,conv_int,None,None,None,("Xmp.exif.Saturation",)),
+("Sharpness","Sharpness",False,conv_int,None,None,None,("Xmp.exif.Sharpness",)),
+("SubjectDistanceRange","Subject Distance",False,conv_int,None,None,None,("Xmp.exif.SubjectDistanceRange",)),
+("Software","Software",False,conv_str,None,None,None,("Xmp.tiff.Software",)),
+##("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
+("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Xmp.exif.ImageUniqueID",)),
+##("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
+("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Xmp.exif.GPSLatitude","Xmp.exif.GPSLatitudeRef","Xmp.exif.GPSLongitude","Xmp.exif.GPSLongitudeRef")),
+)
+
+
+##todo: probably makes sense to just remove this -- was at one time used to define the keys to write in imagemanip.save_metadata
+## better (more conservative) to just write only the keys that have changed
+##writetags=[(x[0],x[1]) for x in apptags if x[3]]
+##writetags.append(('Orientation','Orientation'))
 
 apptags_dict=dict([(x[0],x[1:]) for x in apptags])
 appkeys=[y for x in apptags for y in x[7]]
 
-def get_exiv2_meta(app_meta,exiv2_meta):
+apptags_dict_sidecar=dict([(x[0],x[1:]) for x in apptags_sidecar])
+appkeys_sidecar=[y for x in apptags_sidecar for y in x[7]]
+
+def get_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
     for appkey,data in apptags_dict.iteritems():
         try:
             val=data[2](exiv2_meta,data[6])
@@ -527,11 +758,11 @@ def get_exiv2_meta(app_meta,exiv2_meta):
         except:
             pass
 
-def set_exiv2_meta(app_meta,exiv2_meta):
-    print 'app_meta',app_meta
+def set_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
+    print 'Setting app_meta',app_meta
     for appkey in app_meta:
         try:
-            data=apptags_dict[appkey]
+            data=apptags_dict[appkey] ##TODO: Check that keys are being removed if the app_meta value is equivalent to empty
             data[2](exiv2_meta,data[6],app_meta[appkey]) ##todo: only set values that have actually changed?? e.g. could check data[1], but for e.g. orientation should be savable but data[1]=false
         except:
             print 'Exiv2 set data failure',appkey

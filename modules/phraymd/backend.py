@@ -401,15 +401,16 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
         WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,mainframe)
 
     def __call__(self):
+        mainframe=self.browser
         self.worker.jobs.clear(None,self.collection,self)
-        idle_add(self.browser.update_status,None,0.5,'Closing Collection '+self.collection.name)
+        idle_add(mainframe.update_status,None,0.5,'Closing Collection '+self.collection.name)
         log.info('Closing and saving collection %s',self.collection.id)
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
         self.collection.online=False
         self.collection.empty(True)
         idle_add(self.worker.coll_set.collection_closed,self.collection.id)
-        idle_add(self.browser.update_status,None,1.5,'Closed Collection')
+        idle_add(mainframe.update_status,None,1.5,'Closed Collection')
         return True
 
 

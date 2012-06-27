@@ -173,7 +173,7 @@ class LocalDir(localstorebin.Collection):
     user_creatable=False
     persistent=False
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs','store_thumbs_with_images')
+                'load_preview_icons','trash_location','thumbnail_cache','monitor_image_dirs','store_thumbs_with_images','use_sidecars')
     def __init__(self,prefs): #todo: store base path for the collection
         ##runtime attributes
         baseobjects.CollectionBase.__init__(self)
@@ -193,6 +193,7 @@ class LocalDir(localstorebin.Collection):
         self.rescan_at_open=True
         self.store_thumbs_with_images=False
         self.online=True
+        self.use_sidecars=True
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
         self.monitor=None

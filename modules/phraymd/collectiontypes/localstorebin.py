@@ -221,10 +221,13 @@ class LocalStorePrefWidget(gtk.VBox):
         self.trash_location_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
+        self.sidecar_check=gtk.CheckButton("Use metadata sidecars for unsupported formats") #todo: need to implement in backend
+        self.sidecar_check.set_active(False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.rescan_check,False)
 ##        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.sidecar_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
@@ -251,6 +254,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'trash_location':'OPEN-DESKTOP' if self.trash_location_combo.get_form_data()==0 else None,
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
                 'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
+                'use_sidecars':self.sidecar_check.get_active(),
                 }
 
     def set_values(self,val_dict):
@@ -261,8 +265,9 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
-        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
-        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1),
+        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images'])
+        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1)
+        self.sidecar_check.set_active(val_dict['use_sidecars'])
 
 class NewLocalStoreWidget(gtk.VBox):
     def __init__(self,main_dialog,value_dict):
@@ -296,12 +301,15 @@ class NewLocalStoreWidget(gtk.VBox):
         self.monitor_images_check.set_active(True)
         self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
         self.trash_location_combo.set_form_data(0)
+        self.sidecar_check=gtk.CheckButton("Use metadata sidecars for unsupported formats") #todo: need to implement in backend
+        self.sidecar_check.set_active(False)
 
 
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.rescan_check,False)
 ##        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
+        self.a_box.pack_start(self.sidecar_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
@@ -341,6 +349,7 @@ class NewLocalStoreWidget(gtk.VBox):
                 'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
                 'trash_location':'OPEN-DESKTOP' if self.trash_location_combo.get_form_data()==0 else None,
+                'use_sidecars':self.sidecar_check.get_active(),
                 }
 
     def set_values(self,val_dict):
@@ -352,9 +361,10 @@ class NewLocalStoreWidget(gtk.VBox):
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
-        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images']),
+        self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
-        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1),
+        self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1)
+        self.sidecar_check.set_active(val_dict['use_sidecars'])
 
 
 def create_empty_localstore(name,prefs,overwrite_if_exists=False):
@@ -406,7 +416,7 @@ class Collection(baseobjects.CollectionBase):
     user_creatable=True
     view_class=simpleview.SimpleView
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-                'load_preview_icons','trash_location','thumbnail_cache_dir','monitor_image_dirs','rescan_at_open','store_thumbs_with_images')
+                'load_preview_icons','trash_location','thumbnail_cache_dir','monitor_image_dirs','rescan_at_open','store_thumbs_with_images','use_sidecars')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self)
@@ -426,6 +436,7 @@ class Collection(baseobjects.CollectionBase):
         self.monitor_image_dirs=True
         self.store_thumbs_with_images=False
         self.rescan_at_open=True
+        self.use_sidecars=False
 
         ## the collection optionally has a filesystem monitor and views (i.e. subsets) of the collection of images
         self.monitor=None
@@ -435,8 +446,6 @@ class Collection(baseobjects.CollectionBase):
 
         if prefs:
             self.set_prefs(prefs)
-
-        print '########################TRASH',self.trash_location
 
         self.id=self.name
 
@@ -633,7 +642,12 @@ class Collection(baseobjects.CollectionBase):
         return io.get_mtime(self.get_path(item))
 
     def get_path(self,item):
-        return os.path.join(self.image_dirs[0],item.uid)
+        '''
+        returns the full path associated with the item
+        beware that this uses the hack that the item is derived from str
+        and the content of the string is the uid
+        '''
+        return os.path.join(self.image_dirs[0],item)
 
     def item_exists(self,item):
         return os.path.exists(self.get_path(item))
@@ -684,6 +698,7 @@ class Collection(baseobjects.CollectionBase):
                 try:
                     if src_collection.local_filesystem:
                         io.copy_file(src_filename,temp_filename) ##todo: this may be a desirable alternative for local images
+                        ##TODO: copy sidecar
                     else:
                         open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
@@ -696,7 +711,7 @@ class Collection(baseobjects.CollectionBase):
                     return False
                 src_filename=temp_filename
                 try:
-                    imagemanip.load_metadata(src_item,self.collection,src_filename)
+                    imagemanip.load_metadata(src_item,self,src_filename)
                 except:
                     src_item.meta={}
             dest_path,dest_name=name_item(src_item,dest_dir,dest_name_template)
@@ -846,17 +861,16 @@ class Collection(baseobjects.CollectionBase):
         pass
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
-        c=self if notify_plugins else None
         if self.load_embedded_thumbs:
-            result=imagemanip.load_metadata(item,c,self.get_path(item),True,missing_only)
+            result=imagemanip.load_metadata(item,self,self.get_path(item),True,missing_only,check_for_sidecar=self.use_sidecars,notify_plugins=notify_plugins)
         else:
-            result=imagemanip.load_metadata(item,c,self.get_path(item),False,missing_only)
+            result=imagemanip.load_metadata(item,self,self.get_path(item),False,missing_only,check_for_sidecar=self.use_sidecars,notify_plugins=notify_plugins)
         if self.load_embedded_thumbs and not item.thumb:
             item.thumb=False
         return result
     def write_metadata(self,item):
         'write metadata for an item to the source'
-        return imagemanip.save_metadata(item,self,cache=self.thumbnail_cache_dir)
+        return imagemanip.save_metadata(item,self,cache=self.thumbnail_cache_dir,sidecar_on_failure=self.use_sidecars)
     def load_image(self,item,interrupt_fn=None,size_bound=None):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         draft_mode=False
