@@ -555,6 +555,8 @@ class MainFrame(gtk.VBox):
         c=self.coll_set[coll_id]
         if c==None:
             return
+        if c.pref_widget is None:
+            return
         if c.browser!=None or c.is_open:
             return
         old_prefs=c.get_prefs().copy()
@@ -580,7 +582,7 @@ class MainFrame(gtk.VBox):
             menu_add(menu,"Close",self.collection_close_cb,coll_id)
         if c!=None and c.persistent and c.type!='DEVICE' and not c.is_open:
             menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
-        if c!=None and c.browser==None and c.pref_widget and not c.is_open:
+        if c!=None and c.browser==None and c.pref_widget is not None and not c.is_open:
             menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
         if len(menu.get_children())>0:
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)

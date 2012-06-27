@@ -83,7 +83,7 @@ class CollectionBase:
     type=None #unique string usd to identify the type of the collection
     type_descr=None #human readable string
     local_filesystem=False #True if image files are stored in the local filesystem (uid assumed to be path to files)
-    pref_items=('type','name','pixbuf','id') ##the list of variables that will be saved
+    pref_items=('name','pixbuf','id') ##the list of variables that will be saved
     persistent=False
     user_creatable=False
     pref_widget=None
@@ -111,6 +111,7 @@ class CollectionBase:
 
     def get_prefs(self):
         prefs={}
+        prefs['type']=self.type
         for p in self.pref_items:
             prefs[p]=self.__dict__[p]
         return prefs
@@ -122,6 +123,7 @@ class CollectionBase:
         for p in self.pref_items:
             if p in self.__dict__:
                 d[p]=self.__dict__[p]
+        d['type']=self.type
         cPickle.dump(d,f,-1)
         f.close()
 
@@ -129,6 +131,9 @@ class CollectionBase:
         f=open(self.pref_file(),'rb')
         version=d=cPickle.load(f)
         d=cPickle.load(f)
+        if d['type']!=self.type:
+            print 'Warning: collection type mismatch',d['type'],self.type
+        del d['type']
         for p in self.pref_items:
             if p in d:
                 self.__dict__[p]=d[p]
