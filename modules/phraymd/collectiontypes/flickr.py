@@ -150,7 +150,7 @@ class Sets:
 
     def ind_to_id(self,index):
         try:
-            return self.store[(ind,)][0]
+            return self.store[(index,)][0]
         except:
             return None
 
@@ -328,7 +328,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
         values={
             'title':dict0(m,'Title'),
             'tags':metadata.tag_bind(dict0(m,'Keywords',[])),
-            'description':dict0(m,'Description'),
+            'description':dict0(m,'ImageDescription'),
             'privacy':dict0(m,'Privacy',-1),
             'comment':dict0(m,'PermCommment',False),
             'meta':dict0(m,'PermMeta',False),
@@ -336,7 +336,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
         change_set=[
             ('changed','Title','title'),
             ('changed','Keywords','tags'),
-            ('changed','Description','description'),
+            ('changed','ImageDescription','description'),
             ('changed','Privacy','privacy'),
             ('changed','PermComment','comment'),
             ('changed','PermAddMeta','meta'),
@@ -821,10 +821,13 @@ class FlickrCollection(baseobjects.CollectionBase):
         try:
             #get or create suitable copy of the image file for uploading
             print 'copying item with prefs',src_item,prefs
+            print 'meta',src_item.meta
             name=os.path.split(src_item.uid)[1] ##this could be a problem for some uid's
             temp_filename=''
             temp_dir=''
             src_filename=None
+            if src_item.meta is None:
+                src_collection.load_metadata(src_item,missing_only=True)
             if src_collection.local_filesystem:
                 src_filename=src_collection.get_path(src_item)
             temp_dir=tempfile.mkdtemp('','.image-')
@@ -834,13 +837,15 @@ class FlickrCollection(baseobjects.CollectionBase):
                     io.copy_file(src_collection.get_path(src_item),temp_filename) ##todo: this may be a desirable alternative for local images
                 else:
                     open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
+                    imagemanip.load_metadata(src_item,src_collection,src_filename,missing_only=True)
             except IOError:
                 ##todo: log an error
                 ##todo: maybe better to re-raise the exception here
                 return False
             src_filename=temp_filename
-            imagemanip.load_metadata(src_item,src_collection,src_filename)
             filename=imagemanip.get_jpeg_or_png_image_file(src_item,self,prefs['upload_size'],prefs['metadata_strip'],src_filename)
+
+            print 'post meta',src_item.meta
 
             #specify metadata
             print 'src_meta',src_item.meta
@@ -865,7 +870,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             friends=1 if privacy in [PRIVACY_FAMILY,PRIVACY_FRIENDS_AND_FAMILY] else 0
 
             #do the upload to flickr
-            print 'uploading',src_item.uid,'from file',filename,' privacy',public,family,friends
+            print 'uploading',src_item.uid,'from file',filename,' privacy',public,family,friends,'tags',tags
             def progress_cb(progress,done):
                 ##send notification
                 pass
@@ -891,6 +896,9 @@ class FlickrCollection(baseobjects.CollectionBase):
             item=baseobjects.Item(photo_id)
             item.selected=src_item.selected
             item.meta={} ##TODO: What about orientation?
+            item.meta['Title']=title
+            item.meta['Keywords']=metadata.tag_split(tags)
+            item.meta['ImageDescription']=description
             item.meta['Privacy']=privacy
             item.meta['PermComment']=prefs['privacy']['comment']
             item.meta['PermAddMeta']=prefs['privacy']['metadata']
@@ -912,6 +920,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                     else:
                         set_sets=True
             item.meta['Sets']=[sid]
+            ##TODO: If set_tags is not True in the write_metadata call below, flickr will add any tags in the image metadata to the tags that were already set during upload
             self.write_metadata(item,set_meta=False,set_tags=False,set_perms=True,set_sets=set_sets,set_rotate=False)
             self.load_metadata(item,notify_plugins=False)
             self.make_thumbnail(item) ##todo: save time by copying the thumb from src_item
@@ -1053,7 +1062,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         title=ph.find('title')
         if title!=None and title.text!=None: meta['Title']=title.text
         desc=ph.find('description')
-        if desc!=None and desc.text!=None: meta['Description']=desc.text
+        if desc!=None and desc.text!=None: meta['ImageDescription']=desc.text
         try:
             imtype=ph.attrib['originalformat']
         except:
@@ -1137,7 +1146,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         except:
             title=''
         try:
-            description=item.meta['Description']
+            description=item.meta['ImageDescription']
         except:
             description=''
         try:
@@ -1189,24 +1198,30 @@ class FlickrCollection(baseobjects.CollectionBase):
             if orient==3:
                 rotate=270
 
+        def cp(key):
+            if key in item.meta:
+                item.meta_backup[key]=item.meta[key]
+            elif key in item.meta_backup:
+                del item.meta_backup[key]
+
         if set_meta:
             if 'meta_backup' in item.__dict__:
-                item.meta_backup['Title']=item.meta['Title']
-                item.meta_backup['Description']=item.meta['Description']
+                cp('Title')
+                cp('ImageDescription')
             self.flickr_client.photos_setMeta(photo_id=item.uid,title=title,description=description)
         if set_tags:
             if 'meta_backup' in item.__dict__:
-                item.meta_backup['Keywords']=item.meta['Keywords']
+                cp('Keywords')
             self.flickr_client.photos_setTags(photo_id=item.uid,tags=tags)
         if set_perms:
             if 'meta_backup' in item.__dict__:
-                item.meta_backup['Privacy']=item.meta['Privacy']
-                item.meta_backup['PermComment']=item.meta['PermComment']
-                item.meta_backup['PermAddMeta']=item.meta['PermAddMeta']
+                cp('Privacy')
+                cp('PermComment')
+                cp('PermAddMeta')
             self.flickr_client.photos_setPerms(photo_id=item.uid,is_public=is_public,is_friend=is_friend,is_family=is_family,perm_comment=perm_comment,perm_addmeta=perm_addmeta)
         if set_rotate and rotate!=None:
             if 'meta_backup' in item.__dict__:
-                item.meta_backup['Orientation']=item.meta['Orientation']
+                cp('Orientation')
             self.flickr_client.photos_transform_rotate(photo_id=item.uid,degrees=rotate)
         if set_sets:
             if 'meta_backup' in item.__dict__ and 'Sets' in item.meta_backup:

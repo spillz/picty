@@ -862,9 +862,13 @@ class Collection(baseobjects.CollectionBase):
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
         if self.load_embedded_thumbs:
-            result=imagemanip.load_metadata(item,self,self.get_path(item),True,missing_only,check_for_sidecar=self.use_sidecars,notify_plugins=notify_plugins)
+            result=imagemanip.load_metadata(item,collection=self,filename=self.get_path(item),
+                get_thumbnail=True,missing_only=missing_only,check_for_sidecar=self.use_sidecars,
+                notify_plugins=notify_plugins)
         else:
-            result=imagemanip.load_metadata(item,self,self.get_path(item),False,missing_only,check_for_sidecar=self.use_sidecars,notify_plugins=notify_plugins)
+            result=imagemanip.load_metadata(item,collection=self,filename=self.get_path(item),
+                get_thumbnail=False,missing_only=missing_only,check_for_sidecar=self.use_sidecars,
+                notify_plugins=notify_plugins)
         if self.load_embedded_thumbs and not item.thumb:
             item.thumb=False
         return result
