@@ -516,7 +516,10 @@ class Collection(baseobjects.CollectionBase):
             version=cPickle.load(f)
             print 'Loaded collection version',version
             if version>='0.5':
-                self.items=cPickle.load(f)
+                try:
+                    self.items=cPickle.load(f)
+                except:
+                    pass
             if version<'0.7':
                 print 'Updating legacy collection'
                 self.items=[update_legacy_item(i,self.image_dirs[0]) for i in self.items]
@@ -698,7 +701,9 @@ class Collection(baseobjects.CollectionBase):
                 try:
                     if src_collection.local_filesystem:
                         io.copy_file(src_filename,temp_filename) ##todo: this may be a desirable alternative for local images
-                        ##TODO: copy sidecar
+                        if src_collection.use_sidecars and 'sidecar' in src_item.__dict__ and os.path.exists(src_collection.get_path(src_item.sidecar)):
+                            temp_sidecar=os.path.join(temp_dir,os.path.split(src_item.sidecar)[1])
+                            io.copy_file(src_collection.get_path(src_item.sidecar),temp_sidecar)
                     else:
                         open(temp_filename,'wb').write(src_collection.get_file_stream(src_item).read())
                 except IOError:
