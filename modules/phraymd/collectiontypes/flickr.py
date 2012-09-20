@@ -196,7 +196,7 @@ class FlickrSyncJob(backend.WorkerJob):
         jobs=self.worker.jobs
         collection=self.collection
         flickr_client=collection.flickr_client
-        recently_updated=True
+        recently_updated=False
         if not self.started:
             pluginmanager.mgr.suspend_collection_events(self.collection)
             self.page=0
@@ -245,7 +245,6 @@ class FlickrSyncJob(backend.WorkerJob):
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
 
             sets=collection.get_sets()
-            print 'RETRIEVED SETS',sets
             if sets!=None:
                 gobject.idle_add(collection.sets.set_flickr_sets,sets) ##don't want to change liststore on a background thread
             ##todo: this should be interruptable
@@ -663,7 +662,8 @@ class FlickrCollection(baseobjects.CollectionBase):
     def rescan(self,thead_manager):
         if not self.online:
             return
-        sj=backend.FlickrSyncJob(thead_manager,self,self.browser)
+        print 'starting flickr sync job'
+        sj=FlickrSyncJob(thead_manager,self,self.browser)
         thead_manager.queue_job_instance(sj)
 
     ''' ********************************************************************
