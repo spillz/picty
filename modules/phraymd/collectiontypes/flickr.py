@@ -310,6 +310,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
                 ('form',wb.LabeledWidgets([
                             ('title','Title:',wb.Entry()),
                             ('tags','Tags:',wb.Entry()),
+                            ('sets','Sets:',wb.Entry()),
                             ('description','Description:',wb.Entry()),
                             ('privacy','Visibility:',wb.ComboBox(privacy_levels)),
                             ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
@@ -327,6 +328,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
         values={
             'title':dict0(m,'Title'),
             'tags':metadata.tag_bind(dict0(m,'Keywords',[])),
+            'sets':metadata.tag_bind(dict0(collection.sets,s,[''])[0] for s in dict0(m,'Sets',[])),
             'description':dict0(m,'ImageDescription'),
             'privacy':dict0(m,'Privacy',-1),
             'comment':dict0(m,'PermCommment',False),
@@ -350,6 +352,7 @@ class FlickrMetadataWidget(wb.ModalDialog):
         self.item=item
         self.collection=collection
         self.set_default_size(600,1)
+        self.widgets['form']['sets'].set_editable(False)
     def meta_changed(self,widget,item_key,*form_keys):
         widget=self.form
         for k in form_keys:
