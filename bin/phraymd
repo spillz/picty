@@ -82,7 +82,7 @@ class MainWindow:
         self.window.set_default_size(680, 400)
         self.window.set_title("phraymd")
         self.window.set_icon_from_file(icon_file)
-        self.window.connect("delete_event", self.delete_event)
+#        self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         sett=gtk.settings_get_default()
         sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"phraymd:main") #gtk.ICON_SIZE_MENU

@@ -6,4 +6,5 @@ bus = dbus.SessionBus()
 bus.start_service_by_name('org.spillz.phraymd') ##THIS ONLY WORKS FOR SERVICES WITH A SERVICE FILE INSTALLED
 server = dbus.Interface(bus.get_object('org.spillz.phraymd', '/org/spillz/phraymd'),
                         'org.spillz.phraymd')
-print server.open_uri(sys.argv[1])
+uri = sys.argv[1] if len(sys.argv)>1 else ''
+print server.open_uri(uri)

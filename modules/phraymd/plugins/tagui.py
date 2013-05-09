@@ -154,7 +154,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.mainframe.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
-        print 'Tag Plugin: Saving tag layout'
         try:
             f=open(os.path.join(settings.data_dir,'tag-layout'),'wb') ##todo: datadir must exist??
             cPickle.dump(self.version,f,-1)

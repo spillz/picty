@@ -205,7 +205,7 @@ class ImageViewer(gtk.VBox):
         self.imarea.connect("realize",self.realize_signal)
         self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
         self.imarea.connect("expose_event",self.expose_signal)
-        self.connect("destroy", self.Destroy)
+        self.connect("destroy", self._destroy)
         #self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         #self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
         self.imarea.add_events(gtk.gdk.BUTTON_PRESS_MASK)
@@ -288,7 +288,7 @@ class ImageViewer(gtk.VBox):
     def ImageNormal(self):
         self.fullscreen=False
 
-    def Destroy(self,event):
+    def _destroy(self,event):
         self.request_plugin_release(True)
         self.il.quit()
         return False

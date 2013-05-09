@@ -52,6 +52,7 @@ class PluginManager():
         self.plugins[name][0]=self.plugins[name][1]()
         self.plugins[name][0].plugin_init(self.mainframe,False)
         self.plugins[name][0].viewer_register_shortcut(self.mainframe.iv.hover_cmds)
+
     def disable_plugin(self,name):
         try:
             plugin=self.plugins[name][0]
@@ -61,6 +62,7 @@ class PluginManager():
             plugin.plugin_shutdown(False)
         except:
             pass
+
     def init_plugins(self,mainframe,app_init=True):
         self.mainframe=mainframe
         self.callback('plugin_init',mainframe,app_init)

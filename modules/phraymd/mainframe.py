@@ -89,7 +89,6 @@ class MainFrame(gtk.VBox):
         self.active_collection=None
         self.collections_init()
         self.float_mgr=floats.FloatingPanelManager(self)
-
         ## thank you to tadeboro http://www.gtkforums.com/post-10694.html#10694
         gtk.rc_parse_string ('''
                     style "tab-close-button-style"
@@ -332,6 +331,11 @@ class MainFrame(gtk.VBox):
             tb_text=traceback.format_exc(sys.exc_info()[2])
             print tb_text
         self.tm.quit()
+        #need to destroy the ImageViewer thread manually if the start page is active
+        curpagenum=self.browser_nb.get_current_page()
+        curpage=self.browser_nb.get_nth_page(curpagenum)
+        if curpage==self.startpage:
+            self.iv.destroy()
         pluginmanager.mgr.callback('plugin_shutdown',True)
         return False
 
@@ -386,7 +390,8 @@ class MainFrame(gtk.VBox):
         self.get_toplevel().deiconify()
         self.do_nothing_at_startup=True
         impath=io.get_path_from_uri(uri)
-        if not os.path.exists(impath):
+        if uri=='' or not os.path.exists(impath):
+            self.browser_nb.set_current_page(-1)
             return
         mimetype=io.get_mime_type(impath)
         prefs={}
@@ -698,7 +703,11 @@ class MainFrame(gtk.VBox):
 #            layout['viewed item']=self.iv.item.uid
         layout['sidebar active']=self.sidebar.get_property("visible")
         layout['sidebar width']=self.hpane.get_position()
-        layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
+        ind = self.sidebar.get_current_page()
+        if 0<=ind<self.sidebar.get_n_pages():
+            layout['sidebar tab']=self.sidebar.get_tab_label_text(self.sidebar.get_nth_page(self.sidebar.get_current_page()))
+        else:
+            layout['sidebar tab']=''
         return layout
 
     def activate_item(self,browser,ind,item):
@@ -940,7 +949,7 @@ class MainFrame(gtk.VBox):
                             self.is_fullscreen=False
                     else:
                         self.hide_image()
-            elif (settings.maemo and event.keyval==65475) or event.keyval==65480: #f6 on settings.maemo or f11
+            elif event.keyval==65480: # f11
                 if self.is_fullscreen:
                     self.window.unfullscreen()
                     self.is_fullscreen=False

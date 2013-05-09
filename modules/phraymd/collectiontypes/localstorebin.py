@@ -211,6 +211,8 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(True)
         self.load_meta_check=gtk.CheckButton("Load metadata")
         self.load_meta_check.set_active(True)
+        self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
+        self.monitor_images_check.set_active(True)
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
         self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
@@ -223,7 +225,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.sidecar_check.set_active(False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.rescan_check,False)
-##        self.a_box.pack_start(self.monitor_images_check,False)
+        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
@@ -249,6 +251,7 @@ class LocalStorePrefWidget(gtk.VBox):
                 'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
+                'monitor_image_dirs':self.monitor_images_check.get_active(),
                 'trash_location':'OPEN-DESKTOP' if self.trash_location_combo.get_form_data()==0 else None,
                 'store_thumbnails':self.store_thumbnails_check.get_active(),
                 'store_thumbs_with_images':self.store_thumbs_combo.get_form_data(),
@@ -263,6 +266,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(val_dict['rescan_at_open'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
+        self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
         self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images'])
         self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1)
         self.sidecar_check.set_active(val_dict['use_sidecars'])
@@ -305,7 +309,7 @@ class NewLocalStoreWidget(gtk.VBox):
 
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.rescan_check,False)
-##        self.a_box.pack_start(self.monitor_images_check,False)
+        self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
@@ -494,9 +498,7 @@ class Collection(baseobjects.CollectionBase):
         return create_empty_localstore(self.name,self.get_prefs())
 
     def open(self,thread_manager,browser=None):
-        print 'STARTING MONITOR'
         self.start_monitor(thread_manager.directory_change_notify) ##todo: THIS SHOULDN'T HAPPEN UNTIL AFTER WE SUCCESSFULLY OPEN
-        print 'STARTED MONITOR'
         j=backend.LoadCollectionJob(thread_manager,self,browser)
         thread_manager.queue_job_instance(j)
 
@@ -578,7 +580,9 @@ class Collection(baseobjects.CollectionBase):
         if self.monitor_image_dirs:
             if callback!=None:
                 self.monitor_master_callback=callback
+            print 'STARTING MONITOR'
             self.monitor=monitor.Monitor(self.image_dirs,self.recursive,self.monitor_callback)
+            print 'STARTED MONITOR'
 
     def end_monitor(self):
         if self.monitor!=None and self.monitor_image_dirs:

@@ -25,8 +25,6 @@ import cPickle
 import Image
 import gtk
 
-maemo=False
-
 release_version='0.3' #this is the version number of the released program
 version='0.6.1' #version is saved to data and configuration files
 #version notes:
@@ -39,14 +37,9 @@ version='0.6.1' #version is saved to data and configuration files
 
 plugins_disabled=[]
 
-if maemo:
-    max_memthumbs=100
-    max_memimages=1
-    precache_count=50
-else:
-    max_memthumbs=1000
-    max_memimages=3
-    precache_count=500 ##not currently used
+max_memthumbs=1000
+max_memimages=3
+precache_count=500 ##not currently used
 
 #custom launchers (tools) available from right click menu in browser
 #tools understand the following variable substituions:

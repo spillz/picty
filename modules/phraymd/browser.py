@@ -576,10 +576,7 @@ class ImageBrowser(gtk.HBox):
         '''first time initialization of geometry (called from __init__)'''
         self.geo_thumbwidth=128
         self.geo_thumbheight=128
-        if settings.maemo:
-            self.geo_pad=16
-        else:
-            self.geo_pad=32
+        self.geo_pad=32
         self.geo_view_offset=0
         self.geo_screen_offset=0
         self.geo_ind_view_first=0

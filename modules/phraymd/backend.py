@@ -19,8 +19,6 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-maemo=False
-
 ##standard imports
 import cPickle
 import gobject
@@ -394,30 +392,12 @@ class SetOnlineStatusJob(WorkerJob):
             gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
         return True
 
-#class CloseCollectionJob(WorkerJob):
-#    def __init__(self,worker,collection,browser,save=True):
-#        WorkerJob.__init__(self,'CLOSECOLLECTION',775,worker,collection,browser)
-#        self.save=save
-#
-#    def __call__(self):
-#        self.worker.jobs.clear(None,self.collection,self)
-#        idle_add(self.browser.update_status,0.5,'Closing Collection '+self.collection.name)
-#        if self.filename:
-#            self.collection.filename=self.filename
-#        log.info('Closing '+str(self.collection.filename))
-#        self.collection.end_monitor()
-#        self.collection.save()
-#        idle_add(self.browser.update_status,1.5,'Closed Collection'%(i,len(self.superset)))
-#        pluginmanager.mgr.callback_collection('t_collection_closed',self.collection)
-#        return True
-
 
 class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack that the "browser" argument is the mainframe, and mainframe must have an update_status member taking 3 args
     def __init__(self,worker,collection,mainframe):
         WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,mainframe)
 
     def __call__(self):
-        print 'SAVE COLL JOB STARTED'
         mainframe=self.browser
         self.worker.jobs.clear(None,self.collection,self)
         idle_add(mainframe.update_status,None,0.5,'Closing Collection '+self.collection.name)
