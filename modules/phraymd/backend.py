@@ -351,7 +351,8 @@ class LoadCollectionJob(WorkerJob):
                 collection.online=True
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-#                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
+                if not collection.get_active_view().loaded:
+                    self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 if collection.rescan_at_open:
                     self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             else:

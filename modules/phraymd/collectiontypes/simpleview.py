@@ -16,23 +16,15 @@ class SimpleView(baseobjects.ViewBase):
         self.filter_text=''
         self.reverse=False
         self.collection=collection
+        self.loaded=False
     def load(self,file_handle):
         '''
         reconstruct the view by loading it from the file_handle
         using pickle to load the keys and current filter
         '''
         items,self.filter_text,self.reverse = cPickle.load(file_handle)
-        print 'RESTORING VIEW'
-        print len(items)
-        for k,uid in items:
-            print k,uid
-        print '******************'
         self.items = [[key, self.collection[self.collection.find(uid)] ] for (key,uid) in items]
-#        self.items=[]
-#        for key in items:
-#            ind = self.collection.find_item(key)
-#            print key,ind,self.collection[ind]
-#            self.items.append(key)
+        self.loaded=True
     def save(self,file_handle):
         '''
         save the list of keys and uids in the view to the file_handle
