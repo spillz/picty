@@ -116,6 +116,9 @@ class Plugin(object):
     def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
         pass
+    def t_view_updated(self,collection,view):
+        '''the view has been updated'''
+        pass
     def t_active_view_changed(self,collection,old_view,view):
         ''''the active view has been changed from old_view to new view'''
         pass

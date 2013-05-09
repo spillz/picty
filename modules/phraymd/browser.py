@@ -218,7 +218,7 @@ class ImageBrowser(gtk.HBox):
         cmd=self.get_hover_command(self.hover_ind, x, y)
         if cmd>=0:
             cmd=self.hover_cmds[cmd]
-            item=self.active_view[self.hover_ind]
+            item=self.active_view(self.hover_ind)
             if cmd.is_active(item,True)>=0:
                 tooltip.set_text(cmd.tooltip)
                 return True
@@ -265,7 +265,7 @@ class ImageBrowser(gtk.HBox):
 
     def get_hover_command(self, ind, x, y):
         offset=ind-self.geo_ind_view_first
-        item=self.active_view[ind]
+        item=self.active_view(ind)
         if item:
             left=(offset%self.geo_horiz_count)*(self.geo_thumbwidth+self.geo_pad)
             left+=self.geo_pad/4

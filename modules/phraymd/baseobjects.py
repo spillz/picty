@@ -335,6 +335,7 @@ class ViewBase: ##base class for the filter view of a collection and (for now) r
         pass
 
 
+
 class Item(str):
     '''An item is a class describing an image file, including filename, pixbuf representations and related metadata'''
     ##an item is not a baseclass. thus, all collections share a common item type

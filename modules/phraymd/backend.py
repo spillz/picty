@@ -339,16 +339,19 @@ class LoadCollectionJob(WorkerJob):
     def __call__(self):
         jobs=self.worker.jobs
         jobs.clear(None,self.collection,self)
+        view=self.collection.get_active_view()
         collection=self.collection
         log.info('Loading collection file %s with type %s',self.collection_file,collection.type)
         idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
+        view.empty()
+        pluginmanager.mgr.callback('t_view_emptied',collection,view)
         if collection._open():
             log.info('Collection opened %s, with collection location %s',collection.id,collection.image_dirs[0])
             if os.path.exists(collection.image_dirs[0]):
                 collection.online=True
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
+#                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 if collection.rescan_at_open:
                     self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             else:
@@ -356,7 +359,15 @@ class LoadCollectionJob(WorkerJob):
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
+            try:
+                pluginmanager.mgr.callback('t_view_updated',collection,view)
+            except:
+                pass
             gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
+            if self.browser!=None:
+                #idle_add(self.browser.post_build_view)
+                idle_add(self.browser.resize_and_refresh_view,collection)
+                idle_add(self.browser.update_status,2,'View rebuild complete')
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             log.error('Load collection failed %s %s',collection.id,collection.type)
@@ -401,6 +412,7 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
         WorkerJob.__init__(self,'SAVECOLLECTION',775,worker,collection,mainframe)
 
     def __call__(self):
+        print 'SAVE COLL JOB STARTED'
         mainframe=self.browser
         self.worker.jobs.clear(None,self.collection,self)
         idle_add(mainframe.update_status,None,0.5,'Closing Collection '+self.collection.name)
@@ -409,6 +421,8 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
         self.collection.close()
         self.collection.online=False
         self.collection.empty(True)
+        view = self.collection.get_active_view()
+        pluginmanager.mgr.callback('t_view_emptied',self.collection,view)
         idle_add(self.worker.coll_set.collection_closed,self.collection.id)
         idle_add(mainframe.update_status,None,1.5,'Closed Collection')
         return True

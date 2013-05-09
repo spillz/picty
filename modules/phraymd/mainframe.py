@@ -521,6 +521,20 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.set_sensitive(coll)
         self.filter_entry.set_sensitive(coll)
 
+    def update_widget_view_options(self):
+        view = self.active_collection.get_active_view()
+        self.sort_order.handler_block_by_func(self.set_sort_key)
+        for i in xrange(len(sort_model)):
+            if view.sort_key_text==sort_model[i][0]: ##NEED TO ADD A VIEW TO  OPEN COLLS
+                self.sort_order.set_active(i)
+                break
+        self.sort_order.handler_unblock_by_func(self.set_sort_key)
+        self.sort_toggle.handler_block_by_func(self.reverse_sort_order)
+        self.sort_toggle.set_active(view.reverse)
+        self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
+        self.filter_entry.entry.set_text(view.filter_text)
+
+
     def collection_rescan(self,widget):
         coll=self.active_collection
         if coll==None:
@@ -535,6 +549,7 @@ class MainFrame(gtk.VBox):
                 return
             browser=self.add_browser(c)
             c.open(self.tm,browser)
+#            self.update_widget_view_options()
             self.update_widget_states()
 
     def collection_open_cb(self,widget,id):
@@ -633,6 +648,7 @@ class MainFrame(gtk.VBox):
             try:
                 c.get_active_view().reverse=layout['collection'][c.id]['sort direction']
                 keys=c.browser_sort_keys
+                c.get_active_view().filter_text=layout['collection'][c.id]['filter text']
                 so=layout['collection'][c.id]['sort order']
                 if so in keys:
                     c.get_active_view().sort_key_text=so
@@ -673,7 +689,8 @@ class MainFrame(gtk.VBox):
         for c in self.coll_set.iter_coll():
             layout['collection'][c.id]={
                 'sort direction':c.get_active_view().reverse,
-                'sort order':c.get_active_view().sort_key_text
+                'sort order':c.get_active_view().sort_key_text,
+                'filter text':c.get_active_view().filter_text
                 }
 #        layout['viewer active']=self.is_iv_showing
 #        if self.is_iv_showing:

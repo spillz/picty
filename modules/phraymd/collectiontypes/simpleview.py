@@ -1,6 +1,6 @@
 from phraymd import baseobjects, viewsupport, pluginmanager, simple_parser as sp
 import bisect
-
+import cPickle
 
 class SimpleView(baseobjects.ViewBase):
     def __init__(self,key_cb=viewsupport.get_mtime,items=[],collection=None):
@@ -16,6 +16,31 @@ class SimpleView(baseobjects.ViewBase):
         self.filter_text=''
         self.reverse=False
         self.collection=collection
+    def load(self,file_handle):
+        '''
+        reconstruct the view by loading it from the file_handle
+        using pickle to load the keys and current filter
+        '''
+        items,self.filter_text,self.reverse = cPickle.load(file_handle)
+        print 'RESTORING VIEW'
+        print len(items)
+        for k,uid in items:
+            print k,uid
+        print '******************'
+        self.items = [[key, self.collection[self.collection.find(uid)] ] for (key,uid) in items]
+#        self.items=[]
+#        for key in items:
+#            ind = self.collection.find_item(key)
+#            print key,ind,self.collection[ind]
+#            self.items.append(key)
+    def save(self,file_handle):
+        '''
+        save the list of keys and uids in the view to the file_handle
+        '''
+        items = [(key,item.uid) for (key,item) in self.items]
+        view_data = (items,self.filter_text,self.reverse)
+        cPickle.dump(view_data,file_handle,-1)
+        print 'SAVED VIEW',self
     def copy(self):
         dup=SimpleView(self.key_cb,[],self.collection)
         dup.sort_key_text=self.sort_key_text
@@ -70,12 +95,12 @@ class SimpleView(baseobjects.ViewBase):
     def __call__(self,index):
         if index<0 or index>=len(self):
             return
+        return self[index]
+    def __getitem__(self,index):
         if self.reverse:
             return self.items[len(self.items)-1-index][1]
         else:
             return self.items[index][1]
-    def __getitem__(self,index):
-        return self(index)
     def __len__(self):
         return len(self.items)
     def get_items(self,first,last):

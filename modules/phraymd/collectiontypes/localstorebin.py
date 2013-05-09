@@ -19,7 +19,7 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-__version__='0.7'
+__version__='0.8'
 
 
 ##standard imports
@@ -68,9 +68,7 @@ def update_legacy_item(item,image_dir):
 
 class NamingTemplate(string.Template):
     def __init__(self,template):
-        print 'naming template',template
         t=template.replace("<","${").replace(">","}")
-        print 'subbed naming template',t
         string.Template.__init__(self,t)
 
 def get_date(item):
@@ -514,10 +512,15 @@ class Collection(baseobjects.CollectionBase):
                 return self.legacy_open(col_dir)
             f=open(self.data_file(),'rb')
             version=cPickle.load(f)
-            print 'Loaded collection version',version
+            print 'Loaded collection %s (version %s)'%(self.name,version,)
             if version>='0.5':
                 try:
                     self.items=cPickle.load(f)
+                except:
+                    pass
+            if version>='0.8':
+                try:
+                    self.views[0].load(f)
                 except:
                     pass
             if version<'0.7':
@@ -552,6 +555,7 @@ class Collection(baseobjects.CollectionBase):
             f=open(self.data_file(),'wb')
             cPickle.dump(__version__,f,-1)
             cPickle.dump(self.items,f,-1)
+            self.get_active_view().save(f)
             f.close()
             self.empty()
         except:
