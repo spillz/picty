@@ -358,12 +358,16 @@ class LoadCollectionJob(WorkerJob):
                 collection.online=False
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
-            pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
-            try:
-                pluginmanager.mgr.callback('t_view_updated',collection,view)
-            except:
-                pass
-            gobject.idle_add(self.worker.coll_set.collection_opened,collection.id)
+            pluginmanager.mgr.callback_collection('t_collection_loaded',collection)
+            pluginmanager.mgr.callback('t_view_updated',collection,view)
+            if collection.type=='LOCALDIR' and collection.path_to_open:
+                print 'Received D-Bus open request for',collection.path_to_open
+                item=baseobjects.Item(collection.get_relpath(collection.path_to_open))
+                item.mtime=io.get_mtime(collection.get_path(item))
+                imagemanip.load_metadata(item,collection)
+                collection.add(item)
+                idle_add(collection.mainframe.view_image,item)
+            idle_add(self.worker.coll_set.collection_opened,collection.id)
             if self.browser!=None:
                 #idle_add(self.browser.post_build_view)
                 idle_add(self.browser.resize_and_refresh_view,collection)
