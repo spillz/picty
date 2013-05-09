@@ -81,6 +81,7 @@ class ImageBrowser(gtk.HBox):
         'collection-online-state':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_BOOLEAN)),
         'view-rebuild-complete':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,tuple()),
         'status-updated':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_FLOAT,gobject.TYPE_GSTRING)),
+        'backstatus-updated':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_BOOLEAN,gobject.TYPE_GSTRING)),
         'tag-row-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT)),
         'uris-dropped':(gobject.SIGNAL_RUN_LAST,gobject.TYPE_NONE,(gobject.TYPE_PYOBJECT,gobject.TYPE_PYOBJECT))
         }
@@ -237,6 +238,9 @@ class ImageBrowser(gtk.HBox):
 
     def update_status(self,progress,message):
         self.emit('status-updated',progress,message)
+
+    def update_backstatus(self,progress,message):
+        self.emit('backstatus-updated',progress,message)
 
     def key_press_signal(self,obj,event):
         ##todo: perhaps return true for some of these to prevent further emission

@@ -171,7 +171,13 @@ class MainFrame(gtk.VBox):
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
 
-        self.info_bar=gtk.Label('Loading.... please wait')
+        self.info_bar=gtk.HBox()
+        self.spinner = gtk.Spinner()
+        self.spinner.show()
+        self.info_bar_text=gtk.Label('Loading.... please wait')
+        self.info_bar_text.show()
+        self.info_bar.pack_start(self.info_bar_text,True)
+        self.info_bar.pack_start(self.spinner,False)
         self.info_bar.show()
 
         self.sort_order=gtk.combo_box_new_text()
@@ -244,7 +250,6 @@ class MainFrame(gtk.VBox):
         accel_group.connect_group(ord('B'), gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE,self.sidebar_accel_callback)
 
         self.accel_group=accel_group
-
 
         self.status_bar=gtk.ProgressBar()
         self.status_bar.set_pulse_step(0.01)
@@ -348,6 +353,7 @@ class MainFrame(gtk.VBox):
         c.browser.connect("activate-item",self.activate_item)
         c.browser.connect("context-click-item",self.popup_item)
         c.browser.connect("status-updated",self.update_status)
+        c.browser.connect("backstatus-updated",self.update_spinner)
         c.browser.connect("view-changed",self.view_changed)
         c.browser.connect("collection-online-state",self.update_connection_state)
 ##        self.browser.connect("view-rebuild-complete",self.view_rebuild_complete)
@@ -783,16 +789,16 @@ class MainFrame(gtk.VBox):
         '''refresh the info bar (status bar that displays number of images etc)'''
         if browser==self.active_browser():
             if browser!=None:
-                self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
+                self.info_bar_text.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
             else:
-                self.info_bar.set_label('No collection open')
+                self.info_bar_text.set_label('No collection open')
 
     def view_changed2(self,browser):
         '''refresh the info bar (status bar that displays number of images etc)'''
         if browser!=None:
-            self.info_bar.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
+            self.info_bar_text.set_label('%i images in collection (%i selected, %i in view)'%(len(browser.active_collection),browser.active_collection.numselected,len(browser.active_view)))
         else:
-            self.info_bar.set_label('No collection open')
+            self.info_bar_text.set_label('No collection open')
 
     def select_keyword_add(self,widget):
         keyword_string=self.entry_dialog("Add Tags","Enter tags")
@@ -897,6 +903,13 @@ class MainFrame(gtk.VBox):
         if c:
             c.get_active_view().reverse=widget.get_active()#not self.browser.active_view.reverse
             self.active_browser().resize_and_refresh_view(c)
+
+    def update_spinner(self,widget,active,message):
+        if active:
+            self.spinner.start()
+        else:
+            self.spinner.stop()
+        self.info_bar_text.set_tooltip(message)
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()

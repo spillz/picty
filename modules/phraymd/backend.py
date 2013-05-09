@@ -340,7 +340,7 @@ class LoadCollectionJob(WorkerJob):
         view=self.collection.get_active_view()
         collection=self.collection
         log.info('Loading collection file %s with type %s',self.collection_file,collection.type)
-        idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(self.collection_file,))
+        idle_add(self.browser.update_backstatus,True,'Loading Collection: %s'%(self.collection_file,))
         view.empty()
         pluginmanager.mgr.callback('t_view_emptied',collection,view)
         if collection._open():
@@ -370,7 +370,7 @@ class LoadCollectionJob(WorkerJob):
             if self.browser!=None:
                 #idle_add(self.browser.post_build_view)
                 idle_add(self.browser.resize_and_refresh_view,collection)
-                idle_add(self.browser.update_status,2,'View rebuild complete')
+                idle_add(self.browser.update_backstatus,False,'Successfully Loaded Collection')
             log.info('Loaded collection with '+str(len(collection))+' images')
         else:
             log.error('Load collection failed %s %s',collection.id,collection.type)
@@ -400,7 +400,7 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
     def __call__(self):
         mainframe=self.browser
         self.worker.jobs.clear(None,self.collection,self)
-        idle_add(mainframe.update_status,None,0.5,'Closing Collection '+self.collection.name)
+        #idle_add(mainframe.update_backstatus,None,True,'Closing Collection '+self.collection.name)
         log.info('Closing and saving collection %s',self.collection.id)
         self.collection.end_monitor() ##todo: should be called in close
         self.collection.close()
@@ -409,7 +409,7 @@ class SaveCollectionJob(WorkerJob): ##TODO: This job features the nasty hack tha
         view = self.collection.get_active_view()
         pluginmanager.mgr.callback('t_view_emptied',self.collection,view)
         idle_add(self.worker.coll_set.collection_closed,self.collection.id)
-        idle_add(mainframe.update_status,None,1.5,'Closed Collection')
+        #idle_add(mainframe.update_backstatus,None,False,'Closed Collection')
         return True
 
 
@@ -454,7 +454,7 @@ class WalkDirectoryJob(WorkerJob):
             else:
                 del dirs[:]
 
-            idle_add(self.browser.update_status,-1,'Scanning for new images')
+            idle_add(self.browser.update_backstatus,True,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
                 if r<=0:
@@ -498,7 +498,7 @@ class WalkDirectoryJob(WorkerJob):
         if self.done:
             log.info('Directory walk complete for '+collection.image_dirs[0])
             idle_add(self.browser.resize_and_refresh_view,self.collection)
-            idle_add(self.browser.update_status,2,'Search complete')
+            idle_add(self.browser.update_backstatus,False,'Search complete')
             if self.notify_items:
                 self.browser.lock.acquire()
                 for item in self.notify_items:
@@ -552,7 +552,7 @@ class WalkSubDirectoryJob(WorkerJob):
                     dirs.pop(i)
                 else:
                     i+=1
-            idle_add(self.browser.update_status,-1,'Scanning for new images')
+            idle_add(self.browser.update_backstatus,True,'Scanning for new images')
             for p in files: #may need some try, except blocks
                 r=p.rfind('.')
                 if r<=0:
@@ -578,7 +578,7 @@ class WalkSubDirectoryJob(WorkerJob):
         if self.done:
             log.info('Directory walk complete for %s',self.sub_dir)
             idle_add(self.browser.resize_and_refresh_view,self.collection)
-            idle_add(self.browser.update_status,2,'Search complete')
+            idle_add(self.browser.update_backstatus,False,'Search complete')
             if self.notify_items:
                 self.browser.lock.acquire()
                 for item in self.notify_items:
@@ -661,7 +661,7 @@ class BuildViewJob(WorkerJob):
                 if i-lastrefresh>200:
                     lastrefresh=i
                     idle_add(self.browser.resize_and_refresh_view,collection)
-                    idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
+                    idle_add(self.browser.update_backstatus,True,'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset):  ## and jobs.ishighestpriority(self)
             self.pos=i
@@ -669,7 +669,7 @@ class BuildViewJob(WorkerJob):
         else:
             self.pos=0
             idle_add(self.browser.resize_and_refresh_view,collection)
-            idle_add(self.browser.update_status,2,'View rebuild complete')
+            idle_add(self.browser.update_backstatus,False,'View rebuild complete')
             idle_add(self.browser.post_build_view)
             pluginmanager.mgr.resume_collection_events(collection)
             log.info('Rebuild view complete for %s',collection.id)
@@ -1026,7 +1026,7 @@ class VerifyImagesJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                idle_add(self.browser.update_status,1.0*i/len(collection),'Verifying images in collection - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.update_backstatus,True,'Verifying images in collection - %i of %i'%(i,len(collection)))
             if item.meta==False: ##TODO: This is a legacy check -- should remove eventually
                 item.meta=None
             if item.meta==None:
@@ -1066,7 +1066,7 @@ class VerifyImagesJob(WorkerJob):
         self.countpos=i
         if i>=len(collection):
             self.countpos=0
-            idle_add(self.browser.update_status,2,'Verification complete')
+            idle_add(self.browser.update_backstatus,False,'Verification complete')
             log.info('Image verification complete')
             pluginmanager.mgr.resume_collection_events(self.collection)
             self.worker.queue_job_instance(MakeThumbsJob(self.worker,self.collection,self.browser))
@@ -1086,16 +1086,16 @@ class MakeThumbsJob(WorkerJob):
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
             if i%20==0:
-                idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             if not collection.has_thumbnail(item):
                 collection.make_thumbnail(item)
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
-                idle_add(self.browser.update_status,1.0*i/len(collection),'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             i+=1
         self.countpos=i
         if i>=len(collection):
             self.countpos=0
-            idle_add(self.browser.update_status,2,'Thumbnailing complete')
+            idle_add(self.browser.update_backstatus,False,'Thumbnailing complete')
             return True
         return False
 
