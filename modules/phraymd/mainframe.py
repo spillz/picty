@@ -909,7 +909,7 @@ class MainFrame(gtk.VBox):
             self.spinner.start()
         else:
             self.spinner.stop()
-        self.info_bar_text.set_tooltip(message)
+        self.info_bar_text.set_tooltip_text(message)
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
