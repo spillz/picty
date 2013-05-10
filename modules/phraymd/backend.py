@@ -349,8 +349,6 @@ class LoadCollectionJob(WorkerJob):
                 collection.online=True
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-                if not collection.get_active_view().loaded:
-                    self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 if collection.rescan_at_open:
                     self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             else:
@@ -358,7 +356,10 @@ class LoadCollectionJob(WorkerJob):
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
             pluginmanager.mgr.callback_collection('t_collection_loaded',collection)
-            pluginmanager.mgr.callback('t_view_updated',collection,view)
+            if not view.loaded:
+                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
+            else:
+                pluginmanager.mgr.callback('t_view_updated',collection,view)
             if collection.type=='LOCALDIR' and collection.path_to_open:
                 print 'Received D-Bus open request for',collection.path_to_open
                 item=baseobjects.Item(collection.get_relpath(collection.path_to_open))
