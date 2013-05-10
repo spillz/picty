@@ -396,6 +396,13 @@ class MainFrame(gtk.VBox):
     def browser_signal_notify(self,*args):
         self.emit(args[-1],*args[:-1])
 
+    def open_device(self,device_name):
+        print 'Received external request to open device',device_name
+        path = self.volume_monitor.get_mount_path_from_device_name(device_name)
+        print path
+        if path is not None:
+            self.collection_open(path)
+
     def open_uri(self,uri):
         print 'Received external request to open',uri
         self.get_toplevel().deiconify()

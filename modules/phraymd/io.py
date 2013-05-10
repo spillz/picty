@@ -83,6 +83,14 @@ try:
         def mount_removed(self,vm,m):
             print 'unmount event',vm,m
             self.emit("mount-removed",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def get_mount_path_from_device_name(self,unix_device_name):
+            for m in self.vm.get_mounts():
+                if m.get_volume().get_identifier('unix-device') == unix_device_name:
+                    try:
+                        return m.get_root().get_path()
+                    except:
+                        pass
+
         def get_mount_info(self):
             '''
             returns a list of tuples (name,icon_data,fuse path)
@@ -246,6 +254,13 @@ DeletionDate=%s
         def mount_removed(self,vm,m):
             print 'unmount event',vm,m
             self.emit("mount-removed",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def get_mount_path_from_device_name(self,unix_device_name):
+            for m in self.vm.get_mounted_volumes():
+                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK]:
+                    continue
+                if m.get_drive().get_device_path() == unix_device_name:
+                    path=gnomevfs.get_local_path_from_uri(m.get_activation_uri())
+                    return path
         def get_mount_info(self):
             '''
             returns a list of tuples (name,icon_data,fuse path)
@@ -253,7 +268,7 @@ DeletionDate=%s
             mdict={}
             mounts=[]
             for m in self.vm.get_mounted_volumes():
-                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK,gnomevfs.DEVICE_TYPE_CAMERA]:
+                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK]:
                     continue
                 path=gnomevfs.get_local_path_from_uri(m.get_activation_uri())
                 name=m.get_display_name()
