@@ -1,7 +1,7 @@
 '''
 
     phraymd - Configuration Plugin
-    Copyright (C) 2009  Damien Moore
+    Copyright (C) 2013  Damien Moore
 
 License:
 
@@ -355,8 +355,8 @@ class AboutBox(gtk.VBox):
         phraymd=gtk.Label()
         phraymd.set_markup('<b><big>phraymd</big></b>')
         version=gtk.Label('Version '+settings.release_version)
-        author=gtk.Label('(C) Damien Moore 2010')
-        contributors=gtk.Label('Contributors: antistress')
+        author=gtk.Label('(C) Damien Moore 2013')
+        contributors=gtk.Label('Contributors: antistress, yeKcim, Stuart Tilley')
         help=gtk.Button('Get Help')
         help.connect('clicked',self.browser_open,'http://groups.google.com/group/phraymd')
         project=gtk.Button('Project Page')

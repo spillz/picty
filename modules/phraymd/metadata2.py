@@ -1,7 +1,7 @@
 '''
 
     phraymd
-    Copyright (C) 2010  Damien Moore
+    Copyright (C) 2013  Damien Moore
 
 License:
 

@@ -1,7 +1,7 @@
 '''
 
     phraymd
-    Copyright (C) 2010  Damien Moore
+    Copyright (C) 2013  Damien Moore
 
 License:
 
@@ -25,7 +25,7 @@ import cPickle
 import Image
 import gtk
 
-release_version='0.3' #this is the version number of the released program
+release_version='0.4' #this is the version number of the released program
 version='0.6.1' #version is saved to data and configuration files
 #version notes:
 # 0.6.0

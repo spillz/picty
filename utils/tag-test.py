@@ -3,7 +3,7 @@
 '''
 
     pyexiv2_viewer
-    Copyright (C) 2010  Damien Moore
+    Copyright (C) 2013  Damien Moore
     parts of main program (C) 2010 Olivier Tilloy
 
 License:

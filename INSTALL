@@ -35,7 +35,7 @@ linux package management systems (for example, RPM, Deb)
 
 Run the following as root:
 
-checkinstall --pkgversion=0.2 --maintainer="joebloggs@freesoftware" \
+checkinstall --pkgversion=0.4 --maintainer="joebloggs@freesoftware" \
     --pkgname=phraymd \
     ./setup.py install --home=/usr  \
     --install-purelib=/usr/share/phraymd

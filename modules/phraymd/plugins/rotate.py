@@ -1,7 +1,7 @@
 '''
 
     phraymd - Image Rotation Plugin
-    Copyright (C) 2009  Damien Moore
+    Copyright (C) 2013  Damien Moore
 
 License:
 
