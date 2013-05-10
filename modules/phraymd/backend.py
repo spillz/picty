@@ -616,12 +616,8 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW',925,worker,collection,browser)
         self.sort_key=sort_key
         self.pos=0
-#        self.cancel=False
         self.filter_text=filter_text
         self.superset=None
-
-#    def cancel_job(self):
-#        self.cancel=True
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -661,7 +657,7 @@ class BuildViewJob(WorkerJob):
                 if i-lastrefresh>200:
                     lastrefresh=i
                     idle_add(self.browser.resize_and_refresh_view,collection)
-                    idle_add(self.browser.update_backstatus,True,'Rebuilding image view - %i of %i'%(i,len(self.superset)))
+                    idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset):  ## and jobs.ishighestpriority(self)
             self.pos=i
@@ -669,7 +665,7 @@ class BuildViewJob(WorkerJob):
         else:
             self.pos=0
             idle_add(self.browser.resize_and_refresh_view,collection)
-            idle_add(self.browser.update_backstatus,False,'View rebuild complete')
+            idle_add(self.browser.update_status,2,'View rebuild complete')
             idle_add(self.browser.post_build_view)
             pluginmanager.mgr.resume_collection_events(collection)
             log.info('Rebuild view complete for %s',collection.id)
