@@ -174,9 +174,14 @@ class MainFrame(gtk.VBox):
         self.info_bar=gtk.HBox()
         self.spinner = gtk.Spinner()
         self.spinner.show()
+        self.spinner.set_size_request(20,-1)
+        #self.spinner_text = gtk.Label('')
+        #self.spinner_text.set_size_request(100,-1)
+        #self.spinner_text.show()
         self.info_bar_text=gtk.Label('Loading.... please wait')
         self.info_bar_text.show()
         self.info_bar.pack_start(self.info_bar_text,True)
+        #self.info_bar.pack_start(self.spinner_text,True)
         self.info_bar.pack_start(self.spinner,False)
         self.info_bar.show()
 
@@ -907,9 +912,10 @@ class MainFrame(gtk.VBox):
     def update_spinner(self,widget,active,message):
         if active:
             self.spinner.start()
+            self.spinner.set_tooltip_text("Scanning collection")
         else:
             self.spinner.stop()
-        self.info_bar_text.set_tooltip_text(message)
+            self.spinner.set_tooltip_text("No Scan in Progress")
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
