@@ -911,11 +911,13 @@ class MainFrame(gtk.VBox):
 
     def update_spinner(self,widget,active,message):
         if active:
-            self.spinner.start()
-            self.spinner.set_tooltip_text("Scanning collection")
+            if not self.spinner.get_property('active'):
+                self.spinner.start()
+                self.spinner.set_tooltip_text("Scanning collection")
         else:
-            self.spinner.stop()
-            self.spinner.set_tooltip_text("No Scan in Progress")
+            if self.spinner.get_property('active'):
+                self.spinner.stop()
+                self.spinner.set_tooltip_text("No Scan in Progress")
 
     def update_status(self,widget,progress,message):
         self.status_bar.show()
