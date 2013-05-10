@@ -17,12 +17,19 @@ class SimpleView(baseobjects.ViewBase):
         self.reverse=False
         self.collection=collection
         self.loaded=False
+
+    def set_cb(self):
+        for text,cb in collection.browser_sort_keys.iteritems():
+            if self.sort_key_text==text:
+                self.key_cb=cb
+
     def load(self,file_handle):
         '''
         reconstruct the view by loading it from the file_handle
         using pickle to load the keys and current filter
         '''
-        items,self.filter_text,self.reverse = cPickle.load(file_handle)
+        items,self.filter_text,self.reverse,self.sort_key_text = cPickle.load(file_handle)
+        self.set_cb()
         self.items = [[key, self.collection[self.collection.find(uid)] ] for (key,uid) in items]
         self.loaded=True
     def save(self,file_handle):
@@ -30,7 +37,7 @@ class SimpleView(baseobjects.ViewBase):
         save the list of keys and uids in the view to the file_handle
         '''
         items = [(key,item.uid) for (key,item) in self.items]
-        view_data = (items,self.filter_text,self.reverse)
+        view_data = (items,self.filter_text,self.reverse,self.sort_key_text)
         cPickle.dump(view_data,file_handle,-1)
         print 'SAVED VIEW',self
     def copy(self):
