@@ -227,11 +227,14 @@ class TagSidebarPlugin(pluginbase.Plugin):
     def t_view_emptied(self,collection,view):
         '''the view has been flushed'''
         self.tagframe.tag_cloud_view[view]=TagCloud()
+        self.tagframe.refresh()
     def t_view_updated(self,collection,view):
         '''the view has been updated'''
         self.tagframe.tag_cloud_view[view]=TagCloud()
         for item in view:
+            print 'adding',item
             self.tagframe.tag_cloud_view[view].add(item)
+        self.tagframe.refresh()
     def view_rebuild_complete(self,mainframe,browser):
         self.tagframe.refresh()
     def load_user_tags(self,filename):
