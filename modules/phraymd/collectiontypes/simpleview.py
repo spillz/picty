@@ -19,7 +19,7 @@ class SimpleView(baseobjects.ViewBase):
         self.loaded=False
 
     def set_cb(self):
-        for text,cb in collection.browser_sort_keys.iteritems():
+        for text,cb in self.collection.browser_sort_keys.iteritems():
             if self.sort_key_text==text:
                 self.key_cb=cb
 
