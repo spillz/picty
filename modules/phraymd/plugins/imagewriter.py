@@ -25,6 +25,7 @@ import os.path
 import gtk
 import gobject
 import Image
+import tempfile
 
 from phraymd import imagemanip
 from phraymd import settings
@@ -32,6 +33,7 @@ from phraymd import pluginbase
 from phraymd import dialogs
 from phraymd import metadata
 from phraymd import backend
+from phraymd import io
 
 class ImageWriteJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser,plugin,item,src_path,dest_path):
@@ -43,13 +45,23 @@ class ImageWriteJob(backend.WorkerJob):
 
     def __call__(self):
         try:
-            self.item.image.save(self.dest_path)
+            if io.equal(self.dest_path,self.src_path):
+                h,dpath=tempfile.mkstemp('.jpg')
+            else:
+                dpath = self.dest_path
+            self.item.image.save(dpath)
         except:
             gobject.idle_add(self.plugin.image_write_failed)
             return True
-        if not metadata.copy_metadata(self.item.meta,self.src_path,self.dest_path):
+        if not metadata.copy_metadata(self.item.meta,self.src_path,dpath):
             gobject.idle_add(self.plugin.image_write_meta_failed)
             return True
+        if dpath!=self.dest_path:
+            try:
+                io.remove_file(self.dest_path)
+                io.move_file(dpath,self.dest_path)
+            except IOError:
+                gobject.idle_add(self.plugin.image_write_meta_failed)
         gobject.idle_add(self.plugin.image_write_done)
         return True
 
