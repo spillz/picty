@@ -232,7 +232,6 @@ class TagSidebarPlugin(pluginbase.Plugin):
         '''the view has been updated'''
         self.tagframe.tag_cloud_view[view]=TagCloud()
         for item in view:
-            print 'adding',item
             self.tagframe.tag_cloud_view[view].add(item)
         self.tagframe.refresh()
     def view_rebuild_complete(self,mainframe,browser):
