@@ -1,0 +1,135 @@
+#!/usr/bin/python
+
+'''
+
+    picty
+    Copyright (C) 2013  Damien Moore
+
+License:
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
+import sys
+import os.path
+
+filename=os.path.abspath(__file__)
+if filename=='/usr/bin/picty':
+    module_path='/usr/share/picty'
+    icon_file='/usr/share/pixmaps/picty.png'
+    splash_file='/usr/share/picty/icons/picty-polaroids-and-frame.png'
+else:
+    module_path=os.path.join(os.path.split(os.path.split(filename)[0])[0],'modules')
+    icon_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'desktop/picty.png')
+    splash_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'icons/picty-polaroids-and-frame.png')
+print 'running picty with module path',module_path
+sys.path.insert(0,module_path)
+
+
+try:
+    import gobject
+    import gtk
+    import gnome.ui
+    import pyexiv2
+    gobject.threads_init()
+    gtk.gdk.threads_init()
+except:
+    print 'ERROR: missing modules gobject, gtk, gio, and pyexiv2'
+    import sys
+    sys.exit()
+
+from picty import settings
+
+if len(sys.argv) > 1:
+    custom_dir=os.path.expanduser(os.path.join('~',sys.argv[1]))
+    if os.path.isdir(custom_dir):
+        settings.settings_dir=os.path.join(custom_dir,'settings')
+        if not os.path.isdir(settings.settings_dir):
+            os.makedirs(settings.settings_dir)
+        settings.data_dir=os.path.join(custom_dir,'data')
+        if not os.path.isdir(settings.data_dir):
+            os.makedirs(settings.data_dir)
+        settings.cache_dir=os.path.join(custom_dir,'cache')
+        if not os.path.isdir(settings.cache_dir):
+            os.makedirs(settings.cache_dir)
+    else:
+        print "Chosen test direcory does not exist:", custom_dir
+        sys.exit()
+
+settings.init() ##todo: make more of the settings module dependant on this call??
+settings.icon_file=icon_file
+settings.splash_file=splash_file
+settings.module_path=module_path
+
+from picty import mainframe
+
+class MainWindow:
+    def __init__(self):
+
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.set_default_size(680, 400)
+        self.window.set_title("picty")
+        self.window.set_icon_from_file(icon_file)
+#        self.window.connect("delete_event", self.delete_event)
+        self.window.connect("destroy", self.destroy)
+        sett=gtk.settings_get_default()
+        sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"picty:main") #gtk.ICON_SIZE_MENU
+        sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"picty:main")
+#       configure-event being used to save changes to screen size for start up
+        self.window.connect("configure-event", self.app_win_resize)
+        self.window.connect("window_state_event", self.window_new_state)
+
+        self.mainframe = mainframe.MainFrame(self.window)
+#       Resize app window to size when last quit
+        if self.mainframe.toplevel_window_max:
+            self.window.set_default_size(self.mainframe.toplevel_window_state[0], self.mainframe.toplevel_window_state[1])
+            self.window.maximize()
+        else:
+            self.window.resize(self.mainframe.toplevel_window_state[0], self.mainframe.toplevel_window_state[1])
+            self.window.move(self.mainframe.toplevel_window_state[2], self.mainframe.toplevel_window_state[3])
+
+        vb=gtk.VBox()
+        vb.pack_start(self.mainframe)
+        self.window.add(vb)
+
+        self.window.show()
+        vb.show()
+        self.mainframe.show()
+
+    def window_new_state(self, widget, event):
+        state = event.new_window_state
+        if state == gtk.gdk.WINDOW_STATE_MAXIMIZED:
+            self.mainframe.toplevel_window_max = True
+        else:
+            self.mainframe.toplevel_window_max = False
+
+    def app_win_resize(self, widget, event):
+        if not self.mainframe.toplevel_window_max:
+            self.mainframe.toplevel_window_state = (event.width, event.height, event.x, event.y)
+
+    def delete_event(self, widget, event, data=None):
+        return False #allows the window to be destroyed
+
+    def destroy(self, widget, data=None):
+        print "destroy signal occurred"
+        import os,os.path
+        gtk.main_quit()
+
+    def main(self):
+        gtk.main()
+
+if __name__ == "__main__":
+    wnd = MainWindow()
+    wnd.main()

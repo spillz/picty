@@ -28,7 +28,7 @@ build-stamp: configure-stamp
 
 #	# Add here commands to compile the package.
 #	$(MAKE)
-#s	#docbook-to-man debian/phraymd.sgml > phraymd.1
+#s	#docbook-to-man debian/picty.sgml > picty.1
 
 	touch $@
 
@@ -47,7 +47,7 @@ install: build
 	dh_clean -k
 	dh_installdirs
 
-	./setup.py install --no-compile --home=debian/phraymd/usr --install-purelib=debian/phraymd/usr/share/phraymd
+	./setup.py install --no-compile --home=debian/picty/usr --install-purelib=debian/picty/usr/share/picty
 
 
 # Build architecture-independent files here.

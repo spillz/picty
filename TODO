@@ -23,7 +23,7 @@ As stuff is completed or plans change the list should be updated.
     * Server maintains the index and datastore of underlying images in a collection
     * Server process watches for changes to images and updates index/datastore appropriately, notifying GUI and getting user feedback as necessary
     * Optional "always on" server (tracks all changes to images in monitored
-      collections even while phraymd client is not running)
+      collections even while picty client is not running)
   * This is hard because...
     * Passing data between processes is slow
     * High priority tasks need to interrupt with low latency
@@ -88,4 +88,4 @@ As stuff is completed or plans change the list should be updated.
     * Copy cached thumbnails on transfer (avoids downloading/recreating)
 
 
-phraymd (c) 2011 Damien Moore
+picty (c) 2011 Damien Moore

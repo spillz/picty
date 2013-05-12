@@ -1,8 +1,9 @@
-picty - A photo collection manager
+'''
 
-(c) 2009 Damien Moore
+    picty
+    Copyright (C) 2013  Damien Moore
 
-License: GPL v3
+License:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,29 +17,28 @@ License: GPL v3
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
 
-----
+import logging
+import os
 
-DEPENDENCIES
-============
+import settings
 
-The ubuntu packages required to run this project are:
+# create logger
+log = logging.getLogger("picty core")
+log.setLevel(logging.DEBUG)
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
 
-python-gtk2
-python-gnome2
-python-pyexiv2
-python-pyinotify
+fh = logging.FileHandler(os.path.join(settings.settings_dir,'log'))
+fh.setLevel(logging.DEBUG)
 
-(python v2.5-2.6 is assumed, the program may work with other versions, but may not)
-
-recommended packages: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
-
-RUNNING PHRAYMD
-===============
-
-picty
-
-INSTALL PHRAYMD
-===============
-
-See the INSTALL file
+# create formatter
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s\n")
+# add formatter to ch
+ch.setFormatter(formatter)
+fh.setFormatter(formatter)
+# add ch to logger
+log.addHandler(ch)
+log.addHandler(fh)

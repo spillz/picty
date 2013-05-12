@@ -1,30 +1,30 @@
-phraymd (0.3a11) lucid; urgency=low
+picty (0.3a11) lucid; urgency=low
 
   * bug fix: desktop integration now works again
   * bug fix: removing attached device closes collection and browser tab
-  * based on rev 483 of lp:phraymd
+  * based on rev 483 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Sun, 17 Apr 2011 22:49:43 -0400
 
-phraymd (0.3a10) lucid; urgency=low
+picty (0.3a10) lucid; urgency=low
 
   * fixes regression that broke tagging of multiple selections (and other multiple selection actions)
   * large changes to collection handling architecture that should be mostly invivsible to end users
   * display camera model in image viewer OSD and other minor image viewer tweaks
-  * based on rev 480 of lp:phraymd
+  * based on rev 480 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Sat, 16 Apr 2011 23:58:57 -0400
 
-phraymd (0.3a9) lucid; urgency=low
+picty (0.3a9) lucid; urgency=low
 
   * bug fix: remembering last used collection
   * show textual image information in the image viewer OSD
   * show/hide image viewer OSD elements (text information and OSD buttons) depending on mouse/pointer position
-  * based on rev 476 of lp:phraymd
+  * based on rev 476 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Sun, 10 Apr 2011 23:13:51 -0400
 
-phraymd (0.3a8) lucid; urgency=low
+picty (0.3a8) lucid; urgency=low
 
   * bug fixes: image zoom rendering, exception caused by accidentally duplicated collection views
   * improved keyboard shortcuts
@@ -33,47 +33,47 @@ phraymd (0.3a8) lucid; urgency=low
     * zoom to fit with 0 or asterisk
     * zoom to 100% with 1
   * mousewheel scrolling and zooming in image viewer
-  * based on rev 472 of lp:phraymd
+  * based on rev 472 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Sun, 10 Apr 2011 00:22:50 -0400
 
-phraymd (0.3a7) lucid; urgency=low
+picty (0.3a7) lucid; urgency=low
 
-  * improved desktop integration (open images in phraymd from desktop/other apps)
+  * improved desktop integration (open images in picty from desktop/other apps)
   * started overhaul of collection management infrastrucuture (collections derive from a base class)
   * zooming in the image viewer
-  * based on rev 463 of lp:phraymd
+  * based on rev 463 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Fri, 08 Apr 2011 17:39:29 -0400
 
-phraymd (0.3a6) lucid; urgency=low
+picty (0.3a6) lucid; urgency=low
 
   * setup.py snafu
   * based on rev 453
 
  -- damien <damienlmoore@gmail.com>  Sat, 28 Aug 2010 05:33:41 -0400
 
-phraymd (0.3a5) lucid; urgency=low
+picty (0.3a5) lucid; urgency=low
 
   * gpg snafu
 
  -- Damien Moore <damienlmoore@gmail.com>  Fri, 27 Aug 2010 20:52:02 -0400
 
-phraymd (0.3a4) lucid; urgency=low
+picty (0.3a4) lucid; urgency=low
 
   * bug fix: snafu with icons on 0.3a3 release
   * in this version map, upload and import plugins are contained in separate windows instead of the sidebar
-  * based on rev 452 of lp:phraymd
+  * based on rev 452 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Fri, 27 Aug 2010 20:36:21 -0400
 
-phraymd (0.3a3) lucid; urgency=low
+picty (0.3a3) lucid; urgency=low
 
   * bug fix: device handling (connected devices would fail to open)
-  * based on rev450 of lp:phraymd
+  * based on rev450 of lp:picty
  -- damien <damienlmoore@gmail.com>  Fri, 27 Aug 2010 19:15:54 -0400
 
-phraymd (0.3a2) lucid; urgency=low
+picty (0.3a2) lucid; urgency=low
 
   * bug fixes:
     * breakage of importer
@@ -82,7 +82,7 @@ phraymd (0.3a2) lucid; urgency=low
 
  -- damien <damienlmoore@gmail.com>  Tue, 18 May 2010 18:30:37 -0400
 
-phraymd (0.3a1) lucid; urgency=low
+picty (0.3a1) lucid; urgency=low
 
   * collections now display as "tabs"
   * the right most tab is a collection management tab displaying the list of available collections/devices
@@ -98,31 +98,31 @@ phraymd (0.3a1) lucid; urgency=low
     * draggable handles of the crop area
   * other bug fixes: 
     * tag pane and browser OSD text renders tags with ampersands correctly (must be escaped for pango to render correctly)
-  * based on rev440 of lp:phraymd
+  * based on rev440 of lp:picty
 
  -- damien <damienlmoore@gmail.com>  Mon, 17 May 2010 21:35:50 -0400
 
-phraymd (0.2a7) karmic; urgency=low
+picty (0.2a7) karmic; urgency=low
 
   * pyexiv2 0.2 compatibility bug fixes
   * map plugin: osmgpsmap v0.4+ compatibility bug fixes
   * map plugin: remmber last used map source
   * tag plugin: tag counts in tag treeview should be correct (at least more often)
   * revert to yeKcim's other icon
-  * Based on rev413 of lp:phraymd
+  * Based on rev413 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Sun, 18 Apr 2010 23:40:37 -0400
 
-phraymd (0.2a6) karmic; urgency=low
+picty (0.2a6) karmic; urgency=low
 
   * bug-fixes
     * pyexiv2 0.2 partial support now works
     * collection creation dialogs work correctly on latest ubuntu lucid packages
-  * Based on rev404 of lp:phraymd
+  * Based on rev404 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Thu, 15 Apr 2010 21:29:52 -0400
 
-phraymd (0.2a5) karmic; urgency=low
+picty (0.2a5) karmic; urgency=low
 
   * features
     * tweak font sizing of OSD text (should be customizable and/or grab from theme
@@ -136,27 +136,27 @@ phraymd (0.2a5) karmic; urgency=low
     * save OSD button should not highlight unless mouse is over it
     * force browser redraw to avoid rendering glitch when dragging items into the browser pane
     * temporary fix for correctly displaying DNGs
-  * Based on rev399 of lp:phraymd    
+  * Based on rev399 of lp:picty    
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 30 Mar 2010 22:33:57 -0400
 
-phraymd (0.2a4) karmic; urgency=low
+picty (0.2a4) karmic; urgency=low
 
   * Aaargh... build failure on 0.2a3
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 09 Mar 2010 22:47:48 -0500
 
-phraymd (0.2a3) karmic; urgency=low
+picty (0.2a3) karmic; urgency=low
 
   * Replaced app icon (thanks again yeKcim)
   * Browser UI tweaks: 1. wrap text inside selection area, 2. check for hover in the rendering routine to prevent UI glitches
   * bugfix (launchpad bug #535372): display correct case for filename in OSD
-  * bugfix (launchpad bug #535381): unbound local variables caused phraymd to hang
-  * based on rev386 of lp:phraymd
+  * bugfix (launchpad bug #535381): unbound local variables caused picty to hang
+  * based on rev386 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 09 Mar 2010 22:10:16 -0500
 
-phraymd (0.2a2) karmic; urgency=low
+picty (0.2a2) karmic; urgency=low
 
   * features:
     * icon refresh -- thanks yeKcim
@@ -172,111 +172,111 @@ phraymd (0.2a2) karmic; urgency=low
     * improved pane resizing algorithm after image is opened for viewing
     * drag and drop now works in nautilus (copies files)
     * use fallbacks if DateTimeOriginal Exif key is missing
-  * Based on rev381 of lp:phraymd
+  * Based on rev381 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Mon, 08 Mar 2010 22:29:44 -0500
 
-phraymd (0.2a1) karmic; urgency=low
+picty (0.2a1) karmic; urgency=low
 
-  * First release of 0.2 series of phraymd
+  * First release of 0.2 series of picty
   * Overhaul of the backend
     * multiple collection handling
     * improved threaded job handling
     * simple collection switching in a collection combo on the toolbar
     * dialogs for adding new collections or browing folders
   * Bug fixes for search features (many thanks to contributor Stuart)
-  * Based on rev 361 of lp:phraymd
+  * Based on rev 361 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Fri, 12 Feb 2010 23:18:15 -0500
 
-phraymd (0.1.0a13) karmic; urgency=low
+picty (0.1.0a13) karmic; urgency=low
 
   * thumbnail images extracted from image metadata are rotated correctly (and don't hang the program)
   * import plugin browsing defaults vary with mount type (ghoto vs filestore). this should ensure the browse should work without the need to check boxes.
-  * Based on rev 343 of lp:phraymd
+  * Based on rev 343 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Sun, 20 Dec 2009 14:28:02 -0500
 
-phraymd (0.1.0a12) karmic; urgency=low
+picty (0.1.0a12) karmic; urgency=low
 
   * Use time.sleep after idle_add on the backend thread to improve UI responsiveness during collection scan and other intensive ops
-  * Based on rev 341 of lp:phraymd
+  * Based on rev 341 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 15 Dec 2009 23:15:19 -0500
 
-phraymd (0.1.0a11) karmic; urgency=low
+picty (0.1.0a11) karmic; urgency=low
 
   * karmic version of gnome thumbnail factory expects integer mtime. this provides a fix
-  * based on rev 340 of lp:phraymd
+  * based on rev 340 of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Sun, 13 Dec 2009 15:20:16 -0500
 
-phraymd (0.1.0a10) karmic; urgency=low
+picty (0.1.0a10) karmic; urgency=low
 
   * double grr... 0.1.0a9 thumbnailing was broken (this problem may go back a couple of versions) 
 
  -- Damien Moore <damienlmoore@gmail.com>  Sat, 12 Dec 2009 22:36:02 -0500
 
-phraymd (0.1.0a9) karmic; urgency=low
+picty (0.1.0a9) karmic; urgency=low
 
   * grrr... 0.1.0a8 was broken -- missing function in imagemanip.py 
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 08 Dec 2009 21:44:37 -0500
 
-phraymd (0.1.0a8) karmic; urgency=low
+picty (0.1.0a8) karmic; urgency=low
 
   * Corrects thumbnail orientation issues
-  * Based on rev337 in trunk of lp:phraymd + patch to imagemanip.py and metadata.py
+  * Based on rev337 in trunk of lp:picty + patch to imagemanip.py and metadata.py
 
  -- Damien Moore <damienlmoore@gmail.com>  Tue, 08 Dec 2009 21:34:52 -0500
 
-phraymd (0.1.0a7) karmic; urgency=low
+picty (0.1.0a7) karmic; urgency=low
 
   * Various tweaks to improve import robustness
-  * Based on rev337 in trunk of lp:phraymd
+  * Based on rev337 in trunk of lp:picty
 
  -- Damien Moore <damienlmoore@gmail.com>  Mon, 23 Nov 2009 23:25:22 -0500
 
-phraymd (0.1.0a6) karmic; urgency=low
+picty (0.1.0a6) karmic; urgency=low
 
-  * Based on revision 336 in trunk of lp:phraymd
+  * Based on revision 336 in trunk of lp:picty
   * webupload plugin bug fixes: 1. switching between services would 
     fail to redisplay the gui 
     2. flickr upload did not respect privacy settings
 
  -- Damien Moore <damienlmoore@gmail.com>  Sun, 22 Nov 2009 19:24:02 -0500
 
-phraymd (0.1.0a5) karmic; urgency=low
+picty (0.1.0a5) karmic; urgency=low
 
-  * Based on revision 335 in trunk of lp:phraymd
+  * Based on revision 335 in trunk of lp:picty
   * Bug fix: Import copy would sometime move instead of copy!
   * Bug fix: Import rename if file exists now actually works
   * Bug fix: Retrieving internal thumbnail using pyexiv2 lib now works properly
 
  -- Damien Moore <damienlmoore@gmail.com>  Fri, 20 Nov 2009 18:31:21 -0500
 
-phraymd (0.1.0a4) karmic; urgency=low
+picty (0.1.0a4) karmic; urgency=low
 
-  * Based on revision 333 in trunk of lp:phraymd
+  * Based on revision 333 in trunk of lp:picty
   * Importer now support various "rename on import" schemes 
 
  -- Damien Moore <damienlmoore@gmail.com>  Thu, 19 Nov 2009 23:17:26 -0500
 
-phraymd (0.1.0a3) karmic; urgency=low
+picty (0.1.0a3) karmic; urgency=low
 
-  * Based on revision 332 in trunk of lp:phraymd
+  * Based on revision 332 in trunk of lp:picty
   * Fixes media handling for mounted devices
 
  -- Damien Moore <damienlmoore@gmail.com>  Wed, 18 Nov 2009 23:29:21 -0500
 
-phraymd (0.1.0a2) karmic; urgency=low
+picty (0.1.0a2) karmic; urgency=low
 
-  * Based on revision 331 in trunk of lp:phraymd
+  * Based on revision 331 in trunk of lp:picty
   * Features enhancements to the importer plugin (better device handling, import and brose options)
 
  -- Damien Moore <damienlmoore@gmail.com>  Wed, 18 Nov 2009 22:33:31 -0500
 
-phraymd (0.1.0) karmic; urgency=low
+picty (0.1.0) karmic; urgency=low
 
   * Initial Release.
 

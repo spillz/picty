@@ -1,8 +1,9 @@
-picty - A photo collection manager
+'''
 
-(c) 2009 Damien Moore
+    picty
+    Copyright (C) 2013  Damien Moore
 
-License: GPL v3
+License:
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,29 +17,21 @@ License: GPL v3
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
 
-----
+'''
+metadata.py
 
-DEPENDENCIES
-============
+This module describes the subset of exif, iptc and xmp metadata used by the program
+and provides a dictionary to handle conversion between exiv2 formats and the internal
+representation
+'''
 
-The ubuntu packages required to run this project are:
+import pyexiv2
 
-python-gtk2
-python-gnome2
-python-pyexiv2
-python-pyinotify
-
-(python v2.5-2.6 is assumed, the program may work with other versions, but may not)
-
-recommended packages: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
-
-RUNNING PHRAYMD
-===============
-
-picty
-
-INSTALL PHRAYMD
-===============
-
-See the INSTALL file
+if '__version__' in dir(pyexiv2) and pyexiv2.__version__>='0.2':
+    print 'Using pyexiv2 version',pyexiv2.__version__
+    from metadata2 import *
+else:
+    print 'Using pyexiv2 version 0.1.x'
+    from metadata1 import *

@@ -1,0 +1,10 @@
+#!/usr/bin/python
+
+import dbus, sys
+
+bus = dbus.SessionBus()
+bus.start_service_by_name('org.spillz.picty') ##THIS ONLY WORKS FOR SERVICES WITH A SERVICE FILE INSTALLED
+server = dbus.Interface(bus.get_object('org.spillz.picty', '/org/spillz/picty'),
+                        'org.spillz.picty')
+uri = sys.argv[1] if len(sys.argv)>1 else ''
+print server.media_connected(uri)

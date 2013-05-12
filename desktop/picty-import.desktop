@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=picty Photo Importer
+GenericName=Photo Import Tool
+Comment=Import the photos on your camera card
+Categories=GNOME;GTK;Graphics;Viewer;RasterGraphics;2DGraphics;Photography;
+Exec=picty-import %U
+Icon=picty
+MimeType=x-content/image-dcf;x-content/image-picturecd;
+NoDisplay=true
+StartupNotify=true
+Terminal=false
+Type=Application
+X-Ubuntu-Gettext-Domain=picty

@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="picty" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="run">
+				<Option output="picty" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="/home/damien/src/picty//.objs" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option host_application="bin/picty" />
+				<Option run_host_application_in_terminal="0" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="INSTALL">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="README">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="TODO">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="bin/picty">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="bin/picty-file-server.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="bin/picty-import">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="bin/picty-open">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="container.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="design.txt">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="desktop/org.spillz.picty.service">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="desktop/picty-import.desktop">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="desktop/picty-open.desktop">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="desktop/picty.desktop">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="desktop/picty.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/image-crop.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/image-rotate.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/import.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/license">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/map.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-5-polaroids.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-5-polaroids.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-icons-yeKcim.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-image-crop.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-image-rotate.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-image-write.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-map.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-polaroids-and-frame.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-polaroids-and-frame.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-rotate-left.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-rotate-right.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-sidebar.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-transfer.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/picty-web-upload.png">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/rotate.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/save-metadata.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/sidebar.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/web-upload.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/write-image-alt.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="icons/write-image.svg">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/__init__.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/backend.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/baseobjects.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/browser.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectionmanager.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/__init__.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/flickr.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/localdir.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/localstorebin.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/localstoredb.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/collectiontypes/simpleview.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/dbusserver.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/dialogs.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/fileops.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/floats.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/imagemanip.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/images.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/io.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/legacy-plugins/webupload.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/legacy-plugins/webupload_services/__init__.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/legacy-plugins/webupload_services/flickr.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/legacy-plugins/webupload_services/picasaweb.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/legacy-plugins/webupload_services/serviceui.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/logger.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/mainframe.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/metadata.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/metadata1.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/metadata2.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/monitor.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/monitor2.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/overlaytools.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/pluginbase.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/pluginimporter.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/pluginmanager.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/__init__.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/config.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/crop.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/imagewriter.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/mapui.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/metadata_viewer.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/rotate.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/tagui.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/plugins/transfer.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/pyexiv2_alt.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/register_icons.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/searchbox.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/settings.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/simple_parser.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/viewer.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/viewsupport.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/widget_tools.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="modules/picty/widgetbuilder.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="scratch/collection_base_class.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="scratch/comboboxwrap.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="scratch/flickr-test.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="setup.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="utils/exif-tags">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="utils/iptc-tags">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="utils/metadata-viewer.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="utils/tag-test.py">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="utils/xmp-tags">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

@@ -34,7 +34,7 @@ map.svg
 
     Uploaded with derivativeFX
 
-sidebar.svg, phraymd-sidebar.png:
+sidebar.svg, picty-sidebar.png:
     Based on Application-default-icon.svg‎ (SVG file, nominally 48 × 48 pixels, file size: 15 KB)
     An icon from the GNOME-colors 2.5 icon theme.
     Date 	Jun 4 2008 (last updated Oct 24 2008)
@@ -53,6 +53,6 @@ web-upload.svg, import.svg:
     Adapted from gnome-colors 5.5.1 icon theme
     using camera.svg, applications-internet.svg, gtk-save.svg
 
-phraymd-polaroids-and-frame.png:
+picty-polaroids-and-frame.png:
     (c) 2010 yeKcim
     License GPL v3

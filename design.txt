@@ -1,4 +1,4 @@
-PHRAYMD Design Document
+picty Design Document
 
 Image Photo database, indexing and filtering schema
 ===================================================
@@ -127,7 +127,7 @@ Photo metadata
 The program uses the exiv2 lib to access image metadata, which includes EXIF, IPTC and XMP
 metadata standard. exiv2 provides read/write access for many types of images, but not all.
 
-In principle the PHRAYMD can provide read and write access to all metadata. However, only a
+In principle the picty can provide read and write access to all metadata. However, only a
 subset of the metadata is interesting from a collection management standpoint: metadata that
 describe the images, place them in time (or location) or core photo.
 
@@ -270,7 +270,7 @@ Collections
 
 No reason not to store more than one collection files. Allow the user to switch
 between them at run time. Presumably the user could run multiple instances
-of phraymd with a different collection open in each one.
+of picty with a different collection open in each one.
 
 To support offline collections, need to add an "offline" attribute to the collection object. The offline
 attribute gets set if the image folder is missing.

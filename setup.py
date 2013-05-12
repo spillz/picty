@@ -2,22 +2,22 @@
 
 from distutils.core import setup
 
-setup(name='phraymd',
+setup(name='picty',
       version='0.2',
-      description='phraymd Photo Manager',
+      description='picty Photo Manager',
       author='Damien Moore',
       author_email='damien.moore@excite.com',
-      url='https://launchpad.net/phraymd',
+      url='https://launchpad.net/picty',
       package_dir={'':'modules'},
-      packages=['phraymd','phraymd.plugins','phraymd.collectiontypes'],
-      scripts=['bin/phraymd','bin/phraymd-import', 'bin/phraymd-open'],
+      packages=['picty','picty.plugins','picty.collectiontypes'],
+      scripts=['bin/picty','bin/picty-import', 'bin/picty-open'],
       data_files=[
-        ('share/applications',['desktop/phraymd.desktop','desktop/phraymd-import.desktop', 'desktop/phraymd-open.desktop']),
-        ('share/pixmaps',['desktop/phraymd.png']),
-        ('share/dbus-1/services',['desktop/org.spillz.phraymd.service']),
-        ('share/phraymd/icons',['icons/phraymd-image-crop.png','icons/phraymd-image-write.png','icons/phraymd-rotate-right.png',
-            'icons/phraymd-image-rotate.png','icons/phraymd-rotate-left.png','icons/phraymd-sidebar.png',
-            'icons/phraymd-polaroids-and-frame.png','icons/phraymd-transfer.png',
-            'icons/phraymd-map.png'])
+        ('share/applications',['desktop/picty.desktop','desktop/picty-import.desktop', 'desktop/picty-open.desktop']),
+        ('share/pixmaps',['desktop/picty.png']),
+        ('share/dbus-1/services',['desktop/org.spillz.picty.service']),
+        ('share/picty/icons',['icons/picty-image-crop.png','icons/picty-image-write.png','icons/picty-rotate-right.png',
+            'icons/picty-image-rotate.png','icons/picty-rotate-left.png','icons/picty-sidebar.png',
+            'icons/picty-polaroids-and-frame.png','icons/picty-transfer.png',
+            'icons/picty-map.png'])
         ]
      )

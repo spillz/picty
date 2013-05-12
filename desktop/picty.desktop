@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=picty Photo Manager
+GenericName=Photo Manager
+Comment=View and organize your images
+Categories=GNOME;GTK;Graphics;Viewer;RasterGraphics;2DGraphics;Photography;
+Exec=picty %U
+Icon=picty
+StartupNotify=true
+Terminal=false
+Type=Application
+X-Ubuntu-Gettext-Domain=picty
