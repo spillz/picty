@@ -69,18 +69,32 @@ video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
 
 imagetypes=['jpg','jpeg','png']
 
-def get_user_dir(env_var,alt_path):
+home_dir = os.path.expanduser("~")
+
+def get_user_dir(env_var,alt_path,sub_dir=''):
     try:
         path=os.path.join(os.environ[env_var],'phraymd')
+        if sub_dir:
+            path=os.path.join(path,sub_dir)
     except KeyError:
-        path=os.path.join(os.environ['HOME'],alt_path)
+        path=os.path.join(os.path.expanduser("~"),alt_path)
+        if sub_dir:
+            path=os.path.join(path,sub_dir)
     if not os.path.exists(path):
         os.makedirs(path)
     return path
 
-settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
-data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
-cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
+import platform
+if platform.system() == 'Windows':
+    settings_dir=get_user_dir('APPDATA','.phraymd','settings')
+    data_dir=get_user_dir('APPDATA','.phraymd','data')
+    cache_dir=get_user_dir('APPDATA','.phraymd','cache') ##todo: not using cache yet. parts of the collection are definitely cache
+    is_windows=True
+else:
+    settings_dir=get_user_dir('XDG_CONFIG_HOME','.config/phraymd')
+    data_dir=get_user_dir('XDG_DATA_HOME','.local/share/phraymd')
+    cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
+    is_windows=False
 
 overlay_show_title=True
 overlay_show_path=False
@@ -95,7 +109,7 @@ default_collection_file=''
 legacy_collection_file=''
 legacy_collection_file2=''
 conf_file=''
-legacy_conf_file=os.path.join(os.environ['HOME'],'.phraymd-settings')
+legacy_conf_file=os.path.join(home_dir,'.phraymd-settings')
 legacy_image_dirs=[]
 
 
@@ -107,7 +121,7 @@ def init_settings_files():
         os.makedirs(collections_dir)
 
     default_collection_file=os.path.join(collections_dir,'collection') ##todo: support multiple collections
-    legacy_collection_file=os.path.join(os.environ['HOME'],'.phraymd-collection')
+    legacy_collection_file=os.path.join(home_dir,'.phraymd-collection')
     legacy_collection_file2=os.path.join(data_dir,'collection')
     if not os.path.exists(default_collection_file):
         if os.path.exists(legacy_collection_file2):
@@ -196,7 +210,7 @@ def user_add_dir():
     image_dirs=[]
     fcd=gtk.FileChooserDialog(title='Choose Photo Directory', parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-    fcd.set_current_folder(os.environ['HOME'])
+    fcd.set_current_folder(home_dir)
     response=fcd.run()
     if response == gtk.RESPONSE_OK:
         image_dirs.append(fcd.get_filename())

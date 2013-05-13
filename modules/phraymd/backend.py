@@ -38,7 +38,6 @@ import settings
 import baseobjects
 import viewsupport
 import imagemanip
-import monitor
 import pluginmanager
 import io
 from logger import log
@@ -361,7 +360,7 @@ class LoadCollectionJob(WorkerJob):
             else:
                 pluginmanager.mgr.callback('t_view_updated',collection,view)
             if collection.type=='LOCALDIR' and collection.path_to_open:
-                print 'Received D-Bus open request for',collection.path_to_open
+                log.info('Received D-Bus open request for',collection.path_to_open)
                 item=baseobjects.Item(collection.get_relpath(collection.path_to_open))
                 item.mtime=io.get_mtime(collection.get_path(item))
                 imagemanip.load_metadata(item,collection)

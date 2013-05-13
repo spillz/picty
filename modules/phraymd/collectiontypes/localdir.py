@@ -34,7 +34,6 @@ import gtk
 ##phraymd imports
 from phraymd import pluginmanager
 from phraymd import settings
-from phraymd import monitor2 as monitor
 from phraymd import viewsupport
 from phraymd import baseobjects
 from phraymd import simple_parser as sp

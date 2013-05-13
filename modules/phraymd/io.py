@@ -20,6 +20,7 @@ License:
 '''
 
 import os,os.path
+import platform
 
 def get_mtime(path):
     '''
@@ -124,10 +125,33 @@ try:
         ifile=gio.File(uri)
         return ifile.get_path()
 
-    def get_mime_type(path):
-        ifile=gio.File(path)
-        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
-        return info.get_content_type()
+    if platform.system() == 'Windows':
+        import _winreg
+        def get_mime_type(path):
+            ifile=gio.File(path)
+            info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+            ext = info.get_content_type()
+            reg = _winreg.ConnectRegistry(None,_winreg.HKEY_CLASSES_ROOT)
+            subkey = _winreg.OpenKey(reg,"MIME\DataBase\Content Type")
+            key_count, val_count, ldate = _winreg.QueryInfoKey(subkey)
+            mimetype=''
+            for k in range(key_count):
+                mime = _winreg.EnumKey(subkey,k)
+#                if not mime.lower().startswith('image'):
+#                    continue
+                mimekey = _winreg.OpenKey(subkey,mime)
+                mimekey_count, mimeval_count, ldate = _winreg.QueryInfoKey(mimekey)
+                for j in range(mimeval_count):
+                    mstr, value, vtype = _winreg.EnumValue(mimekey,j)
+                    if mstr == 'Extension' and value.lower() == ext.lower():
+                        mimetype = mime
+                        break
+            return mimetype
+    else:
+        def get_mime_type(path):
+            ifile=gio.File(path)
+            info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+            return info.get_content_type()
 
     def app_info_get_all_for_type(itype):
         return gio.app_info_get_all_for_type(itype)
@@ -215,7 +239,7 @@ except ImportError:
         os.remove(dest)
 
     def trash_file(src):
-        dest_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/files')
+        dest_dir=os.path.join(os.path.expanduser('~'),'.local/share/Trash/files')
         fname=os.path.split(src)[1]
         dest=os.path.join(dest_dir,fname)
         dest1=dest
@@ -226,7 +250,7 @@ except ImportError:
         now=datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
         move_file(src,dest1)
 
-        info_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/info')
+        info_dir=os.path.join(os.path.expanduser('~'),'.local/share/Trash/info')
         info=os.path.join(info_dir,fname+'.trashinfo')
         info_content='''[Trash Info]
 Path=%s

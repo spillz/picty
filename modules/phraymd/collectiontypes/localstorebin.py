@@ -37,7 +37,11 @@ import gtk
 ##phraymd imports
 from phraymd import pluginmanager
 from phraymd import settings
-from phraymd import monitor2 as monitor
+#todo: workaround in case of no pyinotify (partially for windows)
+try:
+    from phraymd import monitor2 as monitor
+except:
+    monitor=None
 from phraymd import viewsupport
 from phraymd import baseobjects
 from phraymd import simple_parser as sp
@@ -216,7 +220,11 @@ class LocalStorePrefWidget(gtk.VBox):
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
         self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
-        self.store_thumbs_combo.set_form_data(0)
+        if settings.is_windows:
+            self.store_thumbs_combo.set_sensitive(False)
+            self.store_thumbs_combo.set_form_data(1)
+        else:
+            self.store_thumbs_combo.set_form_data(0)
         self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
         self.trash_location_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
@@ -296,7 +304,11 @@ class NewLocalStoreWidget(gtk.VBox):
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
         self.store_thumbs_combo=wb.LabeledComboBox("Thumbnail storage",["Gnome Desktop Thumbnail Cache (User's Home)","Hidden Folder in Collection Folder"])
-        self.store_thumbs_combo.set_form_data(0)
+        if settings.is_windows:
+            self.store_thumbs_combo.set_sensitive(False)
+            self.store_thumbs_combo.set_form_data(1)
+        else:
+            self.store_thumbs_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
         self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
@@ -380,7 +392,7 @@ def create_empty_localstore(name,prefs,overwrite_if_exists=False):
         if not os.path.exists(col_dir):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(__version__,f,-1)
         d={}
         for p in Collection.pref_items:
             if p in prefs:
@@ -388,7 +400,7 @@ def create_empty_localstore(name,prefs,overwrite_if_exists=False):
         cPickle.dump(d,f,-1)
         f.close()
         f=open(data_file,'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(__version__,f,-1)
         cPickle.dump([],f,-1) #empty list of items
         f.close()
     except:
@@ -456,7 +468,7 @@ class Collection(baseobjects.CollectionBase):
         ************************************************************************'''
     def set_prefs(self,prefs):
         baseobjects.CollectionBase.set_prefs(self,prefs)
-        if self.store_thumbs_with_images:
+        if settings.is_windows or self.store_thumbs_with_images:
             self.thumbnail_cache_dir=os.path.join(self.image_dirs[0],'.thumbnails')
         else:
             self.thumbnail_cache_dir=None
@@ -577,6 +589,8 @@ class Collection(baseobjects.CollectionBase):
         ************************************************************************'''
 
     def start_monitor(self,callback=None):
+        if monitor == None:
+            return
         if self.monitor_image_dirs:
             if callback!=None:
                 self.monitor_master_callback=callback
@@ -828,7 +842,7 @@ class Collection(baseobjects.CollectionBase):
                 return True
         return imagemanip.load_thumb(item,self,self.thumbnail_cache_dir)
     def has_thumbnail(self,item):
-        return imagemanip.has_thumb(item,self)
+        return imagemanip.has_thumb(item,self,self.thumbnail_cache_dir)
     def make_thumbnail(self,item,interrupt_fn=None,force=False):
         'create a cached thumbnail of the image'
         if not force and (self.load_embedded_thumbs or self.load_preview_icons):

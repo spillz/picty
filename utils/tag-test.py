@@ -27,6 +27,7 @@ import sys
 import gtk
 import pyexiv2
 import pango
+from phraymd import settings
 
 def file_dialog(title='Choose an Image',default=''):
     '''
@@ -35,7 +36,7 @@ def file_dialog(title='Choose an Image',default=''):
     fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_OPEN,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
     if not default:
-        default=os.environ['HOME']
+        default=settings.home_dir
     fcd.set_current_folder(default)
     response=fcd.run()
     image_dir=''
