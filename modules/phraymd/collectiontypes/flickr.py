@@ -180,7 +180,7 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
             gobject.idle_add(self.worker.coll_set.collection_opened,self.collection.id)
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
             if not view.loaded:
-                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
+                self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
             else:
                 pluginmanager.mgr.callback('t_view_updated',collection,view)
             if self.collection.flickr_client!=None and (self.collection.sync_at_login or len(self.collection)==0):
