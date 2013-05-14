@@ -161,10 +161,10 @@ class Sets:
         return None
 
 class LoadFlickrCollectionJob(backend.WorkerJob):
-    def __init__(self,worker,collection,browser):
+    def __init__(self,worker,collection,browser,rescan_at_open):
         backend.WorkerJob.__init__(self,'LOADFLICKRCOLLECTION',890,worker,collection,browser)
         self.pos=0
-        self.full_rescan=True
+        self.full_rescan=rescan_at_open
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -174,6 +174,7 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
 #        log.info('Loading collection '+self.collection_file)
         gobject.idle_add(self.browser.update_backstatus,True,'Loading Collection: %s'%(collection.name,))
         print 'OPENING FLICKR COLLECTION',collection.id,collection.type
+        print 'rescan?',self.full_rescan
         view.empty()
         pluginmanager.mgr.callback('t_view_emptied',collection,view)
         if collection._open():
@@ -183,7 +184,7 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
                 self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
             else:
                 pluginmanager.mgr.callback('t_view_updated',collection,view)
-            if self.collection.flickr_client!=None and (self.collection.sync_at_login or len(self.collection)==0):
+            if self.collection.flickr_client!=None and (self.full_rescan or len(self.collection)==0):
                 self.worker.queue_job_instance(FlickrSyncJob(self.worker,self.collection,self.browser))
                 self.worker.queue_job_instance(backend.MakeThumbsJob(self.worker,self.collection,self.browser))
 #            log.info('Loaded collection with '+str(len(collection))+' images')
@@ -214,6 +215,7 @@ class FlickrSyncJob(backend.WorkerJob):
             self.counter=0
             self.started=True
         new_time=time.time()
+        gobject.idle_add(self.browser.update_backstatus,True,'Syncing Collection: %s'%(collection.name,))
         while jobs.ishighestpriority(self) and self.page<=self.pages:
 #            supported_extras='''description, license, date_upload, date_taken, owner_name, icon_server, original_format,
 #                    last_update, geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_m,
@@ -251,7 +253,6 @@ class FlickrSyncJob(backend.WorkerJob):
                 gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
         if self.page>self.pages:
             collection.last_update_time=new_time
-            gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
 
             sets=collection.get_sets()
             if sets!=None:
@@ -272,6 +273,8 @@ class FlickrSyncJob(backend.WorkerJob):
                     self.browser.lock.release()
                     gobject.idle_add(self.browser.resize_and_refresh_view,self.collection)
             pluginmanager.mgr.resume_collection_events(self.collection)
+            gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
+            gobject.idle_add(self.browser.update_backstatus,False,'Syncing Complete - %s'%(collection.name,))
             return True
         return False
 
@@ -376,7 +379,7 @@ class FlickrPrefWidget(gtk.VBox):
     def __init__(self,value_dict=None):
         gtk.VBox.__init__(self)
         box,self.name_entry=dialogs.box_add(self,[(gtk.Entry(),True,None)],'Collection Name: ')
-        self.name_entry.connect("changed",self.name_changed)
+#        self.name_entry.connect("changed",self.name_changed)
         self.rescan_check=gtk.CheckButton("Rescan flickr account for changes after opening")
         self.rescan_check.set_active(True)
         self.pack_start(self.rescan_check,False)
@@ -384,8 +387,8 @@ class FlickrPrefWidget(gtk.VBox):
         if value_dict:
             self.set_values(value_dict)
 
-    def name_changed(self,entry):
-        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
+#    def name_changed(self,entry):
+#        sensitive=len(entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
 
     def get_values(self):
         name=self.name_entry.get_text().replace('/','').strip()
@@ -602,7 +605,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         else:
             if self.browser!=None:
                 gobject.idle_add(self.browser.collection_offline,self) ##should probably call worker.coll_set method as well?
-        j=LoadFlickrCollectionJob(thread_manager,self,browser)
+        j=LoadFlickrCollectionJob(thread_manager,self,browser,self.rescan_at_open)
         thread_manager.queue_job_instance(j)
 
     def _open(self):
