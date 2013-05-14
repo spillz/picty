@@ -621,7 +621,10 @@ class FlickrCollection(baseobjects.CollectionBase):
             if version>='0.5':
 #                self.flickr_collections=cPickle.load(f)
 #                self.flickr_sets=cPickle.load(f)
-                self.items=cPickle.load(f)
+                try:
+                    self.items=cPickle.load(f)
+                except:
+                    pass
                 for i in range(len(self.items)):
                     if 'filename' in self.items[i].__dict__:
                         self.items[i]=self.items[i].convert()
@@ -979,12 +982,9 @@ class FlickrCollection(baseobjects.CollectionBase):
         print 'Flickr Collection: creating thumb for',item
         try:
             thumburi=os.path.join(self.thumbnail_cache_dir,item.uid)+'.jpg'
-            try:
-                os.makedirs(os.path.split(thumburi)[0])
-            except:
-                pass
-            f=open(thumburi,'wb')
-            f.write(urllib2.urlopen(item.thumburl).read())
+            if not os.path.exists(thumburi):
+                f=open(thumburi,'wb')
+                f.write(urllib2.urlopen(item.thumburl).read())
             item.thumburi=thumburi ##avoid a race condition with imagemanip.load_thumb by setting item.thumburi AFTER the thumb has been created
             return True
         except:

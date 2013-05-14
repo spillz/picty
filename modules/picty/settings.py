@@ -81,6 +81,14 @@ def get_user_dir(env_var,alt_path,sub_dir=''):
         if sub_dir:
             path=os.path.join(path,sub_dir)
     if not os.path.exists(path):
+        phraymd_path = path.replace('picty','phraymd')
+        try:
+            if os.path.exists(phraymd_path):
+                print 'Converting phraymd directory to picty',phraymd_path
+                os.renames(phraymd_path,path)
+                return path
+        except:
+            pass
         os.makedirs(path)
     return path
 
