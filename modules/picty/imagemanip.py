@@ -609,6 +609,11 @@ def has_thumb(item,collection,cache=None):
             return True
         if thumb_factory_large.lookup(uri,int(item.mtime)):
             return True
+    else:
+        thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
+        if os.path.exists(thumburi):
+            item.thumburi = thumburi
+            return True
     return False
 
 def delete_thumb(item):
