@@ -24,7 +24,7 @@ License:
 #TODO: Fix image sync (must be interruptable, check for deleted + changed images)
 #TODO: Login authentication
 
-__version__='0.6'
+__version__='0.7'
 
 
 ##standard imports
@@ -170,20 +170,29 @@ class LoadFlickrCollectionJob(backend.WorkerJob):
         jobs=self.worker.jobs
         jobs.clear(None,self.collection,self)
         collection=self.collection
+        view = collection.get_active_view()
 #        log.info('Loading collection '+self.collection_file)
-        gobject.idle_add(self.browser.update_status,0.66,'Loading Collection: %s'%(collection.name,))
-        print 'OPENING COLLECTION',collection.id,collection.type
+        gobject.idle_add(self.browser.update_backstatus,True,'Loading Collection: %s'%(collection.name,))
+        print 'OPENING FLICKR COLLECTION',collection.id,collection.type
+        view.empty()
+        pluginmanager.mgr.callback('t_view_emptied',collection,view)
         if collection._open():
-            self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
             gobject.idle_add(self.worker.coll_set.collection_opened,self.collection.id)
             pluginmanager.mgr.callback_collection('t_collection_loaded',self.collection)
+            if not view.loaded:
+                self.worker.queue_job_instance(backend.BuildViewJob(self.worker,self.collection,self.browser))
+            else:
+                pluginmanager.mgr.callback('t_view_updated',collection,view)
             if self.collection.flickr_client!=None and (self.collection.sync_at_login or len(self.collection)==0):
                 self.worker.queue_job_instance(FlickrSyncJob(self.worker,self.collection,self.browser))
                 self.worker.queue_job_instance(backend.MakeThumbsJob(self.worker,self.collection,self.browser))
 #            log.info('Loaded collection with '+str(len(collection))+' images')
+            if self.browser!=None:
+                gobject.idle_add(self.browser.resize_and_refresh_view,collection)
         else:
             pass
 #            log.error('Load collection failed')
+        gobject.idle_add(self.browser.update_backstatus,False,'Loaded Collection: %s'%(collection.name,))
         return True
 
 
@@ -623,6 +632,11 @@ class FlickrCollection(baseobjects.CollectionBase):
                     self.last_update_time=cPickle.load(f)
                 except:
                     pass
+            if version>='0.7':
+                try:
+                    self.get_active_view().load(f)
+                except:
+                    pass
             self.numselected=0
             return True
         except:
@@ -651,6 +665,7 @@ class FlickrCollection(baseobjects.CollectionBase):
             cPickle.dump(self.items,f,-1)
             cPickle.dump(self.sets.dict,f,-1)
             cPickle.dump(self.last_update_time,f,-1)
+            self.get_active_view().save(f)
             f.close()
             self.empty()
             self.online=False

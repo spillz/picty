@@ -26,6 +26,7 @@ import sys
 import os.path
 
 filename=os.path.abspath(__file__)
+##TODO: Will need to be fixed for installed version on windows
 if filename=='/usr/bin/picty':
     module_path='/usr/share/picty'
     icon_file='/usr/share/pixmaps/picty.png'
@@ -41,7 +42,6 @@ sys.path.insert(0,module_path)
 try:
     import gobject
     import gtk
-    import gnome.ui
     import pyexiv2
     gobject.threads_init()
     gtk.gdk.threads_init()

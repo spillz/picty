@@ -19,7 +19,6 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import gnome.ui
 import gtk
 
 import StringIO
@@ -38,6 +37,15 @@ import pluginmanager
 
 import uuid
 muuid = lambda x:str(uuid.uuid5(uuid.NAMESPACE_URL,x))
+
+##TODO: Windows workaround for lack of thumbnail factory (note that collection.cache must always be none to avoid errors)
+try:
+    import gnome.ui
+    thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
+    thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
+except:
+    thumb_factory = None
+    thumb_factory_large = None
 
 ##ORIENTATION INTEPRETATIONS FOR Exif.Image.Orienation
 '''
@@ -69,9 +77,6 @@ rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
 
 rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
 
-
-thumb_factory = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_NORMAL)
-thumb_factory_large = gnome.ui.ThumbnailFactory(gnome.ui.THUMBNAIL_SIZE_LARGE)
 
 import time
 
@@ -619,7 +624,7 @@ def delete_thumb(item):
         item.thumburi=None
 
 
-def update_thumb_date(item,collection,interrupt_fn=None,remove_old=True,cache=None):
+def update_thumb_date(item,collection,cache=None,interrupt_fn=None,remove_old=True):
     '''
     sets the internal date of the cached thumbnail image to that of the image file
     if the thumbnail name the thumbnail name will be updated

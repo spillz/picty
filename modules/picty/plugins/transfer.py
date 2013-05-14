@@ -319,3 +319,6 @@ class TransferPlugin(pluginbase.Plugin):
 
     def open_uri(self,uri):
         self.mainframe.open_uri(uri)
+
+    def open_device(self,device):
+        self.mainframe.open_device(device)

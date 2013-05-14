@@ -38,7 +38,6 @@ import settings
 import baseobjects
 import viewsupport
 import imagemanip
-import monitor
 import pluginmanager
 import io
 from logger import log
@@ -349,8 +348,6 @@ class LoadCollectionJob(WorkerJob):
                 collection.online=True
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_online,self.collection) ##should probably call worker.coll_set method as well?
-                if not collection.get_active_view().loaded:
-                    self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
                 if collection.rescan_at_open:
                     self.worker.queue_job_instance(WalkDirectoryJob(self.worker,self.collection,self.browser))
             else:
@@ -358,9 +355,12 @@ class LoadCollectionJob(WorkerJob):
                 if self.browser!=None:
                     gobject.idle_add(self.browser.collection_offline,self.collection) ##should probably call worker.coll_set method as well?
             pluginmanager.mgr.callback_collection('t_collection_loaded',collection)
-            pluginmanager.mgr.callback('t_view_updated',collection,view)
+            if not view.loaded:
+                self.worker.queue_job_instance(BuildViewJob(self.worker,self.collection,self.browser))
+            else:
+                pluginmanager.mgr.callback('t_view_updated',collection,view)
             if collection.type=='LOCALDIR' and collection.path_to_open:
-                print 'Received D-Bus open request for',collection.path_to_open
+                log.info('Received D-Bus open request for',collection.path_to_open)
                 item=baseobjects.Item(collection.get_relpath(collection.path_to_open))
                 item.mtime=io.get_mtime(collection.get_path(item))
                 imagemanip.load_metadata(item,collection)
@@ -616,12 +616,8 @@ class BuildViewJob(WorkerJob):
         WorkerJob.__init__(self,'BUILDVIEW',925,worker,collection,browser)
         self.sort_key=sort_key
         self.pos=0
-#        self.cancel=False
         self.filter_text=filter_text
         self.superset=None
-
-#    def cancel_job(self):
-#        self.cancel=True
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -661,7 +657,7 @@ class BuildViewJob(WorkerJob):
                 if i-lastrefresh>200:
                     lastrefresh=i
                     idle_add(self.browser.resize_and_refresh_view,collection)
-                    idle_add(self.browser.update_backstatus,True,'Rebuilding image view - %i of %i'%(i,len(self.superset)))
+                    idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
             i+=1
         if i<len(self.superset):  ## and jobs.ishighestpriority(self)
             self.pos=i
@@ -669,7 +665,7 @@ class BuildViewJob(WorkerJob):
         else:
             self.pos=0
             idle_add(self.browser.resize_and_refresh_view,collection)
-            idle_add(self.browser.update_backstatus,False,'View rebuild complete')
+            idle_add(self.browser.update_status,2,'View rebuild complete')
             idle_add(self.browser.post_build_view)
             pluginmanager.mgr.resume_collection_events(collection)
             log.info('Rebuild view complete for %s',collection.id)

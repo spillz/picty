@@ -222,3 +222,5 @@ class Plugin(object):
         pass
     def open_uri(self,uri):
         pass
+    def open_device(self,device):
+        pass

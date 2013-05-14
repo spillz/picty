@@ -27,7 +27,18 @@ import os.path
 import baseobjects
 import io
 
-from collectiontypes import localstorebin, localdir, flickr
+try:
+    from collectiontypes import localstorebin
+except:
+    pass
+try:
+    from collectiontypes import localdir
+except:
+    pass
+try:
+    from collectiontypes import flickr
+except:
+    pass
 
 COLUMN_ID=0
 COLUMN_NAME=1
@@ -255,7 +266,7 @@ class CollectionSet(gobject.GObject):
             }
         c=Dev(prefs)
         c.add_view()
-        if path.startswith(os.path.join(os.environ['HOME'],'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
+        if path.startswith(os.path.join(settings.home_dir,'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
             ##gphoto2 device (MTP)
             c.load_embedded_thumbs=False
             c.load_meta=False

@@ -49,7 +49,11 @@ import pluginimporter
 import io
 import overlaytools
 import searchbox
-import dbusserver
+##TODO: Windows workaround (no dbus)
+try:
+    import dbusserver
+except:
+    dbusserver = None
 import collectionmanager
 import floats
 from widget_tools import *
@@ -78,6 +82,7 @@ class MainFrame(gtk.VBox):
 
     def __init__(self,window):
         gtk.VBox.__init__(self)
+        print '############################INIT MAINFRAME'
         self.toplevel_window_state = ()
         self.toplevel_window_max =''
         self.lock=threading.Lock()
@@ -296,7 +301,10 @@ class MainFrame(gtk.VBox):
         if not self.toplevel_window_state:
             self.toplevel_window_state = (640, 400, 0, 0)
 
-        dbusserver.start()
+        try:
+            dbusserver.start()
+        except:
+            pass
         self.tm.start()
 
         self.browser_nb.connect("switch-page",self.browser_page_switch)
@@ -395,6 +403,13 @@ class MainFrame(gtk.VBox):
 
     def browser_signal_notify(self,*args):
         self.emit(args[-1],*args[:-1])
+
+    def open_device(self,device_name):
+        print 'Received external request to open device',device_name
+        path = self.volume_monitor.get_mount_path_from_device_name(device_name)
+        print path
+        if path is not None:
+            self.collection_open(path)
 
     def open_uri(self,uri):
         print 'Received external request to open',uri
@@ -843,7 +858,7 @@ class MainFrame(gtk.VBox):
         sel_dir=''
         fcd=gtk.FileChooserDialog(title=prompt, parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-        fcd.set_current_folder(os.environ['HOME'])
+        fcd.set_current_folder(settings.home_dir)
         response=fcd.run()
         if response == gtk.RESPONSE_OK:
             sel_dir=fcd.get_filename()

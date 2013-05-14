@@ -34,7 +34,6 @@ import gtk
 ##picty imports
 from picty import pluginmanager
 from picty import settings
-from picty import monitor2 as monitor
 from picty import viewsupport
 from picty import baseobjects
 from picty import simple_parser as sp

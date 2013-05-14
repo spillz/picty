@@ -20,6 +20,7 @@ License:
 '''
 
 import os,os.path
+import platform
 
 def get_mtime(path):
     '''
@@ -83,6 +84,14 @@ try:
         def mount_removed(self,vm,m):
             print 'unmount event',vm,m
             self.emit("mount-removed",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def get_mount_path_from_device_name(self,unix_device_name):
+            for m in self.vm.get_mounts():
+                if m.get_volume().get_identifier('unix-device') == unix_device_name:
+                    try:
+                        return m.get_root().get_path()
+                    except:
+                        pass
+
         def get_mount_info(self):
             '''
             returns a list of tuples (name,icon_data,fuse path)
@@ -116,10 +125,33 @@ try:
         ifile=gio.File(uri)
         return ifile.get_path()
 
-    def get_mime_type(path):
-        ifile=gio.File(path)
-        info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
-        return info.get_content_type()
+    if platform.system() == 'Windows':
+        import _winreg
+        def get_mime_type(path):
+            ifile=gio.File(path)
+            info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+            ext = info.get_content_type()
+            reg = _winreg.ConnectRegistry(None,_winreg.HKEY_CLASSES_ROOT)
+            subkey = _winreg.OpenKey(reg,"MIME\DataBase\Content Type")
+            key_count, val_count, ldate = _winreg.QueryInfoKey(subkey)
+            mimetype=''
+            for k in range(key_count):
+                mime = _winreg.EnumKey(subkey,k)
+#                if not mime.lower().startswith('image'):
+#                    continue
+                mimekey = _winreg.OpenKey(subkey,mime)
+                mimekey_count, mimeval_count, ldate = _winreg.QueryInfoKey(mimekey)
+                for j in range(mimeval_count):
+                    mstr, value, vtype = _winreg.EnumValue(mimekey,j)
+                    if mstr == 'Extension' and value.lower() == ext.lower():
+                        mimetype = mime
+                        break
+            return mimetype
+    else:
+        def get_mime_type(path):
+            ifile=gio.File(path)
+            info=ifile.query_info(gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE)
+            return info.get_content_type()
 
     def app_info_get_all_for_type(itype):
         return gio.app_info_get_all_for_type(itype)
@@ -207,7 +239,7 @@ except ImportError:
         os.remove(dest)
 
     def trash_file(src):
-        dest_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/files')
+        dest_dir=os.path.join(os.path.expanduser('~'),'.local/share/Trash/files')
         fname=os.path.split(src)[1]
         dest=os.path.join(dest_dir,fname)
         dest1=dest
@@ -218,7 +250,7 @@ except ImportError:
         now=datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
         move_file(src,dest1)
 
-        info_dir=os.path.join(os.environ['HOME'],'.local/share/Trash/info')
+        info_dir=os.path.join(os.path.expanduser('~'),'.local/share/Trash/info')
         info=os.path.join(info_dir,fname+'.trashinfo')
         info_content='''[Trash Info]
 Path=%s
@@ -246,6 +278,13 @@ DeletionDate=%s
         def mount_removed(self,vm,m):
             print 'unmount event',vm,m
             self.emit("mount-removed",m.get_name(),m.get_icon().get_names(),m.get_root().get_path())
+        def get_mount_path_from_device_name(self,unix_device_name):
+            for m in self.vm.get_mounted_volumes():
+                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK]:
+                    continue
+                if m.get_drive().get_device_path() == unix_device_name:
+                    path=gnomevfs.get_local_path_from_uri(m.get_activation_uri())
+                    return path
         def get_mount_info(self):
             '''
             returns a list of tuples (name,icon_data,fuse path)
@@ -253,7 +292,7 @@ DeletionDate=%s
             mdict={}
             mounts=[]
             for m in self.vm.get_mounted_volumes():
-                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK,gnomevfs.DEVICE_TYPE_CAMERA]:
+                if m.get_device_type() not in [gnomevfs.DEVICE_TYPE_CAMERA,gnomevfs.DEVICE_TYPE_MEMORY_STICK]:
                     continue
                 path=gnomevfs.get_local_path_from_uri(m.get_activation_uri())
                 name=m.get_display_name()

@@ -48,6 +48,13 @@ class DBusServer(dbus.service.Object):
         print "DBus open uri event for "+uri
         return 'success'
 
+    @dbus.service.method('org.spillz.phraymd',in_signature='s',out_signature='s')
+    def open_device(self, device):
+        import pluginmanager
+        pluginmanager.mgr.callback('open_device',device)
+        print "DBus open device event for "+device
+        return 'success'
+
 def start():
     global server
     bus=dbus.SessionBus()
