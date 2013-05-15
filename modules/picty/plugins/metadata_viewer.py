@@ -141,7 +141,7 @@ class MetaDataViewer(pluginbase.Plugin):
         except:
             self.button_save.set_sensitive(False)
             self.button_revert.set_sensitive(False)
-        self.meta_table.data_items['FullPath'][1].set_text(self.viewer.browser.collection.get_path(item))
+        self.meta_table.data_items['FullPath'][1].set_text(self.viewer.browser.active_collection.get_path(item))
         d=datetime.datetime.fromtimestamp(item.mtime)
         self.meta_table.data_items['UnixLastModified'][1].set_text(d.isoformat(' '))
         for t in metadata.apptags:
@@ -178,7 +178,7 @@ class MetaDataViewer(pluginbase.Plugin):
     def metadata_save(self,widget):
         item=self.item
         if item.is_meta_changed():
-            self.viewer.browser.collection.write_metadata(item)
+            self.viewer.browser.active_collection.write_metadata(item)
         self.button_save.set_sensitive(False)
         self.button_revert.set_sensitive(False)
         self.update_meta_table(item)
@@ -195,7 +195,7 @@ class MetaDataViewer(pluginbase.Plugin):
             orient_backup=item.meta_backup['Orientation']
         except:
             orient_backup=None
-        item.meta_revert(self.viewer.browser.collection)
+        item.meta_revert(self.viewer.browser.active_collection)
         ##todo: need to recreate thumb if orientation changed
         if orient!=orient_backup:
             item.thumb=None

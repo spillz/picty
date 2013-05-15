@@ -831,7 +831,7 @@ class MainFrame(gtk.VBox):
             self.tm.keyword_edit(keyword_string,False,True)
 
     def select_set_info(self,widget):
-        item=baseobjects.Item('stub',None)
+        item=baseobjects.Item('stub')
         item.meta={}
         dialog=dialogs.BatchMetaDialog(item)
         response=dialog.run()
