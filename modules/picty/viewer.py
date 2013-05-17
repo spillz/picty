@@ -48,9 +48,9 @@ class ImageLoader:
         self.item=None
         self.sizing=None
         self.zoom='fit'
-        self.memimages=[]
+        self.memimages = []
         self.max_memimages=2
-        self.vlock=threading.Lock()
+        self.vlock=threading.Lock() #viewer lock -- main thread should acquire lock before touch item image properties (image, qimage, size etc)
         self.viewer=viewer
         self.event=threading.Event()
         self.exit=False
@@ -75,6 +75,8 @@ class ImageLoader:
     def set_item(self,collection,item,sizing=None,zoom='fit'):
         self.vlock.acquire()
         self.collection=collection
+        if self.item!=item and 'original_image' in dir(self.item):
+            del self.item.original_image
         self.item=item
         self.sizing=sizing ##if sizing is none, zoom is ignored
         self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel, so typically zoom<=1
@@ -92,6 +94,18 @@ class ImageLoader:
             self.plugin=None
         self.vlock.release()
 
+    def transform_image(self):
+        '''
+        reapply the transforms to the image
+        '''
+        self.vlock.acquire()
+        self.item.image = None
+        self.vlock.release()
+        self.event.set()
+
+    def add_transform(self,name,params):
+        imagemanip.transformer.add_transform(self.item,name,params,self.collection)
+
     def _background_task(self):
         ##todo: this code is horrible! clean it up
         self.vlock.acquire()
@@ -101,7 +115,7 @@ class ImageLoader:
             else:
                 self.event.clear()
             self.vlock.release()
-            self.event.wait()
+            self.event.wait() #waits for a request for an image to be loaded by the main thread
             self.vlock.acquire()
             item=self.item
             self.vlock.release()
@@ -118,10 +132,11 @@ class ImageLoader:
                 def interrupt_cb():
                     return self.item.uid==item.uid
                 self.collection.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
-                gobject.idle_add(self.viewer.ImageLoaded,item)
                 if not item.image:
+                    gobject.idle_add(self.viewer.ImageLoaded,item) ##todo: change to image load failed? (the handler currently checks the status so that's enough anyway)
                     self.vlock.acquire()
                     continue
+                gobject.idle_add(self.viewer.ImageLoaded,item)
             self.vlock.acquire()
             if self.sizing:
                 if not self.plugin or not self.plugin.t_viewer_sizing(self.sizing,self.zoom,item):
@@ -129,7 +144,7 @@ class ImageLoader:
                     if self.plugin:
                         self.plugin.t_viewer_sized(self.sizing,self.zoom,item)
                 gobject.idle_add(self.viewer.ImageSized,item,self.zoom)
-                self.sizing=None
+#                self.sizing=None
 
 
 ##class DrawableContainer(gtk.DrawingArea):
@@ -145,12 +160,6 @@ class ImageLoader:
 ##        gtk.DrawingArea.size_allocate(self,*args)
 
 class ImageViewer(gtk.VBox):
-    #indices into the hover_cmds structure (overlay shortcuts in image browser)
-    HOVER_TEXT=0 #text description of the command
-    HOVER_CALLBACK=1 #callback when command is clicked
-    HOVER_SHOW_CALLBACK=2 #callback  to determine whether callback should be displayed
-    HOVER_ALWAYS_SHOW=3 #True if the overlay displays always, False only if mouse cursor is over the image
-    HOVER_ICON=4 #the icon for the command
     def __init__(self,worker,hover_cmds,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.il=ImageLoader(self)

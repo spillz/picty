@@ -429,6 +429,8 @@ class Item(str):
         del odict['image']
         del odict['selected']
         del odict['relevance']
+        if 'original_image' in self.__dict__:
+            del odict['original_image']
         if 'meta_backup' in self.__dict__ and self.meta==self.meta_backup:
             del self.meta_backup
         return odict

@@ -29,6 +29,7 @@ import datetime
 import bisect
 import os.path
 import os
+import threading
 
 import settings
 import baseobjects
@@ -429,6 +430,7 @@ def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,filename=''):
             metadata.copy_metadata(item.meta,src_filename,filename)
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
+
 def orient_image(image,meta):
     '''
     returns a rotated copy of the PIL image based on the value of the 'Orientation' metadata key in meta
@@ -442,11 +444,105 @@ def orient_image(image,meta):
             image=image.transpose(method)
     return image
 
+class ImageTransformer:
+    '''
+    Helper class for applying a sequence of transformations to an image
+    '''
+    def __init__(self):
+        self.transform_handlers = {}
+        self.tlock=threading.Lock() #transform lock -- main thread should acquire lock before call register_ or deregister_transform
+
+    def register_transform(self,name,callback):
+        '''
+        register a transform with name and a callback
+        '''
+        self.tlock.acquire()
+        self.transform_handlers[name] = callback
+        self.tlock.release()
+
+    def deregister_transform(self,name):
+        '''
+        remove a registered transform by name
+        '''
+        self.tlock.acquire()
+        try:
+            del self.transform_handlers[name]
+            self.tlock.release()
+            return True
+        except:
+            self.tlock.release()
+            return False
+
+    def apply_transforms(self,item,interrupt_cb):
+        '''
+        perform image transform operatiosn specified in the metadata on the
+        PIL image member of item (i.e. item.image)
+        transform_handlers is a dictionary containing name callbacks to perform the operations
+        interrupt_cb is a function that returns True if processing should be aborted
+        TODO: On long running operations it would be good to provide the user with progress feedback
+        '''
+        if item.meta==None or 'ImageTransforms' not in item.meta:
+            return True
+        transforms = item.meta['ImageTransforms']
+        if len(transforms)>0 and 'original_image' not in item.__dict__:
+            item.original_image = item.image.copy()
+        print 'Applying image transformations'
+        self.tlock.acquire()
+        for instruction,params in transforms:
+            print 'Applying',instruction,'transform with params',params
+            self.transform_handlers[instruction](item,params) #todo: should pass the interrupt_cb as well
+            if not interrupt_cb():
+                self.tlock.release()
+                return False
+        self.tlock.release()
+        return True
+
+    def get_transforms(self,item):
+        try:
+            return item.meta['ImageTransforms']
+        except:
+            return []
+
+    def get_transform(self,item,index):
+        return item.meta['ImageTransforms'][index]
+
+    def get_n_transforms(self,item):
+        return len(get_transforms(item))
+
+    def add_transform(self,item,name,params,collection=None):
+        self.tlock.acquire()
+        transforms = self.get_transforms(item)[:]
+        transforms.append([name,params])
+        item.set_meta_key('ImageTransforms',transforms,collection)
+        self.tlock.release()
+        return True
+
+    def replace_transform(self,item,index,name,params,collection=None):
+        self.tlock.acquire()
+        transforms = self.get_transforms(item)[:][index] = [name,params]
+        item.set_meta_key('ImageTransforms',transforms,collection)
+        self.tlock.release()
+        return True
+
+    def remove_transform(self,item,index,collection=None):
+        self.tlock.acquire()
+        try:
+            transforms = item.get_transforms(item)[:]
+            del transforms['ImageTransforms'][index]
+            item.set_meta_key('ImageTransforms',transforms,collection)
+        except:
+            self.tlock.release()
+            return False
+        self.tlock.release()
+        return True
+
+transformer = ImageTransformer()
 
 
-def load_image(item,collection,interrupt_fn,draft_mode=False):
+def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=True):
     '''
     load a PIL image and store it in item.image
+    if transform_handlers are specified and the image has tranforms they will be applied
     '''
     itemfile=collection.get_path(item)
     mimetype=io.get_mime_type(itemfile)
@@ -454,30 +550,33 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
     try:
         ##todo: load by mimetype (after porting to gio)
 #        non-parsed version
-        if not mimetype.startswith('image'):
-            print 'No image available for item',item,'with mimetype',mimetype
-            item.image=False
-            return False
-        print 'Loading Image:',item,mimetype
-        if io.get_mime_type(itemfile) in settings.raw_image_types: ##for extraction with dcraw
-            raise TypeError
-        image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
-#        parsed version
-        if not draft_mode and image.format=='JPEG':
-            #parser doesn't seem to work correctly on anything but JPEGs
-            f=open(itemfile,'rb')
-            imdata=f.read(10000)
-            p = ImageFile.Parser()
-            while imdata and len(imdata)>0:
-                p.feed(imdata)
-                if not interrupt_fn():
-                    return False
-                imdata=f.read(10000)
-            f.close()
-            image = p.close()
-            print 'Parsed image with PIL'
+        if 'original_image' in item.__dict__:
+            image=item.original_image.copy()
         else:
-            raise TypeError
+            if not mimetype.startswith('image'):
+                print 'No image available for item',item,'with mimetype',mimetype
+                item.image=False
+                return False
+            print 'Loading Image:',item,mimetype
+            if io.get_mime_type(itemfile) in settings.raw_image_types: ##for extraction with dcraw
+                raise TypeError
+            image=Image.open(itemfile) ## retain this call even in the parsed version to avoid lengthy delays on raw images (since this call trips the exception)
+    #        parsed version
+            if not draft_mode and image.format=='JPEG':
+                #parser doesn't seem to work correctly on anything but JPEGs
+                f=open(itemfile,'rb')
+                imdata=f.read(10000)
+                p = ImageFile.Parser()
+                while imdata and len(imdata)>0:
+                    p.feed(imdata)
+                    if not interrupt_fn():
+                        return False
+                    imdata=f.read(10000)
+                f.close()
+                image = p.close()
+                print 'Parsed image with PIL'
+            else:
+                raise TypeError
     except:
         try:
             if mimetype in gdk_mime_types:
@@ -514,19 +613,31 @@ def load_image(item,collection,interrupt_fn,draft_mode=False):
     print item.meta
     if draft_mode:
         image.draft(image.mode,(1024,1024)) ##todo: pull size from screen resolution
-    if interrupt_fn():
-        if oriented:
-            item.image=orient_image(image,{})
-        else:
-            item.image=orient_image(image,item.meta)
+    if not interrupt_fn():
+        return
+    if oriented:
+        item.image=orient_image(image,{})
+    else:
+        item.image=orient_image(image,item.meta)
     try:
         item.imagergba='A' in item.image.getbands()
     except:
         item.imagergba=False
     if item.image:
+        if apply_transforms!=None:
+            transformer.apply_transforms(item,interrupt_fn)
         cache_image(item)
         return True
     return False
+
+
+def free_image(item):
+    if 'image' in item:
+        del item.image
+    if 'original_image' in item:
+        del item.original_image
+    if 'qview' in item:
+        del item.qview
 
 
 def image_to_pixbuf(im):

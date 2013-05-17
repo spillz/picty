@@ -82,7 +82,6 @@ class MainFrame(gtk.VBox):
 
     def __init__(self,window):
         gtk.VBox.__init__(self)
-        print '############################INIT MAINFRAME'
         self.toplevel_window_state = ()
         self.toplevel_window_max =''
         self.lock=threading.Lock()

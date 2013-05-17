@@ -58,11 +58,16 @@ class RotatePlugin(pluginbase.Plugin):
         self.rotate_bar.pack_start(self.cancel_button,False)
         self.rotate_bar.pack_start(self.ok_button,False)
         self.rotate_bar.show_all()
+        imagemanip.transformer.register_transform('rotate',self.do_rotate_transform)
 
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
         if self.rotate_mode:
             self.reset(app_shutdown)
+        imagemanip.transformer.deregister_transform('rotate')
+
+    def do_rotate_transform(self,item,params):
+        item.image=item.image.rotate(params['angle'],Image.BILINEAR,True)
 
     def viewer_register_shortcut(self,shortcut_commands):
         '''
@@ -73,7 +78,7 @@ class RotatePlugin(pluginbase.Plugin):
 
     def rotate_button_callback(self,cmd,item):
         #the user has entered rotate mode
-        #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        #set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
         if not self.viewer.plugin_request_control(self):
             return
         self.rotate_mode=True
@@ -82,7 +87,8 @@ class RotatePlugin(pluginbase.Plugin):
         self.item=item
 
     def rotate_do_callback(self,widget):
-        self.item.image=self.item.image.rotate(-self.angle_adjustment.get_value(),Image.BILINEAR,True)
+        self.viewer.il.add_transform('rotate',{'angle':-self.angle_adjustment.get_value()})
+        self.viewer.il.transform_image()
         self.reset()
 
     def rotate_cancel_callback(self,widget):

@@ -39,6 +39,7 @@ class CropPlugin(pluginbase.Plugin):
         self.move_mode=False
         self.hover_zone=0
         self.dragging=False
+
     def plugin_init(self,mainframe,app_init):
         self.viewer=mainframe.iv
 
@@ -56,16 +57,24 @@ class CropPlugin(pluginbase.Plugin):
         self.crop_bar.pack_start(self.cancel_button,False)
         self.crop_bar.pack_start(self.ok_button,False)
         self.crop_bar.show_all()
+        imagemanip.transformer.register_transform('crop',self.do_crop_transform)
+
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
         if self.crop_mode:
             self.reset(app_shutdown)
+        imagemanip.transformer.deregister_transform('crop')
+
+    def do_crop_transform(self,item,params):
+        item.image=item.image.crop(params['pixel_rect'])
+
     def viewer_register_shortcut(self,shortcut_commands):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
         shortcut_commands.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_commands.default_active_callback,['picty-image-crop'],'Interactively crop this image',40)
+
     def crop_button_callback(self,cmd,item):
         #the user has entered crop mode
         #hand the plugin exclusive control of the viewer
@@ -78,17 +87,16 @@ class CropPlugin(pluginbase.Plugin):
         self.press_handle=self.viewer.imarea.connect_after("button-press-event",self.button_press)
         self.release_handle=self.viewer.imarea.connect_after("button-release-event",self.button_release)
         self.motion_handle=self.viewer.imarea.connect_after("motion-notify-event",self.mouse_motion_signal)
+
     def crop_do_callback(self,widget):
-        self.crop_mode=False
-        #wnum=self.item.image.size[0]
-        #wdenom=self.item.qview.get_width()
-        #hscale=1.0*self.item.image.size[1]self.item.qview.get_height()
-        #image_crop_dimensions=tuple(int(x*wnum/wdenom) for x in self.crop_dimensions)
-        self.item.image=self.item.image.crop(self.crop_dimensions)
+        self.viewer.il.add_transform('crop',{'pixel_rect':self.crop_dimensions})
+        self.viewer.il.transform_image() ##todo: this should get called after all but the last call in reset
         self.reset()
-        self.viewer.resize_and_refresh_view(zoom='fit')
+#        self.viewer.resize_and_refresh_view(zoom='fit')
+
     def crop_cancel_callback(self,widget):
         self.reset(True)
+
     def reset(self,shutdown=False):
         self.hover_zone=0
         self.crop_anchor=(0,0)
@@ -103,6 +111,7 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.resize_and_refresh_view()
+
     def viewer_release(self,force=False):
         self.reset()
         return True
@@ -115,11 +124,6 @@ class CropPlugin(pluginbase.Plugin):
 
     def viewer_to_image(self,x,y):
         return self.viewer.screen_xy_to_image(x,y)
-#        x-=(self.viewer.imarea.window.get_size()[0]-self.item.qview.get_width())/2
-#        y-=(self.viewer.imarea.window.get_size()[1]-self.item.qview.get_height())/2
-#        x=min(max(x,0),self.item.qview.get_width())
-#        y=min(max(y,0),self.item.qview.get_height())
-#        return (x,y)
 
     def button_press(self,widget,event):
         if not self.crop_mode:

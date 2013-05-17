@@ -32,6 +32,9 @@ import gtk
 import tempfile
 import io
 import os.path
+import json
+
+pyexiv2.register_namespace('http://www.picty.net/xmpschema/1.0/','picty')
 ##todo: reimplement for xmp support
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
@@ -622,6 +625,18 @@ def conv_latlon(metaobject,keys,value=None):
         except:
             return None
 
+def conv_image_transforms(metaobject,keys,value=None):
+    if value!=None:
+        str_transforms = json.dumps(value)
+        metaobject[keys[0]]=str_transforms
+    else:
+        try:
+            result = json.loads(metaobject[keys[0]].value)
+            return result
+        except:
+            #todo: log the error
+            return None
+
 def tup2str(value):
     try:
         return '%3.6f;%3.6f'%value
@@ -697,6 +712,7 @@ apptags=(
 ("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
 ("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
 ("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.GPSLatitude","Exif.GPSInfo.GPSLatitudeRef","Exif.GPSInfo.GPSLongitude","Exif.GPSInfo.GPSLongitudeRef")),
+("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",)),
 ##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 
@@ -735,6 +751,7 @@ apptags_sidecar=(
 ("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Xmp.exif.ImageUniqueID",)),
 ##("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
 ("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Xmp.exif.GPSLatitude","Xmp.exif.GPSLatitudeRef","Xmp.exif.GPSLongitude","Xmp.exif.GPSLongitudeRef")),
+("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",)),
 )
 
 
