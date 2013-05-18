@@ -865,8 +865,8 @@ class Collection(baseobjects.CollectionBase):
         thumb_pb=imagemanip.rotate_thumb(item,right,interrupt_fn)
         if not thumb_pb:
             return  False
-#        width=thumb_pb.get_width()
-#        height=thumb_pb.get_height()
+        item.thumb=thumb_pb
+        imagemanip.cache_thumb(item)
         uri = io.get_uri(self.get_path(item))
         if self.thumbnail_cache_dir==None:
             imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
@@ -876,12 +876,7 @@ class Collection(baseobjects.CollectionBase):
             if not os.path.exists(cache):
                 os.makedirs(cache)
             item.thumb.save(item.thumburi,"png")
-
-        if item.thumb:
-            item.thumb=thumb_pb
-            imagemanip.cache_thumb(item)
         return True
-        #return False
 
     def item_metadata_update(self,item):
         'collection will receive this call when item metadata has been changed'
