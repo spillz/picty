@@ -863,7 +863,7 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
                 p = ImageFile.Parser()
                 p.feed(imdata)
                 image = p.close()
-                image.thumbnail((128,128),Image.ANTIALIAS) ##TODO: this is INSANELY slow -- find out why
+                image.thumbnail((128,128),Image.ANTIALIAS)
                 image=orient_image(image,item.meta)
                 print 'Opened with DCRAW'
         if image is not None:
