@@ -88,7 +88,7 @@ class RotatePlugin(pluginbase.Plugin):
 
     def rotate_do_callback(self,widget):
         self.viewer.il.add_transform('rotate',{'angle':-self.angle_adjustment.get_value()})
-        self.viewer.il.transform_image()
+        #self.viewer.il.transform_image()
         self.reset()
 
     def rotate_cancel_callback(self,widget):

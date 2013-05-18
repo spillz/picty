@@ -309,6 +309,7 @@ class MainFrame(gtk.VBox):
         self.browser_nb.connect("switch-page",self.browser_page_switch)
         self.browser_nb.connect("page-reordered",self.browser_page_reorder)
 
+        pluginmanager.mgr.register_callback('t_collection_item_metadata_changed',self.meta_changed)
         self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show) ##this is a bit of a hack to ensure the main window shows before a collection is activated or the user is prompted to create a new one
 
     def on_show(self,widget):
@@ -463,6 +464,11 @@ class MainFrame(gtk.VBox):
             else:
                 dialogs.prompt_dialog("Error Creating Collection","The collection could not be created",["_Close"])
 
+    def meta_changed(self,collection,item,old_meta):
+        if collection!=self.active_collection:
+            return
+        if item.meta!=old_meta:
+            collection.browser.redraw_view()
 
     def collections_init(self):
         ##now fill the collection manager with

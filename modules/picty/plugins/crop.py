@@ -90,7 +90,7 @@ class CropPlugin(pluginbase.Plugin):
 
     def crop_do_callback(self,widget):
         self.viewer.il.add_transform('crop',{'pixel_rect':self.crop_dimensions})
-        self.viewer.il.transform_image() ##todo: this should get called after all but the last call in reset
+        #self.viewer.il.transform_image() ##todo: this should get called after all but the last call in reset
         self.reset()
 #        self.viewer.resize_and_refresh_view(zoom='fit')
 

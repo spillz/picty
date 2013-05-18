@@ -105,6 +105,7 @@ class ImageLoader:
 
     def add_transform(self,name,params):
         imagemanip.transformer.add_transform(self.item,name,params,self.collection)
+        #gobject.idle_add(self.viewer.ImageUpdated,self.item)
 
     def _background_task(self):
         ##todo: this code is horrible! clean it up
@@ -241,6 +242,8 @@ class ImageViewer(gtk.VBox):
             self.imarea.connect("key-press-event",key_press_callback)
             self.imarea.connect("key-release-event",key_press_callback)
 
+        pluginmanager.mgr.register_callback('t_collection_item_metadata_changed',self.meta_changed)
+
         self.imarea.set_size_request(128,96)
         self.imarea.show()
         self.item=None
@@ -323,6 +326,10 @@ class ImageViewer(gtk.VBox):
     def ImageLoaded(self,item):
         pass
 
+    def ImageUpdated(self,item):
+        if self.browser!=None:
+            self.browser.redraw_view()
+
     def SetItem(self,item,browser=None,collection=None):
         if not self.request_plugin_release():
             return False
@@ -344,6 +351,20 @@ class ImageViewer(gtk.VBox):
 #            if not self.mouse_hover:
 #                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
 #            self.mouse_hover=True
+
+    def meta_changed(self,collection,item,old_meta):
+        if item!=self.item:
+            return
+        try:
+            ntr = item.meta['ImageTransforms']
+        except:
+            ntr = None
+        try:
+            otr = old_meta['ImageTransforms']
+        except:
+            otr = None
+        if ntr!=otr:
+            self.il.transform_image()
 
     def mouse_enter_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''

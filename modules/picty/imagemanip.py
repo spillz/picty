@@ -486,11 +486,16 @@ class ImageTransformer:
         transforms = item.meta['ImageTransforms']
         if len(transforms)>0 and 'original_image' not in item.__dict__:
             item.original_image = item.image.copy()
-        print 'Applying image transformations'
         self.tlock.acquire()
         for instruction,params in transforms:
-            print 'Applying',instruction,'transform with params',params
-            self.transform_handlers[instruction](item,params) #todo: should pass the interrupt_cb as well
+            try:
+                self.transform_handlers[instruction](item,params) #todo: should pass the interrupt_cb as well
+            except:
+                import sys
+                import traceback
+                print 'Error Applying Transform to Image',item,instruction,params
+                tb_text=traceback.format_exc(sys.exc_info()[2])
+                print tb_text
             if not interrupt_cb():
                 self.tlock.release()
                 return False

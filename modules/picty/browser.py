@@ -132,8 +132,8 @@ class ImageBrowser(gtk.HBox):
 
         self.scrolladj=gtk.Adjustment()
         self.vscroll=gtk.VScrollbar(self.scrolladj)
-        self.vscroll.set_property("has-tooltip",True)
-        self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
+#        self.vscroll.set_property("has-tooltip",True)
+#        self.vscroll.connect("query-tooltip",self.scroll_tooltip_query)
 
         self.vbox=gtk.VBox()
         self.vbox.pack_start(self.imarea)
@@ -179,7 +179,6 @@ class ImageBrowser(gtk.HBox):
 #        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
                   target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
-                  #gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_MOVE |  gtk.gdk.ACTION_COPY)
 
         target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
         target_list=gtk.target_list_add_uri_targets(target_list,1)

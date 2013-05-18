@@ -21,6 +21,7 @@ License:
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import gobject
 
 import pluginbase
 import settings
@@ -39,6 +40,7 @@ class PluginManager():
         self.plugins=dict()
         self.mainframe=None
         self.collection_suppress={}
+        self.registered_callbacks={}
     def instantiate_all_plugins(self):
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         print 'instantiating plugins except for',settings.plugins_disabled
@@ -132,5 +134,23 @@ class PluginManager():
         for name,plugin in self.plugins.iteritems():
             if plugin[0]:
                 getattr(plugin[0],interface_name)(collection,*args)
+        if interface_name in self.registered_callbacks:
+            for h in self.registered_callbacks[interface_name]:
+                gobject.idle_add(h,*((collection,)+args))
+
+    def register_callback(self,callback_name,handler):
+        try:
+            self.registered_callbacks[callback_name].append(handler)
+        except KeyError:
+            self.registered_callbacks[callback_name] = [handler]
+
+    def deregister_callback(self,callback_name,handler):
+        try:
+            ind = self.registered_callbacks[callback_name].find(handler)
+            if ind>=0:
+                self.registered_callbacks[callback_name].pop(ind)
+        except KeyError:
+            return
+
 
 mgr=PluginManager()  ##instantiate the manager (there can only be one)
