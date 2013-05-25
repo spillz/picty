@@ -35,7 +35,6 @@ import bisect
 import gobject
 import gtk
 gobject.threads_init()
-gtk.gdk.threads_init()
 
 ## local imports
 import settings

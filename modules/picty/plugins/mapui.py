@@ -34,6 +34,7 @@ sys.path.append('/usr/lib/python2.5/site-packages/gtk-2.0')
 
 import os
 import gtk
+import gobject
 import math
 import cPickle
 
@@ -76,7 +77,7 @@ except:
     map_source=tuple()
     log_err('ERROR CREATING MAP SOURCES')
 
-gtk.gdk.threads_init()
+gobject.threads_init()
 
 class MapPlugin(pluginbase.Plugin):
     name='MapSidebar'

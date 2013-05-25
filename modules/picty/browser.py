@@ -40,7 +40,6 @@ import gobject
 import gtk
 import pango
 gobject.threads_init()
-gtk.gdk.threads_init()
 
 ## local imports
 import settings
