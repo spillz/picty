@@ -132,7 +132,7 @@ class Plugin(object):
         '''collection has been closed'''
         pass
     '''browser'''
-    def browser_register_shortcut(self,shortcut_commands):
+    def browser_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
@@ -154,7 +154,7 @@ class Plugin(object):
         note that size is the size of the window not necessarily the size of the scaled image
         '''
         pass
-    def viewer_register_shortcut(self,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands

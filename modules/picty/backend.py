@@ -70,7 +70,7 @@ class WorkerJob:
     The helper function Worker.queue_job(job_class,*args) can be used to instantiate and queue a job and passing
     in default worker, collection, browser arguments (plus optional arguments in args)
     '''
-    def __init__(self,name='',priority=0,worker=None,collection=None,browser=None):
+    def __init__(self,name='',priority=50,worker=None,collection=None,browser=None):
         self.state=False
         self.name=name
         self.priority=priority

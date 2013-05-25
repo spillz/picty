@@ -68,16 +68,17 @@ class CropPlugin(pluginbase.Plugin):
     def do_crop_transform(self,item,params):
         item.image=item.image.crop(params['pixel_rect'])
 
-    def viewer_register_shortcut(self,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_commands.default_active_callback,['picty-image-crop'],'Interactively crop this image',40)
+        shortcut_toolbar.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_toolbar.default_active_callback,['picty-image-crop'],'Interactively crop this image',40)
 
-    def crop_button_callback(self,cmd,item):
+    def crop_button_callback(self,cmd):
         #the user has entered crop mode
         #hand the plugin exclusive control of the viewer
+        item=self.viewer.item
         if not self.viewer.plugin_request_control(self):
             return
         self.crop_mode=True

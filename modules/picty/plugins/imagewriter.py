@@ -107,15 +107,16 @@ class ImageWriterPlugin(pluginbase.Plugin):
         self.viewer.plugin_release(self)
         if not shutdown:
             self.viewer.resize_and_refresh_view()
-    def viewer_register_shortcut(self,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_commands.default_active_callback,['picty-image-write'],'Write a copy of the image including any edits',priority=30)
-    def writer_button_callback(self,cmd,item):
+        shortcut_toolbar.register_tool_for_plugin(self,'Image Writer',self.writer_button_callback,shortcut_toolbar.default_active_callback,['picty-image-write'],'Write a copy of the image including any edits',priority=30)
+    def writer_button_callback(self,cmd):
         #the user has entered rotate mode
         #need to somehow set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        item=self.viewer.item
         if not self.viewer.plugin_request_control(self):
             return
         self.writer_mode=True

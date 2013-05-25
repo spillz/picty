@@ -132,7 +132,7 @@ class MainFrame(gtk.VBox):
             self.hover_cmds.register_tool(*tool)
         self.plugmgr.callback('browser_register_shortcut',self.hover_cmds)
 
-        self.viewer_hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_LARGE_TOOLBAR)
+        self.viewer_toolbar=Toolbar()
         viewer_tools=[
                         ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         ('Close',self.close_viewer,show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
@@ -150,9 +150,16 @@ class MainFrame(gtk.VBox):
                         ('Zoom Out',self.zoom_item_out,show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
                         ('Stub',None,lambda item,hover:False,[],'Main',''),
                         ]
-        for tool in viewer_tools:
-            self.viewer_hover_cmds.register_tool(*tool)
-        self.plugmgr.callback('viewer_register_shortcut',self.viewer_hover_cmds)
+                        #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
+
+        for tools in viewer_tools:
+            if tools[1] is None:
+                self.viewer_toolbar.add(gtk.SeparatorToolItem())
+            else:
+                self.viewer_toolbar.add(ToolButton(*tools))
+        self.viewer_toolbar.show_all()
+
+        self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
 
         self.browser_nb=gtk.Notebook()
         self.browser_nb.set_show_tabs(False)
@@ -170,7 +177,7 @@ class MainFrame(gtk.VBox):
         self.tm=backend.Worker(self.coll_set)
 
         self.neededitem=None
-        self.iv=viewer.ImageViewer(self.tm,self.viewer_hover_cmds,self.button_press_image_viewer,self.key_press_signal)
+        self.iv=viewer.ImageViewer(self.tm,self.viewer_toolbar,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
@@ -1094,10 +1101,10 @@ class MainFrame(gtk.VBox):
 #                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
 
-    def close_viewer(self,widget,item):
+    def close_viewer(self,*args):
         self.hide_image()
 
-    def show_viewed_item(self,widget,item):
+    def show_viewed_item(self,*args):
         b=self.active_browser()
         if b!=self.iv.browser:
             ind=self.browser_nb.page_num(self.iv.browser)
@@ -1241,11 +1248,11 @@ class MainFrame(gtk.VBox):
         rootmenu.show_all()
         rootmenu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
-    def item_make_thumb(self,widget,item):
-        self.tm.recreate_thumb(item)
+    def item_make_thumb(self,*args):
+        self.tm.recreate_thumb(self.iv.item)
 
-    def item_reload_metadata(self,widget,item):
-        self.tm.reload_metadata(item)
+    def item_reload_metadata(self,*args):
+        self.tm.reload_metadata(self.iv.item)
 
     def mime_open(self,widget,app_cmd,uri):
         if uri:
@@ -1263,7 +1270,8 @@ class MainFrame(gtk.VBox):
             {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
         subprocess.Popen(app_cmd,shell=True)
 
-    def save_item(self,widget,item):
+    def save_item(self,*args):
+        item=self.iv.item
         if item.is_meta_changed()==2:
             browser=self.active_browser()
             fileops.worker.delete(browser.active_collection,[item],None,False)
@@ -1273,7 +1281,8 @@ class MainFrame(gtk.VBox):
             self.active_collection.write_metadata(item)
         self.active_browser().redraw_view()
 
-    def revert_item(self,widget,item):
+    def revert_item(self,*args):
+        item=self.iv.item
         if not item.is_meta_changed():
             return
         if item.is_meta_changed()==2:
@@ -1294,7 +1303,8 @@ class MainFrame(gtk.VBox):
             self.tm.recreate_thumb(item)
         self.active_browser().redraw_view()
 
-    def launch_item(self,widget,item):
+    def launch_item(self,*args):
+        item=self.iv.item
         fullpath=self.active_collection.get_path(item)
         uri=io.get_uri(fullpath)
         mime=io.get_mime_type(fullpath)
@@ -1317,22 +1327,25 @@ class MainFrame(gtk.VBox):
         else:
             print 'Error: no known command for',item.uid,'with mimetype',mime
 
-    def edit_item(self,widget,item):
+    def edit_item(self,*args):
 #        dlg=dialogs.MetaDialog(item,self.active_collection)
 #        dlg.show()
+        item=self.iv.item
         if self.active_collection.metadata_widget:
             self.dlg=self.active_collection.metadata_widget(item,self.active_collection)
             self.dlg.show()
 
-    def rotate_item_left(self,widget,item):
+    def rotate_item_left(self,*args):
         ##TODO: put this task in the background thread (using the recreate thumb job)
+        item=self.iv.item
         browser=self.active_browser()
         imagemanip.rotate_left(item,self.active_collection)
         browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
-    def rotate_item_right(self,widget,item):
+    def rotate_item_right(self,*args):
+        item=self.iv.item
         ##TODO: put this task in the background thread (using the recreate thumb job)
         browser=self.active_browser()
         imagemanip.rotate_right(item,self.active_collection)
@@ -1340,16 +1353,16 @@ class MainFrame(gtk.VBox):
         if item==self.iv.item:
             self.view_image(item)
 
-    def delete_item(self,widget,item):
-        item.delete_mark()
+    def delete_item(self,*args):
+        self.iv.item.delete_mark()
 
-    def zoom_item_fit(self,widget,item):
+    def zoom_item_fit(self,*args):
         self.iv.set_zoom('fit')
-    def zoom_item_100(self,widget,item):
+    def zoom_item_100(self,*args):
         self.iv.set_zoom(1)
-    def zoom_item_in(self,widget,item):
+    def zoom_item_in(self,*args):
         self.iv.set_zoom('in')
-    def zoom_item_out(self,widget,item):
+    def zoom_item_out(self,*args):
         self.iv.set_zoom('out')
 
 gobject.type_register(MainFrame)

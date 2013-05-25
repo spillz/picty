@@ -37,6 +37,8 @@ import imagemanip
 import pluginmanager
 import metadata
 import viewsupport
+import overlay_widgets
+
 
 class ImageLoader:
     '''
@@ -139,12 +141,13 @@ class ImageLoader:
                     continue
                 gobject.idle_add(self.viewer.ImageLoaded,item)
             self.vlock.acquire()
-            if self.sizing:
+            if self.sizing and self.sizing[0]>0 and self.sizing[1]>0:
+                print 'SIZING',self.zoom,self.sizing
                 if not self.plugin or not self.plugin.t_viewer_sizing(self.sizing,self.zoom,item):
                     imagemanip.size_image(item,self.sizing,False,self.zoom)
                     if self.plugin:
                         self.plugin.t_viewer_sized(self.sizing,self.zoom,item)
-                gobject.idle_add(self.viewer.ImageSized,item,self.zoom)
+                gobject.idle_add(self.viewer.ImageSized,item,self.zoom,self.sizing)
 #                self.sizing=None
 
 
@@ -161,16 +164,23 @@ class ImageLoader:
 ##        gtk.DrawingArea.size_allocate(self,*args)
 
 class ImageViewer(gtk.VBox):
-    def __init__(self,worker,hover_cmds,click_callback=None,key_press_callback=None):
+    def __init__(self,worker,toolbar,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
+        self.toolbar=toolbar
+#        self.info_widget = gtk.EventBox()
+#        self.info_widget.connect('expose-event',self.render_image_info)
+#        self.info_widget.set_size_request(200,400)
+#        self.info_widget.show()
         self.il=ImageLoader(self)
-        self.imarea=gtk.DrawingArea()
+###        self.imarea=gtk.DrawingArea()
+        self.imarea=overlay_widgets.DrawableOverlayHover()
+        self.imarea.add_with_bg(toolbar,0,1,0,None)
+#        self.imarea.add(self.info_widget,0,None,None,1)
+        self.imarea.connect("draw",self.draw)
+
         self.imarea.set_property("can-focus",True)
         self.worker=worker
-        self.geo_width=-1
-        self.geo_height=-1
         self.plugin_controller=None
-        self.hover_cmds=hover_cmds
         self.mouse_hover=False
         self.mouse_hover_pos=None
         self.command_highlight_ind=-1
@@ -192,7 +202,9 @@ class ImageViewer(gtk.VBox):
         self.imarea.connect("scroll-event",self.scroll_signal_pane)
         self.scroll_inc = 15
 
-        self.image_box=gtk.VBox()
+        self.imarea.show_all()
+
+        self.image_box = gtk.VBox()
         self.image_box.pack_start(self.imarea)
         self.image_box.show()
 
@@ -212,9 +224,9 @@ class ImageViewer(gtk.VBox):
         self.pack_start(self.vpane)
         self.vpane.show()
 
-        self.imarea.connect("realize",self.realize_signal)
-        self.conf_id=self.imarea.connect("configure_event",self.configure_signal)
-        self.imarea.connect("expose_event",self.expose_signal)
+##        self.imarea.add_events(gtk.gdk.EXPOSURE_MASK)
+        self.conf_id=self.imarea.connect("size-allocate",self.size_signal)
+##        self.imarea.connect("realize",self.realize_signal)
         self.connect("destroy", self._destroy)
         #self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         #self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
@@ -228,13 +240,10 @@ class ImageViewer(gtk.VBox):
 
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
         self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
-        self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
-        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
+#        self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
+#        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
-
-        self.imarea.set_property("has-tooltip",True)
-        self.imarea.connect("query-tooltip",self.drawable_tooltip_query)
 
         if click_callback:
             self.imarea.connect_after("button-press-event",click_callback)
@@ -244,10 +253,10 @@ class ImageViewer(gtk.VBox):
 
         pluginmanager.mgr.register_callback('t_collection_item_metadata_changed',self.meta_changed)
 
-        self.imarea.set_size_request(128,96)
-        self.imarea.show()
+#        self.imarea.set_size_request(128,96)
         self.item=None
         self.browser=None
+        self.last_sizing = None
         self.ImageNormal()
 
     def plugin_request_control(self,plugin,force=False):
@@ -261,6 +270,7 @@ class ImageViewer(gtk.VBox):
         self.plugin_controller=plugin
         self.il.set_plugin(plugin)
         self.resize_and_refresh_view()
+        self.imarea.hide_child(self.toolbar)
         return True
 
     def request_plugin_release(self,force=False):
@@ -270,9 +280,11 @@ class ImageViewer(gtk.VBox):
         obey the request by calling plugin_release
         '''
         if not self.plugin_controller:
+            self.imarea.unhide_child(self.toolbar)
             return True
         if not self.plugin_controller.viewer_release() and not force:
             return False
+        self.imarea.unhide_child(self.toolbar)
         return True
 
     def plugin_release(self,plugin):
@@ -284,6 +296,7 @@ class ImageViewer(gtk.VBox):
         self.plugin_controller=None
         self.il.release_plugin(plugin)
         self.imarea.grab_focus()
+        self.imarea.unhide_child(self.toolbar)
         return True
 
     def ImageFullscreen(self,size):
@@ -305,7 +318,8 @@ class ImageViewer(gtk.VBox):
         self.il.quit()
         return False
 
-    def ImageSized(self,item,zoom=None):
+    def ImageSized(self,item,zoom=None,sizing=None):
+        self.last_sizing = (zoom,sizing)
         if not self.imarea.window:
             return
         if item.image==False:
@@ -341,15 +355,24 @@ class ImageViewer(gtk.VBox):
         self.item=item
         self.collection=collection
         self.browser=browser
-        self.il.set_item(collection,item,(self.geo_width,self.geo_height),zoom=self.zoom_level)
+        self.il.set_item(collection,item,(self.get_size()[0],self.get_size()[1]),zoom=self.zoom_level)
         self.redraw_view()
         return True
+
+    def get_size(self):
+        rect = self.imarea.get_allocation()
+        return rect.width,rect.height
+        try:
+            rect = self.imarea.get_allocation()
+            return rect.width,rect.height
+        except:
+            return -1,-1
 
 #    def mouse_motion_signal(self,obj,event):
 #        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
 #        if self.item!=None:
 #            if not self.mouse_hover:
-#                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+#                self.imarea.window.invalidate_rect((0,0,self.get_size()[0],self.get_size()[1]),True)
 #            self.mouse_hover=True
 
     def meta_changed(self,collection,item,old_meta):
@@ -366,17 +389,13 @@ class ImageViewer(gtk.VBox):
         if ntr!=otr:
             self.il.transform_image()
 
-    def mouse_enter_signal(self,obj,event):
-        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
-        if self.item!=None:
-            if not self.mouse_hover:
-                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-            self.mouse_hover=True
-            self.mouse_hover_pos=(event.x,event.y)
-            cmd=self.get_hover_command(event.x,event.y)
-            if self.command_highlight_ind!=cmd:
-                self.command_highlight_ind=cmd
-                self.redraw_view()
+#    def mouse_enter_signal(self,obj,event):
+#        '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
+#        if self.item!=None:
+#            if not self.mouse_hover:
+#                self.image_box.queue_draw()
+#            self.mouse_hover=True
+#            self.mouse_hover_pos=(event.x,event.y)
 
     def mouse_motion_signal(self,obj,event):
         '''callback when mouse moves in the viewer area (updates image overlay as necessary)'''
@@ -384,59 +403,40 @@ class ImageViewer(gtk.VBox):
             if not self.mouse_hover:
                 self.redraw_view()
             if self.mouse_hover:
-                bbottom=self.mouse_hover_pos[1]>=self.geo_height-10
-                btop=self.mouse_hover_pos[1]<self.geo_height/3
+                bbottom=self.mouse_hover_pos[1]>=self.get_size()[1]-10
+                btop=self.mouse_hover_pos[1]<self.get_size()[1]/3
             else:
                 bbottom=False
                 btop=False
             self.mouse_hover=True
             self.mouse_hover_pos=(event.x,event.y)
             if self.mouse_hover:
-                abottom=self.mouse_hover_pos[1]>=self.geo_height-10
-                atop=self.mouse_hover_pos[1]<self.geo_height/3
+                abottom=self.mouse_hover_pos[1]>=self.get_size()[1]-10
+                atop=self.mouse_hover_pos[1]<self.get_size()[1]/3
             else:
                 abottom=False
                 atop=False
             if atop!=btop or abottom!=bbottom:
                 self.redraw_view()
-            cmd=self.get_hover_command(event.x,event.y)
-            if self.command_highlight_ind!=cmd:
-                self.command_highlight_ind=cmd
-                self.redraw_view()
 
     def mouse_leave_signal(self,obj,event):
         '''callback when mouse leaves the viewer area (hides image overlays)'''
-        if event.mode!=gtk.gdk.CROSSING_NORMAL:
+        al = self.imarea.get_allocation()
+        if 0<=event.x<al.width and 0<=event.y<al.height:
             return
+#        if event.mode!=gtk.gdk.CROSSING_NORMAL:
+#            return
         if self.item!=None:
             if self.mouse_hover:
-                self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
-            cmd=-1
-            if self.command_highlight_ind!=cmd:
-                self.command_highlight_ind=cmd
-                self.redraw_view()
+                self.image_box.queue_draw()
         self.mouse_hover=False
         self.mouse_hover_pos=None
 
     def button_press(self,widget,event):
         self.command_highlight_bd=False
-        if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE:
-            cmd=self.get_hover_command(event.x,event.y)
-            if cmd>=0:
-                cmd=self.hover_cmds.tools[cmd]
-                if cmd.is_active(self.item,self.mouse_hover)>=0:
-                    cmd.action(cmd,self.item)
-                    self.redraw_view()
-                    if self.browser:
-                        self.browser.redraw_view()
         if self.item!=None and self.item.qview!=None and event.button==1 and event.type==gtk.gdk.BUTTON_PRESS:
             self.command_highlight_bd=True
             self.redraw_view()
-
-    def get_hover_command(self, x, y):
-        if not self.item or not self.item.qview or self.plugin_controller:
-            return -1
-        return self.hover_cmds.get_command(x,y,4,4,4,self.item,True)
 
     def window_state_changed(self, widget, event):
         if event.changed_mask & gtk.gdk.WINDOW_STATE_FULLSCREEN:
@@ -450,46 +450,32 @@ class ImageViewer(gtk.VBox):
         if zoom==None:
             zoom=self.zoom_level
         if w==None:
-            w=self.geo_width
+            w=self.get_size()[0]
         if h==None:
-            h=self.geo_height
+            h=self.get_size()[1]
+        if self.last_sizing == (zoom, (w,h)):
+            return
         self.il.update_image_size(w,h,zoom)
 
     def redraw_view(self):
         #forces an image to be resized with a call to the worker thread
         if self.freeze_image_refresh:
             return
-        self.imarea.window.invalidate_rect((0,0,self.geo_width,self.geo_height),True)
+        self.image_box.queue_draw()
 
-    def drawable_tooltip_query(self,widget,x, y, keyboard_mode, tooltip):
-        cmd=self.get_hover_command(x, y)
-        if cmd>=0:
-            cmd=self.hover_cmds[cmd]
-            if cmd.tooltip:
-                tooltip.set_text(cmd.tooltip)
-                return True
-
-    def configure_signal(self,obj,event):
-        if (self.geo_width!=event.width or self.geo_height!=event.height):
-            self.geo_width=event.width
-            self.geo_height=event.height
-            self.update_scrollbars()
-            if self.zoom_level=='fit':
-                self.resize_and_refresh_view()
+    def size_signal(self,obj,event):
+        self.update_scrollbars()
+        if self.zoom_level=='fit':
+            self.resize_and_refresh_view()
         self.redraw_view()
 
-    def expose_signal(self,event,arg):
-        self.realize_signal(event)
-
-    def realize_signal(self,event):
+    def draw(self,obj,event):
         if self.freeze_image_refresh:
             return
         drawable = self.imarea.window
         gc = drawable.new_gc()
         colormap=drawable.get_colormap()
         black = colormap.alloc('black')
-#        drawable.set_background(black)
-#        drawable.clear()
 
         drew_image=False
         if pluginmanager.mgr.callback_first('viewer_render_start',drawable,gc,self.item):
@@ -499,31 +485,29 @@ class ImageViewer(gtk.VBox):
             #there are three pixbuf containers to worry about: full size image, scaled image, drawable
             #scroll position is stored in full image units
             src_x,src_y = self.image_xy_to_scaled_image(*self.zoom_position)
-            w = min(self.item.qview.get_width() - src_x,self.geo_width)
-            h = min(self.item.qview.get_height() - src_y,self.geo_height)
+            w = min(self.item.qview.get_width() - src_x,self.get_size()[0])
+            h = min(self.item.qview.get_height() - src_y,self.get_size()[1])
             dest_x, dest_y = self.image_xy_to_screen(*self.zoom_position)
             drawable.draw_pixbuf(gc,self.item.qview,src_x,src_y,dest_x,dest_y,w,h)
             drew_image=True
         elif self.item and self.item.thumb:
             iw,ih=self.item.thumb.get_width(),self.item.thumb.get_height()
-            x=(self.geo_width-iw)/2
-            y=(self.geo_height-ih)/2
+            x=(self.get_size()[0]-iw)/2
+            y=(self.get_size()[1]-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
         if drew_image:
-            if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height-10:
+            if self.mouse_hover and self.mouse_hover_pos[1]<self.get_size()[1]-10:
                 self.render_image_info(drawable,gc)
-            if not self.plugin_controller:
-                if self.mouse_hover and self.mouse_hover_pos[1]<self.geo_height/3:
-                    self.hover_cmds.simple_render_with_highlight(self.command_highlight_ind,
-                        self.command_highlight_bd,self.item,self.mouse_hover,drawable,gc,4,4,4)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 
+#    def render_image_info(self,obj,event):
     def render_image_info(self,drawable,gc):
+#        drawable = self.info_widget.window
+#        gc = drawable.new_gc()
         item=self.item
         size=self.item.image.size if item.image else None
         a,b=self.collection.get_viewer_text(item,size,self.zoom_level)
-        print item,a,b
         if a or b:
             a=a.replace('&','&amp;')
             b=b.replace('&','&amp;')
@@ -534,11 +518,11 @@ class ImageViewer(gtk.VBox):
                 l.set_markup('<b><span size="12000">'+a+'</span></b>')
             elif b:
                 l.set_markup('<span size="10000">'+b+'</span>')
-            l.set_width((self.geo_width-20)*pango.SCALE)
+            l.set_width((self.get_size()[0]-20)*pango.SCALE)
             l.set_wrap(pango.WRAP_WORD_CHAR)
             lx=int(10)
             w,h=l.get_pixel_size()
-            ly=max(self.geo_height-10-h,10)
+            ly=max(self.get_size()[1]-10-h,10)
             if h>0:
                 overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+10,h+10)
                 overlay_pb.fill(0x0000007f)
@@ -575,7 +559,7 @@ class ImageViewer(gtk.VBox):
         if self.zoom_level=='fit' or self.item==None or self.item.image==None:
             return self.hide_scrollbars()
         (iw,ih)=self.item.image.size
-        if iw*self.get_zoom()<self.geo_width and ih*self.get_zoom()<self.geo_height:
+        if iw*self.get_zoom()<self.get_size()[0] and ih*self.get_zoom()<self.get_size()[1]:
             return self.hide_scrollbars()
         left = self.zoom_position[0]
         top = self.zoom_position[1]
@@ -583,14 +567,14 @@ class ImageViewer(gtk.VBox):
                 value=left,
                 lower=0,
                 upper=iw,
-                step_increment=self.geo_width/self.zoom_level,
-                page_increment=self.geo_width/self.zoom_level, page_size=self.geo_width/self.zoom_level)
+                step_increment=self.get_size()[0]/self.zoom_level,
+                page_increment=self.get_size()[0]/self.zoom_level, page_size=self.get_size()[0]/self.zoom_level)
         self.vscrolladj.set_all(
                 value=top,
                 lower=0,
                 upper=ih,
-                step_increment=self.geo_height/self.zoom_level,
-                page_increment=self.geo_height/self.zoom_level, page_size=self.geo_height/self.zoom_level)
+                step_increment=self.get_size()[1]/self.zoom_level,
+                page_increment=self.get_size()[1]/self.zoom_level, page_size=self.get_size()[1]/self.zoom_level)
         self.vscroll.show()
         self.hscroll.show()
 
@@ -602,7 +586,7 @@ class ImageViewer(gtk.VBox):
         if self.zoom_level=='fit':
             return False
         iw,ih=self.item.image.size
-        if iw*self.get_zoom()<self.geo_width and ih*self.get_zoom()<self.geo_height:
+        if iw*self.get_zoom()<self.get_size()[0] and ih*self.get_zoom()<self.get_size()[1]:
             return False
         if direction=='left':
             value=self.hscrolladj.get_value()-self.scroll_inc/self.get_zoom()
@@ -634,9 +618,9 @@ class ImageViewer(gtk.VBox):
         if self.item==None or self.item.image==None:
             return
         if x==None:
-            x=self.geo_width/2
+            x=self.get_size()[0]/2
         if y==None:
-            y=self.geo_height/2
+            y=self.get_size()[1]/2
 
         (iw,ih)=self.item.image.size
         if zoom_level=='fit':
@@ -654,8 +638,8 @@ class ImageViewer(gtk.VBox):
         if self.item==None or self.item.image==None or self.item.qview==None:
             return
         (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
-        gw=self.geo_width
-        gh=self.geo_height
+        gw=self.get_size()[0]
+        gh=self.get_size()[1]
         z=self.get_zoom()
         x-=max((gw-qw)/2,0)
         y-=max((gh-qh)/2,0)
@@ -663,14 +647,13 @@ class ImageViewer(gtk.VBox):
         y=int(y+self.zoom_position[1]*z)
         return (x,y)
 
-
     def screen_xy_to_image(self,x,y):
         if self.item==None or self.item.image==None or self.item.qview==None:
             return
         (iw,ih)=self.item.image.size
         (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
-        gw=self.geo_width
-        gh=self.geo_height
+        gw=self.get_size()[0]
+        gh=self.get_size()[1]
         z=self.get_zoom()
         x-=max((gw-qw)/2,0)
         y-=max((gh-qh)/2,0)
@@ -682,8 +665,7 @@ class ImageViewer(gtk.VBox):
         if self.item==None or self.item.image==None or self.item.qview==None:
             return
         (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
-        gw=self.geo_width
-        gh=self.geo_height
+        gw,gh=self.get_size()
         z=self.get_zoom()
         x=int(x-self.zoom_position[0]*z)+max((gw-qw)/2,0)
         y=int(y-self.zoom_position[1]*z)+max((gh-qh)/2,0)
@@ -694,8 +676,7 @@ class ImageViewer(gtk.VBox):
             return
         (iw,ih)=self.item.image.size
         (qw,qh)=(self.item.qview.get_width(),self.item.qview.get_height())
-        gw=self.geo_width
-        gh=self.geo_height
+        gw,gh=self.get_size()
         z=self.get_zoom()
         x=int((x-self.zoom_position[0])*z)+max((gw-qw)/2,0)
         y=int((y-self.zoom_position[1])*z)+max((gh-qh)/2,0)
@@ -728,7 +709,7 @@ class ImageViewer(gtk.VBox):
         old_zoom=self.get_zoom()
         iw,ih=self.item.image.size
         qw,qh=(self.item.qview.get_width(),self.item.qview.get_height())
-        gw,gh=(self.geo_width,self.geo_height)
+        gw,gh=self.get_size()
         if center_xy==None:
             center_xy=(gw/2,gh/2)
         cx,cy=center_xy
@@ -736,3 +717,5 @@ class ImageViewer(gtk.VBox):
         x = max(min(ox - gw/(2*new_zoom),iw-gw/new_zoom),0)
         y = max(min(oy - gh/(2*new_zoom),ih-gh/new_zoom),0)
         return (x,y)
+
+

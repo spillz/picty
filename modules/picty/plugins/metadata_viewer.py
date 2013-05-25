@@ -63,12 +63,12 @@ class MetaDataViewer(pluginbase.Plugin):
             self.viewer.vpane.remove(self.meta_box)
         self.item=None
 
-    def viewer_register_shortcut(self,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Metadata Viewer',self.metadata_button_callback,shortcut_commands.default_active_callback,[gtk.STOCK_INFO],'View detailed metadata for this image',priority=45)
+        shortcut_toolbar.register_tool_for_plugin(self,'Metadata Viewer',self.metadata_button_callback,shortcut_toolbar.default_active_callback,[gtk.STOCK_INFO],'View detailed metadata for this image',priority=45)
 
     def viewer_item_opening(self,item):
         if self.item!=None and self.item!=item:
@@ -76,7 +76,8 @@ class MetaDataViewer(pluginbase.Plugin):
             self.update_meta_table(item)
         return True
 
-    def metadata_button_callback(self,cmd,item):
+    def metadata_button_callback(self,cmd):
+        item=self.viewer.item
         self.viewer.vpane.add2(self.meta_box)
         self.update_meta_table(item)
         self.item=item

@@ -69,16 +69,17 @@ class RotatePlugin(pluginbase.Plugin):
     def do_rotate_transform(self,item,params):
         item.image=item.image.rotate(params['angle'],Image.BILINEAR,True)
 
-    def viewer_register_shortcut(self,shortcut_commands):
+    def viewer_register_shortcut(self,shortcut_toolbar):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_commands.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_commands.default_active_callback,['picty-image-rotate'],'Rotate or straighten this image',43)
+        shortcut_toolbar.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_toolbar.default_active_callback,['picty-image-rotate'],'Rotate or straighten this image',43)
 
-    def rotate_button_callback(self,cmd,item):
+    def rotate_button_callback(self,cmd):
         #the user has entered rotate mode
         #set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
+        item=self.viewer.item
         if not self.viewer.plugin_request_control(self):
             return
         self.rotate_mode=True

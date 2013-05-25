@@ -1,4 +1,5 @@
 import gtk, gobject
+import overlaytools
 
 def grow(al,rect,pixels):
     r=gtk.gdk.Rectangle(max(rect.x-pixels,al.x),
@@ -22,6 +23,7 @@ class ProportionalLayoutChild:
         self.top=top
         self.bottom=bottom
         self.eventbox = None
+        self.hidden = False
 
 class ProportionalLayout(gtk.Container):
     '''
@@ -108,8 +110,8 @@ class ProportionalLayout(gtk.Container):
                 return
             i+=1
 
-    def add_with_bg(self, widget, x_left, x_right, y_bottom, y_top):
-        def _set_child_background(obj):
+    def add_with_bg(self, widget, x_left, x_right, y_bottom, y_top, bgcolor = None):
+        def _set_child_default_background(obj):
             bg_color = obj.style.bg[gtk.STATE_NORMAL]
             obj.modify_bg(gtk.STATE_NORMAL,bg_color)
 
@@ -117,7 +119,10 @@ class ProportionalLayout(gtk.Container):
         ch.eventbox = gtk.EventBox()
         ch.eventbox.set_parent(self)
         ch.eventbox.add(widget)
-        ch.eventbox.connect("realize",_set_child_background)
+        if bgcolor is None:
+            ch.eventbox.connect("realize",_set_child_default_background)
+        else:
+            ch.eventbox.modify_bg(bgcolor)
         self.children.append(ch)
         self.queue_resize()
 
@@ -150,10 +155,13 @@ class DrawableOverlay(gtk.EventBox):
         self.set_visible_window(True)
         self.set_app_paintable(True)
         self.layout = ProportionalLayout(*children)
-        self.add(self.layout)
+        gtk.EventBox.add(self, self.layout)
 
-    def add_with_bg(self, widget, x_left, x_right, y_bottom, y_top):
-        self.layout.add_with_bg(widget, x_left, x_right, y_bottom, y_top)
+    def add_with_bg(self, widget, x_left, x_right, y_bottom, y_top, bgcolor=None):
+        self.layout.add_with_bg(widget, x_left, x_right, y_bottom, y_top, bgcolor)
+
+    def add(self, widget, x_left, x_right, y_bottom, y_top):
+        self.layout.add(widget, x_left, x_right, y_bottom, y_top)
 
     def do_expose_event(self, event):
         # Need to modify the background style of all overlaid EventBox widgets
@@ -186,6 +194,20 @@ class DrawableOverlayHover(DrawableOverlay):
             ch.widget.show()
         self.layout.connect_after("realize",self.layout_realized)
 
+    def hide_child(self, child):
+        for ch in self.layout.children:
+            widget = ch.eventbox if ch.eventbox else ch.widget
+            if ch.widget == child:
+                ch.hidden=True
+                widget.hide()
+
+    def unhide_child(self, child):
+        for ch in self.layout.children:
+            widget = ch.eventbox if ch.eventbox else ch.widget
+            if ch.widget == child:
+                ch.hidden=False
+                #widget.show()
+
     def layout_realized(self,obj):
         for ch in self.layout.children:
             widget=ch.eventbox if ch.eventbox else ch.widget
@@ -216,13 +238,13 @@ class DrawableOverlayHover(DrawableOverlay):
 
         pos=(event.x,event.y)
         for ch in self.layout.children:
+            if ch.hidden:
+                continue
             widget = ch.eventbox if ch.eventbox else ch.widget
             if is_in(pos,grow(al,widget.get_allocation(),self.visibility_threshold)):
                 widget.show()
             else:
                 widget.hide()
-
-
 
 gobject.type_register(DrawableOverlayHover)
 
