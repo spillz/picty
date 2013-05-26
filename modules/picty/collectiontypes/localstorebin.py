@@ -897,10 +897,10 @@ class Collection(baseobjects.CollectionBase):
     def write_metadata(self,item):
         'write metadata for an item to the source'
         return imagemanip.save_metadata(item,self,cache=self.thumbnail_cache_dir,sidecar_on_failure=self.use_sidecars)
-    def load_image(self,item,interrupt_fn=None,size_bound=None):
+    def load_image(self,item,interrupt_fn=None,size_bound=None,apply_transforms=True):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         draft_mode=False
-        return imagemanip.load_image(item,self,interrupt_fn,draft_mode)
+        return imagemanip.load_image(item,self,interrupt_fn,draft_mode,apply_transforms=apply_transforms)
     def get_file_stream(self,item):
         'return a stream read the entire photo file from the source (as binary stream)'
         return open(self.get_path(item),'rb')

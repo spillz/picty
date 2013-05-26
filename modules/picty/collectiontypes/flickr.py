@@ -1268,7 +1268,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         if 'meta_backup' not in item.__dict__ or item.meta_backup==item.meta:
             item.mark_meta_saved()
 
-    def load_image(self,item,interrupt_fn=None,size_bound=None):
+    def load_image(self,item,interrupt_fn=None,size_bound=None,apply_transforms=True):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         if item.image!=None:
             return

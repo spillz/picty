@@ -629,7 +629,7 @@ def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=Tr
     except:
         item.imagergba=False
     if item.image:
-        if apply_transforms!=None:
+        if apply_transforms:
             transformer.apply_transforms(item,interrupt_fn)
         cache_image(item)
         return True

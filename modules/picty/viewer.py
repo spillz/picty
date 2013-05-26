@@ -53,6 +53,7 @@ class ImageLoader:
         self.max_memimages=2
         self.vlock=threading.Lock() #viewer lock -- main thread should acquire lock before touch item image properties (image, qimage, size etc)
         self.viewer=viewer
+        self.want_transforms=True
         self.event=threading.Event()
         self.exit=False
         self.plugin=None
@@ -73,7 +74,7 @@ class ImageLoader:
         while self.thread.isAlive():
             time.sleep(0.1)
 
-    def set_item(self,collection,item,sizing=None,zoom='fit'):
+    def set_item(self,collection,item,sizing=None,zoom='fit',want_transfoms=True):
         self.vlock.acquire()
         self.collection=collection
         if self.item!=item and 'original_image' in dir(self.item):
@@ -81,6 +82,7 @@ class ImageLoader:
         self.item=item
         self.sizing=sizing ##if sizing is none, zoom is ignored
         self.zoom=zoom ##zoom is either 'fit' or a floating point number for scaling, 1= 1 image pixel: 1 screen pixel; 2= 1 image pixel:2 screen pixel; 0.5 = 2 image pixel:1 screen pixel, so typically zoom<=1
+        self.want_transforms=want_transfoms
         self.vlock.release()
         self.event.set()
 
@@ -95,12 +97,13 @@ class ImageLoader:
             self.plugin=None
         self.vlock.release()
 
-    def transform_image(self):
+    def transform_image(self, want_transforms=True):
         '''
         reapply the transforms to the image
         '''
         self.vlock.acquire()
         self.item.image = None
+        self.want_transforms = want_transforms
         self.vlock.release()
         self.event.set()
 
@@ -133,7 +136,8 @@ class ImageLoader:
             if not item.image:
                 def interrupt_cb():
                     return self.item.uid==item.uid
-                self.collection.load_image(item,interrupt_cb) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
+                print 'LOADING IMAGE',item,'transforms',self.want_transforms
+                self.collection.load_image(item,interrupt_cb,apply_transforms=self.want_transforms) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
                 if not item.image:
                     gobject.idle_add(self.viewer.ImageLoaded,item) ##todo: change to image load failed? (the handler currently checks the status so that's enough anyway)
                     self.vlock.acquire()
@@ -442,7 +446,7 @@ class ImageViewer(gtk.VBox):
             self.freeze_image_refresh=False
             self.resize_and_refresh_view()
 
-    def resize_and_refresh_view(self,w=None,h=None,zoom=None):
+    def resize_and_refresh_view(self,w=None,h=None,zoom=None,force=False):
         #forces an image to be resized with a call to the worker thread
         if self.freeze_image_refresh:
             return
@@ -452,7 +456,7 @@ class ImageViewer(gtk.VBox):
             w=self.get_size()[0]
         if h==None:
             h=self.get_size()[1]
-        if self.last_sizing == (zoom, (w,h)):
+        if not force and self.last_sizing == (zoom, (w,h)):
             return
         self.il.update_image_size(w,h,zoom)
 
@@ -720,4 +724,8 @@ class ImageViewer(gtk.VBox):
     def toolbar_click(self,widget,callback):
         callback(widget,self.item)
 
-
+    def switch_image_edit(self,edit_string):
+        if edit_string == 'Original':
+            self.il.transform_image(False)
+        if edit_string == 'Edited':
+            self.il.transform_image(True)

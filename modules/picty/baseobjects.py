@@ -264,7 +264,7 @@ class CollectionBase:
     def write_metadata(self,item):
         'write metadata for an item to the source'
         pass
-    def load_image(self,item,interrupt_fn=None,size_bound=None):
+    def load_image(self,item,interrupt_fn=None,size_bound=None,apply_transforms=True):
         'load the fullsize image, up to maximum size given by the (width, height) tuple in size_bound'
         pass
     def get_file_stream(self,item):
@@ -391,7 +391,9 @@ class Item(str):
         old=self.meta.copy()
         if self.is_meta_changed()!=True:
             self.meta_backup=self.meta.copy()
-        if key in self.meta and key not in self.meta_backup and value=='':
+        if value is None and key in self.meta:
+            del self.meta[key]
+        elif key in self.meta and key not in self.meta_backup and value=='':
             del self.meta[key]
         else:
             self.meta[key]=value

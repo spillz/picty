@@ -675,83 +675,84 @@ each entry in the tuple is itself a tuple containing:
  * A function to convert a string to the internal rep
  * A function to convert the key to a sortable
  * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
+ * A boolean indicator of whether to delete these keys when writing metadata if they aren't present in if the appmeta
 '''
 
 apptags=(
-("DateTaken","Date Taken",False,conv_date_taken,None,None,date_as_sortable,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",)),
-("Title","Title",True,conv_str_alt,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",)),
-("ImageDescription","Image Description",True,conv_str_alt,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",)),
-("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment")),
-("Artist","Artist",True,conv_artist,tag_bind_c,tag_split_c,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist")),
-("Copyright","Copyright",True,conv_str_alt,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",)),
+("DateTaken","Date Taken",False,conv_date_taken,None,None,date_as_sortable,(("Iptc.Application2.DateCreated","Iptc.Application2.TimeCreated"),"Exif.Photo.DateTimeOriginal",),False),
+("Title","Title",True,conv_str_alt,None,None,None,("Xmp.dc.title","Iptc.Application2.Headline",),True),
+("ImageDescription","Image Description",True,conv_str_alt,None,None,None,("Xmp.dc.description","Iptc.Application2.Caption","Exif.Image.ImageDescription",),True),
+("Keywords","Tags",True,conv_keywords,tag_bind,tag_split,None,("Xmp.dc.subject","Iptc.Application2.Keywords","Exif.Photo.UserComment"),True),
+("Artist","Artist",True,conv_artist,tag_bind_c,tag_split_c,None,("Xmp.dc.creator","Iptc.Application2.Credit","Exif.Image.Artist"),True),
+("Copyright","Copyright",True,conv_str_alt,None,None,None,("Xmp.dc.rights","Iptc.Application2.Copyright","Exif.Image.Copyright",),True),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
-("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",)),
-("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",)),
-("Model","Model",False,conv_str,None,None,None,("Exif.Image.Model",)),
-("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",)),
-("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",)),
-("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FNumber",)),
-("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Exif.Photo.ISOSpeedRatings",)),
-("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FocalLength",)),
-("ExposureProgram","Exposure Program",False,conv_int,None,None,None,("Exif.Photo.ExposureProgram",)),
-("ExposureBiasValue","Exposure Bias Value",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureBiasValue",)),
-("ExposureMode","Exposure Mode",False,conv_int,None,None,None,("Exif.Photo.ExposureMode",)),
-("MeteringMode","Metering Mode",False,conv_int,None,None,None,("Exif.Photo.MeteringMode",)),
-("Flash","Flash",False,conv_int,None,None,None,("Exif.Photo.Flash",)),
-("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Exif.Photo.SensingMethod",)),
-("WhiteBalance","White Balance",False,conv_int,None,None,None,("Exif.Photo.WhiteBalance",)),
-("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Exif.Photo.DigitalZoomRatio",)),
-("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Exif.Photo.SceneCaptureType",)),
-("GainControl","Gain Control",False,conv_int,None,None,None,("Exif.Photo.GainControl",)),
-("Contrast","Contrast",False,conv_int,None,None,None,("Exif.Photo.Contrast",)),
-("Saturation","Saturation",False,conv_int,None,None,None,("Exif.Photo.Saturation",)),
-("Sharpness","Sharpness",False,conv_int,None,None,None,("Exif.Photo.Sharpness",)),
-("SubjectDistanceRange","Subject Distance",False,conv_int,None,None,None,("Exif.Photo.SubjectDistanceRange",)),
-("Software","Software",False,conv_str,None,None,None,("Exif.Image.Software",)),
-("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
-("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",)),
-("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
-("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.GPSLatitude","Exif.GPSInfo.GPSLatitudeRef","Exif.GPSInfo.GPSLongitude","Exif.GPSInfo.GPSLongitudeRef")),
-("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",)),
+("Album","Album",True,conv_str,None,None,None,("Iptc.Application2.Subject",),True),
+("Make","Make",False,conv_str,None,None,None,("Exif.Image.Make",),False),
+("Model","Model",False,conv_str,None,None,None,("Exif.Image.Model",),False),
+("Orientation","Orientation",False,conv_int,str,int,None,("Exif.Image.Orientation",),False),
+("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureTime",),False),
+("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FNumber",),False),
+("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Exif.Photo.ISOSpeedRatings",),False),
+("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.FocalLength",),False),
+("ExposureProgram","Exposure Program",False,conv_int,None,None,None,("Exif.Photo.ExposureProgram",),False),
+("ExposureBiasValue","Exposure Bias Value",False,conv_rational,rat2str,str2rat,rational_as_float,("Exif.Photo.ExposureBiasValue",),False),
+("ExposureMode","Exposure Mode",False,conv_int,None,None,None,("Exif.Photo.ExposureMode",),False),
+("MeteringMode","Metering Mode",False,conv_int,None,None,None,("Exif.Photo.MeteringMode",),False),
+("Flash","Flash",False,conv_int,None,None,None,("Exif.Photo.Flash",),False),
+("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Exif.Photo.SensingMethod",),False),
+("WhiteBalance","White Balance",False,conv_int,None,None,None,("Exif.Photo.WhiteBalance",),False),
+("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Exif.Photo.DigitalZoomRatio",),False),
+("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Exif.Photo.SceneCaptureType",),False),
+("GainControl","Gain Control",False,conv_int,None,None,None,("Exif.Photo.GainControl",),False),
+("Contrast","Contrast",False,conv_int,None,None,None,("Exif.Photo.Contrast",),False),
+("Saturation","Saturation",False,conv_int,None,None,None,("Exif.Photo.Saturation",),False),
+("Sharpness","Sharpness",False,conv_int,None,None,None,("Exif.Photo.Sharpness",),False),
+("SubjectDistanceRange","Subject Distance",False,conv_int,None,None,None,("Exif.Photo.SubjectDistanceRange",),False),
+("Software","Software",False,conv_str,None,None,None,("Exif.Image.Software",),False),
+("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",),False),
+("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Exif.Photo.ImageUniqueID",),False),
+("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",),False),
+("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Exif.GPSInfo.GPSLatitude","Exif.GPSInfo.GPSLatitudeRef","Exif.GPSInfo.GPSLongitude","Exif.GPSInfo.GPSLongitudeRef"),False),
+("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",),True),
 ##("GPSTimeStamp","GPSTimeStamp",False,must convert a len 3 tuple of rationals("Exif.GPSInfo.GPSTimeStamp",))
 )
 
 apptags_sidecar=(
-("DateTaken","Date Taken",False,conv_date_taken_xmp,None,None,date_as_sortable,("Xmp.exif.DateTimeOriginal","Xmp.exif.DateTimeDigitized")),
-("Title","Title",True,conv_lang_alt,None,None,None,("Xmp.dc.title",)),
-("ImageDescription","Image Description",True,conv_lang_alt,None,None,None,("Xmp.dc.description",)),
-("Keywords","Tags",True,conv_keywords_xmp,tag_bind,tag_split,None,("Xmp.dc.subject",)),
-("Artist","Artist",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.dc.creator",)),
-("Copyright","Copyright",True,conv_lang_alt,None,None,None,("Xmp.dc.rights",)),
+("DateTaken","Date Taken",False,conv_date_taken_xmp,None,None,date_as_sortable,("Xmp.exif.DateTimeOriginal","Xmp.exif.DateTimeDigitized"),False),
+("Title","Title",True,conv_lang_alt,None,None,None,("Xmp.dc.title",),True),
+("ImageDescription","Image Description",True,conv_lang_alt,None,None,None,("Xmp.dc.description",),True),
+("Keywords","Tags",True,conv_keywords_xmp,tag_bind,tag_split,None,("Xmp.dc.subject",),True),
+("Artist","Artist",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.dc.creator",),True),
+("Copyright","Copyright",True,conv_lang_alt,None,None,None,("Xmp.dc.rights",),True),
 #("Rating",True,conv_int,("Xmp.xmp.Rating")),
-("Album","Album",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.photoshop.SupplementalCategories",)),
-("Make","Make",False,conv_str,None,None,None,("Xmp.tiff.Make",)),
-("Model","Model",False,conv_str,None,None,None,("Xmp.tiff.Model",)),
-("Orientation","Orientation",False,conv_int,str,int,None,("Xmp.tiff.Orientation",)),
-("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureTime",)),
-("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FNumber",)),
-("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Xmp.exif.ISOSpeedRatings",)),
-("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FocalLength",)),
-("ExposureProgram","Exposure Program",False,conv_int,None,None,None,("Xmp.exif.ExposureProgram",)),
-("ExposureBiasValue","Exposure Bias Value",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureBiasValue",)),
-("ExposureMode","Exposure Mode",False,conv_int,None,None,None,("Xmp.exif.ExposureMode",)),
-("MeteringMode","Metering Mode",False,conv_int,None,None,None,("Xmp.exif.MeteringMode",)),
-("Flash","Flash",False,conv_int,None,None,None,("Xmp.exif.Flash",)),
-("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Xmp.exif.SensingMethod",)),
-("WhiteBalance","White Balance",False,conv_int,None,None,None,("Xmp.exif.WhiteBalance",)),
-("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Xmp.exif.DigitalZoomRatio",)),
-("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Xmp.exif.SceneCaptureType",)),
-("GainControl","Gain Control",False,conv_int,None,None,None,("Xmp.exif.GainControl",)),
-("Contrast","Contrast",False,conv_int,None,None,None,("Xmp.exif.Contrast",)),
-("Saturation","Saturation",False,conv_int,None,None,None,("Xmp.exif.Saturation",)),
-("Sharpness","Sharpness",False,conv_int,None,None,None,("Xmp.exif.Sharpness",)),
-("SubjectDistanceRange","Subject Distance",False,conv_int,None,None,None,("Xmp.exif.SubjectDistanceRange",)),
-("Software","Software",False,conv_str,None,None,None,("Xmp.tiff.Software",)),
-##("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",)),
-("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Xmp.exif.ImageUniqueID",)),
-##("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",)),
-("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Xmp.exif.GPSLatitude","Xmp.exif.GPSLatitudeRef","Xmp.exif.GPSLongitude","Xmp.exif.GPSLongitudeRef")),
-("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",)),
+("Album","Album",True,conv_list_xmp,tag_bind_c,tag_split_c,None,("Xmp.photoshop.SupplementalCategories",),True),
+("Make","Make",False,conv_str,None,None,None,("Xmp.tiff.Make",),False),
+("Model","Model",False,conv_str,None,None,None,("Xmp.tiff.Model",),False),
+("Orientation","Orientation",False,conv_int,str,int,None,("Xmp.tiff.Orientation",),False),
+("ExposureTime","Exposure Time",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureTime",),False),
+("FNumber","FNumber",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FNumber",),False),
+("IsoSpeed","Iso Speed",False,conv_int,str,int,None,("Xmp.exif.ISOSpeedRatings",),False),
+("FocalLength","Focal Length",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.FocalLength",),False),
+("ExposureProgram","Exposure Program",False,conv_int,None,None,None,("Xmp.exif.ExposureProgram",),False),
+("ExposureBiasValue","Exposure Bias Value",False,conv_rational,rat2str,str2rat,rational_as_float,("Xmp.exif.ExposureBiasValue",),False),
+("ExposureMode","Exposure Mode",False,conv_int,None,None,None,("Xmp.exif.ExposureMode",),False),
+("MeteringMode","Metering Mode",False,conv_int,None,None,None,("Xmp.exif.MeteringMode",),False),
+("Flash","Flash",False,conv_int,None,None,None,("Xmp.exif.Flash",),False),
+("SensingMethod","Sensing Method",False,conv_int,None,None,None,("Xmp.exif.SensingMethod",),False),
+("WhiteBalance","White Balance",False,conv_int,None,None,None,("Xmp.exif.WhiteBalance",),False),
+("DigitalZoomRatio","Digital Zoom Ratio",False,conv_rational,None,None,None,("Xmp.exif.DigitalZoomRatio",),False),
+("SceneCaptureType","Scene Capture Type",False,conv_int,None,None,None,("Xmp.exif.SceneCaptureType",),False),
+("GainControl","Gain Control",False,conv_int,None,None,None,("Xmp.exif.GainControl",),False),
+("Contrast","Contrast",False,conv_int,None,None,None,("Xmp.exif.Contrast",),False),
+("Saturation","Saturation",False,conv_int,None,None,None,("Xmp.exif.Saturation",),False),
+("Sharpness","Sharpness",False,conv_int,None,None,None,("Xmp.exif.Sharpness",),False),
+("SubjectDistanceRange","Subject Distance",False,conv_int,None,None,None,("Xmp.exif.SubjectDistanceRange",),False),
+("Software","Software",False,conv_str,None,None,None,("Xmp.tiff.Software",),False),
+##("IPTCNAA","IPTCNAA",False,conv_str,None,None,None,("Exif.Image.IPTCNAA",),False),
+("ImageUniqueID","Image Unique ID",False,conv_str,None,None,None,("Xmp.exif.ImageUniqueID",),False),
+##("Processing Software","Processing Software",False,conv_str,None,None,None,("Exif.Image.ProcessingSoftware",),False),
+("LatLon","Geolocation",False,conv_latlon,tup2str,str2tup,None,("Xmp.exif.GPSLatitude","Xmp.exif.GPSLatitudeRef","Xmp.exif.GPSLongitude","Xmp.exif.GPSLongitudeRef"),False),
+("ImageTransforms","Image Transformations",False,conv_image_transforms,json.dumps,json.loads,None,("Xmp.picty.ImageTransformations",),True),
 )
 
 
@@ -776,11 +777,19 @@ def get_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
             pass
 
 def set_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
-    print 'Setting app_meta',app_meta
-    for appkey in app_meta:
+    print 'Setting Exiv2 data from app_meta',app_meta
+    for appkey in apptags_dict:
         try:
             data=apptags_dict[appkey] ##TODO: Check that keys are being removed if the app_meta value is equivalent to empty
-            data[2](exiv2_meta,data[6],app_meta[appkey]) ##todo: only set values that have actually changed?? e.g. could check data[1], but for e.g. orientation should be savable but data[1]=false
+            if appkey in app_meta:
+                data[2](exiv2_meta,data[6],app_meta[appkey]) ##todo: only set values that have actually changed?? e.g. could check data[1], but for e.g. orientation should be savable but data[1]=false
+            elif data[7] == True:
+                for exiv2_key in data[6]:
+                    try:
+                        print 'Removing Key',exiv2_key
+                        del exiv2_meta[exiv2_key]
+                    except:
+                        print 'Failed to remove',exiv2_key
         except:
             print 'Exiv2 set data failure',appkey
             import traceback,sys

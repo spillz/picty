@@ -23,6 +23,17 @@ class ToolButton(gtk.ToolButton):
 
 gobject.type_register(ToolButton)
 
+class ToolItem(gtk.ToolItem):
+    def __init__(self,widget,owner='Main',priority=50,expand=False):
+       ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
+        gtk.ToolItem.__init__(self)
+        self.add(widget)
+        self.owner = owner
+        self.priority = priority
+        self.set_expand(expand)
+
+gobject.type_register(ToolButton)
+
 class Toolbar(gtk.Toolbar):
     def __init__(self):
         gtk.Toolbar.__init__(self)

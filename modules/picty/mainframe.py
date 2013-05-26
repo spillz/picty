@@ -153,6 +153,11 @@ class MainFrame(gtk.VBox):
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
 
+        self.image_edit_selector=gtk.combo_box_new_text()
+        self.image_edit_selector.set_property("can-focus",False)
+        self.image_edit_selector.connect("changed",self.image_edit_selector_cb)
+        self.image_edit_selector.show()
+
         fn=self.iv.toolbar_click
         viewer_tools=[
                         ##name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
@@ -171,6 +176,7 @@ class MainFrame(gtk.VBox):
                         ('Zoom In',(fn,self.zoom_item_in),show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
                         ('Zoom Out',(fn,self.zoom_item_out),show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
                         ('Stub',None),
+                        ('Clear Image Edits',(fn,self.image_edit_clear),show_on_hover,[gtk.STOCK_CLEAR],'Main','Removes any edits made to the image in Picty'),
                         ]
                         #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
 
@@ -179,8 +185,11 @@ class MainFrame(gtk.VBox):
                 self.viewer_toolbar.add(gtk.SeparatorToolItem())
             else:
                 self.viewer_toolbar.add(ToolButton(*tools))
+        self.viewer_toolbar.add(ToolItem(self.image_edit_selector))
+
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
         self.viewer_toolbar.show_all()
+
 
         self.info_bar=gtk.HBox()
         self.spinner = gtk.Spinner()
@@ -472,6 +481,11 @@ class MainFrame(gtk.VBox):
                 dialogs.prompt_dialog("Error Creating Collection","The collection could not be created",["_Close"])
 
     def meta_changed(self,collection,item,old_meta):
+        if item == self.iv.item:
+            if item.meta!=old_meta:
+                self.iv.redraw_view()
+#                if 'ImageTransforms' in item.meta or 'ImageTransforms' in old_meta:
+                self.update_image_edit_selector(item)
         if collection!=self.active_collection:
             return
         if item.meta!=old_meta:
@@ -936,6 +950,28 @@ class MainFrame(gtk.VBox):
             c.get_active_view().reverse=widget.get_active()#not self.browser.active_view.reverse
             self.active_browser().resize_and_refresh_view(c)
 
+    def update_image_edit_selector(self,item):
+        self.image_edit_selector.handler_block_by_func(self.image_edit_selector_cb)
+        self.image_edit_selector.get_model().clear()
+        if item is not None:
+            self.image_edit_selector.append_text("Original")
+            self.image_edit_selector.set_active(0)
+            if item.meta is not None:
+                if 'ImageTransforms' in item.meta:
+                    self.image_edit_selector.append_text("Edited")
+                    self.image_edit_selector.set_active(1)
+        self.image_edit_selector.handler_unblock_by_func(self.image_edit_selector_cb)
+
+    def image_edit_selector_cb(self,widget):
+        text=self.image_edit_selector.get_active_text()
+        self.iv.switch_image_edit(text)
+
+    def image_edit_clear(self,widget,item):
+        if 'ImageTransforms' in item.meta:
+            item.set_meta_key('ImageTransforms',None,self.iv.collection)
+            #note that this should automatically trigger a metadata change event
+            #that gets caught here and forces a refresh of the image
+
     def update_spinner(self,widget,active,message):
         if active:
             if not self.spinner.get_property('active'):
@@ -1130,11 +1166,10 @@ class MainFrame(gtk.VBox):
         self.iv.SetItem(item,browser,self.active_collection)
         self.is_iv_showing=True
         browser.update_geometry(True)
-###        if not visible:
-###            browser.resize_pane()
         if self.iv.item!=None:
             ind=browser.item_to_view_index(self.iv.item)
             browser.center_view_offset(ind)
+        self.update_image_edit_selector(item)
         browser.update_scrollbar()
         browser.update_required_thumbs()
         browser.resize_and_refresh_view(self.active_collection)

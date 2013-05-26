@@ -111,7 +111,7 @@ class RotatePlugin(pluginbase.Plugin):
     def rotate_adjust(self,adjustment):
         if not self.rotate_mode:
             return
-        self.viewer.resize_and_refresh_view()
+        self.viewer.resize_and_refresh_view(force=True)
 
     def viewer_release(self,force=False):
         self.reset(True)
