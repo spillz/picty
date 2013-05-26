@@ -131,35 +131,6 @@ class MainFrame(gtk.VBox):
             self.hover_cmds.register_tool(*tool)
         self.plugmgr.callback('browser_register_shortcut',self.hover_cmds)
 
-        self.viewer_toolbar=Toolbar()
-        viewer_tools=[
-                        ##callback action,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Close',self.close_viewer,show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
-                        ('Locate in Browser',self.show_viewed_item,show_on_hover,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
-                        ('Save',self.save_item,show_and_changed,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
-                        ('Revert',self.revert_item,show_and_changed,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
-                        ('Delete',self.delete_item,show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
-                        ('Launch',self.launch_item,show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
-                        ('Edit Metadata',self.edit_item,show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
-                        ('Rotate Left',self.rotate_item_left,show_on_hover,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
-                        ('Rotate Right',self.rotate_item_right,show_on_hover,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
-                        ('Zoom Fit',self.zoom_item_fit,show_on_hover,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
-                        ('Zoom 100%',self.zoom_item_100,show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
-                        ('Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
-                        ('Zoom Out',self.zoom_item_out,show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
-                        ('Stub',None,lambda item,hover:False,[],'Main',''),
-                        ]
-                        #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
-
-        for tools in viewer_tools:
-            if tools[1] is None:
-                self.viewer_toolbar.add(gtk.SeparatorToolItem())
-            else:
-                self.viewer_toolbar.add(ToolButton(*tools))
-        self.viewer_toolbar.show_all()
-
-        self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
-
         self.browser_nb=gtk.Notebook()
         self.browser_nb.set_show_tabs(False)
         self.browser_nb.set_scrollable(True)
@@ -176,10 +147,39 @@ class MainFrame(gtk.VBox):
         self.tm=backend.Worker(self.coll_set)
 
         self.neededitem=None
+        self.viewer_toolbar=Toolbar()
         self.iv=viewer.ImageViewer(self.tm,self.viewer_toolbar,self.button_press_image_viewer,self.key_press_signal)
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
+
+        fn=self.iv.toolbar_click
+        viewer_tools=[
+                        ##name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
+                        ('Close',(fn,self.close_viewer),show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
+                        ('Locate in Browser',(fn,self.show_viewed_item),show_on_hover,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
+                        ('Save',(fn,self.save_item),show_and_changed,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
+                        ('Revert',(fn,self.revert_item),show_and_changed,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
+                        ('Delete',(fn,self.delete_item),show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
+                        ('Launch',(fn,self.launch_item),show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',(fn,self.edit_item),show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',(fn,self.rotate_item_left),show_on_hover,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',(fn,self.rotate_item_right),show_on_hover,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        ('Zoom Fit',(fn,self.zoom_item_fit),show_on_hover,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
+                        ('Zoom 100%',(fn,self.zoom_item_100),show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
+                        ('Zoom In',(fn,self.zoom_item_in),show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
+                        ('Zoom Out',(fn,self.zoom_item_out),show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
+                        ('Stub',None),
+                        ]
+                        #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
+
+        for tools in viewer_tools:
+            if tools[1] is None:
+                self.viewer_toolbar.add(gtk.SeparatorToolItem())
+            else:
+                self.viewer_toolbar.add(ToolButton(*tools))
+        self.viewer_toolbar.show_all()
+        self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
 
         self.info_bar=gtk.HBox()
         self.spinner = gtk.Spinner()
@@ -1100,10 +1100,10 @@ class MainFrame(gtk.VBox):
 #                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
 
-    def close_viewer(self,*args):
+    def close_viewer(self,widget,item):
         self.hide_image()
 
-    def show_viewed_item(self,*args):
+    def show_viewed_item(self,widget,item):
         b=self.active_browser()
         if b!=self.iv.browser:
             ind=self.browser_nb.page_num(self.iv.browser)
@@ -1247,11 +1247,11 @@ class MainFrame(gtk.VBox):
         rootmenu.show_all()
         rootmenu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
-    def item_make_thumb(self,*args):
-        self.tm.recreate_thumb(self.iv.item)
+    def item_make_thumb(self,widget,item):
+        self.tm.recreate_thumb(item)
 
-    def item_reload_metadata(self,*args):
-        self.tm.reload_metadata(self.iv.item)
+    def item_reload_metadata(self,widget,item):
+        self.tm.reload_metadata(item)
 
     def mime_open(self,widget,app_cmd,uri):
         if uri:
@@ -1269,8 +1269,7 @@ class MainFrame(gtk.VBox):
             {'FULLPATH':fullpath,'DIR':directory,'FULLNAME':fullname,'NAME':name,'EXT':ext})
         subprocess.Popen(app_cmd,shell=True)
 
-    def save_item(self,*args):
-        item=self.iv.item
+    def save_item(self,widget,item):
         if item.is_meta_changed()==2:
             browser=self.active_browser()
             fileops.worker.delete(browser.active_collection,[item],None,False)
@@ -1280,8 +1279,7 @@ class MainFrame(gtk.VBox):
             self.active_collection.write_metadata(item)
         self.active_browser().redraw_view()
 
-    def revert_item(self,*args):
-        item=self.iv.item
+    def revert_item(self,widget,item):
         if not item.is_meta_changed():
             return
         if item.is_meta_changed()==2:
@@ -1302,8 +1300,7 @@ class MainFrame(gtk.VBox):
             self.tm.recreate_thumb(item)
         self.active_browser().redraw_view()
 
-    def launch_item(self,*args):
-        item=self.iv.item
+    def launch_item(self,widget,item):
         fullpath=self.active_collection.get_path(item)
         uri=io.get_uri(fullpath)
         mime=io.get_mime_type(fullpath)
@@ -1326,25 +1323,22 @@ class MainFrame(gtk.VBox):
         else:
             print 'Error: no known command for',item.uid,'with mimetype',mime
 
-    def edit_item(self,*args):
+    def edit_item(self,widget,item):
 #        dlg=dialogs.MetaDialog(item,self.active_collection)
 #        dlg.show()
-        item=self.iv.item
         if self.active_collection.metadata_widget:
             self.dlg=self.active_collection.metadata_widget(item,self.active_collection)
             self.dlg.show()
 
-    def rotate_item_left(self,*args):
+    def rotate_item_left(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
-        item=self.iv.item
         browser=self.active_browser()
         imagemanip.rotate_left(item,self.active_collection)
         browser.update_required_thumbs()
         if item==self.iv.item:
             self.view_image(item)
 
-    def rotate_item_right(self,*args):
-        item=self.iv.item
+    def rotate_item_right(self,widget,item):
         ##TODO: put this task in the background thread (using the recreate thumb job)
         browser=self.active_browser()
         imagemanip.rotate_right(item,self.active_collection)
@@ -1352,15 +1346,18 @@ class MainFrame(gtk.VBox):
         if item==self.iv.item:
             self.view_image(item)
 
-    def delete_item(self,*args):
-        self.iv.item.delete_mark()
+    def delete_item(self,widget,item):
+        item.delete_mark()
 
     def zoom_item_fit(self,*args):
         self.iv.set_zoom('fit')
+
     def zoom_item_100(self,*args):
         self.iv.set_zoom(1)
+
     def zoom_item_in(self,*args):
         self.iv.set_zoom('in')
+
     def zoom_item_out(self,*args):
         self.iv.set_zoom('out')
 

@@ -12,7 +12,10 @@ class ToolButton(gtk.ToolButton):
         self.priority = priority
         self.state_cb = state_cb
         if callback:
-            self.connect("clicked",callback)
+            if isinstance(callback,tuple):
+                self.connect("clicked",callback[0],*callback[1:])
+            else:
+                self.connect("clicked",callback)
         if tooltip:
             self.set_tooltip_text(tooltip)
         if label:

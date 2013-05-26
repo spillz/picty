@@ -717,4 +717,7 @@ class ImageViewer(gtk.VBox):
         y = max(min(oy - gh/(2*new_zoom),ih-gh/new_zoom),0)
         return (x,y)
 
+    def toolbar_click(self,widget,callback):
+        callback(widget,self.item)
+
 
