@@ -76,8 +76,7 @@ class MetaDataViewer(pluginbase.Plugin):
             self.update_meta_table(item)
         return True
 
-    def metadata_button_callback(self,cmd):
-        item=self.viewer.item
+    def metadata_button_callback(self,cmd,item):
         self.viewer.vpane.add2(self.meta_box)
         self.update_meta_table(item)
         self.item=item

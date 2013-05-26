@@ -75,10 +75,9 @@ class CropPlugin(pluginbase.Plugin):
         '''
         shortcut_toolbar.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_toolbar.default_active_callback,['picty-image-crop'],'Interactively crop this image',40)
 
-    def crop_button_callback(self,cmd):
+    def crop_button_callback(self,cmd,item):
         #the user has entered crop mode
         #hand the plugin exclusive control of the viewer
-        item=self.viewer.item
         if not self.viewer.plugin_request_control(self):
             return
         self.crop_mode=True
