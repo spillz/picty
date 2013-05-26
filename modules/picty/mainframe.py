@@ -165,6 +165,7 @@ class MainFrame(gtk.VBox):
                         ('Edit Metadata',(fn,self.edit_item),show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',(fn,self.rotate_item_left),show_on_hover,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',(fn,self.rotate_item_right),show_on_hover,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        ('Stub',None),
                         ('Zoom Fit',(fn,self.zoom_item_fit),show_on_hover,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
                         ('Zoom 100%',(fn,self.zoom_item_100),show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
                         ('Zoom In',(fn,self.zoom_item_in),show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
@@ -178,8 +179,8 @@ class MainFrame(gtk.VBox):
                 self.viewer_toolbar.add(gtk.SeparatorToolItem())
             else:
                 self.viewer_toolbar.add(ToolButton(*tools))
-        self.viewer_toolbar.show_all()
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
+        self.viewer_toolbar.show_all()
 
         self.info_bar=gtk.HBox()
         self.spinner = gtk.Spinner()

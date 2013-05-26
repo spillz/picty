@@ -76,11 +76,12 @@ class RotatePlugin(pluginbase.Plugin):
         '''
         shortcut_toolbar.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_toolbar.default_active_callback,['picty-image-rotate'],'Rotate or straighten this image',43)
 
-    def rotate_button_callback(self,cmd,item):
+    def rotate_button_callback(self,cmd):
         '''
         the user has entered rotate mode
         set the viewer to a blocking mode to hand the plugin exclusive control of the viewer
         '''
+        item=self.viewer.item
         if not self.viewer.plugin_request_control(self):
             return
         self.rotate_mode=True
