@@ -74,7 +74,7 @@ class RotatePlugin(pluginbase.Plugin):
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_toolbar.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_toolbar.default_active_callback,['picty-image-rotate'],'Rotate or straighten this image',43)
+        shortcut_toolbar.register_tool_for_plugin(self,'Rotate',self.rotate_button_callback,shortcut_toolbar.cb_showing_tranforms,['picty-image-rotate'],'Rotate or straighten this image',43)
 
     def rotate_button_callback(self,cmd):
         '''

@@ -336,6 +336,7 @@ class ImageViewer(gtk.VBox):
                     self.zoom_position=self.zoom_position_request
                     self.zoom_level=zoom
             self.update_scrollbars()
+            self.toolbar.update_status(self)
             self.redraw_view()
         else:
             print 'WARNING: Sized wrong item',item.uid
@@ -360,6 +361,7 @@ class ImageViewer(gtk.VBox):
         self.browser=browser
         self.il.set_item(collection,item,(self.get_size()[0],self.get_size()[1]),zoom=self.zoom_level)
         self.redraw_view()
+        self.toolbar.update_status(self)
         return True
 
     def get_size(self):
@@ -381,6 +383,7 @@ class ImageViewer(gtk.VBox):
     def meta_changed(self,collection,item,old_meta):
         if item!=self.item:
             return
+        self.toolbar.update_status(self)
         try:
             ntr = item.meta['ImageTransforms']
         except:
@@ -724,8 +727,9 @@ class ImageViewer(gtk.VBox):
     def toolbar_click(self,widget,callback):
         callback(widget,self.item)
 
-    def switch_image_edit(self,edit_string):
-        if edit_string == 'Original':
+    def switch_image_edit(self,image_edit_choice):
+        if image_edit_choice == 'Original':
             self.il.transform_image(False)
-        if edit_string == 'Edited':
+        if image_edit_choice == 'Edited':
             self.il.transform_image(True)
+        self.toolbar.update_status(self)

@@ -158,25 +158,60 @@ class MainFrame(gtk.VBox):
         self.image_edit_selector.connect("changed",self.image_edit_selector_cb)
         self.image_edit_selector.show()
 
+        def cb_has_item(tool, viewer):
+            if viewer.item!=None:
+                tool.set_sensitive(True)
+            else:
+                tool.set_sensitive(False)
+        def cb_has_image(tool, viewer):
+            if viewer.item!=None and 'qview' in viewer.item.__dict__ and viewer.item.qview is not None:
+                tool.set_sensitive(True)
+            else:
+                tool.set_sensitive(False)
+        def cb_has_image_edits(tool, viewer):
+            if viewer.item!=None and 'ImageTransforms' in viewer.item.meta:
+                tool.set_sensitive(True)
+            else:
+                tool.set_sensitive(False)
+        def cb_item_changed(tool, viewer):
+            if viewer.item!=None and viewer.item.is_meta_changed():
+                tool.set_sensitive(True)
+            else:
+                tool.set_sensitive(False)
+        def cb_item_changed_icon(tool, viewer):
+            if viewer.item!=None and viewer.item.is_meta_changed():
+                tool.set_sensitive(True)
+                if viewer.item.is_meta_changed()==2:
+                    tool.set_stock_id(tool.icons[1])
+                else:
+                    tool.set_stock_id(tool.icons[0])
+            else:
+                tool.set_sensitive(False)
+                tool.set_stock_id(tool.icons[0])
+        def cb_item_not_deleted(tool, viewer):
+            if viewer.item!=None and viewer.item.is_meta_changed()!=2:
+                tool.set_sensitive(True)
+            else:
+                tool.set_sensitive(False)
         fn=self.iv.toolbar_click
         viewer_tools=[
                         ##name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Close',(fn,self.close_viewer),show_on_hover,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
-                        ('Locate in Browser',(fn,self.show_viewed_item),show_on_hover,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
-                        ('Save',(fn,self.save_item),show_and_changed,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
-                        ('Revert',(fn,self.revert_item),show_and_changed,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
-                        ('Delete',(fn,self.delete_item),show_on_hover_if_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
-                        ('Launch',(fn,self.launch_item),show_on_hover,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
-                        ('Edit Metadata',(fn,self.edit_item),show_on_hover,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
-                        ('Rotate Left',(fn,self.rotate_item_left),show_on_hover,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
-                        ('Rotate Right',(fn,self.rotate_item_right),show_on_hover,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        ('Close',(fn,self.close_viewer),None,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
+                        ('Locate in Browser',(fn,self.show_viewed_item),cb_has_item,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
+                        ('Save',(fn,self.save_item),cb_item_changed_icon,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
+                        ('Revert',(fn,self.revert_item),cb_item_changed_icon,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
+                        ('Delete',(fn,self.delete_item),cb_item_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
+                        ('Launch',(fn,self.launch_item),cb_has_item,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
+                        ('Edit Metadata',(fn,self.edit_item),cb_has_item,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
+                        ('Rotate Left',(fn,self.rotate_item_left),cb_has_item,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
+                        ('Rotate Right',(fn,self.rotate_item_right),cb_has_item,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
                         ('Stub',None),
-                        ('Zoom Fit',(fn,self.zoom_item_fit),show_on_hover,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
-                        ('Zoom 100%',(fn,self.zoom_item_100),show_on_hover,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
-                        ('Zoom In',(fn,self.zoom_item_in),show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
-                        ('Zoom Out',(fn,self.zoom_item_out),show_on_hover,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
+                        ('Zoom Fit',(fn,self.zoom_item_fit),cb_has_image,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
+                        ('Zoom 100%',(fn,self.zoom_item_100),cb_has_image,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
+                        ('Zoom Out',(fn,self.zoom_item_out),cb_has_image,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
+                        ('Zoom In',(fn,self.zoom_item_in),cb_has_image,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
                         ('Stub',None),
-                        ('Clear Image Edits',(fn,self.image_edit_clear),show_on_hover,[gtk.STOCK_CLEAR],'Main','Removes any edits made to the image in Picty'),
+                        ('Clear Image Edits',(fn,self.image_edit_clear), cb_has_image_edits,[gtk.STOCK_CLEAR],'Main','Removes any edits made to the image in Picty'),
                         ]
                         #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
 
@@ -185,7 +220,7 @@ class MainFrame(gtk.VBox):
                 self.viewer_toolbar.add(gtk.SeparatorToolItem())
             else:
                 self.viewer_toolbar.add(ToolButton(*tools))
-        self.viewer_toolbar.add(ToolItem(self.image_edit_selector))
+        self.viewer_toolbar.add(ToolItem(self.image_edit_selector,update_cb=cb_has_image_edits))
 
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
         self.viewer_toolbar.show_all()
@@ -1321,6 +1356,7 @@ class MainFrame(gtk.VBox):
         if item.is_meta_changed()==2:
             item.delete_revert()
             self.active_browser().redraw_view()
+            self.iv.toolbar.update_status(self.iv)
             return
         try:
             orient=item.meta['Orientation']
@@ -1384,6 +1420,7 @@ class MainFrame(gtk.VBox):
 
     def delete_item(self,widget,item):
         item.delete_mark()
+        self.iv.toolbar.update_status(self.iv)
 
     def zoom_item_fit(self,*args):
         self.iv.set_zoom('fit')

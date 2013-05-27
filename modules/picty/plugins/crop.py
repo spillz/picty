@@ -73,7 +73,7 @@ class CropPlugin(pluginbase.Plugin):
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
         '''
-        shortcut_toolbar.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_toolbar.default_active_callback,['picty-image-crop'],'Interactively crop this image',40)
+        shortcut_toolbar.register_tool_for_plugin(self,'Crop',self.crop_button_callback,shortcut_toolbar.cb_showing_tranforms,['picty-image-crop'],'Interactively crop this image',40)
 
     def crop_button_callback(self,cmd):
         '''

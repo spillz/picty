@@ -4,13 +4,13 @@ import overlaytools
 
 ##shortcuts for adding items to a toolbar
 class ToolButton(gtk.ToolButton):
-    def __init__(self,label,callback,state_cb,icons,owner='Main',tooltip=None,priority=50,expand=False,):
+    def __init__(self,label,callback,update_cb,icons,owner='Main',tooltip=None,priority=50,expand=False,):
        ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
         gtk.ToolButton.__init__(self,icons[0])
         self.icons = icons
         self.owner = owner
         self.priority = priority
-        self.state_cb = state_cb
+        self.update_cb = update_cb
         if isinstance(callback,tuple):
             self.connect("clicked",callback[0],*callback[1:])
         else:
@@ -24,26 +24,73 @@ class ToolButton(gtk.ToolButton):
 gobject.type_register(ToolButton)
 
 class ToolItem(gtk.ToolItem):
-    def __init__(self,widget,owner='Main',priority=50,expand=False):
+    def __init__(self,widget,owner='Main',update_cb=None,priority=50,expand=False):
        ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
         gtk.ToolItem.__init__(self)
         self.add(widget)
         self.owner = owner
+        self.update_cb=update_cb
         self.priority = priority
         self.set_expand(expand)
 
-gobject.type_register(ToolButton)
+gobject.type_register(ToolItem)
 
 class Toolbar(gtk.Toolbar):
     def __init__(self):
         gtk.Toolbar.__init__(self)
         overlaytools.overlay_groups.append(self)
 
-    def default_active_callback(self,item,hover):
-        return int(hover)-1
+    ##TODO: make these callbacks part of a derived class for the viewer
+    def default_update_callback(self,tool,viewer):
+        return self.cb_has_item(tool,viewer)
 
-    def register_tool(self,name,action_callback=None,active_callback=overlaytools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50):
-        new_t=ToolButton(name,action_callback,active_callback,icons,owner,tooltip,priority)
+    def cb_has_item(self, tool, viewer):
+        if viewer.item!=None:
+            tool.set_sensitive(True)
+        else:
+            tool.set_sensitive(False)
+    def cb_has_image(self, tool, viewer):
+        if viewer.item!=None and 'qview' in viewer.item.__dict__ and viewer.item.qview is not None:
+            tool.set_sensitive(True)
+        else:
+            tool.set_sensitive(False)
+    def cb_showing_tranforms(self, tool, viewer):
+        if viewer.item!=None:
+            if 'ImageTransforms' in viewer.item.meta and viewer.il.want_transforms:
+                tool.set_sensitive(True)
+                return
+            if 'ImageTransforms' not in viewer.item.meta:
+                tool.set_sensitive(True)
+                return
+        tool.set_sensitive(False)
+    def cb_has_image_edits(self, tool, viewer):
+        if viewer.item!=None and 'ImageTransforms' in viewer.item.meta:
+            tool.set_sensitive(True)
+        else:
+            tool.set_sensitive(False)
+    def cb_item_changed(self, tool, viewer):
+        if viewer.item!=None and viewer.item.is_meta_changed():
+            tool.set_sensitive(True)
+        else:
+            tool.set_sensitive(False)
+    def cb_item_changed_icon(self, tool, viewer):
+        if viewer.item!=None and viewer.item.is_meta_changed():
+            tool.set_sensitive(True)
+            if viewer.item.is_meta_changed()==2:
+                tool.set_stock_id(tool.icons[1])
+            else:
+                tool.set_stock_id(tool.icons[0])
+        else:
+            tool.set_sensitive(False)
+            tool.set_stock_id(tool.icons[0])
+    def cb_item_not_deleted(self,tool, viewer):
+        if viewer.item!=None and viewer.item.is_meta_changed()!=2:
+            tool.set_sensitive(True)
+        else:
+            tool.set_sensitive(False)
+
+    def register_tool(self,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50):
+        new_t=ToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
         for i in range(self.get_n_items()):
             t = self.get_nth_item(i)
             if type(t)==ToolButton:
@@ -52,11 +99,11 @@ class Toolbar(gtk.Toolbar):
                     return
         self.add(new_t)
 
-    def register_tool_for_plugin(self,plugin,name,action_callback=None,active_callback=overlaytools.show_on_hover,icons=None,tooltip='This is a tooltip',priority=50):
+    def register_tool_for_plugin(self,plugin,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=None,tooltip='This is a tooltip',priority=50):
         '''
         adds a new tool whose owner is plugin
         '''
-        self.register_tool(name,action_callback,active_callback,icons,plugin.name,tooltip,priority)
+        self.register_tool(name,action_callback,update_callback,icons,plugin.name,tooltip,priority)
 
     def deregister_tools_for_plugin(self,plugin):
         '''
@@ -66,7 +113,11 @@ class Toolbar(gtk.Toolbar):
         for t in tools:
             self.remove(t)
 
-
+    def update_status(self,*args):
+        tools=[self.get_nth_item(i) for i in range(self.get_n_items()) if type(self.get_nth_item(i)) in (ToolButton,ToolItem)]
+        for t in tools:
+            if t.update_cb is not None:
+                t.update_cb(t,*args)
 
 def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
     toolbar.add(widget)
