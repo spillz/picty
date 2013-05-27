@@ -20,9 +20,9 @@ License:
 '''
 
 
-#TODO: Handle offline mode (can't view fullsize, can't write changes etc)
+#TODO: Additional Handling for offline mode (can't view fullsize, can't write changes etc)
 #TODO: Fix image sync (must be interruptable, check for deleted + changed images)
-#TODO: Login authentication
+#TODO: Delete Login authentication when collection is deleted
 
 __version__='0.7'
 
@@ -459,11 +459,11 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
         cPickle.dump(__version__,f,-1)
-        d={}
-        for p in FlickrCollection.pref_items:
+        d={} #ensure that preferences associated with older versions are dropped
+        for p in FlickrCollection.pref_items + ('type',):
             if p in prefs:
                 d[p]=prefs[p]
-        cPickle.dump(d,f,-1)
+        cPickle.dump(prefs,f,-1)
         f.close()
         f=open(data_file,'wb')
         cPickle.dump(__version__,f,-1)
@@ -567,7 +567,7 @@ class FlickrCollection(baseobjects.CollectionBase):
     def disconnect(self):
         if not self.is_open:
             return False
-        if not self.offline:
+        if not self.online:
             return False
         self.online=False
         return True

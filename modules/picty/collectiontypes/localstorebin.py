@@ -393,11 +393,11 @@ def create_empty_localstore(name,prefs,overwrite_if_exists=False):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
         cPickle.dump(__version__,f,-1)
-        d={}
-        for p in Collection.pref_items:
+        d={} #ensure that preferences associated with older versions are dropped
+        for p in Collection.pref_items + ('type',):
             if p in prefs:
                 d[p]=prefs[p]
-        cPickle.dump(d,f,-1)
+        cPickle.dump(prefs,f,-1)
         f.close()
         f=open(data_file,'wb')
         cPickle.dump(__version__,f,-1)

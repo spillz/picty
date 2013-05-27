@@ -41,6 +41,8 @@ def init_collection(col_dir):
         try:
             c=registered_collection_classes[prefs['type']](prefs)
         except KeyError:
+            print 'Error creating collection instance with prefs',prefs
+            print 'Instantiating as localstore'
             c=registered_collection_classes['LOCALSTORE'](prefs)
         c.add_view()
         return c
