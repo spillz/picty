@@ -1341,6 +1341,8 @@ class MainFrame(gtk.VBox):
         subprocess.Popen(app_cmd,shell=True)
 
     def save_item(self,widget,item):
+        if item==self.iv.item:
+            self.iv.toolbar.update_status(self.iv)
         if item.is_meta_changed()==2:
             browser=self.active_browser()
             fileops.worker.delete(browser.active_collection,[item],None,False)
