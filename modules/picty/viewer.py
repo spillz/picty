@@ -703,11 +703,11 @@ class ImageViewer(gtk.VBox):
 
     def image_xy_to_scaled_image(self,x,y):
         z=self.get_zoom()
-        return (int(self.zoom_position[0]*z), int(self.zoom_position[1]*z))
+        return (int(x*z), int(y*z))
 
     def scaled_image_xy_to_image(self,x,y):
         z=self.get_zoom()
-        return (int(self.zoom_position[0]/z), int(self.zoom_position[1]/z))
+        return (int(x/z), int(y/z))
 
     def get_position_for_new_zoom(self,new_zoom,center_xy):
         if new_zoom=='fit':

@@ -20,6 +20,9 @@ License:
 
 '''
 
+#TODO: Impose the aspect ratio constraint (and add defaults to the drop down)
+#TODO: Rounding or some other problem prevents setting the crop handle to the bottom right of the image
+
 import gtk
 import Image
 
@@ -126,7 +129,8 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.resize_and_refresh_view()
 
     def viewer_to_image(self,x,y):
-        return self.viewer.screen_xy_to_image(x,y)
+        X,Y = self.viewer.screen_xy_to_image(x,y)
+        return min(max(0,X),self.viewer.item.image.size[0]),min(max(0,Y),self.viewer.item.image.size[1])
 
     def button_press(self,widget,event):
         if not self.crop_mode:
@@ -172,8 +176,7 @@ class CropPlugin(pluginbase.Plugin):
                 x0,y0,x1,y1=self.crop_dimensions
                 X=(x0+x1)/2
                 Y=(y0+y1)/2
-                X,Y=self.viewer.image_xy_to_screen(X,Y)
-                iw,ih=self.item.size
+                iw,ih=self.item.image.size
                 dx=max(-x0,min(x-X,iw-x1))
                 dy=max(-y0,min(y-Y,ih-y1))
                 self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
@@ -194,7 +197,7 @@ class CropPlugin(pluginbase.Plugin):
                 x0,y0,x1,y1=self.crop_dimensions
                 X=(x0+x1)/2
                 Y=(y0+y1)/2
-                iw,ih=self.item.size
+                iw,ih=self.item.image.size
                 dx=max(-x0,min(x-X,iw-x1))
                 dy=max(-y0,min(y-Y,ih-y1))
                 self.crop_dimensions=(x0+dx,y0+dy,x1+dx,y1+dy)
