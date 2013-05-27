@@ -383,51 +383,49 @@ def cache_thumb(item):
         olditem.thumb=None
 
 
-def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,filename=''):
+def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transforms=False,filename=''):
     '''
-    writes a temporary copy of the image to disk
+    returns a filename with a jpeg or png of the image associated with item, writing a new copy of the image if necessary
     '''
-    import tempfile
-    itemfile=None
     if not filename:
-        itemfile=collection.get_path(item)
-        filename=itemfile
+        filename=collection.get_path(item)
     src_filename=filename
-    try:
-        image=Image.open(filename)
-    except:
-        try:
-            cmd=settings.dcraw_cmd%(filename,)
-            imdata=os.popen(cmd).read()
-            if not imdata or len(imdata)<100:
-                cmd=settings.dcraw_backup_cmd%(filename,)
-                imdata=os.popen(cmd).read()
-                if not interrupt_fn():
-                    return False
-            p = ImageFile.Parser()
-            p.feed(imdata)
-            image = p.close()
-            h,filename=tempfile.mkstemp('.jpg')
-        except:
-            return None
+    icopy=None
+
+    def get_processed_copy(icopy):
+        if icopy is not None:
+            return icopy
+        icopy = baseobjects.Item(filename)
+        icopy.meta = item.meta.copy()
+        if not load_image(icopy,None,lambda: True, apply_transforms=apply_transforms,itemfile=src_filename):
+            return None,None
+        if 'Orientation' in icopy.meta:
+            del icopy.meta['Orientation']
+        if 'ImageTransforms' in icopy.meta:
+            del icopy.meta['ImageTransforms']
+        return icopy
+
+    def write_processed_image(icopy):
+        import tempfile
+        h,filename=tempfile.mkstemp('.jpg')
+        icopy.image.save(filename,quality=95)
+        if not strip_metadata:
+            metadata.copy_metadata(icopy.meta,src_filename,filename)
+        return h,filename
+
     if size:
         size=tuple(int(dim) for dim in size.split('x'))
         if len(size)>0 and size[0]>0 and size[1]>0:
-            image.thumbnail(size,Image.ANTIALIAS)
-            if itemfile==filename:
-                h,filename=tempfile.mkstemp('.jpg')
-    if image.format not in ['JPEG','PNG']:
-        if itemfile==filename:
-            h,filename=tempfile.mkstemp('.jpg')
+            icopy = get_processed_copy(icopy)
+            icopy.image.thumbnail(size,Image.ANTIALIAS)
+    if io.get_mime_type(filename) not in ['Image/jpeg','Image/png']:
+        icopy = get_processed_copy(icopy)
     if strip_metadata:
-        if itemfile==filename:
-            h,filename=tempfile.mkstemp('.jpg')
-    if filename!=src_filename:
-        if strip_metadata:
-            image=orient_image(image,item.meta)
-        image.save(filename,quality=95)
-        if not strip_metadata:
-            metadata.copy_metadata(item.meta,src_filename,filename)
+        icopy = get_processed_copy(icopy)
+    if apply_transforms and 'ImageTransforms' in item.meta:
+        icopy = get_processed_copy(icopy)
+    if icopy is not None:
+        h,filename = write_processed_image(icopy)
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
 
@@ -544,12 +542,13 @@ class ImageTransformer:
 transformer = ImageTransformer()
 
 
-def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=True):
+def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=True,itemfile=None):
     '''
     load a PIL image and store it in item.image
     if transform_handlers are specified and the image has tranforms they will be applied
     '''
-    itemfile=collection.get_path(item)
+    if itemfile is None:
+        itemfile=collection.get_path(item)
     mimetype=io.get_mime_type(itemfile)
     oriented=False
     try:

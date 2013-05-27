@@ -867,7 +867,7 @@ class FlickrCollection(baseobjects.CollectionBase):
                 ##todo: maybe better to re-raise the exception here
                 return False
             src_filename=temp_filename
-            filename=imagemanip.get_jpeg_or_png_image_file(src_item,self,prefs['upload_size'],prefs['metadata_strip'],src_filename)
+            filename=imagemanip.get_jpeg_or_png_image_file(src_item,self,prefs['upload_size'],prefs['metadata_strip'],True,src_filename)
 
             print 'post meta',src_item.meta
 
