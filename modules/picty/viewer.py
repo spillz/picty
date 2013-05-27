@@ -490,7 +490,10 @@ class ImageViewer(gtk.VBox):
             #want to render the onscreen portion of the scaled image to the drawable
             #there are three pixbuf containers to worry about: full size image, scaled image, drawable
             #scroll position is stored in full image units
-            src_x,src_y = self.image_xy_to_scaled_image(*self.zoom_position)
+            try:
+                src_x,src_y = self.image_xy_to_scaled_image(*self.zoom_position)
+            except:
+                return
             w = min(self.item.qview.get_width() - src_x,self.get_size()[0])
             h = min(self.item.qview.get_height() - src_y,self.get_size()[1])
             dest_x, dest_y = self.image_xy_to_screen(*self.zoom_position)
