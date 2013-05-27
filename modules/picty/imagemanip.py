@@ -557,6 +557,7 @@ def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=Tr
 #        non-parsed version
         if 'original_image' in item.__dict__:
             image=item.original_image.copy()
+            oriented=True
         else:
             if not mimetype.startswith('image'):
                 print 'No image available for item',item,'with mimetype',mimetype
