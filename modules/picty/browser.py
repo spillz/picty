@@ -413,8 +413,11 @@ class ImageBrowser(gtk.HBox):
             self.drag_item=None
         if info == self.TARGET_TYPE_URI_LIST:
             print 'uri list'
+            size=None
+            if settings.dragdrop_resize>0:
+                size=(settings.dragdrop_max_size,settings.dragdrop_max_size)
             if not self.drag_item.selected:
-                path = imagemanip.get_jpeg_or_png_image_file(self.drag_item,self.active_collection,None,False,True)
+                path = imagemanip.get_jpeg_or_png_image_file(self.drag_item,self.active_collection,size,settings.dragdrop_strip_metadata,settings.dragdrop_apply_edits)
                 if path is None:
                     return
                 uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
@@ -426,7 +429,7 @@ class ImageBrowser(gtk.HBox):
                 while i<len(self.active_view):
                     item=self.active_view(i)
                     if item.selected:
-                        path = imagemanip.get_jpeg_or_png_image_file(item,self.active_collection,None,False,True)
+                        path = imagemanip.get_jpeg_or_png_image_file(item,self.active_collection,size,settings.dragdrop_strip_metadata,settings.dragdrop_apply_edits)
                         if path is None:
                             continue
                         uri=io.get_uri(path)

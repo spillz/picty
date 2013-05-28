@@ -414,7 +414,8 @@ def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transfo
         return h,filename
 
     if size:
-        size=tuple(int(dim) for dim in size.split('x'))
+        if isinstance(size,str):
+            size=tuple(int(dim) for dim in size.split('x'))
         if len(size)>0 and size[0]>0 and size[1]>0:
             icopy = get_processed_copy(icopy)
             icopy.image.thumbnail(size,Image.ANTIALIAS)

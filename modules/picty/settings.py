@@ -110,6 +110,11 @@ overlay_show_tags=True
 overlay_show_date=True
 overlay_show_exposure=True
 
+dragdrop_apply_edits = True
+dragdrop_strip_metadata = False
+dragdrop_resize = False
+dragdrop_max_size = 1024
+
 active_collection=None
 active_collection_id=''
 collections_dir=''
@@ -161,6 +166,10 @@ def save():
         cPickle.dump(overlay_show_tags,f,-1)
         cPickle.dump(overlay_show_date,f,-1)
         cPickle.dump(overlay_show_exposure,f,-1)
+        cPickle.dump(dragdrop_apply_edits,f,-1)
+        cPickle.dump(dragdrop_strip_metadata,f,-1)
+        cPickle.dump(dragdrop_resize,f,-1)
+        cPickle.dump(dragdrop_max_size,f,-1)
     finally:
         f.close()
 

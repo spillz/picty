@@ -215,14 +215,19 @@ class GeneralBox(gtk.HBox):
         gtk.HBox.__init__(self)
         a_frame=gtk.Frame("Overlay")
         b_frame=gtk.Frame("Cache")
+        c_frame=gtk.Frame("Drag and Drop")
         a_box=gtk.VBox()
         b_box=gtk.VBox()
         c_box=gtk.VBox()
         a_frame.add(a_box)
-        def box_add_check(box,text,var_name):
+        c_frame.add(c_box)
+        def box_add_check(box,text,var_name,callback=None):
             button=gtk.CheckButton(text)
             button.set_active(settings.__dict__[var_name])
-            button.connect("toggled",self.toggle_check,var_name)
+            if callback is not None:
+                button.connect("toggled",callback,var_name)
+            else:
+                button.connect("toggled",self.toggle_check,var_name)
             box.pack_start(button,False)
             return button
         box_add_check(a_box,'Show title','overlay_show_title')
@@ -230,13 +235,40 @@ class GeneralBox(gtk.HBox):
         box_add_check(a_box,'Show tags','overlay_show_tags')
         box_add_check(a_box,'Show date and time','overlay_show_date')
         box_add_check(a_box,'Show exposure details','overlay_show_exposure')
-        self.pack_start(b_box,False)
+        box_add_check(c_box,'Apply image edits','dragdrop_apply_edits')
+        box_add_check(c_box,'Strip image metadata','dragdrop_strip_metadata')
+        box_add_check(c_box,'Resize image','dragdrop_resize',self.toggle_size)
+        size_box = gtk.HBox()
+        size_box.pack_start(gtk.Label('Maximum length (pixels)'))
+        self.size_entry = gtk.Entry()
+        self.size_entry.set_max_length(5)
+        self.size_entry.set_sensitive(settings.dragdrop_resize)
+        self.size_entry.set_text(str(settings.dragdrop_max_size))
+        self.size_entry.connect('changed',self.size_changed,'dragdrop_max_size')
+        size_box.pack_start(self.size_entry)
+        c_box.pack_start(size_box,False)
+#        self.pack_start(b_box,False)
         self.pack_start(a_frame,False)
-        self.pack_start(c_box,False)
+#        self.pack_start(c_box,False)
+        self.pack_start(c_frame,False)
         self.show_all()
 
     def toggle_check(self,widget,var_name):
         settings.__dict__[var_name]=widget.get_active()
+
+    def toggle_size(self,widget,var_name):
+        settings.__dict__[var_name]=widget.get_active()
+        self.size_entry.set_sensitive(widget.get_active())
+
+    def size_changed(self,entry,var_name):
+        try:
+            size=int(entry.get_text())
+            if size>0:
+                settings.__dict__[var_name] = size
+            else:
+                settings.__dict__[var_name]=0
+        except:
+            settings.__dict__[var_name]=0
 
 
 class CollectionsBox(gtk.HBox):
