@@ -587,9 +587,19 @@ def load_image(item,collection,interrupt_fn,draft_mode=False,apply_transforms=Tr
             if mimetype in gdk_mime_types:
                 image_pb=gtk.gdk.pixbuf_new_from_file(itemfile)
                 image_pb=orient_pixbuf(image_pb,item.meta)
+                print image_pb.get_has_alpha()
+                print image_pb.get_n_channels()
+                print image_pb.get_colorspace()
                 oriented=True
                 width,height = image_pb.get_width(),image_pb.get_height()
-                image=Image.fromstring("RGB",(width,height),image_pb.get_pixels() ) ##TODO: What about RGBA and grey scale images?
+                if image_pb.get_n_channels() >=3:
+                    if image_pb.get_has_alpha():
+                        image=Image.fromstring("RGBA",(width,height),image_pb.get_pixels() )
+                    else:
+                        image=Image.fromstring("RGB",(width,height),image_pb.get_pixels() )
+                else:
+                    print "GDK Parser - Can't handle image with less than 3 channel"
+                    raise TypeError
                 print 'Parsed image with GDK'
             else:
                 if mimetype in settings.raw_image_types:
