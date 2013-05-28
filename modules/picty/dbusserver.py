@@ -48,7 +48,7 @@ class DBusServer(dbus.service.Object):
         print "DBus open uri event for "+uri
         return 'success'
 
-    @dbus.service.method('org.spillz.phraymd',in_signature='s',out_signature='s')
+    @dbus.service.method('org.spillz.picty',in_signature='s',out_signature='s')
     def open_device(self, device):
         import pluginmanager
         pluginmanager.mgr.callback('open_device',device)
