@@ -407,7 +407,7 @@ def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transfo
 
     def write_processed_image(icopy):
         import tempfile
-        h,filename=tempfile.mkstemp('.jpg')
+        h,filename=tempfile.mkstemp('.jpg',os.path.splitext(os.path.split(src_filename)[1])[0])
         icopy.image.save(filename,quality=95)
         if not strip_metadata:
             metadata.copy_metadata(icopy.meta,src_filename,filename)

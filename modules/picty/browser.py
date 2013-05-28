@@ -414,7 +414,10 @@ class ImageBrowser(gtk.HBox):
         if info == self.TARGET_TYPE_URI_LIST:
             print 'uri list'
             if not self.drag_item.selected:
-                uri=io.get_uri(self.active_collection.get_path(self.drag_item)) #I don't know why, but nautilius expects uris enclosed in quotes
+                path = imagemanip.get_jpeg_or_png_image_file(self.drag_item,self.active_collection,None,False,True)
+                if path is None:
+                    return
+                uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
                 selection_data.set_uris([uri])
                 print 'set uri',uri
             else:
@@ -423,7 +426,10 @@ class ImageBrowser(gtk.HBox):
                 while i<len(self.active_view):
                     item=self.active_view(i)
                     if item.selected:
-                        uri=io.get_uri(self.active_collection.get_path(item))
+                        path = imagemanip.get_jpeg_or_png_image_file(item,self.active_collection,None,False,True)
+                        if path is None:
+                            continue
+                        uri=io.get_uri(path)
                         uris.append(uri)
                     i+=1
                 selection_data.set_uris(uris)
