@@ -412,7 +412,6 @@ class ImageBrowser(gtk.HBox):
                 selection_data.set(selection_data.target, 8, code)
             self.drag_item=None
         if info == self.TARGET_TYPE_URI_LIST:
-            print 'uri list'
             size=None
             if settings.dragdrop_resize>0:
                 size=(settings.dragdrop_max_size,settings.dragdrop_max_size)
@@ -422,7 +421,6 @@ class ImageBrowser(gtk.HBox):
                     return
                 uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
                 selection_data.set_uris([uri])
-                print 'set uri',uri
             else:
                 uris=[]
                 i=0

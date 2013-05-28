@@ -177,7 +177,8 @@ def save():
 def load():
     global version, precache_count, custom_launchers, user_tag_info, places, layout, \
         active_collection_id, legacy_image_dirs, plugins_disabled, \
-        overlay_show_title,overlay_show_path,overlay_show_tags,overlay_show_date,overlay_show_exposure
+        overlay_show_title,overlay_show_path,overlay_show_tags,overlay_show_date,overlay_show_exposure, \
+        dragdrop_apply_edits, dragdrop_max_size, dragdrop_resize, dragdrop_strip_metadata
     try:
         f=open(conf_file,'rb')
     except:

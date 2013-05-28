@@ -32,6 +32,7 @@ import pango
 gobject.threads_init()
 
 import settings
+import io
 import imagemanip
 import pluginmanager
 import metadata
@@ -167,6 +168,8 @@ class ImageLoader:
 ##        gtk.DrawingArea.size_allocate(self,*args)
 
 class ImageViewer(gtk.VBox):
+    TARGET_TYPE_URI_LIST = 0
+    TARGET_TYPE_IMAGE = 2
     def __init__(self,worker,toolbar,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.toolbar=toolbar
@@ -247,6 +250,27 @@ class ImageViewer(gtk.VBox):
 #        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
+
+        target_list=[('image-filename', gtk.TARGET_SAME_APP, self.TARGET_TYPE_IMAGE)] #("XdndDirectSave0", 0, self.TARGET_TYPE_XDS),
+        target_list=gtk.target_list_add_uri_targets(target_list,self.TARGET_TYPE_URI_LIST)
+#        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
+        self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
+                  target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
+
+##        target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
+##        target_list=gtk.target_list_add_uri_targets(target_list,1)
+##        self.imarea.drag_dest_set(gtk.DEST_DEFAULT_ALL,
+##                target_list,
+##                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
+
+        self.imarea.connect("drag-data-get",self.drag_get_signal)
+        self.imarea.connect("drag-begin", self.drag_begin_signal)
+##        self.imarea.connect("drag-end",self.drag_end_signal)
+##        self.imarea.connect("drag-data-received",self.drag_receive_signal)
+        self.imarea.connect("drag-motion",self.drag_motion_signal)
+        self.imarea.connect("drag-leave",self.drag_leave_signal)
+        #self.imarea.drag_source_set_icon_stock('browser-drag-icon')
+
 
         if click_callback:
             self.imarea.connect_after("button-press-event",click_callback)
@@ -736,3 +760,36 @@ class ImageViewer(gtk.VBox):
         if image_edit_choice == 'Edited':
             self.il.transform_image(True)
         self.toolbar.update_status(self)
+
+    def drag_begin_signal(self, widget, drag_context):
+        '''
+        callback when user has started dragging one or more items in the browser's image area
+        '''
+        if self.item is not None:
+            return True
+
+    def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
+        '''
+        callback triggered to set the selection_data payload
+        (viewer is the source of the drop)
+        '''
+        if self.item is None:
+            return
+        if info == self.TARGET_TYPE_IMAGE:
+            selection_data.set('image-filename', 8, self.item.uid)
+        if info == self.TARGET_TYPE_URI_LIST:
+            size=None
+            if settings.dragdrop_resize>0:
+                size=(settings.dragdrop_max_size,settings.dragdrop_max_size)
+            path = imagemanip.get_jpeg_or_png_image_file(self.item,self.collection,size,settings.dragdrop_strip_metadata,settings.dragdrop_apply_edits)
+            if path is None:
+                return
+            uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
+            selection_data.set_uris([uri])
+            print 'Drag Drop from viewer using uri',uri
+
+    def drag_motion_signal(self, widget, drag_context, x, y, timestamp):
+        self.redraw_view() ##todo: could do some calcs to see if anything actually needs to be redrawn
+
+    def drag_leave_signal(self, widget, drag_context, timestamp):
+        self.redraw_view()
