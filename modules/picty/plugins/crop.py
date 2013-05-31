@@ -49,7 +49,7 @@ class CropPlugin(pluginbase.Plugin):
         self.aspect_label=gtk.Label("Constraints")
         self.aspect_entry=gtk.ComboBoxEntry()
         self.aspect_entry.connect("changed",self.crop_aspect)
-        self.ok_button=gtk.Button("Cro_p")
+        self.ok_button=gtk.Button("_Apply")
         self.ok_button.connect("clicked",self.crop_do_callback)
         self.cancel_button=gtk.Button("_Cancel")
         self.cancel_button.connect("clicked",self.crop_cancel_callback)

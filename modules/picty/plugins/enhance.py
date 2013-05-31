@@ -66,7 +66,7 @@ class EnhancePlugin(pluginbase.Plugin):
 
 
 
-        self.ok_button=gtk.Button("_Enhance")
+        self.ok_button=gtk.Button("_Apply")
         self.ok_button.connect("clicked",self.enhance_do_callback)
         self.cancel_button=gtk.Button("_Cancel")
         self.cancel_button.connect("clicked",self.enhance_cancel_callback)
