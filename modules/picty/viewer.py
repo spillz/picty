@@ -251,11 +251,11 @@ class ImageViewer(gtk.VBox):
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
 
-        target_list=[('image-filename', gtk.TARGET_SAME_APP, self.TARGET_TYPE_IMAGE)] #("XdndDirectSave0", 0, self.TARGET_TYPE_XDS),
-        target_list=gtk.target_list_add_uri_targets(target_list,self.TARGET_TYPE_URI_LIST)
+        self.target_list=[('image-filename', gtk.TARGET_SAME_APP, self.TARGET_TYPE_IMAGE)] #("XdndDirectSave0", 0, self.TARGET_TYPE_XDS),
+        self.target_list=gtk.target_list_add_uri_targets(self.target_list,self.TARGET_TYPE_URI_LIST)
 #        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
-                  target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
+                  self.target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
 
 ##        target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
 ##        target_list=gtk.target_list_add_uri_targets(target_list,1)
@@ -264,7 +264,7 @@ class ImageViewer(gtk.VBox):
 ##                gtk.gdk.ACTION_DEFAULT | gtk.gdk.ACTION_COPY)
 
         self.imarea.connect("drag-data-get",self.drag_get_signal)
-        self.imarea.connect("drag-begin", self.drag_begin_signal)
+##        self.imarea.connect("drag-begin", self.drag_begin_signal) ##not needed when using drag_source_set
 ##        self.imarea.connect("drag-end",self.drag_end_signal)
 ##        self.imarea.connect("drag-data-received",self.drag_receive_signal)
         self.imarea.connect("drag-motion",self.drag_motion_signal)
@@ -295,6 +295,7 @@ class ImageViewer(gtk.VBox):
                 return False
         print 'Image viewer: yielding control to plugin',plugin
         self.plugin_controller=plugin
+        self.imarea.drag_source_unset()
         self.il.set_plugin(plugin)
         self.resize_and_refresh_view()
         self.imarea.hide_child(self.toolbar)
@@ -321,6 +322,8 @@ class ImageViewer(gtk.VBox):
         if plugin!=self.plugin_controller:
             return False
         self.plugin_controller=None
+        self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
+                  self.target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
         self.il.release_plugin(plugin)
         self.imarea.grab_focus()
         self.imarea.unhide_child(self.toolbar)
@@ -761,12 +764,12 @@ class ImageViewer(gtk.VBox):
             self.il.transform_image(True)
         self.toolbar.update_status(self)
 
-    def drag_begin_signal(self, widget, drag_context):
-        '''
-        callback when user has started dragging one or more items in the browser's image area
-        '''
-        if self.item is not None:
-            return True
+#    def drag_begin_signal(self, widget, drag_context):
+#        '''
+#        callback when user has started dragging one or more items in the browser's image area
+#        '''
+#        if self.item is not None:
+#            return True
 
     def drag_get_signal(self, widget, drag_context, selection_data, info, timestamp):
         '''
