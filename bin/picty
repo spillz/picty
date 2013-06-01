@@ -44,7 +44,6 @@ try:
     import gtk
     import pyexiv2
     gobject.threads_init()
-    gtk.gdk.threads_init()
 except:
     print 'ERROR: missing modules gobject, gtk, gio, and pyexiv2'
     import sys
