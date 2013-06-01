@@ -11,5 +11,4 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-pyinotify, python-pyexiv2, python-gtk2, python-gnome2
 Recommends: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
 Description: picty Photo Manager
- picty, pronounced "framed", is a python-based gnome-centric photo manager providing
- a user-friendly, efficient interface for managing large photo collections.
+ picty helps you manage your photos.
