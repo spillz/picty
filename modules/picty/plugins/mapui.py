@@ -331,7 +331,7 @@ class MapFrame(gtk.VBox):
             self.osm.set_zoom(self.osm.get_property('zoom') + 1)
             return
         if event.button==1 and event.type==gtk.gdk.BUTTON_RELEASE and not self.ignore_release:
-            coords=self.osm.get_co_ordinates(event.x, event.y)
+            coords=self.osm.get_co_ordinates(int(event.x), int(event.y))
             lat=coords[0]/math.pi*180
             lon=coords[1]/math.pi*180
             self.osm.set_mapcenter(lat, lon, self.osm.get_property('zoom'))

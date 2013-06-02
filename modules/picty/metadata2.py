@@ -591,28 +591,36 @@ def coords_as_rational(decimal):
     return (pyexiv2.Rational(degree,1),pyexiv2.Rational(minute,1),pyexiv2.Rational(second,1))
 
 def coords_as_decimal(rational):
-    if type(rational) in (list,tuple):
-        deci=1.0*rational[0].numerator/rational[0].denominator
-        if len(rational)>1:
-            deci+=1.0*rational[1].numerator/rational[1].denominator/60
-        if len(rational)>2:
-            deci+=1.0*rational[2].numerator/rational[2].denominator/3600
-        return deci
-    if type(rational) == pyexiv2.Rational:
-        return 1.0*rational.numerator/rational.denominator
+    print 'coords',rational
+    print 'type coords',type(rational)
+    print 'len coords',len(rational)
+    try:
+        if len(rational)>0:
+            deci=1.0*rational[0].numerator/rational[0].denominator
+            if len(rational)>1:
+                deci+=1.0*rational[1].numerator/rational[1].denominator/60
+            if len(rational)>2:
+                deci+=1.0*rational[2].numerator/rational[2].denominator/3600
+            return deci
+    except:
+        if type(rational) == pyexiv2.Rational:
+            return 1.0*rational.numerator/rational.denominator
     raise TypeError
 
 def conv_latlon(metaobject,keys,value=None):
     if value!=None:
+        print 'latlon setting',value
         lat,lon=value
         rat_lat=coords_as_rational(lat)##(int(abs(lat)*1000000),1000000)
         rat_lon=coords_as_rational(lon)##(int(abs(lon)*1000000),1000000)
         latref='N' if lat>=0 else 'S'
         lonref='E' if lon>=0 else 'W'
+        print 'latlon setting',rat_lat,rat_lon,latref,lonref
         metaobject[keys[0]]=rat_lat
         metaobject[keys[1]]=latref
         metaobject[keys[2]]=rat_lon
         metaobject[keys[3]]=lonref
+        return True
     else:
         try:
             rat_lat=metaobject[keys[0]].value
@@ -623,6 +631,9 @@ def conv_latlon(metaobject,keys,value=None):
             lon=(1.0 if lonref=='E' else -1.0)*coords_as_decimal(rat_lon)
             return (lat,lon)
         except:
+            print 'Error setting geolocation in exiv2'
+            import traceback,sys
+            print traceback.format_exc(sys.exc_info()[2])
             return None
 
 def conv_image_transforms(metaobject,keys,value=None):
