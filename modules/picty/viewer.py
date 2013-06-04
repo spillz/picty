@@ -546,7 +546,7 @@ class ImageViewer(gtk.VBox):
         size = item.image.size if item.image else None
         histo = False
         iw,ih = self.get_size()
-        if 'image' in item.__dict__ and 'histo' in item.image.__dict__ is not None:
+        if 'image' in item.__dict__ and item.image is not None and 'histo' in item.image.__dict__:
             hg = imagemanip.graphical_histogram(item.image.histo,(iw-205,ih-133),(200,128),drawable)
             histo = True
         a,b=self.collection.get_viewer_text(item,size,self.zoom_level)
