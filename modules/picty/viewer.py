@@ -369,7 +369,8 @@ class ImageViewer(gtk.VBox):
             print 'WARNING: Sized wrong item',item.uid
 
     def ImageLoaded(self,item):
-        pass
+        if 'image' in item.__dict__ and item.image is not None:
+            self.item.image.histo = item.image.histogram()
 
     def ImageUpdated(self,item):
         if self.browser!=None:
@@ -532,17 +533,22 @@ class ImageViewer(gtk.VBox):
             y=(self.get_size()[1]-ih)/2
             drawable.draw_pixbuf(gc, self.item.thumb, 0, 0,x,y)
             drew_image=True
-        if drew_image:
+        if drew_image and self.plugin_controller is None:
             if self.mouse_hover and self.mouse_hover_pos[1]<self.get_size()[1]-10:
                 self.render_image_info(drawable,gc)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 
 #    def render_image_info(self,obj,event):
     def render_image_info(self,drawable,gc):
-#        drawable = self.info_widget.window
-#        gc = drawable.new_gc()
-        item=self.item
-        size=self.item.image.size if item.image else None
+        if self.item is None:
+            return
+        item = self.item
+        size = item.image.size if item.image else None
+        histo = False
+        iw,ih = self.get_size()
+        if 'image' in item.__dict__ and 'histo' in item.image.__dict__ is not None:
+            hg = imagemanip.graphical_histogram(item.image.histo,(iw-205,ih-133),(200,128),drawable)
+            histo = True
         a,b=self.collection.get_viewer_text(item,size,self.zoom_level)
         if a or b:
             a=a.replace('&','&amp;')
@@ -556,8 +562,8 @@ class ImageViewer(gtk.VBox):
                 l.set_markup('<span size="10000">'+b+'</span>')
             l.set_width((self.get_size()[0]-20)*pango.SCALE)
             l.set_wrap(pango.WRAP_WORD_CHAR)
-            lx=int(10)
             w,h=l.get_pixel_size()
+            lx=5
             ly=max(self.get_size()[1]-10-h,10)
             if h>0:
                 overlay_pb=gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,True,8,w+10,h+10)

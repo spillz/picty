@@ -36,6 +36,7 @@ import baseobjects
 import io
 import pluginmanager
 
+from math import log
 import uuid
 muuid = lambda x:str(uuid.uuid5(uuid.NAMESPACE_URL,x))
 
@@ -430,6 +431,63 @@ def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transfo
     return filename ##todo: potentially insecure because the reference to the file handle gets dropped
 
 
+def graphical_histogram(image_or_data,pos,size,drawable,logarithmic=False):
+    '''
+    returns a pixmap containing a histogram of the PIL image pil_image with dimensions size
+    and using drawing parameters from gtk.gdk.Drawable
+    '''
+    if isinstance(image_or_data,Image.Image):
+        h_data = pil_image.histogram()
+    else:
+        h_data = image_or_data
+    if len(h_data)!=768:
+        return None
+    graphic = drawable #gtk.gdk.Pixmap(drawable = drawable, width = size[0], height = size[1])
+    #gc = graphic.new_gc()
+    cr = graphic.cairo_create()
+    #cr.set_source_rgba(0.0,0.0,0.0,0.5)
+    cr.set_source_rgba(0.1,0.1,0.1,1.0)
+    cr.rectangle(pos[0],pos[1],size[0],size[1])
+    cr.fill()
+    red = (1.0,0.0,0.0,1.0)
+    green = (0.0,1.0,0.0,0.5)
+    blue = (0.0,0.0,1.0,0.5)
+    channels = ((h_data[0:256],red),
+                (h_data[256:512],green),
+                (h_data[512:],blue))
+    bins = []
+    for values,color in channels:
+        expanded_bins = [v for v in values for i in xrange(size[0])]
+        if logarithmic:
+            rebinned = [log(1+1.0*sum(expanded_bins[i*256:i*256+256])/256) for i in range(size[0])]
+        else:
+            rebinned = [sum(expanded_bins[i*256:i*256+256])/256 for i in range(size[0])]
+        bins.append([rebinned,color])
+    scale = max([max(b) for b,c in bins])
+    for bin,color in bins:
+        cr.set_source_rgba(*color)
+        bin = [int(r*size[1]/scale) for r in bin]
+        for i in range(size[0]):
+            x1,x2,y1,y2 = pos[0]+i,pos[0]+i,pos[1]+size[1],pos[1]+size[1]-bin[i]
+            cr.move_to(x1,y1)
+            cr.line_to(x2,y2)
+            cr.stroke()
+    return graphic
+
+# Rescaling histogram x-axis algorithm
+# Suppose a histogrram with 3 values: 10 3 1
+# want to convert to 2 values
+# duplicate each element of the histogram 2 times
+#                   => 10 10 3 3 1 1
+# now take groups of 3, and take average
+#                   => (10+10+3)/3 (3+3+1)/3
+# want to convert to 2 values
+# duplicate each element of the histogram 4 times
+#      10 10 10 10 3 3 3 3 1 1 1 1
+# now take groups of 3, and take average
+#      =>   30/3 16/3 7/3 3/3
+
+
 def orient_image(image,meta):
     '''
     returns a rotated copy of the PIL image based on the value of the 'Orientation' metadata key in meta
@@ -677,6 +735,21 @@ def image_to_pixbuf(im):
         pixbuf = loader.get_pixbuf()
         loader.close()
     return pixbuf
+
+
+def pixbuf_to_image(pb):
+    '''
+    convert a GDK pixbuf to a PIL image
+    TODO: This is incomplete as it assume RGB
+    '''
+    alpha = pb.get_has_alpha()
+    bpp = pb.get_bits_per_pixell()
+    ch = pb.get_n_channels()
+
+    width,height = pb.get_width(),pb.get_height()
+    image = Image.fromstring("RGB",(width,height),pb.get_pixels() )
+
+    return image
 
 
 def size_image(item,size,antialias=False,zoom='fit'): ##todo: rename as size image to view (maybe abstract the common features)

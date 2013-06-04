@@ -89,6 +89,7 @@ class EnhancePlugin(pluginbase.Plugin):
         self.enhance_bar.pack_start(ok_box)
         self.enhance_bar.show_all()
         imagemanip.transformer.register_transform('enhance',self.do_enhance_transform)
+        self.histo=None
 
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
@@ -145,6 +146,7 @@ class EnhancePlugin(pluginbase.Plugin):
     def reset(self,shutdown=False):
         self.enhance_mode=False
         self.item=None
+        self.histo=None
         self.unenhanced_screen_image=None
         self.viewer.image_box.remove(self.enhance_bar)
         self.viewer.plugin_release(self)
@@ -180,6 +182,7 @@ class EnhancePlugin(pluginbase.Plugin):
         enhancer_brightness = ImageEnhance.Brightness(image)
         image = enhancer_brightness.enhance(self.picker_brightness.get_value())
 
+        self.histo = image.histogram()
         item.qview=imagemanip.image_to_pixbuf(image)
         self.cur_size=size
         self.cur_zoom=zoom
@@ -188,6 +191,10 @@ class EnhancePlugin(pluginbase.Plugin):
     def viewer_render_end(self,drawable,gc,item):
         if not self.enhance_mode:
             return
+        item=self.item
+        iw,ih = drawable.get_size()
+        if 'qview' in item.__dict__ and self.histo is not None:
+            hg = imagemanip.graphical_histogram(self.histo,(iw-205,ih-133),(200,128),drawable)
 
 
 
