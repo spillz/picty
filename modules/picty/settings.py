@@ -110,7 +110,7 @@ overlay_show_tags=True
 overlay_show_date=True
 overlay_show_exposure=True
 
-dragdrop_apply_edits = True
+dragdrop_apply_edits = False
 dragdrop_strip_metadata = False
 dragdrop_resize = False
 dragdrop_max_size = 1024
