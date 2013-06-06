@@ -22,9 +22,9 @@ License:
 '''
 
 def log_err(message): ##todo: this belongs in the logger module and should be used universally (although not with this specific implementation)
-    print 'Map Plugin:',message
     import sys,traceback
-    print traceback.format_exc(sys.exc_info()[2])
+    print >>sys.stderr,'Map Plugin:',message
+    print >>sys.stderr,traceback.format_exc(sys.exc_info()[2])
 
 
 ##nasty hack needed because osmgpsmap is in the wrong place on older ubuntu versions
@@ -50,12 +50,12 @@ try:
     if '__version__' in dir(osmgpsmap) and osmgpsmap.__version__>='0.4.0':
         map_source=(
         ('Maps for Free',osmgpsmap.SOURCE_MAPS_FOR_FREE,'mapsforfree'),
+        ('Open Aerial Map',osmgpsmap.SOURCE_OPENAERIALMAP,'openaerialmap'),
         ('Open Street Map',osmgpsmap.SOURCE_OPENSTREETMAP,'openstreetmap'),
         ('Open Street Map Renderer',osmgpsmap.SOURCE_OPENSTREETMAP_RENDERER,'openstreetmaprenderer'),
         ('Virtual Earth Hybrid',osmgpsmap.SOURCE_VIRTUAL_EARTH_HYBRID,'virtualearthhybrid'),
         ('Virtual Earth Satellite',osmgpsmap.SOURCE_VIRTUAL_EARTH_SATELLITE,'virtualearthsatellite'),
         ('Virtual Earth Street',osmgpsmap.SOURCE_VIRTUAL_EARTH_STREET,'virtualearthstreet'),
-        ('Open Aerial Map',osmgpsmap.SOURCE_OPENAERIALMAP,'openaerialmap'),
         ('Yahoo Hybrid',osmgpsmap.SOURCE_YAHOO_HYBRID,'yahoohybrid'),
         ('Yahoo Satellite',osmgpsmap.SOURCE_YAHOO_SATELLITE,'yahoosatellite'),
         ('Yahoo Street',osmgpsmap.SOURCE_YAHOO_STREET,'yahoostreet'),
@@ -85,7 +85,7 @@ class MapPlugin(pluginbase.Plugin):
     api_version='0.1.0'
     version='0.1.1'
     def __init__(self):
-        print 'INITIALIZED MAP SIDEBAR PLUGIN'
+        pass
     def plugin_init(self,mainframe,app_init):
         self.mainframe=mainframe
         self.worker=mainframe.tm
@@ -94,14 +94,11 @@ class MapPlugin(pluginbase.Plugin):
         panel.vbox.pack_start(self.mapframe)
         places={'Home':(0.0,0.0,1)}
         try:
-            print 'Map Plugin: loading map-places file'
             f=open(os.path.join(settings.data_dir,'map-places'),'rb')
             version=cPickle.load(f)
             places=cPickle.load(f)
-            print 'MAP PLUGIN VERSION',version
             if version>='0.1.1':
                 source=cPickle.load(f)
-                print 'SETTING PREFERRED SOURCE',source
                 self.mapframe.set_preferred_source(source)
             f.close()
         except:
@@ -114,7 +111,6 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe.update_map_items()
     def plugin_shutdown(self,app_shutdown=False):
         try:
-            print 'Map Plugin: saving map places'
             f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
             cPickle.dump(self.version,f,-1)
             cPickle.dump(self.mapframe.get_places(),f,-1)
@@ -212,10 +208,8 @@ class MapFrame(gtk.VBox):
 
     def set_source_signal(self,widget):
         if self.osm:
-#                place=(self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
             ll=self.osm.screen_to_geographic(0,0)
             place=(ll[0],ll[1],self.osm.get_property('zoom'))
-            print 'NEW MAP PLACE',place
             self.osm_box.remove(self.osm)
             self.osm.destroy()
         else:

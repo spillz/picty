@@ -23,26 +23,38 @@ License:
 
 ##todo: need to add location of userplugins to sys.path
 
-import sys
-import os
-import os.path
+import sys, os, os.path
 
-from plugins import tagui
+import settings
 
+#find the plugins by scanning the plugin directories
 try:
-    plugins=['picty.plugins.'+path[:-3] for path in os.listdir(os.path.join(os.path.dirname(__file__),'plugins')) if path.endswith('.py') and not path.startswith('_')]
+    zfilename = os.path.split(os.path.split(__file__)[0])[0]
+    if zfilename.endswith('library.zip'):
+        #on the windows py2exe build the plugins are stored in the library.zip
+        #package of modules. Need to use zipfile to find them
+        import zipfile
+        z = zipfile.ZipFile(zfilename)
+        plugins=['picty.plugins.'+os.path.splitext(os.path.split(n)[1])[0]
+                    for n in z.namelist()
+                        if n.startswith('picty/plugins') and not n.startswith('_')]
+    else:
+        plugins=['picty.plugins.'+os.path.splitext(n)[0]
+            for n in os.listdir(os.path.join(os.path.dirname(__file__),'plugins'))
+                if not n.startswith('_')]
 except:
     plugins=[]
+
 try:
-    userplugins=['userplugins.'+path[:-3] for path in os.listdir(os.path.join(settings.settings_dir,'plugins')) if path.endswith('.py') and not path.startswith('_')]
+    userplugins=['userplugins.'+os.path.splitext(path)[0] for path in os.listdir(os.path.join(settings.settings_dir,'plugins')) if not n.startswith('_')]
 except:
     userplugins=[]
 
-###print plugins
-###for p in plugins:
-###    __import__(p)
+#converting to set ensures a unique set of plugins
+plugins = set(plugins)
+userplugins = set(userplugins)
 
-'''import user modules containing plugins'''
+#import the global and user modules containing plugins
 for p in plugins:
     try:
         print 'Importing system plugin',p
@@ -51,8 +63,8 @@ for p in plugins:
         import sys
         import traceback
         tb_text=traceback.format_exc(sys.exc_info()[2])
-        print 'Error importing system plugin',p
-        print tb_text
+        print >>sys.stderr,'Error importing system plugin',p
+        print >>sys.stderr,tb_text
 for p in userplugins:
     try:
         print 'Importing user plugin',p

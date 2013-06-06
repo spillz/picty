@@ -34,8 +34,8 @@ from picty import collectionmanager
 class ConfigPlugin(pluginbase.Plugin):
     name='ConfigPlugin'
     display_name='Preferences Dialog'
-    api_version='0.1.0'
-    version='0.2.0'
+    api_version='0.1'
+    version='0.4'
     def __init__(self):
         pass
 
@@ -56,19 +56,20 @@ class ConfigPlugin(pluginbase.Plugin):
 
 
 '''
-Collection settings:
-* Refresh collection startup (checkbox)
-* Refresh collection now (button)
-* Caching options (number of thumbnails, number of images)
+Global settings can be found here
 Plugins
 * List of plugins (checkbox disable)
-Collections (List control or combo)
-* List of collections (name, directory)
-* Activate collection
 Custom shell tools
 * Tool name
 * Command line
 * Mimetype/Infotype
+Overlay information
+* Title/Filename
+* Exposure info
+Per Collection settings are stored with the collection, includes:
+* Refresh collection startup (checkbox)
+* Refresh collection now (button)
+* Caching options (number of thumbnails, number of images)
 '''
 
 class ConfigPanel(gtk.Dialog):
