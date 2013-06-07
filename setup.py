@@ -4,11 +4,14 @@ import os,os.path,sys,platform
 
 
 def stamp_version():
-    settings = file('modules/picty/settings.py','r').read()
     version = 'testing-r'+os.popen('bzr revno').read().strip()
     print 'Version',version
+    settings = file('modules/picty/settings.py','rb').read()
     settings = settings.replace('{source}',version)
-    file('modules/picty/settings.py','w').write(settings)
+    file('modules/picty/settings.py','wb').write(settings)
+    settings = file('picty.iss','rb').read()
+    settings = settings.replace('%source%',version)
+    file('picty.iss','wb').write(settings)
     return version
 
 version = stamp_version()
