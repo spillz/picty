@@ -107,7 +107,7 @@ class PicasaService(UploadServiceBase):
         self.gd_c=gdata.photos.service.PhotosService()
         self.gd_c.email=self.password_data[0]
         self.gd_c.password=self.password_data[1]
-        self.gd_c.source='picty-'+settings.version
+        self.gd_c.source='picty-'+settings.file_version
         try:
             result=self.gd_c.ProgrammaticLogin()
             print 'Picasa login returned',result

@@ -65,7 +65,7 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
         if not os.path.exists(col_dir):
             os.makedirs(col_dir)
         f=open(pref_file,'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(settings.file_version,f,-1)
         cPickle.dump(prefs,f,-1)
         f.close()
     except:
@@ -120,7 +120,7 @@ class CollectionBase:
 
     def save_prefs(self):
         f=open(self.pref_file(),'wb')
-        cPickle.dump(settings.version,f,-1)
+        cPickle.dump(settings.file_version,f,-1)
         d={}
         for p in self.pref_items:
             if p in self.__dict__:

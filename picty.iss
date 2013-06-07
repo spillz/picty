@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Picty
-AppVersion=0.5
+AppVersion=testing-r668
 AppPublisher=Damien Moore
 AppPublisherURL=http://launchpad.net/picty
 DefaultDirName={pf}\picty
@@ -11,7 +11,7 @@ DefaultGroupName=picty
 UninstallDisplayIcon={app}\picty.exe
 Compression=lzma2
 SolidCompression=yes
-OutputBaseFilename=picty-0.5-setup
+OutputBaseFilename=picty-testing-r668-setup
 
 [Dirs]
 Name: {app}; Flags: uninsalwaysuninstall;

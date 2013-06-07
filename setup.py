@@ -2,14 +2,22 @@
 from distutils.core import setup
 import os,os.path,sys,platform
 
-version = 0.5
-##revision = xxx
+
+def stamp_version():
+    settings = file('modules/picty/settings.py','r').read()
+    version = 'testing-r'+os.popen('bzr revno').read().strip()
+    print 'Version',version
+    settings = settings.replace('{source}',version)
+    file('modules/picty/settings.py','w').write(settings)
+    return version
+
+version = stamp_version()
 
 if platform.system() != 'Windows':
     from distutils.core import setup
 
     setup(name='picty',
-          version='0.5',
+          version=version,
           description='picty Photo Manager',
           author='Damien Moore',
           author_email='damienlmoore@gmail.com',
@@ -38,12 +46,12 @@ else:
     setup(
         name = 'picty',
         description = 'picty Photo Manager',
-        version = '0.5',
+        version = version,
 
         windows = [
                       {
                           'script': 'bin/picty',
-    #                      'icon_resources': [(1, "picty.ico")],
+                          'icon_resources': [(1, "icons/picty.ico")],
                       }
                   ],
 

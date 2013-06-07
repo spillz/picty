@@ -25,8 +25,8 @@ import cPickle
 import Image
 import gtk
 
-release_version='0.5' #this is the version number of the released program
-version='0.6.1' #version is saved to data and configuration files
+release_version='{source}' #this is the version number of the released program
+file_version='0.6.1' #version is saved to global and collection configuration files
 #version notes:
 # 0.6.0
 #  * separated preferences and image data cache into separate files (under collection name directory)
@@ -158,7 +158,7 @@ def save():
         print tb_text
         return False
     try:
-        cPickle.dump(version,f,-1)
+        cPickle.dump(file_version,f,-1)
         cPickle.dump(active_collection_id,f,-1)
         cPickle.dump(precache_count,f,-1)
         cPickle.dump(layout,f,-1)
@@ -215,7 +215,7 @@ def load():
                 places=cPickle.load(f)
         if file_version>='0.3.2':
             plugins_disabled=cPickle.load(f)
-        if file_version>='0.4.2':
+        if file_version>='0.6.1':
             overlay_show_title=cPickle.load(f)
             overlay_show_path=cPickle.load(f)
             overlay_show_tags=cPickle.load(f)

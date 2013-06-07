@@ -9,7 +9,11 @@ These are experimental releases of picty for windows. The software has not been 
 How to install
 --------------
 
-Download the file _picty-NNN-setup.exe_, run it and follow the prompts. You can find the program in your start menu.
+Download the file _picty-***************-setup.exe_, run it and follow the prompts. You can find the program in your start menu.
+
+A note on filenames:
+_picty-stable-v####-setup.exe_ - these are stable releases
+_picty-testing-r####-setup.exe_ - these are unstable testing builds
 
 Before you can run picty, you may also need the windows redistributable found at:
 [http://www.microsoft.com/en-us/download/details.aspx?id=29](http://www.microsoft.com/en-us/download/details.aspx?id=29)
