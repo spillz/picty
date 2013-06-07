@@ -11,7 +11,7 @@ DefaultGroupName=picty
 UninstallDisplayIcon={app}\picty.exe
 Compression=lzma2
 SolidCompression=yes
-OutputBaseFilename=picty-testing-%source%-setup
+OutputBaseFilename=picty-%source%-setup
 
 [Dirs]
 Name: {app}; Flags: uninsalwaysuninstall;
