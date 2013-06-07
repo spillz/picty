@@ -26,9 +26,9 @@ Compared to the linux version a few things are broken (I am working on fixes):
 * Filesystem monitoring (i.e. if you change an image outside picty, you need
   to manually rescan to update the metadata in the program)
 
-* Drag and drop to desktop does nothing (on Linux)
+* Drag and drop to desktop does nothing (on Linux the files will be copied)
 
-* Missing icons
+* Automatic file associatons for right click "open with"
 
 * Occasional freezes/hangs
 
