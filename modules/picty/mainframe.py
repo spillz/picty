@@ -201,7 +201,7 @@ class MainFrame(gtk.VBox):
                         ('Save',(fn,self.save_item),cb_item_changed_icon,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
                         ('Revert',(fn,self.revert_item),cb_item_changed_icon,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
                         ('Delete',(fn,self.delete_item),cb_item_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
-                        ('Launch',(fn,self.launch_item),cb_has_item,[gtk.STOCK_EXECUTE],'Main','Open with the default editor (well...  GIMP)'),
+                        ('Launch',(fn,self.launch_item),cb_has_item,[gtk.STOCK_EXECUTE],'Main','Open with the default editor'),
                         ('Edit Metadata',(fn,self.edit_item),cb_has_item,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
                         ('Rotate Left',(fn,self.rotate_item_left),cb_has_item,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
                         ('Rotate Right',(fn,self.rotate_item_right),cb_has_item,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
@@ -1379,6 +1379,9 @@ class MainFrame(gtk.VBox):
         uri=io.get_uri(fullpath)
         mime=io.get_mime_type(fullpath)
         cmd=None
+        if settings.is_windows:
+            os.startfile(fullpath,'edit')
+            return
         if mime in settings.custom_launchers:
             for app in settings.custom_launchers[mime]:
                 from string import Template

@@ -146,6 +146,8 @@ try:
                     if mstr == 'Extension' and value.lower() == ext.lower():
                         mimetype = mime
                         break
+            if mimetype == 'image/pjpeg': #windows defines a pjpeg for progressive jpeg, but all modern jpeg libs can open pjpeg, so no need to distinguish for our purposes
+                mimetype = 'image/jpeg'
             return mimetype
     else:
         def get_mime_type(path):

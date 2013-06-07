@@ -35,40 +35,6 @@ version='0.6.1' #version is saved to data and configuration files
 #  * dropped thumbsize, qview_size, thumbrgba, cannot_thumb members of image
 
 
-plugins_disabled=[]
-
-max_memthumbs=1000
-max_memimages=3
-precache_count=500 ##not currently used
-
-#custom launchers (tools) available from right click menu in browser
-#tools understand the following variable substituions:
-#$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
-custom_launchers={
-'image/jpeg':[('GIMP','gimp "$FULLPATH"'),],
-'image/png':[('GIMP','gimp "$FULLPATH"'),],
-'image/x-pentax-pef':[('UFRaw','ufraw "$FULLPATH"'),],
-'default':[('Nautilus','nautilus "$DIR"'),],
-}
-
-layout={}  #the layout of the user interface
-
-edit_command_line='gimp'
-dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
-dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
-raw_image_types = {
-'image/x-adobe-dng':[dcraw_cmd],
-'image/x-canon-crw':[dcraw_cmd],
-'image/x-canon-cr2':[dcraw_cmd],
-'image/x-nikon-nef':[dcraw_cmd],
-'image/x-pentax-pef':[dcraw_cmd],
-'image/x-olympus-orf':[dcraw_cmd],
-}
-video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
-
-
-imagetypes=['jpg','jpeg','png']
-
 home_dir = os.path.expanduser("~")
 
 def get_user_dir(env_var,alt_path,sub_dir=''):
@@ -103,6 +69,43 @@ else:
     data_dir=get_user_dir('XDG_DATA_HOME','.local/share/picty')
     cache_dir=get_user_dir('XDG_CACHE_HOME','.cache/') ##todo: not using cache yet. parts of the collection are definitely cache
     is_windows=False
+
+#custom launchers (tools) available from right click menu in browser
+#tools understand the following variable substituions:
+#$FULLPATH,$DIR,$FULLNAME,$NAME,$EXT
+custom_launchers={
+'image/jpeg':[('GIMP','gimp "$FULLPATH"'),],
+'image/png':[('GIMP','gimp "$FULLPATH"'),],
+'image/x-pentax-pef':[('UFRaw','ufraw "$FULLPATH"'),],
+}
+if is_windows:
+    custom_launchers['default']=[('Explorer','explorer /select, "$FULLPATH"'),]
+else:
+    custom_launchers['default']=[('File Manager','xdg-open "$DIR"'),]
+
+plugins_disabled=[]
+
+max_memthumbs=1000
+max_memimages=3
+precache_count=500 ##not currently used
+
+layout={}  #the layout of the user interface
+
+edit_command_line='gimp'
+dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
+dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
+raw_image_types = {
+'image/x-adobe-dng':[dcraw_cmd],
+'image/x-canon-crw':[dcraw_cmd],
+'image/x-canon-cr2':[dcraw_cmd],
+'image/x-nikon-nef':[dcraw_cmd],
+'image/x-pentax-pef':[dcraw_cmd],
+'image/x-olympus-orf':[dcraw_cmd],
+}
+video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
+
+
+imagetypes=['jpg','jpeg','png']
 
 overlay_show_title=True
 overlay_show_path=False
