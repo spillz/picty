@@ -7,6 +7,7 @@ import settings
 if they are available, otherwise it loads them from files.'''
 
 ICON_INFO = [
+  ('picty-5', 'picty-5-polaroids.png'),
   ('picty-rotate-left', 'picty-rotate-left.png'),
   ('picty-rotate-right', 'picty-rotate-right.png'),
   ('picty-sidebar', 'picty-sidebar.png'),
@@ -15,6 +16,7 @@ ICON_INFO = [
   ('picty-image-write', 'picty-image-write.png'),
   ('picty-transfer', 'picty-transfer.png'),
   ('picty-map', 'picty-map.png'),
+  ('flickr', 'flickr.png'),
   ]
 
 filename=os.path.abspath(__file__)
@@ -34,5 +36,6 @@ def register_iconset(icon_info):
           iconset = gtk.IconSet(pixbuf)
           iconfactory.add(stock_id, iconset)
   iconfactory.add_default()
+  return iconfactory
 
-register_iconset(ICON_INFO)
+iconfactory = register_iconset(ICON_INFO)

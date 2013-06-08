@@ -88,7 +88,7 @@ class MainFrame(gtk.VBox):
         self.volume_monitor=io.VolumeMonitor()
         self.volume_monitor.connect_after("mount-added",self.mount_added)
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)
-        self.coll_set=collectionmanager.CollectionSet()
+        self.coll_set=collectionmanager.CollectionSet(self.get_style())
         self.active_collection=None
         self.collections_init()
         self.float_mgr=floats.FloatingPanelManager(self)

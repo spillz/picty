@@ -553,6 +553,9 @@ class FlickrCollection(baseobjects.CollectionBase):
             self.set_prefs(prefs)
         self.id=self.name
         self.thumbnail_cache_dir=os.path.join(self.coll_dir(),'.thumbnails')#use gnome/freedesktop if none or specify a folder
+        ## use flickr icon for the collection tab
+        if self.pixbuf == None:
+            self.pixbuf = 'flickr'
 
     ''' ************************************************************************
                             PREFERENCES, OPENING AND CLOSING

@@ -126,6 +126,8 @@ class CollectionBase:
             if p in self.__dict__:
                 d[p]=self.__dict__[p]
         d['type']=self.type
+        if not isinstance(d['pixbuf'],str):
+            d['pixbuf'] = None
         cPickle.dump(d,f,-1)
         f.close()
 

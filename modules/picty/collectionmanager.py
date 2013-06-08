@@ -96,11 +96,15 @@ class CollectionSet(gobject.GObject):
     also:
      manages models that can display the collection model
     '''
-    def __init__(self):
+    def __init__(self,style=None):
         self.collections={}
         self.types=[c for c in baseobjects.registered_collection_classes]
         self.model=CollectionModel(self)
-        self.dir_image=self.get_icon([gtk.STOCK_DIRECTORY])
+        self.style = style
+        if style:
+            self.default_dir_image=self.get_icon(gtk.STOCK_DIRECTORY)
+            #self.default_col_image=self.get_icon([gtk.STOCK_DIRECTORY])
+            self.default_col_image=self.get_icon('picty-5')
 
     def add_model(self,filter_type=None):
         m=self.model.filter_new()
@@ -160,12 +164,16 @@ class CollectionSet(gobject.GObject):
             del self[id]
 
     def get_icon(self, icon_id_list):
-        t=gtk.icon_theme_get_default()
-        ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
-        try:
-            pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
-        except:
-            pb=None
+        pb = None
+        icon = self.style.lookup_icon_set(icon_id_list)
+        if icon!=None:
+            pb = icon.render_icon(self.style, gtk.TEXT_DIR_NONE, gtk.STATE_NORMAL, gtk.ICON_SIZE_MENU, None, None)
+#        t=gtk.icon_theme_get_default()
+#        ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
+#        try:
+#            pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
+#        except:
+#            pb=None
         return pb
 
     def count(self,type=None):
@@ -174,6 +182,15 @@ class CollectionSet(gobject.GObject):
     def add_collection(self,collection):
         if collection.type=='DEVICE' and self.count('DEVICE')==0:
             self.model.first_mount_added()
+        if collection.pixbuf is None:
+            print 'SETTING ICON FROM DEFAULT',collection.pixbuf
+            if collection.type=='LOCALDIR':
+                collection.pixbuf = self.default_dir_image
+            if collection.type!='DEVICE' and collection.type!='LOCALDIR':
+                collection.pixbuf = self.default_col_image
+        if isinstance(collection.pixbuf,str):
+            print 'GETTING ICON FROM STRING',collection.pixbuf
+            collection.pixbuf = self.get_icon(collection.pixbuf)
         self.collections[collection.id]=collection
         self.collection_added(collection.id)
 
@@ -374,7 +391,7 @@ class CollectionModel(gtk.GenericTreeModel):
         label_dict={
             '#add-localstore':('New Collection...',None),
             '#no-devices':('No Devices Connected',None),
-            '#add-dir':('Open a Local Directory...',self.coll_set.dir_image),
+            '#add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
         }
         if id.startswith('*'):
             return [id,'',800,False,'black',None,False]
