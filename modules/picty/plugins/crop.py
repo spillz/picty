@@ -116,7 +116,7 @@ class CropPlugin(pluginbase.Plugin):
         self.viewer.imarea.disconnect(self.motion_handle)
         self.viewer.plugin_release(self)
         if not shutdown:
-            self.viewer.resize_and_refresh_view()
+            self.viewer.resize_and_refresh_view(zoom='fit')
 
     def viewer_release(self,force=False):
         self.reset()

@@ -133,39 +133,33 @@ class ImageLoader:
                 continue
             if item.meta==None:
                 self.collection.load_metadata(item)
-                #imagemanip.load_metadata(item) ##todo: 2nd arg = collection
             if not item.image:
                 def interrupt_cb():
                     return self.item.uid==item.uid
-                print 'LOADING IMAGE',item,'transforms',self.want_transforms
-                self.collection.load_image(item,interrupt_cb,apply_transforms=self.want_transforms) ##todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
+                print 'Image Viewer - LOADING IMAGE',item,'transforms',self.want_transforms
+                self.collection.load_image(item,interrupt_cb,apply_transforms=self.want_transforms) #todo: load as draft if zoom not required (but need to keep draft status of image to avoid problems)
                 if not item.image:
-                    gobject.idle_add(self.viewer.ImageLoaded,item) ##todo: change to image load failed? (the handler currently checks the status so that's enough anyway)
+                    gobject.idle_add(self.viewer.ImageLoaded,item) #todo: change to image load failed? (the handler currently checks the status so that's enough anyway)
                     self.vlock.acquire()
                     continue
                 gobject.idle_add(self.viewer.ImageLoaded,item)
             self.vlock.acquire()
             if self.sizing and self.sizing[0]>0 and self.sizing[1]>0:
-                print 'SIZING',self.zoom,self.sizing
-                if not self.plugin or not self.plugin.t_viewer_sizing(self.sizing,self.zoom,item):
+                # determine the require width and height of the scaled image
+                if self.zoom=='fit':
+                    (w,h)=self.sizing
+                else:
+                    (iw,ih)=item.image.size
+                    w=int(self.zoom*iw)
+                    h=int(self.zoom*ih)
+                # now size the image, allowing the plugins to do something before or after the operation
+                print 'Image Viewer - SIZING',self.zoom,self.sizing
+                if not self.plugin or not self.plugin.t_viewer_sizing((w,h),self.zoom,item):
                     imagemanip.size_image(item,self.sizing,False,self.zoom)
                     if self.plugin:
-                        self.plugin.t_viewer_sized(self.sizing,self.zoom,item)
+                        self.plugin.t_viewer_sized((w,h),self.zoom,item)
                 gobject.idle_add(self.viewer.ImageSized,item,self.zoom,self.sizing)
-#                self.sizing=None
 
-
-##class DrawableContainer(gtk.DrawingArea):
-##    def __init__(self):
-##        gtk.DrawingArea.__init__(self)
-##
-##    '''THIS DOES NOT WORK, HAVE TO HOOK INTO SIGNALS??'''
-##    def widget_size_request(self,*args):
-##        print '*****got widget_size_request with args',args
-##        gtk.DrawingArea.widget_size_request(self,*args)
-##    def size_allocate(self,*args):
-##        print '*****got widget_size_request with args',args
-##        gtk.DrawingArea.size_allocate(self,*args)
 
 class ImageViewer(gtk.VBox):
     TARGET_TYPE_URI_LIST = 0
@@ -173,15 +167,9 @@ class ImageViewer(gtk.VBox):
     def __init__(self,worker,toolbar,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.toolbar=toolbar
-#        self.info_widget = gtk.EventBox()
-#        self.info_widget.connect('expose-event',self.render_image_info)
-#        self.info_widget.set_size_request(200,400)
-#        self.info_widget.show()
         self.il=ImageLoader(self)
-###        self.imarea=gtk.DrawingArea()
         self.imarea=overlay_widgets.DrawableOverlayHover()
         self.imarea.add_with_bg(toolbar,0,1,0,None)
-#        self.imarea.add(self.info_widget,0,None,None,1)
         self.imarea.connect("draw",self.draw)
 
         self.imarea.set_property("can-focus",True)
@@ -230,9 +218,9 @@ class ImageViewer(gtk.VBox):
         self.pack_start(self.vpane)
         self.vpane.show()
 
-##        self.imarea.add_events(gtk.gdk.EXPOSURE_MASK)
+        #self.imarea.add_events(gtk.gdk.EXPOSURE_MASK)
         self.conf_id=self.imarea.connect("size-allocate",self.size_signal)
-##        self.imarea.connect("realize",self.realize_signal)
+        #self.imarea.connect("realize",self.realize_signal)
         self.connect("destroy", self._destroy)
         #self.imarea.add_events(gtk.gdk.SCROLL_MASK)
         #self.imarea.add_events(gtk.gdk.BUTTON_MOTION_MASK)
@@ -246,14 +234,14 @@ class ImageViewer(gtk.VBox):
 
         self.imarea.add_events(gtk.gdk.POINTER_MOTION_MASK)
         self.imarea.connect("motion-notify-event",self.mouse_motion_signal)
-#        self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
-#        self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
+        #self.imarea.add_events(gtk.gdk.ENTER_NOTIFY_MASK)
+        #self.imarea.connect("enter-notify-event",self.mouse_enter_signal)
         self.imarea.add_events(gtk.gdk.LEAVE_NOTIFY_MASK)
         self.imarea.connect("leave-notify-event",self.mouse_leave_signal)
 
         self.target_list=[('image-filename', gtk.TARGET_SAME_APP, self.TARGET_TYPE_IMAGE)] #("XdndDirectSave0", 0, self.TARGET_TYPE_XDS),
         self.target_list=gtk.target_list_add_uri_targets(self.target_list,self.TARGET_TYPE_URI_LIST)
-#        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
+        #target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
                   self.target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
 
@@ -540,7 +528,6 @@ class ImageViewer(gtk.VBox):
                 self.render_image_info(drawable,gc)
         pluginmanager.mgr.callback_first('viewer_render_end',drawable,gc,self.item)
 
-#    def render_image_info(self,obj,event):
     def render_image_info(self,drawable,gc):
         if self.item is None:
             return
@@ -789,13 +776,21 @@ class ImageViewer(gtk.VBox):
         if info == self.TARGET_TYPE_IMAGE:
             selection_data.set('image-filename', 8, self.item.uid)
         if info == self.TARGET_TYPE_URI_LIST:
+            #TODO: this doesn't work because protocal isn't local
+#            if drag_context.protocol == gtk.gdk.DRAG_PROTO_LOCAL:
+#                self.collection.get_path(self.item)
+#                uri=io.get_uri(path)
+#                selection_data.set_uris([uri])
+#                print 'Internal Drag Drop from viewer using uri',uri
+#                print 'Protocol',drag_context.protocol, gtk.gdk.DRAG_PROTO_LOCAL
+#                return
             size=None
-            if settings.dragdrop_resize>0:
+            if settings.dragdrop_resize:
                 size=(settings.dragdrop_max_size,settings.dragdrop_max_size)
             path = imagemanip.get_jpeg_or_png_image_file(self.item,self.collection,size,settings.dragdrop_strip_metadata,settings.dragdrop_apply_edits)
             if path is None:
                 return
-            uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
+            uri=io.get_uri(path)
             selection_data.set_uris([uri])
             print 'Drag Drop from viewer using uri',uri
 

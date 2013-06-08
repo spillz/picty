@@ -120,7 +120,7 @@ class RotatePlugin(pluginbase.Plugin):
     def t_viewer_sizing(self,size,zoom,item):
         if not self.rotate_mode:
             return
-        if size!=self.cur_size or not self.unrotated_screen_image:
+        if size!=self.cur_size or not self.unrotated_screen_image or self.viewer.zoom_level!='fit':
             self.unrotated_screen_image=item.image.copy()
             self.unrotated_screen_image.thumbnail(size)
         image=self.unrotated_screen_image.rotate(-self.angle_adjustment.get_value(),Image.NEAREST,expand=True)

@@ -420,7 +420,7 @@ def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transfo
         if len(size)>0 and size[0]>0 and size[1]>0:
             icopy = get_processed_copy(icopy)
             icopy.image.thumbnail(size,Image.ANTIALIAS)
-    if io.get_mime_type(filename) not in ['Image/jpeg','Image/png']:
+    if io.get_mime_type(filename) not in ['image/jpeg','image/png']:
         icopy = get_processed_copy(icopy)
     if strip_metadata:
         icopy = get_processed_copy(icopy)

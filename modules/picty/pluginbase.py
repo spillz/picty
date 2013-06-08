@@ -145,13 +145,13 @@ class Plugin(object):
     def t_viewer_sizing(self,size,zoom,item):
         '''
         viewer worker thread is about to scale the fullsize image for display in viewer. return True to prevent
-        note that size is the size of the window not necessarily the size of the scaled image
+        note that size is the the size of the scaled image and not necessarily the size of the window
         '''
         pass
     def t_viewer_sized(self,size,zoom,item):
         '''
         viewer worker thread has sized the image in item (only called if all t_viewer_sizing calls return None or False)
-        note that size is the size of the window not necessarily the size of the scaled image
+        note that size is the the size of the scaled image and not necessarily the size of the window
         '''
         pass
     def viewer_register_shortcut(self,shortcut_toolbar):

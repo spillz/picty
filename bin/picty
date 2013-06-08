@@ -141,8 +141,6 @@ class MainWindow:
         return False #allows the window to be destroyed
 
     def destroy(self, widget, data=None):
-        print "destroy signal occurred"
-        import os,os.path
         gtk.main_quit()
 
     def main(self):
