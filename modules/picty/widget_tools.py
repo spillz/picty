@@ -21,7 +21,25 @@ class ToolButton(gtk.ToolButton):
             self.set_label(label)
         self.set_expand(expand)
 
-gobject.type_register(ToolButton)
+
+class ToggleToolButton(gtk.ToggleToolButton):
+    def __init__(self,label,callback,update_cb,icons,owner='Main',tooltip=None,priority=50,expand=False,):
+       ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
+        gtk.ToggleToolButton.__init__(self,icons[0])
+        self.icons = icons
+        self.owner = owner
+        self.priority = priority
+        self.update_cb = update_cb
+        if isinstance(callback,tuple):
+            self.connect("clicked",callback[0],*callback[1:])
+        else:
+            self.connect("clicked",callback)
+        if tooltip:
+            self.set_tooltip_text(tooltip)
+        if label:
+            self.set_label(label)
+        self.set_expand(expand)
+
 
 class ToolItem(gtk.ToolItem):
     def __init__(self,widget,owner='Main',update_cb=None,priority=50,expand=False):
@@ -32,8 +50,6 @@ class ToolItem(gtk.ToolItem):
         self.update_cb=update_cb
         self.priority = priority
         self.set_expand(expand)
-
-gobject.type_register(ToolItem)
 
 class Toolbar(gtk.Toolbar):
     def __init__(self):
@@ -89,11 +105,14 @@ class Toolbar(gtk.Toolbar):
         else:
             tool.set_sensitive(False)
 
-    def register_tool(self,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50):
-        new_t=ToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
+    def register_tool(self,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50,toggle=False):
+        if toggle:
+            new_t=ToggleToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
+        else:
+            new_t=ToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
         for i in range(self.get_n_items()):
             t = self.get_nth_item(i)
-            if type(t)==ToolButton:
+            if type(t) in (ToolButton, ToggleToolButton):
                 if priority>t.priority:
                     self.insert(new_t,i)
                     return

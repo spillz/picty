@@ -274,7 +274,7 @@ class LabeledWidgets(gtk.Table):
 
 class Box:
     '''
-    A Form is a container that adds methods to pack a set of standardized
+    A Box is a container that adds methods to pack a set of standardized
     data entry elements such as Entry, Combo Box, Check Box or even another Box
     '''
     def __init__(self,children):

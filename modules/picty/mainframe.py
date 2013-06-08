@@ -193,34 +193,42 @@ class MainFrame(gtk.VBox):
                 tool.set_sensitive(True)
             else:
                 tool.set_sensitive(False)
+        button = 1
+        toggle = 2
+        sep =3
         fn=self.iv.toolbar_click
         viewer_tools=[
-                        ##name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
-                        ('Close',(fn,self.close_viewer),None,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
-                        ('Locate in Browser',(fn,self.show_viewed_item),cb_has_item,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
-                        ('Save',(fn,self.save_item),cb_item_changed_icon,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
-                        ('Revert',(fn,self.revert_item),cb_item_changed_icon,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
-                        ('Delete',(fn,self.delete_item),cb_item_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
-                        ('Launch',(fn,self.launch_item),cb_has_item,[gtk.STOCK_EXECUTE],'Main','Open with the default editor'),
-                        ('Edit Metadata',(fn,self.edit_item),cb_has_item,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
-                        ('Rotate Left',(fn,self.rotate_item_left),cb_has_item,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
-                        ('Rotate Right',(fn,self.rotate_item_right),cb_has_item,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
-                        ('Stub',None),
-                        ('Zoom Fit',(fn,self.zoom_item_fit),cb_has_image,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
-                        ('Zoom 100%',(fn,self.zoom_item_100),cb_has_image,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
-                        ('Zoom Out',(fn,self.zoom_item_out),cb_has_image,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
-                        ('Zoom In',(fn,self.zoom_item_in),cb_has_image,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
-                        ('Stub',None),
-                        ('Clear Image Edits',(fn,self.image_edit_clear), cb_has_image_edits,[gtk.STOCK_CLEAR],'Main','Removes any edits made to the image in Picty'),
+                        ##type,name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
+                        (button,'Close',(fn,self.close_viewer),None,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
+                        (button,'Locate in Browser',(fn,self.show_viewed_item),cb_has_item,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
+                        (toggle,'Fullscreeen',(lambda *x:self.toggle_viewer_fullscreen()),cb_has_item,[gtk.STOCK_FULLSCREEN],'Main','Toggle fullscreen view of image'),
+                        (button,'Save',(fn,self.save_item),cb_item_changed_icon,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
+                        (button,'Revert',(fn,self.revert_item),cb_item_changed_icon,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
+                        (button,'Delete',(fn,self.delete_item),cb_item_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
+                        (button,'Launch',(fn,self.launch_item),cb_has_item,[gtk.STOCK_EXECUTE],'Main','Open with the default editor'),
+                        (button,'Edit Metadata',(fn,self.edit_item),cb_has_item,[gtk.STOCK_EDIT],'Main','Edit the descriptive metadata for this image'),
+                        (button,'Rotate Left',(fn,self.rotate_item_left),cb_has_item,['picty-rotate-left'],'Main','Rotate the image 90 degrees counter-clockwise'),
+                        (button,'Rotate Right',(fn,self.rotate_item_right),cb_has_item,['picty-rotate-right'],'Main','Rotate the image 90 degrees clockwise'),
+                        (sep,'Stub',None),
+                        (button,'Zoom Fit',(fn,self.zoom_item_fit),cb_has_image,[gtk.STOCK_ZOOM_FIT],'Main','Zoom the image to fit available space'),
+                        (button,'Zoom 100%',(fn,self.zoom_item_100),cb_has_image,[gtk.STOCK_ZOOM_100],'Main','Zoom to 100% size'),
+                        (button,'Zoom Out',(fn,self.zoom_item_out),cb_has_image,[gtk.STOCK_ZOOM_OUT],'Main','Zoom out'),
+                        (button,'Zoom In',(fn,self.zoom_item_in),cb_has_image,[gtk.STOCK_ZOOM_IN],'Main','Zoom in'),
+                        (sep,'Stub',None),
+                        (button,'Clear Image Edits',(fn,self.image_edit_clear), cb_has_image_edits,[gtk.STOCK_CLEAR],'Main','Removes any edits made to the image in Picty'),
                         ]
                         #label,callback,state_cb,icons,owner='Main',tooltip=None,expand=False
 
         for tools in viewer_tools:
-            if tools[1] is None:
+            if tools[0] is sep:
                 self.viewer_toolbar.add(gtk.SeparatorToolItem())
-            else:
-                self.viewer_toolbar.add(ToolButton(*tools))
+            elif tools[0] is button:
+                self.viewer_toolbar.add(ToolButton(*tools[1:]))
+            elif tools[0] is toggle:
+                self.viewer_toolbar.add(ToggleToolButton(*tools[1:]))
         self.viewer_toolbar.add(ToolItem(self.image_edit_selector,update_cb=cb_has_image_edits))
+        self.viewer_toolbar.add(ToolItem(self.image_edit_selector,update_cb=cb_has_image_edits))
+        self.viewer_fullscreen_toggle = self.viewer_toolbar.get_nth_item(2)
 
         self.plugmgr.callback('viewer_register_shortcut',self.viewer_toolbar)
         self.viewer_toolbar.show_all()
@@ -1079,36 +1087,7 @@ class MainFrame(gtk.VBox):
                 self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
                 self.active_browser().resize_and_refresh_view(self.active_collection)
             elif event.keyval==65293: #enter
-                if self.iv.item is not None and self.active_browser() is not None:
-                    if self.is_iv_fullscreen:
-                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        self.iv.ImageNormal()
-                        if self.is_fullscreen:
-                            self.window.unfullscreen()
-                            self.is_fullscreen=False
-                        self.view_image(self.iv.item)
-                        self.info_bar.show()
-                        self.browser_nb.show()
-                        if self.sidebar_toggle.get_active():
-                            self.sidebar.show()
-                        self.toolbar1.show()
-                        self.browser_box.remove(self.iv)
-                        self.active_browser().add_viewer(self.iv)
-                        self.is_iv_fullscreen=False
-                    else:
-                        self.active_browser().remove_viewer(self.iv)
-                        self.browser_box.pack_start(self.iv,True)
-                        self.iv.ImageFullscreen(self.window.get_size())
-                        self.view_image(self.iv.item)
-                        self.toolbar1.hide()
-                        self.info_bar.hide()
-                        self.browser_nb.hide()
-                        self.sidebar.hide()
-                        self.is_iv_fullscreen=True
-                        if not self.is_fullscreen:
-                            self.window.fullscreen()
-                            self.is_fullscreen=True
-                self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
+                self.toggle_viewer_fullscreen()
             elif event.keyval==65361: #left
                 if self.iv.item:
                     if self.iv.zoom_level!='fit':
@@ -1172,6 +1151,40 @@ class MainFrame(gtk.VBox):
 #                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
 
 
+    def toggle_viewer_fullscreen(self):
+        if self.iv.item is not None and self.active_browser() is not None:
+            if self.is_iv_fullscreen:
+                ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
+                self.viewer_fullscreen_toggle.set_active(False)
+                self.iv.ImageNormal()
+                if self.is_fullscreen:
+                    self.window.unfullscreen()
+                    self.is_fullscreen=False
+                self.view_image(self.iv.item)
+                self.info_bar.show()
+                self.browser_nb.show()
+                if self.sidebar_toggle.get_active():
+                    self.sidebar.show()
+                self.toolbar1.show()
+                self.browser_box.remove(self.iv)
+                self.active_browser().add_viewer(self.iv)
+                self.is_iv_fullscreen=False
+            else:
+                self.viewer_fullscreen_toggle.set_active(True)
+                self.active_browser().remove_viewer(self.iv)
+                self.browser_box.pack_start(self.iv,True)
+                self.iv.ImageFullscreen(self.window.get_size())
+                self.view_image(self.iv.item)
+                self.toolbar1.hide()
+                self.info_bar.hide()
+                self.browser_nb.hide()
+                self.sidebar.hide()
+                self.is_iv_fullscreen=True
+                if not self.is_fullscreen:
+                    self.window.fullscreen()
+                    self.is_fullscreen=True
+        self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
+
     def close_viewer(self,widget,item):
         self.hide_image()
 
@@ -1221,6 +1234,7 @@ class MainFrame(gtk.VBox):
             self.sidebar.show()
         self.info_bar.show()
         self.is_iv_fullscreen=False
+        self.viewer_fullscreen_toggle.set_active(False)
         if self.is_fullscreen:
             self.window.unfullscreen()
             self.is_fullscreen=False
