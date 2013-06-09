@@ -26,7 +26,7 @@ if platform.system() != 'Windows':
           author_email='damienlmoore@gmail.com',
           url='https://launchpad.net/picty',
           package_dir={'':'modules'},
-          packages=['picty','picty.plugins','picty.collectiontypes'],
+          packages=['picty','picty.plugins','picty.collectiontypes','picty.fstools','picty.uitools','picty.metadata'],
           scripts=['bin/picty','bin/picty-import', 'bin/picty-open'],
           data_files=[
             ('share/applications',['desktop/picty.desktop','desktop/picty-import.desktop', 'desktop/picty-open.desktop']),
@@ -62,10 +62,10 @@ else:
         author_email='damienlmoore@gmail.com',
         url='https://launchpad.net/picty',
         package_dir={'':'modules'},
-        packages=['picty','picty.collectiontypes','picty.plugins'],
+          packages=['picty','picty.plugins','picty.collectiontypes','picty.fstools','picty.uitools','picty.metadata'],
         options = {
                       'py2exe': {
-                          'packages':'encodings,picty,picty.collectiontypes,picty.plugins',
+                          'packages':'encodings,picty,picty.collectiontypes,picty.plugins,picty.fstools,picty.uitools,picty.metadata',
                           'includes': ' cairo, pango, pangocairo, atk, gobject, gio, gtk.keysyms',
                       }
                   },
