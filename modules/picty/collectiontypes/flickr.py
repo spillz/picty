@@ -276,6 +276,8 @@ class FlickrSyncJob(backend.WorkerJob):
             gobject.idle_add(self.browser.update_status,2.0,'Syncing Complete')
             gobject.idle_add(self.browser.update_backstatus,False,'Syncing Complete - %s'%(collection.name,))
             return True
+        gobject.idle_add(self.browser.update_status,2.0,'Pausing Flickr Syncing')
+        gobject.idle_add(self.browser.update_backstatus,False,'Syncing Paused - %s'%(collection.name,))
         return False
 
 class FlickrTransferOptionsBox(wb.VBox):
