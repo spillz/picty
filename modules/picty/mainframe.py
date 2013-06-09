@@ -241,7 +241,7 @@ class MainFrame(gtk.VBox):
         #self.spinner_text = gtk.Label('')
         #self.spinner_text.set_size_request(100,-1)
         #self.spinner_text.show()
-        self.info_bar_text=gtk.Label('Loading.... please wait')
+        self.info_bar_text=gtk.Label()
         self.info_bar_text.show()
         self.info_bar.pack_start(self.info_bar_text,True)
         #self.info_bar.pack_start(self.spinner_text,True)

@@ -357,7 +357,7 @@ class ImageViewer(gtk.VBox):
             print 'WARNING: Sized wrong item',item.uid
 
     def ImageLoaded(self,item):
-        if 'image' in item.__dict__ and item.image is not None:
+        if 'image' in item.__dict__ and item.image not in (None,False):
             self.item.image.histo = item.image.histogram()
 
     def ImageUpdated(self,item):
