@@ -1,11 +1,10 @@
 import gtk
 import gobject
-import overlaytools
+import overlay_tools
 
-##shortcuts for adding items to a toolbar
+#Custom toolbutton, toolitem and toolbar (makes it easier to plugins to add remove their own items for picty toolbars)
 class ToolButton(gtk.ToolButton):
     def __init__(self,label,callback,update_cb,icons,owner='Main',tooltip=None,priority=50,expand=False,):
-       ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
         gtk.ToolButton.__init__(self,icons[0])
         self.icons = icons
         self.owner = owner
@@ -24,7 +23,6 @@ class ToolButton(gtk.ToolButton):
 
 class ToggleToolButton(gtk.ToggleToolButton):
     def __init__(self,label,callback,update_cb,icons,owner='Main',tooltip=None,priority=50,expand=False,):
-       ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
         gtk.ToggleToolButton.__init__(self,icons[0])
         self.icons = icons
         self.owner = owner
@@ -43,7 +41,6 @@ class ToggleToolButton(gtk.ToggleToolButton):
 
 class ToolItem(gtk.ToolItem):
     def __init__(self,widget,owner='Main',update_cb=None,priority=50,expand=False):
-       ##'Zoom In',self.zoom_item_in,show_on_hover,[gtk.STOCK_ZOOM_IN],'Main','Zoom in')
         gtk.ToolItem.__init__(self)
         self.add(widget)
         self.owner = owner
@@ -54,7 +51,7 @@ class ToolItem(gtk.ToolItem):
 class Toolbar(gtk.Toolbar):
     def __init__(self):
         gtk.Toolbar.__init__(self)
-        overlaytools.overlay_groups.append(self)
+        overlay_tools.overlay_groups.append(self)
 
     ##TODO: make these callbacks part of a derived class for the viewer
     def default_update_callback(self,tool,viewer):
@@ -105,7 +102,7 @@ class Toolbar(gtk.Toolbar):
         else:
             tool.set_sensitive(False)
 
-    def register_tool(self,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50,toggle=False):
+    def register_tool(self,name,action_callback=None,update_callback=overlay_tools.show_on_hover,icons=[],owner='Main',tooltip='This is a tooltip',priority=50,toggle=False):
         if toggle:
             new_t=ToggleToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
         else:
@@ -118,7 +115,7 @@ class Toolbar(gtk.Toolbar):
                     return
         self.add(new_t)
 
-    def register_tool_for_plugin(self,plugin,name,action_callback=None,update_callback=overlaytools.show_on_hover,icons=None,tooltip='This is a tooltip',priority=50):
+    def register_tool_for_plugin(self,plugin,name,action_callback=None,update_callback=overlay_tools.show_on_hover,icons=None,tooltip='This is a tooltip',priority=50):
         '''
         adds a new tool whose owner is plugin
         '''
@@ -138,6 +135,7 @@ class Toolbar(gtk.Toolbar):
             if t.update_cb is not None:
                 t.update_cb(t,*args)
 
+##shortcuts for adding items to a toolbar
 def add_item(toolbar,widget,callback,label=None,tooltip=None,expand=False):
     toolbar.add(widget)
     if callback:

@@ -40,29 +40,31 @@ gobject.threads_init()
 import settings
 import viewer
 import backend
-import dialogs
-import register_icons
 import browser
 import pluginmanager
 import pluginimporter
-import io
-import overlaytools
-import searchbox
-##TODO: Windows workaround (no dbus)
+
+from uitools import dialogs
+from uitools import register_icons
+from uitools import overlay_tools
+from uitools import searchbox
+from uitools import floats
+from uitools.widget_tools import *
+
+from fstools import io
+from fstools import fileops
+#TODO: Windows workaround (no dbus)
 try:
-    import dbusserver
+    from fstools import dbusserver
 except:
     dbusserver = None
 import collectionmanager
-import floats
-from widget_tools import *
 
 
-##todo: don't want these dependencies here, should all be in backend and done in the worker
+#todo: don't want these dependencies here, should all be in backend and done in the worker
 import imagemanip
 import baseobjects
 import viewsupport
-import fileops
 
 
 class MainFrame(gtk.VBox):
@@ -84,7 +86,7 @@ class MainFrame(gtk.VBox):
         self.toplevel_window_state = ()
         self.toplevel_window_max =''
         self.lock=threading.Lock()
-        self.hover_cmds=overlaytools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
+        self.hover_cmds=overlay_tools.OverlayGroup(self,gtk.ICON_SIZE_MENU)
         self.volume_monitor=io.VolumeMonitor()
         self.volume_monitor.connect_after("mount-added",self.mount_added)
         self.volume_monitor.connect_after("mount-removed",self.mount_removed)

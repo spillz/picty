@@ -30,7 +30,7 @@ representation (works with pyexiv2 version 0.2 and later)
 import pyexiv2
 import gtk
 import tempfile
-import io
+from picty.fstools import io
 import os.path
 import json
 

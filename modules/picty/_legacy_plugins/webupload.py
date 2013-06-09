@@ -31,7 +31,7 @@ import gobject
 from picty import settings
 from picty import pluginbase
 from picty import imagemanip
-from picty import io
+from picty.fstools import io
 from picty import metadata
 
 import webupload_services as services

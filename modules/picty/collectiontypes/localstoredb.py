@@ -5,7 +5,7 @@ import os.path
 
 import baseobjects
 import viewsupport
-import monitor2 as monitor
+from picty.fstools import monitor2 as monitor
 
 
 class FilterFunc(object):

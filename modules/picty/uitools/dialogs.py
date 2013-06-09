@@ -27,10 +27,10 @@ import gtk
 from datetime import date
 
 #local imports
-import settings
-import metadata
-import io
-import baseobjects
+from picty import settings
+from picty import metadata
+from picty.fstools import io
+from picty import baseobjects
 
 def box_add(box,widget_data,label_text):
     hbox=gtk.HBox()

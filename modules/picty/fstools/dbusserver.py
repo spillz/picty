@@ -23,6 +23,8 @@ import dbus
 import dbus.service
 import dbus.glib
 
+from picty import pluginmanager
+
 ##todo: create dbus service file to autostart picty if dbus is inactive
 
 server=None
@@ -36,21 +38,18 @@ class DBusServer(dbus.service.Object):
 
     @dbus.service.method('org.spillz.picty',in_signature='s',out_signature='s')
     def media_connected(self, uri):
-        import pluginmanager
         pluginmanager.mgr.callback('media_connected',uri)
         print "DBus media connection event for "+uri
         return 'success'
 
     @dbus.service.method('org.spillz.picty',in_signature='s',out_signature='s')
     def open_uri(self, uri):
-        import pluginmanager
         pluginmanager.mgr.callback('open_uri',uri)
         print "DBus open uri event for "+uri
         return 'success'
 
     @dbus.service.method('org.spillz.picty',in_signature='s',out_signature='s')
     def open_device(self, device):
-        import pluginmanager
         pluginmanager.mgr.callback('open_device',device)
         print "DBus open device event for "+device
         return 'success'

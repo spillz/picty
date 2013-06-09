@@ -25,7 +25,7 @@ import settings
 import os.path
 
 import baseobjects
-import io
+from fstools import io
 
 try:
     from collectiontypes import localstorebin

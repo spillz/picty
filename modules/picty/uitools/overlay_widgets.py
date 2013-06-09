@@ -1,5 +1,4 @@
 import gtk, gobject
-import overlaytools
 
 def grow(al,rect,pixels):
     r=gtk.gdk.Rectangle(max(rect.x-pixels,al.x),

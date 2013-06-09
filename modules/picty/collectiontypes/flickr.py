@@ -51,13 +51,13 @@ from picty import pluginmanager
 from picty import settings
 from picty import baseobjects
 from picty import simple_parser as sp
-from picty import dialogs
 from picty import backend
 from picty import imagemanip
 from picty import metadata
 from picty import viewsupport
-from picty import io
-from picty import widgetbuilder as wb
+from picty.fstools import io
+from picty.uitools import dialogs
+from picty.uitools import widget_builder as wb
 import simpleview
 
 datefmt="%Y-%m-%d %H:%M:%S"
@@ -712,7 +712,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         try:
             (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
             if not self.token:
-                from picty import dialogs
+                from picty.uitools import dialogs
                 result=dialogs.prompt_dialog('Allow Flickr Access','picty has opened a Flickr application authentication page in your web browser. Please give picty access to your flickr account by accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
             self.flickr_client.get_token_part_two((self.token, self.frob))
             login_resp=self.flickr_client.test_login()

@@ -26,7 +26,7 @@ import threading
 import gobject
 
 ##picty imports
-import settings
+from picty import settings
 
 ## contains a list of errors
 ## each error is a tuple (optype,imagepath,[destpath])

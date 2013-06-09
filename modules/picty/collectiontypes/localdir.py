@@ -38,8 +38,8 @@ from picty import viewsupport
 from picty import baseobjects
 from picty import simple_parser as sp
 from picty import imagemanip
-from picty import io
-from picty import dialogs
+from picty.fstools import io
+from picty.uitools import dialogs
 import localstorebin
 
 class NewLocalDirWidget(gtk.VBox):

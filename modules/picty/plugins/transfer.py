@@ -55,18 +55,18 @@ import re
 import gtk
 import gobject
 
-from picty import dialogs
 from picty import settings
 from picty import pluginbase
 from picty import pluginmanager
 from picty import imagemanip
-from picty import io
+from picty.fstools import io
 from picty import viewsupport
 from picty import metadata
 from picty import backend
 from picty import collectionmanager
 from picty import baseobjects
-from picty import widgetbuilder as wb
+from picty.uitools import dialogs
+from picty.uitools import widget_builder as wb
 
 
 class TransferImportJob(backend.WorkerJob):

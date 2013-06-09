@@ -4,7 +4,8 @@ import gtk
 from datetime import date, datetime, timedelta
 import time
 
-from picty import dialogs, metadata
+from picty import metadata
+import dialogs
 
 class SearchBox(gtk.HBox):
     def __init__(self):

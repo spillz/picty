@@ -33,8 +33,8 @@ import threading
 
 import settings
 import baseobjects
-import io
 import pluginmanager
+from fstools import io
 
 from math import log
 import uuid

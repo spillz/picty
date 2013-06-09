@@ -39,7 +39,7 @@ import baseobjects
 import viewsupport
 import imagemanip
 import pluginmanager
-import io
+from fstools import io
 from logger import log
 
 def idle_add(*args):

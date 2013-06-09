@@ -59,8 +59,8 @@ class PluginManager():
         try:
             plugin=self.plugins[name][0]
             self.plugins[name][0]=None
-            import overlaytools
-            overlaytools.deregister_all_tools_for_plugin(plugin)
+            from uitools import overlay_tools
+            overlay_tools.deregister_all_tools_for_plugin(plugin)
             plugin.plugin_shutdown(False)
         except:
             pass

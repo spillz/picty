@@ -30,10 +30,10 @@ import tempfile
 from picty import imagemanip
 from picty import settings
 from picty import pluginbase
-from picty import dialogs
+from picty.uitools import dialogs
 from picty import metadata
 from picty import backend
-from picty import io
+from picty.fstools import io
 
 class ImageWriteJob(backend.WorkerJob):
     def __init__(self,worker,collection,browser,plugin,item,src_path,dest_path):

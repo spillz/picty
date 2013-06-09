@@ -32,12 +32,12 @@ import pango
 gobject.threads_init()
 
 import settings
-import io
+from fstools import io
 import imagemanip
 import pluginmanager
 import metadata
 import viewsupport
-import overlay_widgets
+from uitools import overlay_widgets
 
 
 class ImageLoader:

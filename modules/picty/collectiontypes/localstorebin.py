@@ -39,17 +39,17 @@ from picty import pluginmanager
 from picty import settings
 #todo: this is a workaround in case of no pyinotify (partially for windows)
 try:
-    from phraymd import monitor2 as monitor
+    from picty.fstools import monitor2 as monitor
 except:
     monitor=None
 from picty import viewsupport
 from picty import baseobjects
 from picty import simple_parser as sp
-from picty import dialogs
+from picty.uitools import dialogs
 from picty import imagemanip
 from picty import backend
-from picty import io
-from picty import widgetbuilder as wb
+from picty.fstools import io
+from picty.uitools import widget_builder as wb
 import simpleview
 
 

@@ -137,7 +137,7 @@ class FlickrService(UploadServiceBase):
         self.flickr_client = flickrapi.FlickrAPI(self.api_key, self.api_secret)
         (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='write')
         if not self.token:
-            from picty import dialogs
+            from picty.uitools import dialogs
             result=dialogs.prompt_dialog('Allow Flickr Access','picty has opened a Flickr application authentication page in your web browser. Please give picty access to your flickr account accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
 
     def t_login(self):

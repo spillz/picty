@@ -1,7 +1,7 @@
 import gtk
 import os.path
 
-import settings
+from picty import settings
 
 '''Registers new icons with gtk.  Tries to use already existing icons
 if they are available, otherwise it loads them from files.'''
@@ -23,7 +23,7 @@ filename=os.path.abspath(__file__)
 if filename.startswith('/usr/share/picty/picty/register_icons.py'):
     icon_path='/usr/share/picty/icons/'
 else:
-    icon_path=os.path.join(os.path.split(os.path.split(os.path.split(filename)[0])[0])[0],'icons/')
+    icon_path=os.path.join(os.path.split(filename)[0],'..','..','..','icons/')
 print 'REGISTERING ICONS IN',icon_path
 
 def register_iconset(icon_info):

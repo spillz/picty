@@ -45,7 +45,7 @@ gobject.threads_init()
 import settings
 import viewer
 import backend
-import dialogs
+from uitools import dialogs
 import pluginmanager
 import viewsupport
 import io
