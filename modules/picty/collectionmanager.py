@@ -163,17 +163,19 @@ class CollectionSet(gobject.GObject):
         for id in self.collections:
             del self[id]
 
-    def get_icon(self, icon_id_list):
+    def get_icon(self, icon_or_list):
         pb = None
-        icon = self.style.lookup_icon_set(icon_id_list)
-        if icon!=None:
-            pb = icon.render_icon(self.style, gtk.TEXT_DIR_NONE, gtk.STATE_NORMAL, gtk.ICON_SIZE_MENU, None, None)
-#        t=gtk.icon_theme_get_default()
-#        ii=t.choose_icon(icon_id_list,gtk.ICON_SIZE_MENU,0)
-#        try:
-#            pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
-#        except:
-#            pb=None
+        if isinstance(icon_or_list,str):
+            icon = self.style.lookup_icon_set(icon_or_list)
+            if icon!=None:
+                pb = icon.render_icon(self.style, gtk.TEXT_DIR_NONE, gtk.STATE_NORMAL, gtk.ICON_SIZE_MENU, None, None)
+        else: ##should be a tuple/list
+            t=gtk.icon_theme_get_default()
+            ii=t.choose_icon(icon_or_list,gtk.ICON_SIZE_MENU,0)
+            try:
+                pb=gtk.gdk.pixbuf_new_from_file(ii.get_filename()) if ii.get_filename() else None
+            except:
+                pass
         return pb
 
     def count(self,type=None):
