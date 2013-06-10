@@ -236,6 +236,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
+        self.a_box.pack_start(self.store_thumbnails_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
@@ -275,6 +276,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
         self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images'])
         self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1)
         self.sidecar_check.set_active(val_dict['use_sidecars'])
@@ -324,10 +326,10 @@ class NewLocalStoreWidget(gtk.VBox):
         self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
+        self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
-        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
 
         self.pack_start(self.a_frame,False)
         self.show_all()
@@ -375,6 +377,7 @@ class NewLocalStoreWidget(gtk.VBox):
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
         self.monitor_images_check.set_active(val_dict['monitor_image_dirs'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
         self.store_thumbs_combo.set_form_data(val_dict['store_thumbs_with_images'])
         self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
         self.trash_location_combo.set_form_data(0 if val_dict['trash_location'] is not None else 1)
@@ -430,7 +433,7 @@ class Collection(baseobjects.CollectionBase):
     user_creatable=True
     view_class=simpleview.SimpleView
     pref_items=baseobjects.CollectionBase.pref_items+('image_dirs','recursive','verify_after_walk','load_meta','load_embedded_thumbs',
-                'load_preview_icons','trash_location','thumbnail_cache_dir','monitor_image_dirs','rescan_at_open','store_thumbs_with_images','use_sidecars')
+                'load_preview_icons','trash_location','thumbnail_cache_dir','monitor_image_dirs','rescan_at_open','store_thumbnails','store_thumbs_with_images','use_sidecars')
     def __init__(self,prefs): #todo: store base path for the collection
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self)
@@ -448,6 +451,7 @@ class Collection(baseobjects.CollectionBase):
         self.trash_location='OPEN-DESKTOP' #none defaults to <collection dir>/.trash
         self.thumbnail_cache_dir=None #use gnome/freedesktop if none, otherwise specifies a directory (usually a hidden folder below the image collection folder)
         self.monitor_image_dirs=True
+        self.store_thumbnails=True
         self.store_thumbs_with_images=False
         self.rescan_at_open=True
         self.use_sidecars=False
@@ -847,7 +851,7 @@ class Collection(baseobjects.CollectionBase):
         'create a cached thumbnail of the image'
         if not force and (self.load_embedded_thumbs or self.load_preview_icons):
             return False
-        imagemanip.make_thumb(item,self,interrupt_fn,force,self.thumbnail_cache_dir)
+        imagemanip.make_thumb(item,self,interrupt_fn,force,self.thumbnail_cache_dir,write_to_cache = self.store_thumbnails)
 ## TODO: Why was the update_thumb_date call here??? Maybe a FAT issue?
 ##        imagemanip.update_thumb_date(item,cache=self.thumbnail_cache_dir)
         return

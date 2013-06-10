@@ -66,7 +66,7 @@ class NewLocalDirWidget(gtk.VBox):
         self.store_thumbnails_check.set_active(True)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
-        #self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
+        self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
 
         self.pack_start(self.recursive_button,False)
         self.pack_start(self.a_frame,False)
@@ -124,6 +124,7 @@ class LocalDirPrefWidget(gtk.VBox):
         self.store_thumbnails_check.set_active(True)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
 
         self.pack_start(self.recursive_button,False)
         self.pack_start(self.a_frame,False)
@@ -146,7 +147,7 @@ class LocalDirPrefWidget(gtk.VBox):
                 'load_meta':self.load_meta_check.get_active(),
                 'load_embedded_thumbs':self.use_internal_thumbnails_check.get_active(),
                 'load_preview_icons':self.use_internal_thumbnails_check.get_active() and not self.load_meta_check.get_active(),
-#                'store_thumbnails':self.store_thumbnails_check.get_active(),
+                'store_thumbnails':self.store_thumbnails_check.get_active(),
                 }
 
     def set_values(self,val_dict):
@@ -157,7 +158,7 @@ class LocalDirPrefWidget(gtk.VBox):
         self.recursive_button.set_active(val_dict['recursive'])
         self.load_meta_check.set_active(val_dict['load_meta'])
         self.use_internal_thumbnails_check.set_active(val_dict['load_embedded_thumbs'])
-#        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
+        self.store_thumbnails_check.set_active(val_dict['store_thumbnails'])
 
 
 
@@ -190,6 +191,7 @@ class LocalDir(localstorebin.Collection):
         self.thumbnail_cache=None #use gnome/freedesktop or put in the image folder
         self.monitor_image_dirs=True
         self.rescan_at_open=True
+        self.store_thumbnails=False
         self.store_thumbs_with_images=False
         self.online=True
         self.use_sidecars=True

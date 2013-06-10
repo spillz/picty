@@ -84,7 +84,8 @@ class WorkerJob:
         this method will be called on outstanding jobs giving
         them an opportunity to notify gui etc
         '''
-        pass
+        idle_add(self.browser.update_backstatus,False,'Nothing to do')
+        idle_add(self.browser.update_status,2.0,'Nothing to do')
 
     def __call__(self):
         'subclasses should override this'

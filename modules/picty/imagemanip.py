@@ -888,7 +888,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 gdk_mime_types=set([m for n in gtk.gdk.pixbuf_get_formats() for m in n['mime_types']])
 
-def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embedded=False):
+def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embedded=False,write_to_cache=True):
     '''
     create a thumbnail from the original image using either PIL or dcraw
     interrupt_fn = callback that returns False if routine should cancel (not implemented)
@@ -904,7 +904,7 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
         print 'Forcing thumbnail creation'
         uri = io.get_uri(itemfile)
         thumb_uri=thumb_factory.lookup(uri,int(item.mtime))
-        if thumb_uri:
+        if write_to_cache and thumb_uri:
             os.remove(thumb_uri)
     if not force and item.thumb==False:
         return False
@@ -964,7 +964,7 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
     except:
         item.thumb=False
         item.thumburi=None
-        if cache==None:
+        if write_to_cache and cache==None:
             thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
         print 'Error creating thumbnail for',item
         import sys
@@ -977,14 +977,15 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
     uri = io.get_uri(itemfile)
     #save the new thumbnail
     try:
-        if cache==None:
-            thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
-            item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
-        else:
-            if not os.path.exists(cache):
-                os.makedirs(cache)
-            item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
-            thumb_pb.save(item.thumburi,"png")
+        if write_to_cache:
+            if cache==None:
+                thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
+                item.thumburi=thumb_factory.lookup(uri,int(item.mtime))
+            else:
+                if not os.path.exists(cache):
+                    os.makedirs(cache)
+                item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
+                thumb_pb.save(item.thumburi,"png")
     except:
         print 'Error writing thumbnnail for',item
         import sys
@@ -993,7 +994,7 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
         print tb_text
         item.thumb=False
         item.thumburi=None
-        if cache==None:
+        if write_to_cache and cache==None:
             thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
         return False
     item.thumb=thumb_pb

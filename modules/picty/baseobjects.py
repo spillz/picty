@@ -8,7 +8,6 @@ registered_collection_classes={}
 registered_view_classes={}
 registered_item_classes={}
 
-
 def register_collection(type_id,class0):
     registered_collection_classes[type_id]=class0
 def register_view(type_id,class0):

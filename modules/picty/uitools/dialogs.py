@@ -337,12 +337,17 @@ class CollectionTypeList(gtk.TreeView):
     def __init__(self):
         self.model=gtk.ListStore(str,str)
         r=baseobjects.registered_collection_classes
-        for c in r:
+        i=0
+        self.default=0
+        for c in sorted(list(r)):
             if r[c].user_creatable:
                 self.model.append([
                     r[c].type,
                     r[c].type_descr,
                         ])
+                if c=='LOCALSTORE':
+                    self.default=i
+                i+=1
         gtk.TreeView.__init__(self,self.model)
         self.set_headers_visible(False)
         self.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_NONE)
@@ -387,7 +392,6 @@ class NewCollectionDialog(gtk.Dialog):
             for c in r:
                 w=r[c].add_widget
                 if w:
-                    print c
                     self.dialogs[c]=w(self,pref_dict)
 
             frame=gtk.Frame("Collection Types")
@@ -397,7 +401,7 @@ class NewCollectionDialog(gtk.Dialog):
             self.vbox.pack_start(self.hbox)
             sel=self.types_list.get_selection()
             self.ctype=None
-            sel.select_path('0')
+            sel.select_path(str(self.types_list.default))
         else:
             self.dialogs={}
             self.ctype=type
