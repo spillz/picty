@@ -823,7 +823,10 @@ def delete_thumb(item):
     if item.thumb:
         item.thumb=None
     if item.thumburi:
-        io.remove_file(item.thumburi) ##TODO: What if item is in gnome cache? (This will probably work, but maybe not the best way to remove items from cache?) commented code below doesn't look right (deleting twice?)
+        try:
+            io.remove_file(item.thumburi) ##TODO: What if item is in gnome cache? (This will probably work, but maybe not the best way to remove items from cache?) commented code below doesn't look right (deleting twice?)
+        except:
+            pass
 ##        thumburi=thumb_factory.lookup(uri,int(item.mtime))
 ##        os.remove(thumburi)
         item.thumburi=None
@@ -885,7 +888,7 @@ def rotate_thumb(item,right=True,interrupt_fn=None):
 
 gdk_mime_types=set([m for n in gtk.gdk.pixbuf_get_formats() for m in n['mime_types']])
 
-def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
+def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embedded=False):
     '''
     create a thumbnail from the original image using either PIL or dcraw
     interrupt_fn = callback that returns False if routine should cancel (not implemented)
@@ -922,10 +925,14 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None):
         else:
             try:
                 mime=io.get_mime_type(itemfile)
-                if mime in gdk_mime_types:
-                    thumb_pb=gtk.gdk.pixbuf_new_from_file_at_size(itemfile,128,128)
-                    thumb_pb=orient_pixbuf(thumb_pb,item.meta)
-                    image=None
+                if use_embedded and load_embedded_thumb(item,collection):
+                    thumb_pb = item.thumb
+                    image = None
+                    print 'Used embedded thumb'
+                elif not settings.is_windows and mime in gdk_mime_types: #todo: this is completely broken on windows
+                    thumb_pb = gtk.gdk.pixbuf_new_from_file_at_size(itemfile,128,128)
+                    thumb_pb = orient_pixbuf(thumb_pb,item.meta)
+                    image = None
                     print 'Opened with GDK'
                 else:
                     image=Image.open(itemfile)

@@ -34,6 +34,14 @@ from picty.fstools import io
 import os.path
 import json
 
+import time
+
+from picty import settings
+if settings.is_windows:
+    import Image
+    import ImageFile
+
+
 pyexiv2.register_namespace('http://www.picty.net/xmpschema/1.0/','picty')
 ##todo: reimplement for xmp support
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
@@ -62,6 +70,7 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
     thumbnail - if True, load the thumbnail from the file
     missing_only - if True, will set keys that aren't already present in the item
     '''
+    t=time.time()
     try:
         if not filename:
             filename=item.uid
@@ -78,17 +87,26 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
             try:
                 previews = rawmeta.previews
                 if previews:
-                    preview = previews[-1]
-                    pbloader = gtk.gdk.PixbufLoader()
-                    pbloader.write(preview.data)
-                    pb = pbloader.get_pixbuf()
-                    pbloader.close()
-                    w=pb.get_width()
-                    h=pb.get_height()
-                    a=max(128,w,h)
-                    item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+                    preview = previews[-1] #get the last (usually smallest) image
+                    if settings.is_windows: #something is missing from GTK+ on windows -- prevents PixbufLoader from reading the preview images
+                        p = ImageFile.Parser()
+                        p.feed(preview.data)
+                        im = p.close()
+                        from picty import imagemanip
+                        im.thumbnail((128,128),Image.ANTIALIAS)
+                        item.thumb = imagemanip.image_to_pixbuf(im)
+                    else:
+                        pbloader = gtk.gdk.PixbufLoader()
+                        pbloader.write(preview.data)
+                        pb = pbloader.get_pixbuf()
+                        pbloader.close()
+                        w=pb.get_width()
+                        h=pb.get_height()
+                        a=max(128,w,h)
+                        item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
                 else:
                     item.thumb=False
+                print 'preview read took',time.time()-t
 
             except:
                 print 'Load thumbnail failed for',item.uid
@@ -103,6 +121,7 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
             item.meta={}
         return False
     item.mark_meta_saved()
+    print 'read took',time.time()-t
     return True
 
 
@@ -123,14 +142,22 @@ def load_thumbnail(item=None,filename=None):
             previews = rawmeta.previews
             if previews:
                 preview = previews[-1]
-                pbloader = gtk.gdk.PixbufLoader()
-                pbloader.write(preview.data)
-                pb = pbloader.get_pixbuf()
-                pbloader.close()
-                w=pb.get_width()
-                h=pb.get_height()
-                a=max(128,w,h)
-                item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+                if settings.is_windows: #something is missing from GTK+ on windows -- prevents PixbufLoader from reading the preview images
+                    p = ImageFile.Parser()
+                    p.feed(preview.data)
+                    im = p.close()
+                    from picty import imagemanip
+                    im.thumbnail((128,128),Image.ANTIALIAS)
+                    item.thumb = imagemanip.image_to_pixbuf(im)
+                else:
+                    pbloader = gtk.gdk.PixbufLoader()
+                    pbloader.write(preview.data)
+                    pb = pbloader.get_pixbuf()
+                    pbloader.close()
+                    w=pb.get_width()
+                    h=pb.get_height()
+                    a=max(128,w,h)
+                    item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
             else:
                 item.thumb=False
                 return False
