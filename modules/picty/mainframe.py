@@ -1057,27 +1057,7 @@ class MainFrame(gtk.VBox):
             if event.keyval==65535: #del key, deletes selection
                 fileops.worker.delete(self.active_browser().active_view,self.update_status)
             elif event.keyval==65307: #escape
-                    if self.is_iv_fullscreen:
-                        ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
-                        self.iv.ImageNormal()
-                        self.view_image(self.iv.item)
-                        if self.active_collection is not None:
-                            self.active_browser().show()
-                        self.hpane_ext.show()
-                        self.toolbar1.show()
-                        self.info_bar.show()
-                        self.browser_nb.show()
-                        if self.sidebar_toggle.get_active():
-                            self.sidebar.show()
-                        self.is_iv_fullscreen=False
-                        self.browser_box.remove(self.iv)
-                        if self.active_browser() is not None:
-                            self.active_browser().add_viewer(self.iv)
-                        if self.is_fullscreen:
-                            self.window.unfullscreen()
-                            self.is_fullscreen=False
-                    else:
-                        self.hide_image()
+                self.escape_viewer()
             elif event.keyval==65480: # f11
                 if self.is_fullscreen:
                     self.window.unfullscreen()
@@ -1138,20 +1118,11 @@ class MainFrame(gtk.VBox):
                     self.iv.set_zoom('fit')
         return True
 
-
-#    def resize_browser_pane(self):
-#        w,h=self.hpane.window.get_size()
-#        if self.sidebar.get_property('visible'):
-#            if self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position()>=w:
-#                self.hpane.set_position(w/2)
-#            else:
-#                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad+self.hpane_ext.get_position())
-#        else:
-#            if self.browser.geo_thumbwidth+2*self.browser.geo_pad>=w:
-#                self.hpane.set_position(w/2)
-#            else:
-#                self.hpane.set_position(self.browser.geo_thumbwidth+2*self.browser.geo_pad)
-
+    def escape_viewer(self):
+        if self.is_iv_fullscreen:
+            self.toggle_viewer_fullscreen()
+        else:
+            self.hide_image()
 
     def toggle_viewer_fullscreen(self):
         if self.iv.item is not None and self.active_browser() is not None:
