@@ -420,6 +420,7 @@ class WalkDirectoryJob(WorkerJob):
         self.collection_walker=None
         self.notify_items=[]
         self.done=False
+        self.last_walk_state=None
 
     def __call__(self):
         collection=self.collection
@@ -440,7 +441,11 @@ class WalkDirectoryJob(WorkerJob):
         scan_dir=collection.image_dirs[0]
         while jobs.ishighestpriority(self):
             try:
-                root,dirs,files=self.collection_walker.next()
+                if self.last_walk_state is None:
+                    root,dirs,files=self.collection_walker.next()
+                else:
+                    root,dirs,files = self.last_walk_state
+                    self.last_walk_state = None
             except StopIteration:
                 self.done=True
                 break
@@ -455,7 +460,8 @@ class WalkDirectoryJob(WorkerJob):
                 del dirs[:]
 
             idle_add(self.browser.update_backstatus,True,'Scanning for new images')
-            for p in files: #may need some try, except blocks
+            while jobs.ishighestpriority(self) and len(files)>0:
+                p=files.pop(0)
                 r=p.rfind('.')
                 if r<=0:
                     continue
@@ -511,7 +517,9 @@ class WalkDirectoryJob(WorkerJob):
             pluginmanager.mgr.resume_collection_events(self.collection)
             if collection.verify_after_walk:
                 self.worker.queue_job_instance(VerifyImagesJob(self.worker,self.collection,self.browser))
+            self.last_walk_state=None
             return True
+        self.last_walk_state=(root,dirs,files)
         return False
 
 
@@ -523,6 +531,7 @@ class WalkSubDirectoryJob(WorkerJob):
         self.notify_items=[]
         self.done=False
         self.sub_dir=sub_dir
+        self.last_walk_state=None
 
     def __call__(self):
         jobs=self.worker.jobs
@@ -542,7 +551,11 @@ class WalkSubDirectoryJob(WorkerJob):
             return True
         while jobs.ishighestpriority(self):
             try:
-                root,dirs,files=self.collection_walker.next()
+                if self.last_walk_state is None:
+                    root,dirs,files=self.collection_walker.next()
+                else:
+                    root,dirs,files = self.last_walk_state
+                    self.last_walk_state = None
             except StopIteration:
                 self.done=True
                 break
@@ -553,7 +566,8 @@ class WalkSubDirectoryJob(WorkerJob):
                 else:
                     i+=1
             idle_add(self.browser.update_backstatus,True,'Scanning for new images')
-            for p in files: #may need some try, except blocks
+            while jobs.ishighestpriority(self) and len(files)>0:
+                p=files.pop(0)
                 r=p.rfind('.')
                 if r<=0:
                     continue
@@ -588,9 +602,10 @@ class WalkSubDirectoryJob(WorkerJob):
             self.notify_items=[]
             self.collection_walker=None
             pluginmanager.mgr.resume_collection_events(self.collection)
+            self.last_walk_state=None
             return True
-        else:
-            return False
+        self.last_walk_state=(root,dirs,files)
+        return False
 
 
 def parse_filter_text(text):
