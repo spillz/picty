@@ -629,7 +629,7 @@ class TagFrame(gtk.VBox):
                         height=width*th/tw
                     else:
                         width=height*tw/th
-                    thumb_pb=thumb_pb.scale_simple(width*1.5,height*1.5,gtk.gdk.INTERP_BILINEAR)
+                    thumb_pb=thumb_pb.scale_simple(width*3/2,height*3/2,gtk.gdk.INTERP_BILINEAR)
                     self.set_and_save_user_bitmap(drop_iter,thumb_pb)
                 ## get the thumbnail and set the drop_iter row pixbuf and pixpath accordingly
                 pass
