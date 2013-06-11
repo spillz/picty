@@ -20,7 +20,7 @@ ICON_INFO = [
   ]
 
 filename=os.path.abspath(__file__)
-if filename.startswith('/usr/share/picty/picty/register_icons.py'):
+if filename.startswith('/usr/share/picty/picty/uitools/register_icons.py'):
     icon_path='/usr/share/picty/icons/'
 else:
     icon_path=os.path.join(os.path.split(filename)[0],'..','..','..','icons/')
