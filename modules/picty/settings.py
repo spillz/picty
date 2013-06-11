@@ -21,6 +21,7 @@ License:
 
 ##picty global settings
 import os
+import json
 import cPickle
 import Image
 import gtk
@@ -176,7 +177,7 @@ def save():
     finally:
         f.close()
 
-
+print dir()
 def load():
     global version, precache_count, custom_launchers, user_tag_info, places, layout, \
         active_collection_id, legacy_image_dirs, plugins_disabled, \
@@ -253,3 +254,33 @@ def init():
 
 def get_collection_files():
     return os.listdir(collections_dir)
+
+def save_addon_prefs(filename,data):
+    global settings_dir
+    try:
+        settings_file = os.path.join(settings_dir,filename+'.json')
+        f=open(settings_file,'wb')
+        str_data = json.dumps(data)
+        f.write(str_data)
+        f.close()
+    except:
+        print 'ERROR SAVING ADD-ON SETTINGS',filename
+        import sys,traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print tb_text
+
+def load_addon_prefs(filename):
+    global settings_dir
+    try:
+        settings_file = os.path.join(settings_dir,filename+'.json')
+        if os.path.exists(settings_file):
+            f=open(settings_file,'rb')
+            value=f.read()
+            f.close()
+            return json.loads(value)
+    except:
+        print 'ERROR LOADING ADD-ON SETTINGS',filename
+        import sys,traceback
+        tb_text=traceback.format_exc(sys.exc_info()[2])
+        print tb_text
+
