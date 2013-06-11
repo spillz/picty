@@ -260,7 +260,7 @@ def save_addon_prefs(filename,data):
     try:
         settings_file = os.path.join(settings_dir,filename+'.json')
         f=open(settings_file,'wb')
-        str_data = json.dumps(data)
+        str_data = json.dumps(data,sort_keys=True,indent=2)
         f.write(str_data)
         f.close()
     except:

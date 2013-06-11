@@ -140,29 +140,37 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.worker=mainframe.tm
         self.block_refresh={}
         user_tag_layout=user_tag_layout_default
-        try:
-            f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
-            user_tag_layout_version=cPickle.load(f)
-            user_tag_layout=cPickle.load(f)
-            f.close()
-            ##todo: could flush unused bitmaps out of the png_path
-        except:
-            print 'Tag Plugin: No tag layout data found'
+        data=settings.load_addon_prefs('tag_plugins_settings')
+        if data:
+            user_tag_layout = data['tag_layout']
+        else:
+            try:
+                f=open(os.path.join(settings.data_dir,'tag-layout'),'rb')
+                user_tag_layout_version=cPickle.load(f)
+                user_tag_layout=cPickle.load(f)
+                f.close()
+                ##todo: could flush unused bitmaps out of the png_path
+            except:
+                print 'Tag Plugin: No tag layout data found'
         self.tagframe=TagFrame(self.mainframe,user_tag_layout)
         self.tagframe.show_all()
         self.mainframe.sidebar.append_page(self.tagframe,gtk.Label("Tags"))
         self.mainframe.connect("tag-row-dropped",self.tag_dropped_in_browser)
         self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
     def plugin_shutdown(self,app_shutdown=False):
-        try:
-            f=open(os.path.join(settings.data_dir,'tag-layout'),'wb') ##todo: datadir must exist??
-            cPickle.dump(self.version,f,-1)
-            cPickle.dump(self.tagframe.get_user_tags(),f,-1)
-            f.close()
-        except:
-            print 'Tag Plugin: Failed to save tag layout'
-        self.tagframe.destroy()
-        del self.tagframe
+        data={
+            'version':self.version,
+            'tag_layout':self.tagframe.get_user_tags()
+        }
+        settings.save_addon_prefs('tag_plugin_settings',data)
+        legacy_file = os.path.join(settings.data_dir,'tag-layout')
+        if os.path.exists(legacy_file):
+            try:
+                io.remove_file(legacy_file)
+            except:
+                pass
+#        self.tagframe.destroy()
+#        del self.tagframe
     def t_collection_item_added(self,collection,item):
         '''item was added to the collection'''
         self.tagframe.tag_cloud[collection].add(item)
