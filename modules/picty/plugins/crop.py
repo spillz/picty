@@ -50,8 +50,13 @@ def set_crop_dimensions(self,cropd):
         elif xloc == 2:
             x=cropd[2]
             w=cropd[2]-cropd[0]
+
+        self.crop_bar['x'].handler_block_by_func(self.entry_changed)
         self.crop_bar['x'].set_text(str(x))
+        self.crop_bar['x'].handler_unblock_by_func(self.entry_changed)
+        self.crop_bar['w'].entry.handler_block_by_func(self.entry_changed)
         self.crop_bar['w'].entry.set_text(str(w))
+        self.crop_bar['w'].entry.handler_unblock_by_func(self.entry_changed)
 
         yloc = self.crop_bar['cy'].get_active()
         if yloc == 0:
@@ -64,8 +69,12 @@ def set_crop_dimensions(self,cropd):
             y=cropd[3]
             h=cropd[3]-cropd[1]
 
+        self.crop_bar['y'].handler_block_by_func(self.entry_changed)
         self.crop_bar['y'].set_text(str(y))
+        self.crop_bar['y'].handler_unblock_by_func(self.entry_changed)
+        self.crop_bar['h'].entry.handler_block_by_func(self.entry_changed)
         self.crop_bar['h'].entry.set_text(str(h))
+        self.crop_bar['h'].entry.handler_unblock_by_func(self.entry_changed)
 
 default_constraints = [
     (-1,-1,'none'),
@@ -206,8 +215,19 @@ class CropPlugin(pluginbase.Plugin):
                     l[2] = value
             elif dim=='w':
                 l[2] = l[0] + value
+                a=self.active_constraint
+                if a:
+                    yvalue=value*a[1]/a[0]
+                    print 'new height needed',yvalue
+                    l[3] = l[1] + yvalue
+                    self.crop_dimensions = tuple(l)
             elif dim=='h':
                 l[3] = l[1] + value
+                a=self.active_constraint
+                if a:
+                    xvalue=value*a[0]/a[1]
+                    l[2] = l[0] + xvalue
+                    self.crop_dimensions = tuple(l)
             self._crop_dimensions = tuple(l)
             self.viewer.redraw_view()
         except:
