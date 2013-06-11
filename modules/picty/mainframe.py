@@ -151,6 +151,12 @@ class MainFrame(gtk.VBox):
         self.neededitem=None
         self.viewer_toolbar=Toolbar()
         self.iv=viewer.ImageViewer(self.tm,self.viewer_toolbar,self.button_press_image_viewer,self.key_press_signal)
+
+        #The app has two distinct full screen modes
+        #is_fullscreen is true if the user has set the app to fullscreen mode
+        #is_iv_fullscreen is true if the user is viewing an image in fullscreen
+        #when leaving fullscreen from the image viewer, the app will remain in fullscreen mode if is_fullscreen is true
+        #TODO: for some reason if is_fullscreen is True the viewer won't display at all
         self.is_fullscreen=False
         self.is_iv_fullscreen=False
         self.is_iv_showing=False
@@ -1059,12 +1065,7 @@ class MainFrame(gtk.VBox):
             elif event.keyval==65307: #escape
                 self.escape_viewer()
             elif event.keyval==65480: # f11
-                if self.is_fullscreen:
-                    self.window.unfullscreen()
-                    self.is_fullscreen=False
-                else:
-                    self.window.fullscreen()
-                    self.is_fullscreen=True
+                self.toggle_fullscreen()
             elif event.keyval==92: #backslash
                 self.active_browser().active_view.reverse=not self.active_browser().active_view.reverse
                 self.active_browser().resize_and_refresh_view(self.active_collection)
@@ -1124,15 +1125,23 @@ class MainFrame(gtk.VBox):
         else:
             self.hide_image()
 
+    def toggle_fullscreen(self):
+        if self.is_fullscreen:
+            self.window.unfullscreen()
+            self.is_fullscreen=False
+        else:
+            self.window.fullscreen()
+            self.is_fullscreen=True
+
+
     def toggle_viewer_fullscreen(self):
         if self.iv.item is not None and self.active_browser() is not None:
-            if self.is_iv_fullscreen:
+            if self.is_iv_fullscreen: #go back to browser view
                 ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                 self.viewer_fullscreen_toggle.set_active(False)
                 self.iv.ImageNormal()
-                if self.is_fullscreen:
+                if not self.is_fullscreen:
                     self.window.unfullscreen()
-                    self.is_fullscreen=False
                 self.view_image(self.iv.item)
                 self.info_bar.show()
                 self.browser_nb.show()
@@ -1142,7 +1151,7 @@ class MainFrame(gtk.VBox):
                 self.browser_box.remove(self.iv)
                 self.active_browser().add_viewer(self.iv)
                 self.is_iv_fullscreen=False
-            else:
+            else: # go to fullscreen view of the image
                 self.viewer_fullscreen_toggle.set_active(True)
                 self.active_browser().remove_viewer(self.iv)
                 self.browser_box.pack_start(self.iv,True)
@@ -1155,7 +1164,6 @@ class MainFrame(gtk.VBox):
                 self.is_iv_fullscreen=True
                 if not self.is_fullscreen:
                     self.window.fullscreen()
-                    self.is_fullscreen=True
         self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
     def close_viewer(self,widget,item):
@@ -1208,9 +1216,8 @@ class MainFrame(gtk.VBox):
         self.info_bar.show()
         self.is_iv_fullscreen=False
         self.viewer_fullscreen_toggle.set_active(False)
-        if self.is_fullscreen:
+        if not self.is_fullscreen:
             self.window.unfullscreen()
-            self.is_fullscreen=False
         browser.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
