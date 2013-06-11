@@ -25,12 +25,15 @@ License:
 
 import gtk
 import Image
+import json
+import os.path
 
 from picty import imagemanip
 from picty import settings
 from picty import pluginbase
 from picty.uitools import widget_builder as wb
 
+#get/set properties for crop_dimensions variable - used to automatically updat the text entry controls whenever they change
 def get_crop_dimensions(self):
     return self._crop_dimensions
 
@@ -64,6 +67,24 @@ def set_crop_dimensions(self,cropd):
         self.crop_bar['y'].set_text(str(y))
         self.crop_bar['h'].entry.set_text(str(h))
 
+default_constraints = [
+    (-1,-1,'none'),
+    (1,1,'aspect'),
+    (3,2,'aspect'),
+    (2,3,'aspect'),
+    (4,3,'aspect'),
+    (3,4,'aspect'),
+    (6,4,'aspect'),
+    (4,6,'aspect'),
+    (7,5,'aspect'),
+    (5,7,'aspect'),
+    (10,8,'aspect'),
+    (8,10,'aspect'),
+    (16,9,'aspect'),
+    (9,16,'aspect'),
+    (16,10,'aspect'),
+    (10,16,'aspect'),
+    ]
 
 class CropPlugin(pluginbase.Plugin):
     name='Crop'
@@ -80,30 +101,14 @@ class CropPlugin(pluginbase.Plugin):
         self.hover_zone=0
         self.dragging=False
         self.active_constraint=None
+        self.constraints=default_constraints
+        self.settings_file = os.path.join(settings.settings_dir,'crop_plugin_settings.json')
 
     def plugin_init(self,mainframe,app_init):
         self.viewer=mainframe.iv
-
+        self.load_prefs()
         #todo: need to add a widget to handle editing of constraints
         self.constraint_model = gtk.ListStore(int,int,str)
-        default_constraints = [
-            (-1,-1,'none'),
-            (1,1,'aspect'),
-            (3,2,'aspect'),
-            (2,3,'aspect'),
-            (4,3,'aspect'),
-            (3,4,'aspect'),
-            (6,4,'aspect'),
-            (4,6,'aspect'),
-            (7,5,'aspect'),
-            (5,7,'aspect'),
-            (10,8,'aspect'),
-            (8,10,'aspect'),
-            (16,9,'aspect'),
-            (9,16,'aspect'),
-            (16,10,'aspect'),
-            (10,16,'aspect'),
-            ]
         #todo: save default as json file
 
         self.crop_bar = wb.PaddedHBox([
@@ -113,7 +118,7 @@ class CropPlugin(pluginbase.Plugin):
             ('y',wb.Entry(),False),
             ('w',wb.LabeledEntry(' W:'),False),
             ('h',wb.LabeledEntry(' H:'),False),
-            ('constraints',wb.ComboBox(default_constraints,self.constraint_model),True),
+            ('constraints',wb.ComboBox(self.constraints,self.constraint_model),True),
             ('edit_constraints',wb.Button('...'),False),
             ('ok',wb.Button('_Apply'),False),
             ('cancel',wb.Button('_Cancel'),False),
@@ -139,6 +144,38 @@ class CropPlugin(pluginbase.Plugin):
         cb['cancel'].connect("clicked",self.crop_cancel_callback)
 
         imagemanip.transformer.register_transform('crop',self.do_crop_transform)
+
+    def plugin_shutdown(self,app_shutdown=False):
+        #deregister the button in the viewer
+        if self.crop_mode:
+            self.reset(app_shutdown)
+        self.save_prefs()
+        imagemanip.transformer.deregister_transform('crop')
+
+    def save_prefs(self):
+        try:
+            f=open(self.settings_file,'wb')
+            data = {'constraints':self.constraints,'version':self.version}
+            str_data = json.dumps(data)
+            f.write(str_data)
+            f.close()
+        except:
+            print 'ERROR SAVING CROP PLUGIN SETTINGS'
+            import sys,traceback
+            tb_text=traceback.format_exc(sys.exc_info()[2])
+            print tb_text
+
+
+    def load_prefs(self):
+        try:
+            if os.path.exists(self.settings_file):
+                f=open(self.settings_file,'rb')
+                value=f.read()
+                self.constraints = json.loads(value)['constraints']
+                f.close()
+        except:
+            print 'ERROR LOADING CROP PLUGIN SETTINGS'
+
 
     def entry_changed(self, entry, dim):
         value = entry.get_text()
@@ -190,12 +227,6 @@ class CropPlugin(pluginbase.Plugin):
         else:
             value = '%i%s%i%s'%(x,d,y,s)
         cell.set_property("text",value)
-
-    def plugin_shutdown(self,app_shutdown=False):
-        #deregister the button in the viewer
-        if self.crop_mode:
-            self.reset(app_shutdown)
-        imagemanip.transformer.deregister_transform('crop')
 
     def do_crop_transform(self,item,params):
         item.image=item.image.crop(params['pixel_rect'])
