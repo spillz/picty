@@ -29,38 +29,167 @@ import Image
 from picty import imagemanip
 from picty import settings
 from picty import pluginbase
+from picty.uitools import widget_builder as wb
+
+def get_crop_dimensions(self):
+    return self._crop_dimensions
+
+def set_crop_dimensions(self,cropd):
+    self._crop_dimensions = cropd
+    if self.crop_bar:
+        xloc = self.crop_bar['cx'].get_active()
+        if xloc == 0:
+            x=cropd[0]
+            w=cropd[2]-cropd[0]
+        elif xloc == 1:
+            x=(cropd[0]+cropd[2])/2
+            w=cropd[2]-cropd[0]
+        elif xloc == 2:
+            x=cropd[2]
+            w=cropd[2]-cropd[0]
+        self.crop_bar['x'].set_text(str(x))
+        self.crop_bar['w'].entry.set_text(str(w))
+
+        yloc = self.crop_bar['cy'].get_active()
+        if yloc == 0:
+            y=cropd[1]
+            h=cropd[3]-cropd[1]
+        elif yloc == 1:
+            y=(cropd[1]+cropd[3])/2
+            h=cropd[3]-cropd[1]
+        elif yloc == 2:
+            y=cropd[3]
+            h=cropd[3]-cropd[1]
+
+        self.crop_bar['y'].set_text(str(y))
+        self.crop_bar['h'].entry.set_text(str(h))
+
 
 class CropPlugin(pluginbase.Plugin):
     name='Crop'
     display_name='Image Crop'
     api_version='0.1.0'
     version='0.1.0'
+    crop_dimensions = property(get_crop_dimensions, set_crop_dimensions)
+    crop_bar = None
     def __init__(self):
         self.crop_mode=False
         self.crop_anchor=(0,0)
-        self.crop_dimensions=(0,0,0,0)
+        self._crop_dimensions=(0,0,0,0)
         self.move_mode=False
         self.hover_zone=0
         self.dragging=False
+        self.active_constraint=None
 
     def plugin_init(self,mainframe,app_init):
         self.viewer=mainframe.iv
 
-        self.aspect_label=gtk.Label("Constraints")
-        self.aspect_entry=gtk.ComboBoxEntry()
-        self.aspect_entry.connect("changed",self.crop_aspect)
-        self.ok_button=gtk.Button("_Apply")
-        self.ok_button.connect("clicked",self.crop_do_callback)
-        self.cancel_button=gtk.Button("_Cancel")
-        self.cancel_button.connect("clicked",self.crop_cancel_callback)
+        #todo: need to add a widget to handle editing of constraints
+        self.constraint_model = gtk.ListStore(int,int,str)
+        default_constraints = [
+            (-1,-1,'none'),
+            (1,1,'aspect'),
+            (3,2,'aspect'),
+            (2,3,'aspect'),
+            (4,3,'aspect'),
+            (3,4,'aspect'),
+            (6,4,'aspect'),
+            (4,6,'aspect'),
+            (7,5,'aspect'),
+            (5,7,'aspect'),
+            (10,8,'aspect'),
+            (8,10,'aspect'),
+            (16,9,'aspect'),
+            (9,16,'aspect'),
+            (16,10,'aspect'),
+            (10,16,'aspect'),
+            ]
+        #todo: save default as json file
 
-        self.crop_bar=gtk.HBox()
-        self.crop_bar.pack_start(self.aspect_label,False)
-        self.crop_bar.pack_start(self.aspect_entry)
-        self.crop_bar.pack_start(self.cancel_button,False)
-        self.crop_bar.pack_start(self.ok_button,False)
-        self.crop_bar.show_all()
+        self.crop_bar = wb.PaddedHBox([
+            ('cx',wb.ComboBox(['Lft','Mid','Rgt']),False),
+            ('x',wb.Entry(),False),
+            ('cy',wb.ComboBox(['Top','Mid','Btm']),False),
+            ('y',wb.Entry(),False),
+            ('w',wb.LabeledEntry(' W:'),False),
+            ('h',wb.LabeledEntry(' H:'),False),
+            ('constraints',wb.ComboBox(default_constraints,self.constraint_model),True),
+            ('edit_constraints',wb.Button('...'),False),
+            ('ok',wb.Button('_Apply'),False),
+            ('cancel',wb.Button('_Cancel'),False),
+        ])
+        cb=self.crop_bar
+        for k in ['x','y']:
+            cb[k].set_width_chars(4)
+            cb[k].connect('changed',self.entry_changed,k)
+            cb['c'+k].set_active(0)
+            cb['c'+k].connect('changed',self.crop_entry_axis)
+        for k in ['w','h']:
+            cb[k].entry.set_width_chars(4)
+            cb[k].entry.connect('changed',self.entry_changed,k)
+
+        cell = gtk.CellRendererText()
+        cb['constraints'].pack_start(cell, True)
+        cb['constraints'].set_cell_data_func(cell, self.constraint_as_text)
+        cb['constraints'].set_active(0)
+
+        cb.show_all()
+        cb['constraints'].connect("changed",self.crop_aspect)
+        cb['ok'].connect("clicked",self.crop_do_callback)
+        cb['cancel'].connect("clicked",self.crop_cancel_callback)
+
         imagemanip.transformer.register_transform('crop',self.do_crop_transform)
+
+    def entry_changed(self, entry, dim):
+        value = entry.get_text()
+        if value =='':
+            return
+        l = list(self._crop_dimensions)
+        try:
+            value = int(value)
+            if dim=='x':
+                xloc=self.crop_bar['cx'].get_active()
+                if xloc==0:
+                    l[0] = value
+                elif xloc==1:
+                    w = l[2] - l[0]
+                    l[0] = value - w/2
+                    l[2] = value + w/2 + w%2
+                elif xloc==2:
+                    l[2] = value
+            elif dim=='y':
+                yloc=self.crop_bar['cy'].get_active()
+                if yloc==0:
+                    l[1] = value
+                elif yloc==1:
+                    h = l[3] - l[1]
+                    l[0] = value - h/2
+                    l[1] = value - h/2 + h%2
+                elif yloc==2:
+                    l[2] = value
+            elif dim=='w':
+                l[2] = l[0] + value
+            elif dim=='h':
+                l[3] = l[1] + value
+            self._crop_dimensions = tuple(l)
+            self.viewer.redraw_view()
+        except:
+            self.crop_dimensions = self._crop_dimensions
+
+    def constraint_as_text(self, celllayout, cell, model, iter):
+        x,y,t = model[iter]
+        d=''
+        s=''
+        if t == 'aspect':
+            d=':'
+        elif t == 'pixels':
+            d='x'
+            s='px'
+        if x<0 and y<0:
+            value = 'None'
+        else:
+            value = '%i%s%i%s'%(x,d,y,s)
+        cell.set_property("text",value)
 
     def plugin_shutdown(self,app_shutdown=False):
         #deregister the button in the viewer
@@ -126,6 +255,39 @@ class CropPlugin(pluginbase.Plugin):
         #slider has been shifted, crop the image accordingly (on the background thread?)
         if not self.crop_mode:
             return
+        self.active_constraint=self.constraint_model[self.crop_bar["constraints"].get_active_iter()]
+        if self.active_constraint[0]<0 and self.active_constraint[1]<0:
+            self.active_constraint=None
+        X = (self._crop_dimensions[0],self._crop_dimensions[2])
+        Y = (self._crop_dimensions[1],self._crop_dimensions[3])
+        X,Y = self.aspect_constrained(X,Y)
+        self.crop_dimensions = (X[0],Y[0],X[1],Y[1])
+        self.viewer.resize_and_refresh_view()
+
+    def aspect_constrained(self,X,Y):
+        '''
+        given a rectangle X = (left,right),Y = (top,bottom), return a resized rect that matches the aspect ratio
+        '''
+        c = self.active_constraint
+        if c:
+            w = X[1] - X[0]
+            h = Y[1] - Y[0]
+            x = X[0]
+            y = Y[0]
+            s = 1 if w*h>0 else -1
+            if c[1]*w > c[0]*h:
+                w = s*c[0]*h/c[1]
+            else:
+                h = s*c[1]*w/c[0]
+            X = (x,x+w)
+            Y = (y,y+h)
+        return X,Y
+
+    def crop_entry_axis(self,widget):
+        #slider has been shifted, crop the image accordingly (on the background thread?)
+        if not self.crop_mode:
+            return
+        self.crop_dimensions=self._crop_dimensions
         self.viewer.resize_and_refresh_view()
 
     def viewer_to_image(self,x,y):
@@ -171,6 +333,7 @@ class CropPlugin(pluginbase.Plugin):
             if not self.move_mode:
                 X=(self.crop_anchor[0],x)
                 Y=(self.crop_anchor[1],y)
+                X,Y = self.aspect_constrained(X,Y)
                 self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
             else:
                 x0,y0,x1,y1=self.crop_dimensions
@@ -192,6 +355,7 @@ class CropPlugin(pluginbase.Plugin):
             if not self.move_mode:
                 X=(self.crop_anchor[0],x)
                 Y=(self.crop_anchor[1],y)
+                X,Y = self.aspect_constrained(X,Y)
                 self.crop_dimensions=(min(X),min(Y),max(X),max(Y))
             else:
                 x0,y0,x1,y1=self.crop_dimensions

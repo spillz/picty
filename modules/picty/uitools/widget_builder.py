@@ -164,14 +164,21 @@ class LabeledComboBox(gtk.HBox):
     '''
     A combo box with optional label
     '''
-    def __init__(self,label,choices):
+    def __init__(self,label,choices,model=None):
         gtk.HBox.__init__(self,False,8)
         if label:
             l=gtk.Label(label)
             self.pack_start(l,False)
-        self.combo=gtk.combo_box_new_text()
+        if model==None:
+            cell = gtk.CellRendererText()
+            self.combo.pack_start(cell, True)
+            self.combo.add_attribute(cell, 'text', 0)
+        self.combo=gtk.ComboBox(model)
         for c in choices:
-            self.combo.append_text(c)
+            if type(c)==str:
+                liststore.append([c])
+            else:
+                liststore.append(c)
         self.pack_start(self.combo)
         self.show_all()
 
