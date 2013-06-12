@@ -1143,6 +1143,9 @@ class MainFrame(gtk.VBox):
                 self.iv.ImageNormal()
                 if not self.is_fullscreen:
                     self.window.unfullscreen()
+                else:
+                    self.window.unfullscreen()
+                    self.window.fullscreen()
                 self.view_image(self.iv.item)
                 self.info_bar.show()
                 self.browser_nb.show()
@@ -1166,6 +1169,9 @@ class MainFrame(gtk.VBox):
                 self.sidebar.hide()
                 self.is_iv_fullscreen=True
                 if not self.is_fullscreen:
+                    self.window.fullscreen()
+                else:
+                    self.window.unfullscreen()
                     self.window.fullscreen()
         self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
 
