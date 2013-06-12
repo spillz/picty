@@ -93,32 +93,40 @@ class MapPlugin(pluginbase.Plugin):
         self.mapframe=MapFrame(self.worker)
         panel.vbox.pack_start(self.mapframe)
         places={'Home':(0.0,0.0,1)}
-        try:
-            f=open(os.path.join(settings.data_dir,'map-places'),'rb')
-            version=cPickle.load(f)
-            places=cPickle.load(f)
-            if version>='0.1.1':
-                source=cPickle.load(f)
-                self.mapframe.set_preferred_source(source)
-            f.close()
-        except:
-            log_err('No map-places file found')
+        latlon=None
+        place = None
+        data = settings.load_addon_prefs('map_plugin_settings')
+        if data:
+            places = data['places']
+            source = data['source']
+            place = data['place']
+        else:
+            try:
+                f=open(os.path.join(settings.data_dir,'map-places'),'rb')
+                version=cPickle.load(f)
+                places=cPickle.load(f)
+                if version>='0.1.1':
+                    source=cPickle.load(f)
+                f.close()
+            except:
+                log_err('No map-places file found')
         self.mapframe.set_places(places)
+        self.mapframe.set_place(place)
+        if source is not None:
+            self.mapframe.set_preferred_source(source)
         ##TODO: should update map images whenever there are relevent collection changes (will need to maintian list of displayed images) -- may be enough to trap view add/remove and GPS metadata changes
         self.mainframe.connect("view-rebuild-complete",self.view_rebuild_complete)
 
     def view_rebuild_complete(self,mainframe,browser):
         self.mapframe.update_map_items()
     def plugin_shutdown(self,app_shutdown=False):
-        try:
-            f=open(os.path.join(settings.data_dir,'map-places'),'wb') ##todo: datadir must exist??
-            cPickle.dump(self.version,f,-1)
-            cPickle.dump(self.mapframe.get_places(),f,-1)
-            cPickle.dump(self.mapframe.get_source(),f,-1)
-            f.close()
-        except:
-            log_err('Error saving map places')
-
+        data = {
+            'places':self.mapframe.get_places(),
+            'source':self.mapframe.get_source(),
+            'place':self.mapframe.get_place(),
+            'version':self.version
+            }
+        settings.save_addon_prefs('map_plugin_settings',data)
         self.mainframe.float_mgr.remove_panel('Map')
         self.mapframe.destroy()
         del self.mapframe
@@ -130,6 +138,7 @@ class MapFrame(gtk.VBox):
         gtk.VBox.__init__(self)
         hbox = gtk.HBox(False, 0)
         self.worker=worker
+        self.place_request=None
 
         self.ignore_release=False
 
@@ -208,13 +217,12 @@ class MapFrame(gtk.VBox):
 
     def set_source_signal(self,widget):
         if self.osm:
-            ll=self.osm.screen_to_geographic(0,0)
-            place=(ll[0],ll[1],self.osm.get_property('zoom'))
+            place=self.get_place()
             self.osm_box.remove(self.osm)
             self.osm.destroy()
         else:
-            place=None
-##                place=(0.0,0.0,1)
+            place=self.place_request
+            self.place_request=None
         if '__version__' in dir(osmgpsmap) and osmgpsmap.__version__>='0.4.0':
             self.osm = osmgpsmap.GpsMap(
                 tile_cache=os.path.join(settings.cache_dir,'maps/')+map_source[widget.get_active()][2],
@@ -283,6 +291,18 @@ class MapFrame(gtk.VBox):
         if self.osm.get_property('tiles-queued') != 0:
             print self.osm.get_property('tiles-queued'), 'tiles queued'
         return True
+
+    def set_place(self,place):
+        if self.osm:
+            if place:
+                self.osm.set_mapcenter(*place) #todo: this causes an assertion - why?
+                self.update_map_items()
+        else:
+            self.place_request = place
+
+    def get_place(self):
+        if self.osm:
+            return (self.osm.get_property('latitude'),self.osm.get_property('longitude'),self.osm.get_property('zoom'))
 
     def zoom_in_clicked(self, button):
         self.osm.set_zoom(self.osm.get_property('zoom') + 1)
