@@ -1035,6 +1035,8 @@ def load_embedded_thumb(item,collection):
         return True
     return False
 
+import time
+
 def load_thumb(item,collection,cache=None):
     '''
     load thumbnail from a cache location (optionally using the
@@ -1048,6 +1050,7 @@ def load_thumb(item,collection,cache=None):
     image=None
     try:
         if item.thumburi:
+            t=time.time()
             image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
             s=(image.get_width(),image.get_height())
             if s[0]>128 or s[1]>128:
@@ -1055,6 +1058,7 @@ def load_thumb(item,collection,cache=None):
                 w=s[0]*128/m
                 h=s[1]*128/m
                 image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
+            print 'thumb load took',time.time()-t
         else:
             if cache!=None:
                 thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
