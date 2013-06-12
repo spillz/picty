@@ -209,7 +209,7 @@ class MainFrame(gtk.VBox):
                         ##type,name,callback,callback to test whether to show item,bool to determine if render always or only on hover,Icon
                         (button,'Close',(fn,self.close_viewer),None,[gtk.STOCK_CLOSE],'Main','Hides the image viewer'),
                         (button,'Locate in Browser',(fn,self.show_viewed_item),cb_has_item,[gtk.STOCK_HOME],'Main','Locate the image in the browser'),
-                        (toggle,'Fullscreeen',(lambda *x:self.toggle_viewer_fullscreen()),cb_has_item,[gtk.STOCK_FULLSCREEN],'Main','Toggle fullscreen view of image'),
+                        (toggle,'Fullscreeen',(fn,self.toggle_viewer_fullscreen),cb_has_item,[gtk.STOCK_FULLSCREEN],'Main','Toggle fullscreen view of image'),
                         (button,'Save',(fn,self.save_item),cb_item_changed_icon,[gtk.STOCK_SAVE,gtk.STOCK_DELETE],'Main','Save changes to the metadata in this image'),
                         (button,'Revert',(fn,self.revert_item),cb_item_changed_icon,[gtk.STOCK_REVERT_TO_SAVED,gtk.STOCK_UNDELETE],'Main','Revert changes to the metadata in this image'),
                         (button,'Delete',(fn,self.delete_item),cb_item_not_deleted,[gtk.STOCK_DELETE],'Main','Mark for deletion (not final until confirmed)'),
@@ -557,7 +557,6 @@ class MainFrame(gtk.VBox):
             self.browser_nb.reorder_child(page,page_num-1)
 
     def browser_page_switch(self,notebook,page,page_num):
-        print 'SWITCH',page_num,self.browser_nb.get_current_page()
         id=None
         if page_num>=0:
             page=self.browser_nb.get_nth_page(page_num)
@@ -1057,7 +1056,7 @@ class MainFrame(gtk.VBox):
 
     def key_press_signal(self,obj,event,browser=None):
         keyname = gtk.gdk.keyval_name(event.keyval)
-        print 'KEYPRESS',event.keyval,keyname
+        print 'Key',event.keyval,keyname
         b=self.active_browser()
         if event.type==gtk.gdk.KEY_PRESS:
             if event.keyval==65535: #del key, deletes selection
@@ -1134,11 +1133,13 @@ class MainFrame(gtk.VBox):
             self.is_fullscreen=True
 
 
-    def toggle_viewer_fullscreen(self):
+    def toggle_viewer_fullscreen(self,*args):
         if self.iv.item is not None and self.active_browser() is not None:
             if self.is_iv_fullscreen: #go back to browser view
                 ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
+                self.viewer_fullscreen_toggle.handler_block_by_func(self.iv.toolbar_click)
                 self.viewer_fullscreen_toggle.set_active(False)
+                self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
                 self.iv.ImageNormal()
                 if not self.is_fullscreen:
                     self.window.unfullscreen()
@@ -1152,7 +1153,9 @@ class MainFrame(gtk.VBox):
                 self.active_browser().add_viewer(self.iv)
                 self.is_iv_fullscreen=False
             else: # go to fullscreen view of the image
+                self.viewer_fullscreen_toggle.handler_block_by_func(self.iv.toolbar_click)
                 self.viewer_fullscreen_toggle.set_active(True)
+                self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
                 self.active_browser().remove_viewer(self.iv)
                 self.browser_box.pack_start(self.iv,True)
                 self.iv.ImageFullscreen(self.window.get_size())
@@ -1214,10 +1217,12 @@ class MainFrame(gtk.VBox):
         if self.sidebar_toggle.get_active():
             self.sidebar.show()
         self.info_bar.show()
-        self.is_iv_fullscreen=False
-        self.viewer_fullscreen_toggle.set_active(False)
-        if not self.is_fullscreen:
+        if self.is_iv_fullscreen and not self.is_fullscreen:
             self.window.unfullscreen()
+            self.viewer_fullscreen_toggle.handler_block_by_func(self.iv.toolbar_click)
+            self.viewer_fullscreen_toggle.set_active(False)
+            self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
+            self.is_iv_fullscreen=False
         browser.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
