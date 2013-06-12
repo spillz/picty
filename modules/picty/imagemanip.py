@@ -80,6 +80,11 @@ rotate_right_tx={1:6,2:5,3:8,4:7,5:4,6:3,7:2,8:1}
 rotate_left_tx={1:8,2:7,3:6,4:5,5:2,6:1,7:4,8:3}
 
 
+if settings.is_windows:
+    pil_load_thumb_flags = 0
+else:
+    pil_load_thumb_flags = Image.ANTIALIAS
+
 import time
 
 ##global ram cache for images and thumbs
@@ -1035,7 +1040,6 @@ def load_embedded_thumb(item,collection):
         return True
     return False
 
-import time
 
 def load_thumb(item,collection,cache=None):
     '''
@@ -1050,19 +1054,27 @@ def load_thumb(item,collection,cache=None):
     image=None
     try:
         if item.thumburi:
-            t=time.time()
-            image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
-            s=(image.get_width(),image.get_height())
-            if s[0]>128 or s[1]>128:
-                m=max(s)
-                w=s[0]*128/m
-                h=s[1]*128/m
-                image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
-            print 'thumb load took',time.time()-t
+            if settings.is_windows:
+                image=Image.open(item.thumburi)
+                image.thumbnail((128,128),pil_load_thumb_flags)
+                image =  image_to_pixbuf(image)
+            else:
+                image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
+                s=(image.get_width(),image.get_height())
+                if s[0]>128 or s[1]>128:
+                    m=max(s)
+                    w=s[0]*128/m
+                    h=s[1]*128/m
+                    image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
+                print 'thumb load took',time.time()-t
         else:
             if cache!=None:
-                thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
-                if os.path.exists(thumburi):
+                thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))
+                if os.path.exists(thumburi+'.png'):
+                    thumburi = thumburi+'.png'
+                    item.thumburi=thumburi
+                elif os.path.exists(thumburi+'.jpg'):
+                    thumburi = thumburi+'.jpg'
                     item.thumburi=thumburi
             elif collection.local_filesystem:
                 itemfile=collection.get_path(item)
@@ -1071,10 +1083,12 @@ def load_thumb(item,collection,cache=None):
                 if not item.thumburi:
                     thumburi=thumb_factory_large.lookup(uri,int(item.mtime))
             if thumburi:
+                t=time.time()
                 image = Image.open(thumburi)
-                image.thumbnail((128,128))
+                image.thumbnail((128,128),pil_load_thumb_flags)
                 image=image_to_pixbuf(image) #todo: not sure this works (maybe because thumbnail doesn't finalize data?)
             elif item.thumburi:
+                t=time.time()
                 image=gtk.gdk.pixbuf_new_from_file(item.thumburi)
                 image=image.scale_simple(128,128, gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
     except:

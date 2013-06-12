@@ -177,7 +177,6 @@ def save():
     finally:
         f.close()
 
-print dir()
 def load():
     global version, precache_count, custom_launchers, user_tag_info, places, layout, \
         active_collection_id, legacy_image_dirs, plugins_disabled, \
