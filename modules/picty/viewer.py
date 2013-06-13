@@ -272,7 +272,9 @@ class ImageViewer(gtk.VBox):
         self.item=None
         self.browser=None
         self.last_sizing = None
-        self.ImageNormal()
+        self.freeze_image_refresh = False
+        self.freeze_image_resize = False
+        self.fullscreen = False
 
     def plugin_request_control(self,plugin,force=False):
         '''
@@ -317,19 +319,37 @@ class ImageViewer(gtk.VBox):
         self.imarea.unhide_child(self.toolbar)
         return True
 
-    def ImageFullscreen(self,size):
+    def ImageFullscreen(self,callback,is_already_fullscreen=False):
+        if self.freeze_image_refresh or self.freeze_image_resize:
+            return
+        if self.fullscreen:
+            return
         self.fullscreen=True
         screen=gtk.gdk.screen_get_default()
         if screen is not None:
             w=screen.get_width()
             h=screen.get_height()
             if w>0 and h>0:
-                self.resize_and_refresh_view(w,h,'fit')
+                self.resize_and_refresh_view(w,h)
+        self.fullscreen_callback=callback
+        self.fullscreen_size_hint=self.imarea.window.get_size()
         self.freeze_image_refresh=True
-        self.fullscreen_size_hint=size
+        if not is_already_fullscreen:
+            self.freeze_image_resize=True
 
-    def ImageNormal(self):
+    def ImageNormal(self,callback,is_already_fullscreen=False):
+        if self.freeze_image_refresh or self.freeze_image_resize:
+            return
+        if not self.fullscreen:
+            return
         self.fullscreen=False
+        w,h = self.fullscreen_size_hint
+        self.fullscreen_callback=callback
+        self.resize_and_refresh_view(w,h)
+        self.fullscreen=False
+        self.freeze_image_refresh=True
+        if not is_already_fullscreen:
+            self.freeze_image_resize=True
 
     def _destroy(self,event):
         self.request_plugin_release(True)
@@ -355,6 +375,9 @@ class ImageViewer(gtk.VBox):
             self.redraw_view()
         else:
             print 'WARNING: Sized wrong item',item.uid
+        if self.freeze_image_refresh:
+            self.fullscreen_callback()
+            self.freeze_image_refresh=False
 
     def ImageLoaded(self,item):
         if 'image' in item.__dict__ and item.image not in (None,False):
@@ -462,12 +485,12 @@ class ImageViewer(gtk.VBox):
 
     def window_state_changed(self, widget, event):
         if event.changed_mask & gtk.gdk.WINDOW_STATE_FULLSCREEN:
-            self.freeze_image_refresh=False
-            self.resize_and_refresh_view()
+            self.freeze_image_resize=False
+            #self.resize_and_refresh_view()
 
     def resize_and_refresh_view(self,w=None,h=None,zoom=None,force=False):
         #forces an image to be resized with a call to the worker thread
-        if self.freeze_image_refresh:
+        if self.freeze_image_refresh or self.freeze_image_resize:
             return
         if zoom==None:
             zoom=self.zoom_level

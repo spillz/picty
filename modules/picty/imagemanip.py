@@ -1066,7 +1066,6 @@ def load_thumb(item,collection,cache=None):
                     w=s[0]*128/m
                     h=s[1]*128/m
                     image=image.scale_simple(w,h,gtk.gdk.INTERP_BILINEAR) #todo: doesn't this distort non-square images?
-                print 'thumb load took',time.time()-t
         else:
             if cache!=None:
                 thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))

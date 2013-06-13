@@ -66,7 +66,6 @@ import imagemanip
 import baseobjects
 import viewsupport
 
-
 class MainFrame(gtk.VBox):
     '''
     this is the main widget box containing all of the gui widgets
@@ -355,8 +354,8 @@ class MainFrame(gtk.VBox):
         self.pack_start(self.info_bar,False)
 
         self.connect("destroy", self.destroy)
-        ##window.add_events(gtk.gdk.WINDOW_STATE)
-        window.connect("window-state-event", self.iv.window_state_changed)
+        window.add_events(gtk.gdk.WINDOW_STATE)
+        window.connect_after("window-state-event", self.iv.window_state_changed)
         self.plugmgr.init_plugins(self)
 
         if len(settings.layout)>0:
@@ -1132,21 +1131,28 @@ class MainFrame(gtk.VBox):
             self.window.fullscreen()
             self.is_fullscreen=True
 
-
     def toggle_viewer_fullscreen(self,*args):
+        if self.iv.item is not None and self.active_browser() is not None:
+            if self.is_iv_fullscreen: #go back to browser view
+                self.iv.ImageNormal(self.do_toggle_viewer_fullscreen,self.is_fullscreen)
+            else:
+                if self.is_iv_showing:
+                    self.view_image(self.iv.item)
+                self.iv.ImageFullscreen(self.do_toggle_viewer_fullscreen,self.is_fullscreen)
+
+    def do_toggle_viewer_fullscreen(self):
         if self.iv.item is not None and self.active_browser() is not None:
             if self.is_iv_fullscreen: #go back to browser view
                 ##todo: merge with view_image/hide_image code (using extra args to control full screen stuff)
                 self.viewer_fullscreen_toggle.handler_block_by_func(self.iv.toolbar_click)
                 self.viewer_fullscreen_toggle.set_active(False)
                 self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
-                self.iv.ImageNormal()
                 if not self.is_fullscreen:
                     self.window.unfullscreen()
                 else:
                     self.window.unfullscreen()
                     self.window.fullscreen()
-                self.view_image(self.iv.item)
+                #self.view_image(self.iv.item)
                 self.info_bar.show()
                 self.browser_nb.show()
                 if self.sidebar_toggle.get_active():
@@ -1161,8 +1167,7 @@ class MainFrame(gtk.VBox):
                 self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
                 self.active_browser().remove_viewer(self.iv)
                 self.browser_box.pack_start(self.iv,True)
-                self.iv.ImageFullscreen(self.window.get_size())
-                self.view_image(self.iv.item)
+                #self.view_image(self.iv.item)
                 self.toolbar1.hide()
                 self.info_bar.hide()
                 self.browser_nb.hide()
@@ -1208,15 +1213,17 @@ class MainFrame(gtk.VBox):
             ind=browser.item_to_view_index(self.iv.item)
             browser.center_view_offset(ind)
         self.update_image_edit_selector(item)
-        browser.update_scrollbar()
-        browser.update_required_thumbs()
-        browser.resize_and_refresh_view(self.active_collection)
-        browser.focal_item=item
-        browser.grab_focus()
+
+        if not self.is_iv_fullscreen:
+            browser.update_scrollbar()
+            browser.update_required_thumbs()
+            browser.resize_and_refresh_view(self.active_collection)
+            browser.focal_item=item
+            browser.grab_focus()
 
     def hide_image(self):
         browser=self.active_browser()
-        self.iv.ImageNormal()
+#        self.iv.ImageNormal(self.do_toggle_viewer_fullscreen)
         self.iv.hide()
         self.browser_nb.show()
         self.toolbar1.show()
@@ -1228,7 +1235,7 @@ class MainFrame(gtk.VBox):
             self.viewer_fullscreen_toggle.handler_block_by_func(self.iv.toolbar_click)
             self.viewer_fullscreen_toggle.set_active(False)
             self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
-            self.is_iv_fullscreen=False
+#            self.is_iv_fullscreen=False
         browser.grab_focus()
 
     def button_press_image_viewer(self,obj,event):
