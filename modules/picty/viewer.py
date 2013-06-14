@@ -164,9 +164,10 @@ class ImageLoader:
 class ImageViewer(gtk.VBox):
     TARGET_TYPE_URI_LIST = 0
     TARGET_TYPE_IMAGE = 2
-    def __init__(self,worker,toolbar,click_callback=None,key_press_callback=None):
+    def __init__(self,worker,toolbar,viewer_window,click_callback=None,key_press_callback=None):
         gtk.VBox.__init__(self)
         self.toolbar=toolbar
+        self.viewer_window = viewer_window
         self.il=ImageLoader(self)
         self.imarea=overlay_widgets.DrawableOverlayHover()
         self.imarea.add_with_bg(toolbar,0,1,0,None)
@@ -325,7 +326,7 @@ class ImageViewer(gtk.VBox):
         if self.fullscreen:
             return
         self.fullscreen=True
-        screen=gtk.gdk.screen_get_default()
+        screen = self.viewer_window.get_screen()
         if screen is not None:
             w=screen.get_width()
             h=screen.get_height()
@@ -346,7 +347,6 @@ class ImageViewer(gtk.VBox):
         w,h = self.fullscreen_size_hint
         self.fullscreen_callback=callback
         self.resize_and_refresh_view(w,h)
-        self.fullscreen=False
         self.freeze_image_refresh=True
 #        if not is_already_fullscreen:
 #            self.freeze_image_resize=True
@@ -486,7 +486,7 @@ class ImageViewer(gtk.VBox):
     def window_state_changed(self, widget, event):
         if event.changed_mask & gtk.gdk.WINDOW_STATE_FULLSCREEN:
             self.freeze_image_resize=False
-            #self.resize_and_refresh_view()
+            self.redraw_view()
 
     def resize_and_refresh_view(self,w=None,h=None,zoom=None,force=False):
         #forces an image to be resized with a call to the worker thread
