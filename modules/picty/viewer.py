@@ -334,8 +334,8 @@ class ImageViewer(gtk.VBox):
         self.fullscreen_callback=callback
         self.fullscreen_size_hint=self.imarea.window.get_size()
         self.freeze_image_refresh=True
-        if not is_already_fullscreen:
-            self.freeze_image_resize=True
+#        if not is_already_fullscreen:
+#            self.freeze_image_resize=True
 
     def ImageNormal(self,callback,is_already_fullscreen=False):
         if self.freeze_image_refresh or self.freeze_image_resize:
@@ -348,8 +348,8 @@ class ImageViewer(gtk.VBox):
         self.resize_and_refresh_view(w,h)
         self.fullscreen=False
         self.freeze_image_refresh=True
-        if not is_already_fullscreen:
-            self.freeze_image_resize=True
+#        if not is_already_fullscreen:
+#            self.freeze_image_resize=True
 
     def _destroy(self,event):
         self.request_plugin_release(True)
