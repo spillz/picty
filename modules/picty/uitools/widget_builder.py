@@ -169,11 +169,11 @@ class LabeledComboBox(gtk.HBox):
         if label:
             l=gtk.Label(label)
             self.pack_start(l,False)
+        self.combo=gtk.ComboBox(model)
         if model==None:
             cell = gtk.CellRendererText()
             self.combo.pack_start(cell, True)
             self.combo.add_attribute(cell, 'text', 0)
-        self.combo=gtk.ComboBox(model)
         for c in choices:
             if type(c)==str:
                 liststore.append([c])
