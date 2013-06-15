@@ -163,7 +163,7 @@ try:
 
     def copy_file(src,dest,overwrite=False,follow_symlinks=True):
         try:
-            flags=0
+            flags=gio.FILE_COPY_TARGET_DEFAULT_PERMS
             if overwrite:
                 flags|=gio.FILE_COPY_OVERWRITE
             if not follow_symlinks:
@@ -174,7 +174,7 @@ try:
 
     def move_file(src,dest,overwrite=False,follow_symlinks=True):
         try:
-            flags=0
+            flags=gio.FILE_COPY_TARGET_DEFAULT_PERMS
             if overwrite:
                 flags|=gio.FILE_COPY_OVERWRITE
             if not follow_symlinks:
