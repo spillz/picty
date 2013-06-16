@@ -48,7 +48,7 @@ import backend
 from uitools import dialogs
 import pluginmanager
 import viewsupport
-import io
+from fstools import io
 
 import imagemanip
 
