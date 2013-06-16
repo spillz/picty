@@ -99,14 +99,23 @@ class EnhancePlugin(pluginbase.Plugin):
 
     def do_enhance_transform(self,item,params):
         image=item.image
-        enhancer_sharpen = ImageEnhance.Sharpness(image)
-        image = enhancer_sharpen.enhance(params['sharpness'])
-        enhancer_color = ImageEnhance.Color(image)
-        image = enhancer_color.enhance(params['color'])
-        enhancer_contrast = ImageEnhance.Contrast(image)
-        image = enhancer_contrast.enhance(params['contrast'])
-        enhancer_brightness = ImageEnhance.Brightness(image)
-        item.image = enhancer_brightness.enhance(params['brightness'])
+        if params['sharpness']!=1.0:
+            enhancer_sharpen = ImageEnhance.Sharpness(image)
+            image = enhancer_sharpen.enhance(params['sharpness'])
+
+        if params['color']!=1.0:
+            enhancer_color = ImageEnhance.Color(image)
+            image = enhancer_color.enhance(params['color'])
+
+        if params['contrast']!=1.0:
+            enhancer_contrast = ImageEnhance.Contrast(image)
+            image = enhancer_contrast.enhance(params['contrast'])
+
+        if params['brightness']!=1.0:
+            enhancer_brightness = ImageEnhance.Brightness(image)
+            image = enhancer_brightness.enhance(params['brightness'])
+
+        item.image = image
 
     def viewer_register_shortcut(self,shortcut_toolbar):
         '''
