@@ -22,7 +22,7 @@ License:
 '''
 
 api_version='0.1.0' ##this is the current version of the API
-
+import backend
 
 ##TODO: callbacks related to changing the view or collection should also pass the view/collection
 
@@ -52,6 +52,20 @@ class Plugin(object):
         '''when overriding __init__ keep in mind that the gui is NOT ready at this point.
         save gui initialization until plugin_init'''
         pass
+    def run_as_job(self,task_cb,complete_cb,task_priority=900,*args):
+        '''
+        a simple interface for running task_cb as a background task on the worker thread
+        task_cb is a callback defined as task_cb(job, item, continue_cb, *args)
+        complete_cb is a callback defined as task_cb(job, item, continue_cb, *args)
+        make sure task_priority is below 1000 (compare with other tasks in backend.py for an appropriate value, 900 is high)
+        args will be pass to task_cb
+        continue_cb is a function that returns True until the worker wants the thread to pause for another job (or to quit)
+        don't use this if your task can't be broken up into chunks and needs to be guaranteed it can finish
+        '''
+        mainframe=self.mainframe
+        j = backend.FlexibleJob(mainframe.tm,mainframe.active_collection,mainframe.active_browser(),task_cb,complete_cb,*args)
+        j.priority = task_priority
+        self.mainframe.tm.queue_job_instance(j)
     '''CALLBACKS'''
     '''application'''
     def plugin_init(self,mainframe,app_init):
@@ -61,7 +75,7 @@ class Plugin(object):
         but the worker thread has yet to start. (this is because the app has just started)
         if app_init is false, the app is already running
         '''
-        pass
+        self.mainframe = mainframe
     def plugin_job_registered(self,plugin_class):
         '''
         A plugin has been registered

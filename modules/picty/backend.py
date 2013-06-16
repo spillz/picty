@@ -242,6 +242,42 @@ class ThumbnailJob(WorkerJob):
         return False
 
 
+class FlexibleJob(WorkerJob):
+    def __init__(self,worker,collection,browser,task_cb,complete_cb,*args):
+        WorkerJob.__init__(self,'FLEXJOB',900,worker,collection,browser)
+        self.task_cb = task_cb
+        self.complete_cb = complete_cb
+        self.args = args
+        self.pos = 0
+        self.limit_to_view = True
+
+    def __call__(self):
+        jobs=self.worker.jobs
+        collection=self.collection
+        continue_cb = lambda: jobs.ishighestpriority(self)
+
+        i=self.pos
+        if self.limit_to_view:
+            listitems=self.collection.get_active_view()
+        else:
+            listitems=self.collection
+        while i<len(listitems) and jobs.ishighestpriority(self):
+            item=listitems(i)
+            self.task_cb(self,item,continue_cb,*self.args)
+#            idle_add(self.browser.update_status,1.0*i/len(listitems),'Operating on selected images')
+            i+=1
+        if i<len(listitems) and not self.cancel:
+            self.pos=i
+        else:
+#            idle_add(self.browser.update_status,1.0*i/len(listitems),'Operating on selected images')
+#            idle_add(self.browser.resize_and_refresh_view,self.collection)
+            self.pos=0
+            self.cancel=False
+            idle_add(self.complete_cb)
+            return True
+        return False
+
+
 class CollectionUpdateJob(WorkerJob):
     def __init__(self,worker,collection,browser,queue):
         WorkerJob.__init__(self,'COLLECTIONUPDATE',900,worker,collection,browser)

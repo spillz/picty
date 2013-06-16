@@ -90,7 +90,7 @@ class MapPlugin(pluginbase.Plugin):
         self.mainframe=mainframe
         self.worker=mainframe.tm
         panel=mainframe.float_mgr.add_panel('Map','Show or hide the map panel (use it to view or set the location of your images)','picty-map')
-        self.mapframe=MapFrame(self.worker)
+        self.mapframe=MapFrame(self)
         panel.vbox.pack_start(self.mapframe)
         places={'Home':(0.0,0.0,1)}
         latlon=None
@@ -134,10 +134,11 @@ class MapPlugin(pluginbase.Plugin):
 
 
 class MapFrame(gtk.VBox):
-    def __init__(self,worker):
+    def __init__(self,plugin):
         gtk.VBox.__init__(self)
         hbox = gtk.HBox(False, 0)
-        self.worker=worker
+        self.plugin=plugin
+        self.worker=plugin.worker
         self.place_request=None
 
         self.ignore_release=False
@@ -277,15 +278,29 @@ class MapFrame(gtk.VBox):
             if ind<0:
                 return False
             item=self.worker.active_collection(ind)
-            if item.thumb:
+            if not item.selected:
+                if item.thumb:
+                    coords=osm.get_co_ordinates(x, y)
+                    lat=coords[0]/math.pi*180
+                    lon=coords[1]/math.pi*180
+                    from picty import imagemanip
+                    pb=imagemanip.scale_pixbuf(item.thumb,40)
+                    self.osm.add_image(lat,lon,pb)
+                    imagemanip.set_coords(item,lat,lon)
+                    self.update_map_items()
+            else:
                 coords=osm.get_co_ordinates(x, y)
                 lat=coords[0]/math.pi*180
                 lon=coords[1]/math.pi*180
+                self.plugin.run_as_job(self.geotag_selection,self.update_map_items,900,lat,lon)
+
+    def geotag_selection(self,job,item,continue_cb,lat,lon):
+        if item.selected:
+            if item.thumb:
                 from picty import imagemanip
                 pb=imagemanip.scale_pixbuf(item.thumb,40)
-                self.osm.add_image(lat,lon,pb)
                 imagemanip.set_coords(item,lat,lon)
-                self.update_map_items()
+                gobject.idle_add(self.osm.add_image,lat,lon,pb)
 
     def print_tiles(self):
         if self.osm.get_property('tiles-queued') != 0:
