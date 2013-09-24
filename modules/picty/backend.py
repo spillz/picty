@@ -864,7 +864,7 @@ EDIT_VIEW=2
 EDIT_SELECTION=3
 
 class EditMetaDataJob(WorkerJob):
-    def __init__(self,worker,collection,browser,mode,meta,keyword_string='',scope=EDIT_VIEW):
+    def __init__(self,worker,collection,browser,mode,meta,keyword_string='',scope=EDIT_SELECTION):
         WorkerJob.__init__(self,'EDITMETADATA',750,worker,collection,browser)
         self.pos=-1
         self.cancel=False
