@@ -1162,7 +1162,9 @@ class MainFrame(gtk.VBox):
                 self.viewer_fullscreen_toggle.handler_unblock_by_func(self.iv.toolbar_click)
                 self.active_browser().remove_viewer(self.iv)
                 self.viewer_window.add(self.iv)
+                self.viewer_window.present()
                 self.viewer_window.show()
+                self.viewer_window.move_to_other_monitor(self.get_window(),is_fullscreen=True)
                 self.iv.show()
                 self.is_iv_fullscreen=True
         self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
@@ -1202,13 +1204,14 @@ class MainFrame(gtk.VBox):
         self.update_image_edit_selector(item)
 
         if self.is_iv_fullscreen:
+            self.viewer_window.move_to_other_monitor(self.get_window(),is_fullscreen=True)
+            self.viewer_window.present()
             self.viewer_window.show()
-        else:
-            browser.update_scrollbar()
-            browser.update_required_thumbs()
-            browser.resize_and_refresh_view(self.active_collection)
-            browser.focal_item=item
-            browser.grab_focus()
+        browser.update_scrollbar()
+        browser.update_required_thumbs()
+        browser.resize_and_refresh_view(self.active_collection)
+        browser.focal_item=item
+        browser.grab_focus()
 
     def hide_image(self):
         browser=self.active_browser()
