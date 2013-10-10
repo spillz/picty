@@ -92,9 +92,10 @@ class MapPlugin(pluginbase.Plugin):
         panel=mainframe.float_mgr.add_panel('Map','Show or hide the map panel (use it to view or set the location of your images)','picty-map')
         self.mapframe=MapFrame(self)
         panel.vbox.pack_start(self.mapframe)
-        places={'Home':(0.0,0.0,1)}
-        latlon=None
+        places = {'Home':(0.0,0.0,1)}
+        latlon = None
         place = None
+	source = None
         data = settings.load_addon_prefs('map_plugin_settings')
         if data:
             places = data['places']
