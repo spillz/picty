@@ -39,6 +39,10 @@ try:
     from collectiontypes import flickr
 except:
     pass
+try:
+    from collectiontypes import facebook
+except:
+    pass
 
 COLUMN_ID=0
 COLUMN_NAME=1

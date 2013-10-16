@@ -26,7 +26,7 @@ if platform.system() != 'Windows':
           author_email='damienlmoore@gmail.com',
           url='https://launchpad.net/picty',
           package_dir={'':'modules'},
-          packages=['picty','picty.plugins','picty.collectiontypes','picty.fstools','picty.uitools','picty.metadata'],
+          packages=['picty','picty.plugins','picty.collectiontypes','picty.fstools','picty.uitools','picty.metadata','pyfb'],
           scripts=['bin/picty','bin/picty-import', 'bin/picty-open'],
           data_files=[
             ('share/applications',['desktop/picty.desktop','desktop/picty-import.desktop', 'desktop/picty-open.desktop']),

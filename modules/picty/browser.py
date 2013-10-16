@@ -177,7 +177,7 @@ class ImageBrowser(gtk.HBox):
         target_list=gtk.target_list_add_uri_targets(target_list,self.TARGET_TYPE_URI_LIST)
 #        target_list=gtk.target_list_add_text_targets(target_list,self.TARGET_TYPE_URI_LIST)
         self.imarea.drag_source_set(gtk.gdk.BUTTON1_MASK,
-                  target_list,gtk.gdk.ACTION_COPY)#| gtk.gdk.ACTION_MOVE)
+                  target_list,gtk.gdk.ACTION_COPY| gtk.gdk.ACTION_MOVE)
 
         target_list=[('tag-tree-row', gtk.TARGET_SAME_APP, 0)]
         target_list=gtk.target_list_add_uri_targets(target_list,1)
@@ -417,6 +417,7 @@ class ImageBrowser(gtk.HBox):
                 size=(settings.dragdrop_max_size,settings.dragdrop_max_size)
             if not self.drag_item.selected:
                 path = imagemanip.get_jpeg_or_png_image_file(self.drag_item,self.active_collection,size,settings.dragdrop_strip_metadata,settings.dragdrop_apply_edits)
+                print 'path',path
                 if path is None:
                     return
                 uri=io.get_uri(path) #I don't know why, but nautilius expects uris enclosed in quotes
@@ -433,6 +434,7 @@ class ImageBrowser(gtk.HBox):
                         uri=io.get_uri(path)
                         uris.append(uri)
                     i+=1
+                print 'uris',uris
                 selection_data.set_uris(uris)
 
     def drag_receive_signal(self, widget, drag_context, x, y, selection_data, info, timestamp):
