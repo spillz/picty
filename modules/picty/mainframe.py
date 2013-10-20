@@ -405,6 +405,7 @@ class MainFrame(gtk.VBox):
         pass #todo: look for the starttab in the browser notebook. if not found, add it.
 
     def destroy(self,event):
+        self.float_mgr.remove_panel("Image Viewer")
         for coll in self.coll_set:
             if coll.is_open:
                 sj=backend.SaveCollectionJob(self.tm,coll,self)
