@@ -175,8 +175,7 @@ class LabeledComboBox(gtk.HBox):
             cell = gtk.CellRendererText()
             self.combo.pack_start(cell, True)
             self.combo.add_attribute(cell, 'text', 0)
-            for c in choices:
-                self.combo.append_text(c)
+            self.combo.set_model(model)
         for c in choices:
             if type(c)==str:
                 model.append([c])
