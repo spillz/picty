@@ -1166,6 +1166,8 @@ class MainFrame(gtk.VBox):
                 self.viewer_window.show()
                 if settings.viewer_other_monitor:
                     self.viewer_window.move_to_other_monitor(self.get_window(),is_fullscreen=True)
+                else:
+                    self.viewer_window.move_to_this_monitor(self.get_window(),is_fullscreen=True)
                 self.iv.show()
                 self.is_iv_fullscreen=True
         self.active_browser().imarea.grab_focus() ##todo: should focus on the image viewer if in full screen and trap its key press events
@@ -1213,6 +1215,8 @@ class MainFrame(gtk.VBox):
         if self.is_iv_fullscreen:
             if settings.viewer_other_monitor:
                 self.viewer_window.move_to_other_monitor(self.get_window(),is_fullscreen=True)
+            else:
+                self.viewer_window.move_to_this_monitor(self.get_window(),is_fullscreen=True)
             self.viewer_window.present()
             self.viewer_window.show()
         browser.update_scrollbar()

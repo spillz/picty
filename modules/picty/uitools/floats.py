@@ -33,6 +33,35 @@ class FloaterBase:
         self.move(new_x,new_y)
         if is_fullscreen:
             self.fullscreen()
+    def move_to_this_monitor(self,ref_window=None,is_fullscreen=False):
+        if ref_window is not None:
+            screen = ref_window.get_screen()
+            (xs,ys) = ref_window.get_position()
+        else:
+            screen = self.get_screen()
+            (xs,ys) = self.get_position()
+        (x,y) = self.get_position()
+        num_mons = screen.get_n_monitors()
+        if num_mons<=1:
+            return
+        mon_old = screen.get_monitor_at_point(xs,ys)
+        mon_curr = screen.get_monitor_at_point(x,y)
+        if mon_old==mon_curr:
+            return
+        if is_fullscreen:
+            self.unfullscreen()
+        mon_new = mon_old
+        old_rect = screen.get_monitor_geometry(mon_curr)
+        new_rect = screen.get_monitor_geometry(mon_new)
+        new_x = (x - old_rect.x) + new_rect.x
+        new_x = min(new_x,new_rect.x+3*new_rect.width/4)
+        new_y = (y - old_rect.y) + new_rect.y
+        new_y = min(new_y,new_rect.y+3*new_rect.height/4)
+        self.move(new_x,new_y)
+        if is_fullscreen:
+            self.fullscreen()
+
+
     def toggle_panel(self,widget):
         if widget.get_active():
             self.show()
