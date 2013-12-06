@@ -333,7 +333,10 @@ class ImageViewer(gtk.VBox):
             if w>0 and h>0:
                 self.resize_and_refresh_view(w,h)
         self.fullscreen_callback=callback
-        self.fullscreen_size_hint=self.imarea.window.get_size()
+        if self.imarea.window is not None:
+            self.fullscreen_size_hint=self.imarea.window.get_size()
+        else:
+            self.fullscreen_size_hint = (0,0)
         self.freeze_image_refresh=True
 #        if not is_already_fullscreen:
 #            self.freeze_image_resize=True

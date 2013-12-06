@@ -76,7 +76,7 @@ class ConfigPanel(gtk.Dialog):
     def __init__(self,plugin):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_MODAL)
         self.plugin=plugin
-        self.set_default_size(600,400)
+        self.set_default_size(700,400)
         nb=gtk.Notebook()
         self.vbox.pack_start(nb)
 
@@ -215,12 +215,13 @@ class GeneralBox(gtk.HBox):
     def __init__(self):
         gtk.HBox.__init__(self)
         a_frame=gtk.Frame("Overlay")
-        b_frame=gtk.Frame("Cache")
-        c_frame=gtk.Frame("Drag and Drop")
+        b_frame=gtk.Frame("Drag and Drop")
+        c_frame=gtk.Frame("Image Viewer")
         a_box=gtk.VBox()
         b_box=gtk.VBox()
         c_box=gtk.VBox()
         a_frame.add(a_box)
+        b_frame.add(b_box)
         c_frame.add(c_box)
         def box_add_check(box,text,var_name,callback=None):
             button=gtk.CheckButton(text)
@@ -236,9 +237,11 @@ class GeneralBox(gtk.HBox):
         box_add_check(a_box,'Show tags','overlay_show_tags')
         box_add_check(a_box,'Show date and time','overlay_show_date')
         box_add_check(a_box,'Show exposure details','overlay_show_exposure')
-        box_add_check(c_box,'Apply image edits','dragdrop_apply_edits')
-        box_add_check(c_box,'Strip image metadata','dragdrop_strip_metadata')
-        box_add_check(c_box,'Resize image','dragdrop_resize',self.toggle_size)
+        box_add_check(b_box,'Apply image edits','dragdrop_apply_edits')
+        box_add_check(b_box,'Strip image metadata','dragdrop_strip_metadata')
+        box_add_check(b_box,'Resize image','dragdrop_resize',self.toggle_size)
+        box_add_check(c_box,'Use fullscreen view only','viewer_fullscreen_only')
+        box_add_check(c_box,'Use other monitor if present','viewer_other_monitor')
         size_box = gtk.HBox()
         size_box.pack_start(gtk.Label('Maximum length (pixels)'))
         self.size_entry = gtk.Entry()
@@ -247,10 +250,11 @@ class GeneralBox(gtk.HBox):
         self.size_entry.set_text(str(settings.dragdrop_max_size))
         self.size_entry.connect('changed',self.size_changed,'dragdrop_max_size')
         size_box.pack_start(self.size_entry)
-        c_box.pack_start(size_box,False)
+        b_box.pack_start(size_box,False)
 #        self.pack_start(b_box,False)
         self.pack_start(a_frame,False)
 #        self.pack_start(c_box,False)
+        self.pack_start(b_frame,False)
         self.pack_start(c_frame,False)
         self.show_all()
 

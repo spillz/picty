@@ -27,8 +27,12 @@ import Image
 import gtk
 
 release_version='{source}' #this is the version number of the released program
-file_version='0.6.1' #version is saved to global and collection configuration files
+file_version='0.6.2' #version is saved to global and collection configuration files
 #version notes:
+# 0.6.2
+# viewer settings
+# 0.6.1
+#  Added overlay + drag drop settings
 # 0.6.0
 #  * separated preferences and image data cache into separate files (under collection name directory)
 # 0.5.0
@@ -90,8 +94,7 @@ max_memthumbs=1000
 max_memimages=3
 precache_count=500 ##not currently used
 
-layout={}  #the layout of the user interface
-
+#Not currently saved to disk
 edit_command_line='gimp'
 dcraw_cmd='/usr/bin/dcraw -e -c "%s"'
 dcraw_backup_cmd='/usr/bin/dcraw -T -h -w -c "%s"'
@@ -105,8 +108,8 @@ raw_image_types = {
 }
 video_thumbnailer='totem-video-thumbnailer -j "%s" /dev/stdout'
 
-
-imagetypes=['jpg','jpeg','png']
+#the following are saved in the global settings file
+layout={}  #the layout of the user interface
 
 overlay_show_title=True
 overlay_show_path=False
@@ -118,6 +121,9 @@ dragdrop_apply_edits = False
 dragdrop_strip_metadata = False
 dragdrop_resize = False
 dragdrop_max_size = 1024
+
+viewer_fullscreen_only = False
+viewer_other_monitor = True
 
 active_collection=None
 active_collection_id=''
@@ -174,6 +180,8 @@ def save():
         cPickle.dump(dragdrop_strip_metadata,f,-1)
         cPickle.dump(dragdrop_resize,f,-1)
         cPickle.dump(dragdrop_max_size,f,-1)
+        cPickle.dump(viewer_fullscreen_only,f,-1)
+        cPickle.dump(viewer_other_monitor,f,-1)
     finally:
         f.close()
 
@@ -181,7 +189,8 @@ def load():
     global version, precache_count, custom_launchers, user_tag_info, places, layout, \
         active_collection_id, legacy_image_dirs, plugins_disabled, \
         overlay_show_title,overlay_show_path,overlay_show_tags,overlay_show_date,overlay_show_exposure, \
-        dragdrop_apply_edits, dragdrop_max_size, dragdrop_resize, dragdrop_strip_metadata
+        dragdrop_apply_edits, dragdrop_max_size, dragdrop_resize, dragdrop_strip_metadata, \
+        viewer_fullscreen_only, viewer_other_monitor
     try:
         f=open(conf_file,'rb')
     except:
@@ -221,6 +230,13 @@ def load():
             overlay_show_tags=cPickle.load(f)
             overlay_show_date=cPickle.load(f)
             overlay_show_exposure=cPickle.load(f)
+            dragdrop_apply_edits=cPickle.load(f)
+            dragdrop_strip_metadata=cPickle.load(f)
+            dragdrop_resize=cPickle.load(f)
+            dragdrop_max_size=cPickle.load(f)
+        if file_version>='0.6.2':
+            viewer_fullscreen_only=cPickle.load(f)
+            viewer_other_monitor=cPickle.load(f)
     except:
         pass
     finally:

@@ -46,6 +46,9 @@ class FloaterBase:
 
 
 class FloatingPanel(gtk.Dialog,FloaterBase):
+    '''
+    A floating panel is derived from GTK dialog
+    '''
     def __init__(self,title):
         gtk.Dialog.__init__(self,title)
         self.set_default_size(300,400)
@@ -55,6 +58,9 @@ class FloatingPanel(gtk.Dialog,FloaterBase):
         self.toggle=None
 
 class FloatingWindow(gtk.Window,FloaterBase):
+    '''
+    A floating panel is derived from GTK window
+    '''
     def __init__(self,title):
         gtk.Window.__init__(self)
         self.set_default_size(300,400)
@@ -64,6 +70,10 @@ class FloatingWindow(gtk.Window,FloaterBase):
 
 
 class FloatingPanelManager:
+    '''
+    plugins and the main app should use the instance of this class in mainframe to manage floating panels and windows
+    the helper creates and the panel and adds a toolbar button to hide/show it
+    '''
     def __init__(self,mainframe):
         self.panels={}
         self.mainframe=mainframe
