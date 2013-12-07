@@ -22,8 +22,8 @@ License:
 import gtk
 
 import StringIO
-import Image
-import ImageFile
+from PIL import Image
+from PIL import ImageFile
 import metadata
 import datetime
 import bisect

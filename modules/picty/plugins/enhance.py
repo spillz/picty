@@ -24,8 +24,8 @@ License:
 ##TODO: there should probably only be one color enhance operation per image -- currently can stack up many)
 
 import gtk
-import Image
-import ImageEnhance
+from PIL import Image
+from PIL import ImageEnhance
 
 from picty import imagemanip
 from picty import settings

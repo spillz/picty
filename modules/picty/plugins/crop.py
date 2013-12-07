@@ -24,7 +24,7 @@ License:
 #TODO: Rounding or some other problem prevents setting the crop handle to the bottom right of the image
 
 import gtk
-import Image
+from PIL import Image
 import json
 import os.path
 

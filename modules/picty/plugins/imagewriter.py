@@ -24,7 +24,7 @@ import os.path
 
 import gtk
 import gobject
-import Image
+from PIL import Image
 import tempfile
 
 from picty import imagemanip

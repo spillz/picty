@@ -23,8 +23,8 @@ License:
 import cPickle
 import gobject
 import gtk
-import Image
-import ImageFile
+from PIL import Image
+from PIL import ImageFile
 import threading
 import os
 import sys

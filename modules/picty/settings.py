@@ -23,7 +23,7 @@ License:
 import os
 import json
 import cPickle
-import Image
+from PIL import Image
 import gtk
 
 release_version='{source}' #this is the version number of the released program

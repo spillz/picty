@@ -1279,7 +1279,7 @@ class FacebookCollection(baseobjects.CollectionBase):
         if item.image!=None:
             return
         try:
-            import ImageFile
+            from PIL import ImageFile
             print 'loading image for view',item.imageurl
             fp = urllib2.urlopen(item.imageurl)
             p = ImageFile.Parser()

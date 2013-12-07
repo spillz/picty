@@ -21,7 +21,7 @@ License:
 '''
 
 import gtk
-import Image
+from PIL import Image
 
 from picty import imagemanip
 from picty import settings
