@@ -38,8 +38,8 @@ import time
 
 from picty import settings
 if settings.is_windows:
-    import Image
-    import ImageFile
+    from PIL import Image
+    from PIL import ImageFile
 
 
 pyexiv2.register_namespace('http://www.picty.net/xmpschema/1.0/','picty')
