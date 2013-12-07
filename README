@@ -1,6 +1,38 @@
 picty - A photo collection manager
+==================================
 
-(c) 2009 Damien Moore
+
+
+Dependencies
+------------
+
+The python packages required to run this project are (available in most linux repos):
+
+python-gtk2
+python-gnome2
+python-pyexiv2
+python-pyinotify
+
+(python v2.5-2.7 is assumed, the program may work with other versions, but may not)
+
+recommended packages: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
+
+Running picty from source at the command line
+---------------------------------------------
+
+cd <pictysourcedir>/bin
+./picty
+
+Install picty
+-------------
+
+See the INSTALL file
+
+License Information
+-------------------
+
+(c) 2013 Damien Moore
+
 
 License: GPL v3
 
@@ -16,29 +48,3 @@ License: GPL v3
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-----
-
-DEPENDENCIES
-============
-
-The ubuntu packages required to run this project are:
-
-python-gtk2
-python-gnome2
-python-pyexiv2
-python-pyinotify
-
-(python v2.5-2.6 is assumed, the program may work with other versions, but may not)
-
-recommended packages: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
-
-RUNNING PHRAYMD
-===============
-
-picty
-
-INSTALL PHRAYMD
-===============
-
-See the INSTALL file
