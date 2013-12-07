@@ -62,17 +62,17 @@ def get_icon(icon_id_list):
 
 def filter_selector(model, iter):
     id = model.get_value(iter, COLUMN_ID)
-    return not id.startswith('#')
+    return not id.startswith('~')
 
 def filter_open_selector(model,iter):
     id = model.get_value(iter, COLUMN_ID)
     open = model.get_value(iter, COLUMN_OPEN)
-    return not id.startswith('#') and open
+    return not id.startswith('~') and open
 
 def filter_unopen_selector(model,iter):
     id = model.get_value(iter, COLUMN_ID)
     open = model.get_value(iter, COLUMN_OPEN)
-    return not id.startswith('#') and not open
+    return not id.startswith('~') and not open
 
 def filter_activator(model,iter):
     return True
@@ -87,16 +87,15 @@ filter_funcs={
 class CollectionSet(gobject.GObject):
     '''
     Defines a set of image collections, managed with a dictionary like syntax
-    The program should use this class to create and remove collections
-    c[key]=value
-    where
-     key is a uniquely identifying name (string)
-     value is [type, path/uri, collection, display_name, icon_data]
-     type is caller defined, but for example 'COLLECTION', 'DIRECTORY', 'DEVICE', 'WEBSERVICE'
-     path/uri is the directory location of the images or a path to a collection file
-     colleciton is a collection or none if the colleciton is not open
-     display_name is the name shown to the user (usually == key value??)
-     icon_str is the string identifying the icon
+    The program uses this class to create and remove collections
+    Add new collections with the new_collection(id,prefs)
+     id is a uniquely identifying name (string)
+     prefs is a dictionary with the following members
+       type is a string corresponding id uniquely identifying a collection class, 'COLLECTION', 'DIRECTORY', 'DEVICE', 'WEBSERVICE'
+       path/uri is the directory location of the images or a path to a collection file
+       collection is a collection or none if the colleciton is not open
+       display_name is the name shown to the user (usually == key value??)
+       icon_str is the string identifying the icon
     also:
      manages models that can display the collection model
     '''
@@ -186,8 +185,8 @@ class CollectionSet(gobject.GObject):
         return sum([1 for id in self.iter_id(type)])
 
     def add_collection(self,collection):
-        if collection.type=='DEVICE' and self.count('DEVICE')==0:
-            self.model.first_mount_added()
+#        if collection.type=='DEVICE' and self.count('DEVICE')==0:
+#            self.model.first_mount_added()
         if collection.pixbuf is None:
             print 'SETTING ICON FROM DEFAULT',collection.pixbuf
             if collection.type=='LOCALDIR':
@@ -280,16 +279,29 @@ class CollectionSet(gobject.GObject):
     def add_mount(self,path,name,icon_names):
         if not os.path.exists(path):
             return
+        if id in self.collections:
+            return
         Dev=baseobjects.registered_collection_classes['DEVICE']
+        impath = path
+        subdirs = os.listdir(path)
+        for testdir in ['DCIM', 'Pictures', 'Photos']:
+            if testdir in subdirs:
+                impath = os.path.join(path,'DCIM')
+                if not os.path.isdir(impath):
+                    impath = path
+                else:
+                    break
+        print '~~~~~~~~~~~~~~~``` USING IMPATH',impath
+
         prefs={
             'name':name,
             'id':path,
-            'image_dirs':[path],
+            'image_dirs':[impath],
             'pixbuf':self.get_icon(icon_names),
             }
         c=Dev(prefs)
         c.add_view()
-        if path.startswith(os.path.join(settings.home_dir,'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
+        if 'mtp:host=' in path or path.startswith(os.path.join(settings.home_dir,'.gvfs')): #todo: probably a better way to identify mass storage from non-mass storage devices
             ##gphoto2 device (MTP)
             c.load_embedded_thumbs=False
             c.load_meta=False
@@ -305,7 +317,7 @@ class CollectionSet(gobject.GObject):
         return c
 
     def add_directory(self,path,prefs):
-        ###TODO: REMOVE THIS, CALLER SHOULD USE THE FILL OUT PREFERENCES AND USE new_collection
+        ###TODO: REMOVE THIS, CALLER SHOULD FILL OUT PREFERENCES AND USE new_collection
         if not os.path.exists(path):
             return
         Dir=baseobjects.registered_collection_classes['LOCALDIR']
@@ -325,107 +337,151 @@ class CollectionSet(gobject.GObject):
             self.add_mount(path,name,icon_names)
 
 
-class CollectionModel(gtk.GenericTreeModel):
-    '''
-    derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
-    methods needed for implementing gtk.TreeModel (see pygtk tutorial)
-    '''
+class CollectionModel(gtk.ListStore):
     def __init__(self,coll_set):
-        gtk.GenericTreeModel.__init__(self)
-        self.coll_set=coll_set
-        for r in self.view_iter():
-            self.row_inserted(*self.pi_from_id(r))
+        gtk.ListStore.__init__(self,str,str,int,bool,str,gtk.gdk.Pixbuf,bool)
+        self.coll_set = coll_set
     def coll_added(self,id):
-        self.row_inserted(*self.pi_from_id(id))
+        self.insert(self.get_pos(id),self.as_row(id))
     def coll_removed(self,id):
-        self.row_deleted(self.pi_from_id(id)[0])
+        self.remove(self.get_pos(id))
     def coll_opened(self,id):
-        self.row_changed(*self.pi_from_id(id))
+        self[self.get_pos(id)] = self.as_row(id)
     def coll_closed(self,id):
-        self.row_changed(*self.pi_from_id(id))
+        self[self.get_pos(id)] = self.as_row(id)
     def first_mount_added(self):
-        self.row_deleted(self.pi_from_id('#no-devices')[0])
+        self.remove(self.get_pos('~no-devices'))
     def all_mounts_removed(self):
-        self.row_inserted(*self.pi_from_id('#no-devices'))
-    def on_get_flags(self):
-        return gtk.TREE_MODEL_LIST_ONLY
-    def on_get_n_columns(self):
-        return COLUMN_OPEN+1
-    def on_get_column_type(self, index):
-        return [str,str,int,bool,str,gtk.gdk.Pixbuf,bool][index]
-    def on_get_iter(self, path):
-        i=0
-        for id in self.view_iter():
-            if i==path[0]:
-                return id
-            i+=1
-        return None
-    def on_get_path(self, rowref):
-        i=0
-        for id in self.view_iter():
-            if id==rowref:
-                return (i,)
-            i+=1
-        return None
-    def on_get_value(self, rowref, column):
-        return self.as_row(rowref)[column]
-    def on_iter_next(self, rowref):
-        matched=False
-        for id in self.view_iter():
-            if matched:
-                return id
-            if id==rowref:
-                matched=True
-    def on_iter_children(self, parent):
-        return None
-    def on_iter_has_child(self, rowref):
-        return False
-    def on_iter_n_children(self, rowref):
-        if rowref==None:
-            return sum([1 for r in self.view_iter()])
-        return 0
-    def on_iter_nth_child(self, parent, n):
-        if parent:
-            return None
-        return self.on_get_iter((n,))
-    def on_iter_parent(self, child):
-        return None
-    '''
-    helper methods for implementing the tree model methods
-    '''
+        self.insert(self.get_pos('~no-devices'),self.as_row(id))
+    def get_pos(self,id):
+        t = self.coll_set[id].type
+        for i in range(len(self)): #ORDERED COLLECTIONS, DIRECTORIES, DEVICES
+            id1 = self[i][0]
+            t1 = self.coll_set[self[i][0]].type
+            if t < t1:
+                return i
+            if self[i][0] == id:
+                return i
+        return len(self)
     def as_row(self,id):
         label_dict={
-            '#add-localstore':('New Collection...',None),
-            '#no-devices':('No Devices Connected',None),
-            '#add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
+            '~add-localstore':('New Collection...',None),
+            '~no-devices':('No Devices Connected',None),
+            '~add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
         }
         if id.startswith('*'):
             return [id,'',800,False,'black',None,False]
-        if id.startswith('#'):
+        if id.startswith('~'):
             return [id,label_dict[id][0],400,False,'black',label_dict[id][1],False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
         ci=self.coll_set.collections[id]
         if ci.is_open:
             return [id,ci.name,800,False,'brown',ci.pixbuf,True]
         else:
             return [id,ci.name,400,False,'brown',ci.pixbuf,False]
-    def view_iter(self):
-        '''
-        this iterator defines the rows of the collection model
-        and adds items for separators, collections and menu options
-        '''
-        tcount=0
-        for t in self.coll_set.types:
-            i=0
-            for id in self.coll_set.iter_id(t):
-                yield id
-                i+=1
-            if t=='DEVICE' and i==0:
-                yield '#no-devices'
-            tcount+=1
-        yield '#add-dir'
-    def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
-        iter=self.create_tree_iter(name)
-        return self.get_path(iter),iter
+
+
+
+#class CollectionModel(gtk.GenericTreeModel):
+#    '''
+#    derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
+#    methods needed for implementing gtk.TreeModel (see pygtk tutorial)
+#    '''
+#    def __init__(self,coll_set):
+#        gtk.GenericTreeModel.__init__(self)
+#        self.coll_set=coll_set
+#        for r in self.view_iter():
+#            self.row_inserted(*self.pi_from_id(r))
+#    def coll_added(self,id):
+#        self.row_inserted(*self.pi_from_id(id))
+#    def coll_removed(self,id):
+#        self.row_deleted(self.pi_from_id(id)[0])
+#    def coll_opened(self,id):
+#        self.row_changed(*self.pi_from_id(id))
+#    def coll_closed(self,id):
+#        self.row_changed(*self.pi_from_id(id))
+#    def first_mount_added(self):
+#        self.row_deleted(self.pi_from_id('~no-devices')[0])
+#    def all_mounts_removed(self):
+#        self.row_inserted(*self.pi_from_id('~no-devices'))
+#    def on_get_flags(self):
+#        return gtk.TREE_MODEL_LIST_ONLY
+#    def on_get_n_columns(self):
+#        return COLUMN_OPEN+1
+#    def on_get_column_type(self, index):
+#        return [str,str,int,bool,str,gtk.gdk.Pixbuf,bool][index]
+#    def on_get_iter(self, path):
+#        i=0
+#        for id in self.view_iter():
+#            if i==path[0]:
+#                return id
+#            i+=1
+#        return None
+#    def on_get_path(self, rowref):
+#        i=0
+#        for id in self.view_iter():
+#            if id==rowref:
+#                return (i,)
+#            i+=1
+#        return None
+#    def on_get_value(self, rowref, column):
+#        return self.as_row(rowref)[column]
+#    def on_iter_next(self, rowref):
+#        matched=False
+#        for id in self.view_iter():
+#            if matched:
+#                return id
+#            if id==rowref:
+#                matched=True
+#    def on_iter_children(self, parent):
+#        return None
+#    def on_iter_has_child(self, rowref):
+#        return False
+#    def on_iter_n_children(self, rowref):
+#        if rowref==None:
+#            return sum([1 for r in self.view_iter()])
+#        return 0
+#    def on_iter_nth_child(self, parent, n):
+#        if parent:
+#            return None
+#        return self.on_get_iter((n,))
+#    def on_iter_parent(self, child):
+#        return None
+#    '''
+#    helper methods for implementing the tree model methods
+#    '''
+#    def as_row(self,id):
+#        label_dict={
+#            '~add-localstore':('New Collection...',None),
+#            '~no-devices':('No Devices Connected',None),
+#            '~add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
+#        }
+#        if id.startswith('*'):
+#            return [id,'',800,False,'black',None,False]
+#        if id.startswith('~'):
+#            return [id,label_dict[id][0],400,False,'black',label_dict[id][1],False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
+#        ci=self.coll_set.collections[id]
+#        if ci.is_open:
+#            return [id,ci.name,800,False,'brown',ci.pixbuf,True]
+#        else:
+#            return [id,ci.name,400,False,'brown',ci.pixbuf,False]
+#    def view_iter(self):
+#        '''
+#        this iterator defines the rows of the collection model
+#        and adds items for separators, collections and menu options
+#        '''
+#        tcount=0
+#        for t in self.coll_set.types:
+#            i=0
+#            for id in self.coll_set.iter_id(t):
+#                yield id
+#                i+=1
+#            if t=='DEVICE' and i==0:
+#                yield '~no-devices'
+#            tcount+=1
+#        yield '~add-dir'
+#    def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
+#        iter=self.create_tree_iter(name)
+#        return self.get_path(iter),iter
 
 ##Combo entries
 
@@ -482,11 +538,11 @@ class CollectionCombo(gtk.VBox):
             self.emit('collection-changed','')
             return
         id=self.model[iter][COLUMN_ID]
-        if id=='#add-dir':
+        if id=='~add-dir':
             self.emit('add-dir')
-        elif id=='#add-localstore':
+        elif id=='~add-localstore':
             self.emit('add-localstore')
-        elif id.startswith('#'):
+        elif id.startswith('~'):
             return
         elif not id.startswith('*'):
             self.emit('collection-changed',id)
@@ -607,7 +663,7 @@ class CollectionStartPage(gtk.VBox):
     def open_collection_by_activation(self, treeview, path, view_column):
         model=self.coll_list.get_model()
         id=model[path][COLUMN_ID]
-        if id=='#add-dir':
+        if id=='~add-dir':
             self.emit("folder-open")
         else:
             self.emit("collection-open",id)
@@ -626,7 +682,7 @@ class CollectionStartPage(gtk.VBox):
             return
         model,iter=sel.get_selected()
         id=model[iter][COLUMN_ID]
-        if id=='#add-dir':
+        if id=='~add-dir':
             self.emit("folder-open")
         else:
             self.emit("collection-open",id)
