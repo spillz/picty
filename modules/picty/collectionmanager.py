@@ -291,8 +291,6 @@ class CollectionSet(gobject.GObject):
                     impath = path
                 else:
                     break
-        print '~~~~~~~~~~~~~~~``` USING IMPATH',impath
-
         prefs={
             'name':name,
             'id':path,
@@ -381,109 +379,8 @@ class CollectionModel(gtk.ListStore):
 
 
 
-#class CollectionModel(gtk.GenericTreeModel):
-#    '''
-#    derives from gtk.GenericTreeModel allowing user interaction as a gtk.ComboBox or gtk.TreeView
-#    methods needed for implementing gtk.TreeModel (see pygtk tutorial)
-#    '''
-#    def __init__(self,coll_set):
-#        gtk.GenericTreeModel.__init__(self)
-#        self.coll_set=coll_set
-#        for r in self.view_iter():
-#            self.row_inserted(*self.pi_from_id(r))
-#    def coll_added(self,id):
-#        self.row_inserted(*self.pi_from_id(id))
-#    def coll_removed(self,id):
-#        self.row_deleted(self.pi_from_id(id)[0])
-#    def coll_opened(self,id):
-#        self.row_changed(*self.pi_from_id(id))
-#    def coll_closed(self,id):
-#        self.row_changed(*self.pi_from_id(id))
-#    def first_mount_added(self):
-#        self.row_deleted(self.pi_from_id('~no-devices')[0])
-#    def all_mounts_removed(self):
-#        self.row_inserted(*self.pi_from_id('~no-devices'))
-#    def on_get_flags(self):
-#        return gtk.TREE_MODEL_LIST_ONLY
-#    def on_get_n_columns(self):
-#        return COLUMN_OPEN+1
-#    def on_get_column_type(self, index):
-#        return [str,str,int,bool,str,gtk.gdk.Pixbuf,bool][index]
-#    def on_get_iter(self, path):
-#        i=0
-#        for id in self.view_iter():
-#            if i==path[0]:
-#                return id
-#            i+=1
-#        return None
-#    def on_get_path(self, rowref):
-#        i=0
-#        for id in self.view_iter():
-#            if id==rowref:
-#                return (i,)
-#            i+=1
-#        return None
-#    def on_get_value(self, rowref, column):
-#        return self.as_row(rowref)[column]
-#    def on_iter_next(self, rowref):
-#        matched=False
-#        for id in self.view_iter():
-#            if matched:
-#                return id
-#            if id==rowref:
-#                matched=True
-#    def on_iter_children(self, parent):
-#        return None
-#    def on_iter_has_child(self, rowref):
-#        return False
-#    def on_iter_n_children(self, rowref):
-#        if rowref==None:
-#            return sum([1 for r in self.view_iter()])
-#        return 0
-#    def on_iter_nth_child(self, parent, n):
-#        if parent:
-#            return None
-#        return self.on_get_iter((n,))
-#    def on_iter_parent(self, child):
-#        return None
-#    '''
-#    helper methods for implementing the tree model methods
-#    '''
-#    def as_row(self,id):
-#        label_dict={
-#            '~add-localstore':('New Collection...',None),
-#            '~no-devices':('No Devices Connected',None),
-#            '~add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
-#        }
-#        if id.startswith('*'):
-#            return [id,'',800,False,'black',None,False]
-#        if id.startswith('~'):
-#            return [id,label_dict[id][0],400,False,'black',label_dict[id][1],False] ##todo: replace id[1:] with a dictionary lookup to a meaningful description
-#        ci=self.coll_set.collections[id]
-#        if ci.is_open:
-#            return [id,ci.name,800,False,'brown',ci.pixbuf,True]
-#        else:
-#            return [id,ci.name,400,False,'brown',ci.pixbuf,False]
-#    def view_iter(self):
-#        '''
-#        this iterator defines the rows of the collection model
-#        and adds items for separators, collections and menu options
-#        '''
-#        tcount=0
-#        for t in self.coll_set.types:
-#            i=0
-#            for id in self.coll_set.iter_id(t):
-#                yield id
-#                i+=1
-#            if t=='DEVICE' and i==0:
-#                yield '~no-devices'
-#            tcount+=1
-#        yield '~add-dir'
-#    def pi_from_id(self,name): #return tuple of path and iter associated with the unique identifier
-#        iter=self.create_tree_iter(name)
-#        return self.get_path(iter),iter
-
-##Combo entries
+##Combo entries should look something like this
+##TODO: Implement separators and improve sorting
 
 ##[] COLLECTIONS X
 ##[Manage collections...]
