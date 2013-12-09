@@ -229,6 +229,23 @@ def keyword_filter(item,test):
     item.relevance=relevance
     return relevance>0
 
+class FolderEquals:
+    def __init__(self,subfolders = False):
+        if subfolders:
+            self.__call__ = self.call1
+        else:
+            self.__call__ = self.call2
+    def call1(self,l,r,item):
+        if os.path.split(item.uid)[0].startswith(r):
+            return True
+        else:
+            return False
+    def call2(self,l,r,item):
+        if r==os.path.split(item.uid)[0]:
+            return True
+        else:
+            return False
+
 class StringEquals:
     def __init__(self,field,insens=True,exact=True):
         self.field=field
@@ -423,6 +440,8 @@ TOKENS=[
 ('artist=',(StringEquals('Artist'),None,str)),
 ('copyright=',(StringEquals('Copyright'),None,str)),
 ('album=',(StringEquals('Album'),None,str)),
+('folder=',(FolderEquals(),None,str)),
+('folder~',(FolderEquals(True),None,str)),
 ('title~',(StringEquals('Title',True,False),None,str)),
 ('descr~',(StringEquals('ImageDescription',True,False),None,str)),
 ('artist~',(StringEquals('Artist',True,False),None,str)),
