@@ -304,7 +304,7 @@ class FolderFrame(gtk.VBox):
         self.tv=gtk.TreeView(self.model)
 #        self.tv.set_reorderable(True)
         self.tv.set_headers_visible(False)
-        self.tv.connect("row-activated",self.folder_activate_subfolder)
+        self.tv.connect("row-activated",self.folder_activate_subfolders)
 #        tvc_bitmap=gtk.TreeViewColumn(None,gtk.CellRendererPixbuf(),pixbuf=self.M_PIXBUF,markup=self.M_DISP)
 #        tvc_text=gtk.TreeViewColumn(None,gtk.CellRendererText(),markup=self.M_DISP)
         tvc=gtk.TreeViewColumn()
@@ -365,13 +365,14 @@ class FolderFrame(gtk.VBox):
             menu=gtk.Menu()
             def menu_add(menu,text,callback):
                 item=gtk.MenuItem(text)
-                item.connect("activate",callback,row_iter)
+                item.connect("activate",callback,row_path)
                 menu.append(item)
                 item.show()
 
             menu_add(menu,"Show images in this folder and sub folders",self.folder_activate_subfolders)
             menu_add(menu,"Show images in this folder",self.folder_activate)
             menu_add(menu,"Restrict view to images in this folder",self.folder_activate_view)
+            menu_add(menu,"Open in file manager",self.open_with_file_manager)
             menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def iter_all_children(self,iter_node):
@@ -398,6 +399,7 @@ class FolderFrame(gtk.VBox):
         '''iterate over entire tree'''
         for x in self.iter_all_children(self.model.get_iter_root()):
             yield x
+
 
 #    def move_row_and_children(self,iter_node,dest_iter,rownum=None):
 #        def copy(iter_node,dest_iter,rownum=None):
@@ -506,35 +508,36 @@ class FolderFrame(gtk.VBox):
 #            return False
 #        selection_data.set('folder-tree-row', 8, '-'.join(strings))
 
-    def folder_activate_view(self, widget, iter):
-        path = list(path)
-        folder = []
-        while len(path)>1:
-            folder.insert(0,self.model[tuple(path)][self.M_KEY])
-            path.pop(-1)
-        text='folder="%s" '%'/'.join(path)
+    def folder_activate_view(self, treeview, path):
+        text='folder="%s" '%self.get_folder_subpath(path)
         self.mainframe.filter_entry.set_text('lastview&'+text.strip())
         self.mainframe.filter_entry.activate()
 
-    def folder_activate(self,treeview, path, view_column):
-        path = list(path)
-        folder = []
-        while len(path)>1:
-            folder.insert(0,self.model[tuple(path)][self.M_KEY])
-            path.pop(-1)
-        text='folder="%s" '%'/'.join(folder)
+    def folder_activate(self,treeview, path):
+        text='folder="%s" '%self.get_folder_subpath(path)
         self.mainframe.filter_entry.set_text(text.strip())
         self.mainframe.filter_entry.activate()
 
-    def folder_activate_subfolder(self,treeview, path, view_column):
+    def folder_activate_subfolders(self,treeview, path, view_column = None):
+        text='folder~"%s" '%self.get_folder_subpath(path)
+        self.mainframe.filter_entry.set_text(text.strip())
+        self.mainframe.filter_entry.activate()
+
+    def open_with_file_manager(self,treeview,path):
+        app_cmd = 'xdg-open %s'%(self.get_folder_uri(path))
+        import subprocess
+        subprocess.Popen(app_cmd,shell=True)
+
+    def get_folder_subpath(self,path):
         path = list(path)
         folder = []
         while len(path)>1:
             folder.insert(0,self.model[tuple(path)][self.M_KEY])
             path.pop(-1)
-        text='folder~"%s" '%'/'.join(folder)
-        self.mainframe.filter_entry.set_text(text.strip())
-        self.mainframe.filter_entry.activate()
+        return '/'.join(folder)
+
+    def get_folder_uri(self,path):
+        return os.path.join(self.collection.image_dirs[0],self.get_folder_subpath(path))
 
     def refresh(self):
         collection=self.worker.active_collection
