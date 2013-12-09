@@ -52,8 +52,7 @@ Nightly builds for Ubuntu are available at the launchpad ppa: https://launchpad.
 
 Experimental Windows builds can be found at: http://sourceforge.net/projects/picty/files/
 
-To install from sources, see the INSTALL file. The benefits are installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
-
+Or run from source...
 
 Running picty from source at the command line
 ---------------------------------------------
@@ -88,7 +87,7 @@ Run the following commands in the terminal::
     cd <pictysourcedir>
     bin/picty
 
-or see the INSTALL file for installation information
+or see the INSTALL file for installation information. The benefits are installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
 
 License Information
 -------------------
