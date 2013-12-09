@@ -706,7 +706,7 @@ class BuildViewJob(WorkerJob):
                 self.browser.lock.acquire()
                 view.add_item(item)
                 self.browser.lock.release()
-                if i-lastrefresh>200:
+                if i-lastrefresh>1000:
                     lastrefresh=i
                     idle_add(self.browser.resize_and_refresh_view,collection)
                     idle_add(self.browser.update_status,1.0*i/len(self.superset),'Rebuilding image view - %i of %i'%(i,len(self.superset)))
@@ -1073,7 +1073,7 @@ class VerifyImagesJob(WorkerJob):
         i=self.countpos  ##todo: make sure this gets initialized
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
-            if i%20==0:
+            if i%50==0:
                 idle_add(self.browser.update_backstatus,True,'Verifying images in collection - %i of %i'%(i,len(collection)))
             if item.meta==False: ##TODO: This is a legacy check -- should remove eventually
                 item.meta=None
@@ -1086,13 +1086,13 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
-                idle_add(self.browser.resize_and_refresh_view,self.collection)
+#                idle_add(self.browser.resize_and_refresh_view,self.collection) #TODO: too slow to do this update for every image, but not doing so can cause issues with user clicking on one image but another actually being selected
             if not os.path.exists(collection.get_path(item)) or os.path.isdir(collection.get_path(item)) or collection.get_path(item)!=io.get_true_path(collection.get_path(item)):  ##todo: what if mimetype or size changed?
                 log.debug('Verify job delete missing item %s',item.uid)
                 self.browser.lock.acquire()
                 collection.delete(item)
                 self.browser.lock.release()
-                idle_add(self.browser.resize_and_refresh_view,self.collection)
+#                idle_add(self.browser.resize_and_refresh_view,self.collection)
                 continue
             mtime=io.get_mtime(collection.get_path(item))
             if mtime!=item.mtime:
@@ -1109,15 +1109,19 @@ class VerifyImagesJob(WorkerJob):
                 self.browser.lock.acquire()
                 collection.add(item)
                 self.browser.lock.release()
+#                idle_add(self.browser.resize_and_refresh_view,self.collection)
+            if i%200 == 0:
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
             i+=1
         self.countpos=i
         if i>=len(collection):
             self.countpos=0
+            idle_add(self.browser.resize_and_refresh_view,self.collection)
             idle_add(self.browser.update_backstatus,False,'Verification complete')
             log.info('Image verification complete')
             pluginmanager.mgr.resume_collection_events(self.collection)
-            self.worker.queue_job_instance(MakeThumbsJob(self.worker,self.collection,self.browser))
+            if collection.store_thumbnails:
+                self.worker.queue_job_instance(MakeThumbsJob(self.worker,self.collection,self.browser))
             return True
         return False
 
@@ -1133,7 +1137,7 @@ class MakeThumbsJob(WorkerJob):
         i=self.countpos
         while i<len(collection) and jobs.ishighestpriority(self):
             item=collection[i]
-            if i%20==0:
+            if i%50==0:
                 idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             if not collection.has_thumbnail(item):
                 collection.make_thumbnail(item)
