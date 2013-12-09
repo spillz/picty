@@ -330,7 +330,7 @@ class RecreateThumbJob(WorkerJob):
                     self.browser.lock.release()
             if item.meta!=None:
                 c.make_thumbnail(item,None,True) ##force creation of thumbnail (3rd arg = True)
-                c.load_thumbnail(item)
+                #c.load_thumbnail(item)
                 idle_add(self.browser.resize_and_refresh_view,self.collection)
         if len(self.queue)==0:
             idle_add(self.browser.update_status,2.0,'Recreating thumbnails done')
@@ -1139,15 +1139,16 @@ class MakeThumbsJob(WorkerJob):
             item=collection[i]
             if i%50==0:
                 idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+                idle_add(self.browser.resize_and_refresh_view,self.collection)
             if not collection.has_thumbnail(item):
                 collection.make_thumbnail(item)
-                idle_add(self.browser.resize_and_refresh_view,self.collection)
-                idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
+#                idle_add(self.browser.update_backstatus,True,'Validating and creating missing thumbnails - %i of %i'%(i,len(collection)))
             i+=1
         self.countpos=i
         if i>=len(collection):
             self.countpos=0
             idle_add(self.browser.update_backstatus,False,'Thumbnailing complete')
+            idle_add(self.browser.resize_and_refresh_view,self.collection)
             return True
         return False
 

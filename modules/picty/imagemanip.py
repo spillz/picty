@@ -379,14 +379,15 @@ def cache_image(item):
             olditem.qview=None
 
 
-def cache_thumb(item):
+def cache_thumb_in_memory(item):
     '''
     append the item to the list of items with thumbs kept in memory. drops first added thumbs once the max queue length is exceeded (settings.max_memthumbs)
     '''
     memthumbs.append(item)
     if len(memthumbs)>settings.max_memthumbs:
         olditem=memthumbs.pop(0)
-        olditem.thumb=None
+        if olditem!=item:
+            olditem.thumb=None
 
 
 def get_jpeg_or_png_image_file(item,collection,size,strip_metadata,apply_transforms=False,filename=''):
@@ -991,8 +992,9 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
                     os.makedirs(cache)
                 item.thumburi=os.path.join(cache,muuid(item.uid+str(int(item.mtime))))+'.png'
                 thumb_pb.save(item.thumburi,"png")
+            print 'cached at',item.thumburi
     except:
-        print 'Error writing thumbnnail for',item
+        print 'Error caching thumbnail for',item
         import sys
         import traceback
         tb_text=traceback.format_exc(sys.exc_info()[2])
@@ -1003,7 +1005,7 @@ def make_thumb(item,collection,interrupt_fn=None,force=False,cache=None,use_embe
             thumb_factory.create_failed_thumbnail(itemfile,int(item.mtime))
         return False
     item.thumb=thumb_pb
-    cache_thumb(item)
+    cache_thumb_in_memory(item)
     return True
 
 
@@ -1044,11 +1046,11 @@ def load_embedded_thumb(item,collection):
 def load_thumb(item,collection,cache=None):
     '''
     load thumbnail from a cache location (optionally using the
-    thumbnailing methods provieded in gnome.ui if cache is None)
+    thumbnailing methods provided in gnome.ui if cache is None)
     affects thumbnail, thumburi members of item
     '''
     ##todo: rename load_thumb_from_cache
-    ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon and load_metadata
+    ##note that loading thumbs embedded in image files is handled in load_thumb_from_preview_icon, load_embedded_thumb and load_metadata
     if item.thumb==False:
         return False
     image=None
@@ -1094,7 +1096,7 @@ def load_thumb(item,collection,cache=None):
         image=None
     if image is not None:
         item.thumb=image
-        cache_thumb(item)
+        cache_thumb_in_memory(item)
         return True
     else:
         return False

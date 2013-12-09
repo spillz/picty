@@ -304,7 +304,7 @@ class CollectionSet(gobject.GObject):
             c.load_embedded_thumbs=False
             c.load_meta=False
             c.load_preview_icons=True
-            c.store_thumbnails=False ##todo: this needs to be implemented
+            c.store_thumbnails=False
         else:
             ##non-gphoto2 device (Mass Storage)
             c.load_embedded_thumbs=True

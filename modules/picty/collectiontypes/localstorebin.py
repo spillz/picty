@@ -215,7 +215,7 @@ class LocalStorePrefWidget(gtk.VBox):
         self.rescan_check.set_active(True)
         self.load_meta_check=gtk.CheckButton("Load metadata")
         self.load_meta_check.set_active(True)
-        self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
+        self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes")
         self.monitor_images_check.set_active(True)
         self.use_internal_thumbnails_check=gtk.CheckButton("Use embedded thumbnails if available")
         self.use_internal_thumbnails_check.set_active(False)
@@ -227,23 +227,27 @@ class LocalStorePrefWidget(gtk.VBox):
             self.store_thumbs_combo.set_form_data(0)
         self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
         self.trash_location_combo.set_form_data(0)
-        self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
+        self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache")
         self.store_thumbnails_check.set_active(True)
-        self.sidecar_check=gtk.CheckButton("Use metadata sidecars for unsupported formats") #todo: need to implement in backend
+        self.store_thumbnails_check.connect("clicked",self.store_thumbnails_clicked)
+        self.sidecar_check=gtk.CheckButton("Use metadata sidecars for unsupported formats")
         self.sidecar_check.set_active(False)
         self.a_box.pack_start(self.recursive_button,False)
         self.a_box.pack_start(self.rescan_check,False)
         self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
-        self.a_box.pack_start(self.store_thumbnails_check,False)
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        self.a_box.pack_start(self.store_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
         self.pack_start(self.a_frame,False)
         self.show_all()
         if value_dict:
             self.set_values(value_dict)
+
+    def store_thumbnails_clicked(self,toggle):
+        self.store_thumbs_combo.set_sensitive(toggle.get_active())
 
     def path_changed(self,entry):
         sensitive=len(self.name_entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
@@ -313,6 +317,7 @@ class NewLocalStoreWidget(gtk.VBox):
             self.store_thumbs_combo.set_form_data(0)
         self.store_thumbnails_check=gtk.CheckButton("Store thumbnails in cache") #todo: need to implement in backend
         self.store_thumbnails_check.set_active(True)
+        self.store_thumbnails_check.connect("clicked",self.store_thumbnails_clicked)
         self.monitor_images_check=gtk.CheckButton("Monitor image folders for changes") #todo: need to implement in backend
         self.monitor_images_check.set_active(True)
         self.trash_location_combo=wb.LabeledComboBox("Trash Location",["User's Trash Folder","Hidden .trash Folder in Collection Folder"])
@@ -326,8 +331,8 @@ class NewLocalStoreWidget(gtk.VBox):
         self.a_box.pack_start(self.monitor_images_check,False)
         self.a_box.pack_start(self.load_meta_check,False)
         self.a_box.pack_start(self.sidecar_check,False)
-        self.a_box.pack_start(self.store_thumbnails_check,False) ##todo: switch this back on and implement in backend/imagemanip
         self.a_box.pack_start(self.use_internal_thumbnails_check,False)
+        self.a_box.pack_start(self.store_thumbnails_check,False)
         self.a_box.pack_start(self.store_thumbs_combo,False)
         self.a_box.pack_start(self.trash_location_combo,False)
 
@@ -337,6 +342,10 @@ class NewLocalStoreWidget(gtk.VBox):
 #        self.main_dialog.create_button.set_sensitive(False)
         if value_dict:
             self.set_values(value_dict)
+
+
+    def store_thumbnails_clicked(self,toggle):
+        self.store_thumbs_combo.set_sensitive(toggle.get_active())
 
     def activate(self):
         sensitive=len(self.name_entry.get_text().strip())>0 and os.path.exists(self.path_entry.get_path()) ##todo: also check that name is a valid filename
@@ -856,7 +865,7 @@ class Collection(baseobjects.CollectionBase):
 ##        imagemanip.update_thumb_date(item,cache=self.thumbnail_cache_dir)
         return
     def delete_thumbnail(self,item):
-        'clear out the thumbnail and delete the file from the users gnome desktop caache'
+        'clear out the thumbnail and delete the file from the users gnome desktop cache'
         imagemanip.delete_thumb(item)
     def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
         '''
@@ -870,7 +879,7 @@ class Collection(baseobjects.CollectionBase):
         if not thumb_pb:
             return  False
         item.thumb=thumb_pb
-        imagemanip.cache_thumb(item)
+        imagemanip.cache_thumb_in_memory(item)
         uri = io.get_uri(self.get_path(item))
         if self.thumbnail_cache_dir==None:
             imagemanip.thumb_factory.save_thumbnail(thumb_pb,uri,int(item.mtime))
