@@ -54,8 +54,8 @@ Experimental Windows builds can be found at: http://sourceforge.net/projects/pic
 
 Or run from source...
 
-Running picty from source at the command line
----------------------------------------------
+Running picty from source
+-------------------------
 
 **Get the source**
 
