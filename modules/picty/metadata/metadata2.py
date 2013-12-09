@@ -657,6 +657,8 @@ def conv_latlon(metaobject,keys,value=None):
             lat=(1.0 if latref=='N' else -1.0)*coords_as_decimal(rat_lat)
             lon=(1.0 if lonref=='E' else -1.0)*coords_as_decimal(rat_lon)
             return (lat,lon)
+        except KeyError:
+            return None
         except:
             print 'Error setting geolocation in exiv2'
             import traceback,sys
