@@ -45,8 +45,8 @@ Key features:
   - Create launchers for external tools
   - Supports plugins - many of the current features (tagging and folder views, and all of the image editing tools) are provided by plugins
 
-Install picty
--------------
+Get picty
+----------
 
 Nightly builds for Ubuntu are available at the launchpad ppa: https://launchpad.net/~damien-moore/+archive/ppa
 
