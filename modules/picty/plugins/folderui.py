@@ -76,7 +76,6 @@ class FolderTree():
     def empty(self):
         self.folders=dict()
     def folder_add(self,path):
-        print 'adding',path
         path_folders = path.split('/')
         base = self.folders
         base[1]+=1
@@ -281,12 +280,9 @@ class FolderFrame(gtk.VBox):
     TODO: Add support for drag and drop to move files
     '''
     ##column indices of the treestore
-    M_TYPE=0 #type of row: 0=Favorite, 1=Other, 2=Category, 3=Folder
-    M_KEY=1 #name of the folder or category
-    M_PIXBUF=2 #pixbuf image displayed next to folder
-    M_DISP=3 #display text
-    M_CHECK=4 #state of check box
-    M_PIXPATH=5 #path to pixbuf
+    M_KEY=0 #name of the folder
+    M_DISP=1 #display text
+    M_PIXBUFID=2 #path to pixbuf
     def __init__(self,mainframe,user_folder_info):
         gtk.VBox.__init__(self)
         self.set_spacing(5)
@@ -298,7 +294,7 @@ class FolderFrame(gtk.VBox):
         label.set_markup("<b>Folders</b>")
         label.set_alignment(0.05,0)
         #self.pack_start(label,False)
-        self.model=gtk.TreeStore(int,str,gtk.gdk.Pixbuf,str,'gboolean',str)
+        self.model=gtk.TreeStore(str,str,str)
 ##        self.sort_model=gtk.TreeModelSort(self.model)
 ##        self.sort_model.set_sort_column_id(1, gtk.SORT_ASCENDING)
         self.tv=gtk.TreeView(self.model)
@@ -312,7 +308,7 @@ class FolderFrame(gtk.VBox):
         pb=gtk.CellRendererPixbuf()
         tvc.pack_start(pb,False)
         tvc.pack_start(txt,True)
-        tvc.add_attribute(pb,'pixbuf',self.M_PIXBUF)
+        tvc.add_attribute(pb,'stock-id',self.M_PIXBUFID)
         tvc.add_attribute(txt,'markup',self.M_DISP)
 #        toggle=gtk.CellRendererToggle()
 #        toggle.set_property("activatable",True)
@@ -399,37 +395,37 @@ class FolderFrame(gtk.VBox):
         for x in self.iter_all_children(self.model.get_iter_root()):
             yield x
 
-    def move_row_and_children(self,iter_node,dest_iter,rownum=None):
-        def copy(iter_node,dest_iter,rownum=None):
-            row=list(self.model[iter_node])
-            if rownum!=None:
-                dest_iter=self.model.insert(dest_iter,rownum,row)
-            else:
-#                it=self.model.iter_children(dest_iter)
-#                it=None
-                n=self.model.iter_n_children(dest_iter)
-                for i in range(n):
-                    it=self.model.iter_nth_child(dest_iter,i)
-                    if self.model[it][self.M_DISP].lower()>row[self.M_DISP].lower():
-                        dest_iter=self.model.insert(dest_iter,i,row)
-                        n=-1
-                        break
-                if n>=0:
-                    dest_iter=self.model.append(dest_iter,row)
-            row=self.model[dest_iter]
-            if row[self.M_TYPE]==3:
-                self.user_folders[row[self.M_KEY]]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
-            iter_node=self.model.iter_children(iter_node)
-            while iter_node:
-                copy(iter_node,dest_iter)
-                iter_node=self.model.iter_next(iter_node)
-        iter=dest_iter
-        while iter: ##abort if user is trying to drag a row to one of its children
-            if self.model.get_path(iter)==self.model.get_path(iter_node):
-                return
-            iter=self.model.iter_parent(iter)
-        copy(iter_node,dest_iter,rownum)
-        self.model.remove(iter_node)
+#    def move_row_and_children(self,iter_node,dest_iter,rownum=None):
+#        def copy(iter_node,dest_iter,rownum=None):
+#            row=list(self.model[iter_node])
+#            if rownum!=None:
+#                dest_iter=self.model.insert(dest_iter,rownum,row)
+#            else:
+##                it=self.model.iter_children(dest_iter)
+##                it=None
+#                n=self.model.iter_n_children(dest_iter)
+#                for i in range(n):
+#                    it=self.model.iter_nth_child(dest_iter,i)
+#                    if self.model[it][self.M_DISP].lower()>row[self.M_DISP].lower():
+#                        dest_iter=self.model.insert(dest_iter,i,row)
+#                        n=-1
+#                        break
+#                if n>=0:
+#                    dest_iter=self.model.append(dest_iter,row)
+#            row=self.model[dest_iter]
+#            if row[self.M_TYPE]==3:
+#                self.user_folders[row[self.M_KEY]]=gtk.TreeRowReference(self.model,self.model.get_path(dest_iter))
+#            iter_node=self.model.iter_children(iter_node)
+#            while iter_node:
+#                copy(iter_node,dest_iter)
+#                iter_node=self.model.iter_next(iter_node)
+#        iter=dest_iter
+#        while iter: ##abort if user is trying to drag a row to one of its children
+#            if self.model.get_path(iter)==self.model.get_path(iter_node):
+#                return
+#            iter=self.model.iter_parent(iter)
+#        copy(iter_node,dest_iter,rownum)
+#        self.model.remove(iter_node)
 
 
 #    def get_checked_folders(self):
@@ -553,8 +549,8 @@ class FolderFrame(gtk.VBox):
         if self.collection != collection:
             self.model.clear()
             self.collection=collection
-            if collection is not None:
-                self.model.append(None,(1,'other',None,'<b>%s</b>'%(collection.image_dirs[0]),False,None))
+            if collection is not None and collection.local_filesystem:
+                self.model.append(None,('','<b>%s</b>'%(collection.image_dirs[0]),gtk.STOCK_DIRECTORY))
         if collection is None or not collection.local_filesystem:
             return
 
@@ -565,7 +561,7 @@ class FolderFrame(gtk.VBox):
             recursively add folder object to tree
             '''
             for folder_name,data in folder_list_object:
-                it = self.model.append(parent_iter,(3,folder_name,None,folder_name+' (%i)'%(data[1]),False,None))
+                it = self.model.append(parent_iter,(folder_name,folder_name+' (%i)'%(data[1]),gtk.STOCK_DIRECTORY))
                 folder_list = sorted([(t.lower(),t,data[0][t]) for t in data[0]])
                 folder_list = [t[1:] for t in folder_list]
                 add_folder(it,folder_list)
@@ -575,15 +571,14 @@ class FolderFrame(gtk.VBox):
             '''
             names = [f[0] for f in folder_list_object]
             for ch in self.iter_children(parent_iter):
-                print ch
-                ind  = names.index(self.model[ch][1])
+                ind  = names.index(self.model[ch][self.M_KEY])
                 if ind<0:
                     self.model.remove(ch)
                 else:
                     del folder_list_object[ind]
                     del names[ind]
             for folder_name,data in folder_list_object:
-                it = self.model.append(parent_iter,(3,folder_name,None,folder_name+' (%i)'%(data[1]),False,None))
+                it = self.model.append(parent_iter,(folder_name,folder_name+' (%i)'%(data[1]),gtk.STOCK_DIRECTORY))
                 folder_list = sorted([(t.lower(),t,data[0][t]) for t in data[0]])
                 folder_list = [t[1:] for t in folder_list]
                 add_folder(it,folder_list)
