@@ -76,9 +76,11 @@ class FolderTree():
     def empty(self):
         self.folders=dict()
     def folder_add(self,path):
-        path_folders = path.split('/')
         base = self.folders
         base[1]+=1
+        if path== '':
+            return
+        path_folders = path.split('/')
         for f in path_folders:
             if f in base[0]:
                 base[0][f][1]+=1
@@ -86,9 +88,11 @@ class FolderTree():
                 base[0][f]=[dict(),1]
             base = base[0][f]
     def folder_remove(self,path):
-        path_folders = path.split('/')
         base = self.folders
         base[1]-=1
+        if path=='':
+            return
+        path_folders = path.split('/')
         for f in path_folders:
             if f in base[0]:
                 if base[0][f][1]>1:
@@ -550,10 +554,11 @@ class FolderFrame(gtk.VBox):
             self.model.clear()
             self.collection=collection
             if collection is not None and collection.local_filesystem:
-                self.model.append(None,('','<b>%s</b>'%(collection.image_dirs[0]),gtk.STOCK_DIRECTORY))
+                self.model.append(None,('','',gtk.STOCK_DIRECTORY))
         if collection is None or not collection.local_filesystem:
             return
 
+        self.model[(0,)][self.M_DISP] = '<b>%s</b> (%i)'%(collection.image_dirs[0],folder_cloud.folders[1])
         root_folder_list=sorted([(t.lower(),t,folder_cloud.folders[0][t]) for t in folder_cloud.folders[0]])
         root_folder_list=[t[1:] for t in root_folder_list]
         def add_folder(parent_iter,folder_list_object):
