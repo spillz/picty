@@ -5,7 +5,7 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 
-class EntryCompletionExample:
+class EntryCompletion:
     def __init__(self):
         window = gtk.Window()
         window.connect('destroy', lambda w: gtk.main_quit())
@@ -84,5 +84,5 @@ def main():
     return
 
 if __name__ == "__main__":
-    ee = EntryCompletionExample()
+    ec = EntryCompletion()
     main()
