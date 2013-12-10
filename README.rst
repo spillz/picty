@@ -14,7 +14,7 @@ Key features:
   - Images on cameras, phones and other media devices
   - Photo hosting services (Flickr currently supported)
 
-* picty does not "Import" photos into its own database, it simply provides an interface to accessing them wherever they are. picty does use a cache to keep track of the collection, however.
+* picty does not "Import" photos into its own database, it simply provides an interface for accessing them wherever they are. picty does use a cache to keep track of the collection, however.
 
 * Metadata support for the industry standards Exif, IPTC and Xmp
 * Lossless approach:
@@ -44,11 +44,12 @@ Key features:
 
   - Create launchers for external tools
   - Supports plugins - many of the current features (tagging and folder views, and all of the image editing tools) are provided by plugins
+  - Written in python - batteries included!
 
 Get picty
 ----------
 
-Nightly builds for Ubuntu are available at the launchpad ppa: https://launchpad.net/~damien-moore/+archive/ppa
+Nightly builds for Ubuntu 12.04 and above are available at the launchpad ppa: https://launchpad.net/~damien-moore/+archive/ppa
 
 Experimental Windows builds can be found at: http://sourceforge.net/projects/picty/files/
 
