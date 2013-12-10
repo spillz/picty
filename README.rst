@@ -87,7 +87,7 @@ Run the following commands in the terminal::
     cd <pictysourcedir>
     bin/picty
 
-or see the INSTALL file for installation information. The benefits are installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
+or see the INSTALL file for installation information. The benefits of installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
 
 License Information
 -------------------
