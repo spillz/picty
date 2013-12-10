@@ -342,13 +342,13 @@ class CollectionModel(gtk.ListStore):
     def coll_added(self,id):
         self.insert(self.get_pos(id),self.as_row(id))
     def coll_removed(self,id):
-        self.remove(self.get_pos(id))
+        self.remove(self.get_iter(self.get_pos(id)))
     def coll_opened(self,id):
         self[self.get_pos(id)] = self.as_row(id)
     def coll_closed(self,id):
         self[self.get_pos(id)] = self.as_row(id)
     def first_mount_added(self):
-        self.remove(self.get_pos('~no-devices'))
+        self.remove(self.get_iter(self.get_pos('~no-devices')))
     def all_mounts_removed(self):
         self.insert(self.get_pos('~no-devices'),self.as_row(id))
     def get_pos(self,id):
