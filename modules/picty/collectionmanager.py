@@ -102,12 +102,12 @@ class CollectionSet(gobject.GObject):
     def __init__(self,style=None):
         self.collections={}
         self.types=[c for c in baseobjects.registered_collection_classes]
-        self.model=CollectionModel(self)
         self.style = style
         if style:
             self.default_dir_image=self.get_icon(gtk.STOCK_DIRECTORY)
             #self.default_col_image=self.get_icon([gtk.STOCK_DIRECTORY])
             self.default_col_image=self.get_icon('picty-5')
+        self.model=CollectionModel(self)
 
     def add_model(self,filter_type=None):
         m=self.model.filter_new()
@@ -185,8 +185,8 @@ class CollectionSet(gobject.GObject):
         return sum([1 for id in self.iter_id(type)])
 
     def add_collection(self,collection):
-#        if collection.type=='DEVICE' and self.count('DEVICE')==0:
-#            self.model.first_mount_added()
+        if collection.type=='DEVICE' and self.count('DEVICE')==0:
+            self.model.first_mount_added()
         if collection.pixbuf is None:
             print 'SETTING ICON FROM DEFAULT',collection.pixbuf
             if collection.type=='LOCALDIR':
@@ -339,6 +339,8 @@ class CollectionModel(gtk.ListStore):
     def __init__(self,coll_set):
         gtk.ListStore.__init__(self,str,str,int,bool,str,gtk.gdk.Pixbuf,bool)
         self.coll_set = coll_set
+        self.append(self.as_row('~1no-devices'))
+        self.append(self.as_row('~3add-dir'))
     def coll_added(self,id):
         self.insert(self.get_pos(id),self.as_row(id))
     def coll_removed(self,id):
@@ -348,24 +350,26 @@ class CollectionModel(gtk.ListStore):
     def coll_closed(self,id):
         self[self.get_pos(id)] = self.as_row(id)
     def first_mount_added(self):
-        self.remove(self.get_iter(self.get_pos('~no-devices')))
+        self.remove(self.get_iter(self.get_pos('~1no-devices')))
     def all_mounts_removed(self):
-        self.insert(self.get_pos('~no-devices'),self.as_row(id))
+        self.insert(self.get_pos('~1no-devices'),self.as_row(id))
     def get_pos(self,id):
-        t = self.coll_set[id].type
+        t = '~' if id.startswith('~') else self.coll_set[id].type
         for i in range(len(self)): #ORDERED COLLECTIONS, DIRECTORIES, DEVICES
             id1 = self[i][0]
-            t1 = self.coll_set[self[i][0]].type
+            t1 = '~' if id1.startswith('~') else self.coll_set[self[i][0]].type
+            if id == id1:
+                return i
             if t < t1:
                 return i
-            if self[i][0] == id:
+            if id.lower() < id1.lower():
                 return i
         return len(self)
     def as_row(self,id):
         label_dict={
-            '~add-localstore':('New Collection...',None),
-            '~no-devices':('No Devices Connected',None),
-            '~add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
+            '~1no-devices':('No Devices Connected',None),
+            '~2add-localstore':('New Collection...',None),
+            '~3add-dir':('Open a Local Directory...',self.coll_set.default_dir_image),
         }
         if id.startswith('*'):
             return [id,'',800,False,'black',None,False]
@@ -435,9 +439,9 @@ class CollectionCombo(gtk.VBox):
             self.emit('collection-changed','')
             return
         id=self.model[iter][COLUMN_ID]
-        if id=='~add-dir':
+        if id=='~3add-dir':
             self.emit('add-dir')
-        elif id=='~add-localstore':
+        elif id=='~2add-localstore':
             self.emit('add-localstore')
         elif id.startswith('~'):
             return
@@ -560,7 +564,7 @@ class CollectionStartPage(gtk.VBox):
     def open_collection_by_activation(self, treeview, path, view_column):
         model=self.coll_list.get_model()
         id=model[path][COLUMN_ID]
-        if id=='~add-dir':
+        if id=='~3add-dir':
             self.emit("folder-open")
         else:
             self.emit("collection-open",id)
@@ -579,7 +583,7 @@ class CollectionStartPage(gtk.VBox):
             return
         model,iter=sel.get_selected()
         id=model[iter][COLUMN_ID]
-        if id=='~add-dir':
+        if id=='~3add-dir':
             self.emit("folder-open")
         else:
             self.emit("collection-open",id)
