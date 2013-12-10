@@ -850,7 +850,7 @@ class Collection(baseobjects.CollectionBase):
         if self.load_preview_icons:
             if imagemanip.load_thumb_from_preview_icon(item,self):
                 return True
-        if fast_only and self.load_embedded_thumbs:
+        if fast_only and not item.thumburi and self.load_embedded_thumbs:
             if imagemanip.load_embedded_thumb(item,self):
                 return True
         return imagemanip.load_thumb(item,self,self.thumbnail_cache_dir)
