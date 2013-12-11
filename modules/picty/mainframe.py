@@ -49,6 +49,7 @@ from uitools import register_icons
 from uitools import overlay_tools
 from uitools import searchbox
 from uitools import floats
+from uitools import completions
 from uitools.widget_tools import *
 
 from fstools import io
@@ -582,6 +583,7 @@ class MainFrame(gtk.VBox):
             self.active_collection=None
             self.tm.set_active_collection(None)
             self.filter_entry.set_text('')
+            self.filter_entry.index = None
             self.sort_order.set_active(-1)
             self.sort_toggle.set_active(False)
             self.update_widget_states()
@@ -608,6 +610,7 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.set_active(page.active_view.reverse)
         self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
         self.filter_entry.entry.set_text(page.active_view.filter_text)
+        self.filter_entry.index = self.active_collection.index
         self.connect_toggle.handler_block_by_func(self.connect_toggled)
         self.connect_toggle.set_active(self.active_collection.online)
         self.connect_toggle.handler_unblock_by_func(self.connect_toggled)
@@ -644,6 +647,7 @@ class MainFrame(gtk.VBox):
         self.sort_toggle.set_active(view.reverse)
         self.sort_toggle.handler_unblock_by_func(self.reverse_sort_order)
         self.filter_entry.entry.set_text(view.filter_text)
+        self.filter_entry.index = self.active_collection.index
 
 
     def collection_rescan(self,widget):
@@ -855,13 +859,19 @@ class MainFrame(gtk.VBox):
         self.filter_entry.entry.set_text("selected")
         self.filter_entry.entry.activate()
 
-    def entry_dialog(self,title,prompt,default=''):
+    def entry_dialog(self,title,prompt,completion_class=None,default=''):
         dialog = gtk.Dialog(title,None,gtk.DIALOG_MODAL,
                          (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
         prompt_label=gtk.Label()
         prompt_label.set_label(prompt)
         entry=gtk.Entry()
         entry.set_text(default)
+        print '#####################'
+        print completion_class,self.active_collection.index
+        print self.active_collection.index.index
+        if completion_class is not None and self.active_collection is not None:
+            print 'setting up completion'
+            completion_class(entry,self.active_collection.index)
         hbox=gtk.HBox()
         hbox.pack_start(prompt_label,False)
         hbox.pack_start(entry)
@@ -893,19 +903,19 @@ class MainFrame(gtk.VBox):
             self.info_bar_text.set_label('No collection open')
 
     def select_keyword_add(self,widget):
-        keyword_string=self.entry_dialog("Add Tags","Enter tags")
+        keyword_string=self.entry_dialog("Add Tags","Enter tags",completion_class=completions.TagCompletion)
         if keyword_string:
             self.tm.keyword_edit(keyword_string)
 
     def select_keyword_remove(self,widget):
-        keyword_string=self.entry_dialog("Remove Tags","Enter Tags")
+        keyword_string=self.entry_dialog("Remove Tags","Enter Tags",completion_class=completions.TagCompletion)
         if keyword_string:
             self.tm.keyword_edit(keyword_string,False,True)
 
     def select_set_info(self,widget):
         item=baseobjects.Item('stub')
         item.meta={}
-        dialog=dialogs.BatchMetaDialog(item)
+        dialog=dialogs.BatchMetaDialog(item,self.active_collection.index)
         response=dialog.run()
         dialog.destroy()
         if response==gtk.RESPONSE_ACCEPT:

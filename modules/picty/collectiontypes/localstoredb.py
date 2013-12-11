@@ -162,7 +162,7 @@ class LocalStoreDB(baseobjects.CollectionBase):
         ##required overrides (must be overridden to implement a collection)
     def pref_gui_box(self):
         pass
-    def item_metadata_update(self,item):
+    def item_metadata_update(self,item,old_metadata):
 #        self.cursor.execute('''delete from items where id=?''',(item.id,))
 #        self.cursor.execute('''insert into items values (?,?,?,?)''',(item.id,item.mtime,item.meta,item.thumburi))
         self.cursor.execute('''update items set id=?,mtime=?,meta=?,thumb_uri=? where id=?''',(item.uid,item.mtime,item.meta,item.thumburi,item.id))

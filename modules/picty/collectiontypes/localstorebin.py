@@ -447,6 +447,8 @@ class Collection(baseobjects.CollectionBase):
         ##the following attributes are set at run-time by the owner
         baseobjects.CollectionBase.__init__(self)
 
+        self.index = baseobjects.MetadataIndex()
+
 #        ##the collection consists of an array of entries for images, which are cached in the collection file
         self.items=[] #the image/video items
 
@@ -555,6 +557,8 @@ class Collection(baseobjects.CollectionBase):
                 self.items=[update_legacy_item(i,self.image_dirs[0]) for i in self.items]
                 print 'Update complete'
             self.numselected=0
+            for i in self.items: #todo: this could be cached as well
+                self.index.add(i)
             return True
         except:
             import traceback,sys
@@ -640,6 +644,7 @@ class Collection(baseobjects.CollectionBase):
             if add_to_view:
                 for v in self.views:
                     v.add_item(item)
+            self.index.add(item)
             return True
         except LookupError:
             print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
@@ -662,6 +667,7 @@ class Collection(baseobjects.CollectionBase):
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
+            self.index.remove(item)
             return item
         return None
 
@@ -891,9 +897,9 @@ class Collection(baseobjects.CollectionBase):
             item.thumb.save(item.thumburi,"png")
         return True
 
-    def item_metadata_update(self,item):
+    def item_metadata_update(self,item,old_metadata):
         'collection will receive this call when item metadata has been changed'
-        pass
+        self.index.update(item,old_metadata)
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
         if self.load_embedded_thumbs:

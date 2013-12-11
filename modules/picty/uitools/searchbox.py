@@ -8,79 +8,17 @@ from picty import metadata
 from picty import viewsupport
 
 import dialogs
-
-
-class EntryCompletion(gtk.EntryCompletion):
-    def __init__(self,entry):
-        gtk.EntryCompletion.__init__(self)
-        self.entry=entry
-        self.liststore = gtk.ListStore(str)
-        for s in [t[0] for t in viewsupport.TOKENS]:
-            self.liststore.append([s])
-        self.set_model(self.liststore)
-        self.set_text_column(0)
-        self.set_match_func(self.match_func)
-        self.connect('match-selected', self.match_selected)
-#        entry.connect('changed', self.text_changed)
-#        entry.connect('move-cursor', self.move_cursor)
-        entry.connect('activate', self.activate_cb)
-        entry.set_completion(self)
-        self.lpos=0
-        self.rpos=0
-
-    def compute_word_pos(self):
-        pos=self.entry.get_property("cursor-position")
-        key_string=self.entry.get_text()
-        lpos=pos
-        while lpos>0 and key_string[lpos-1].isalnum():
-            lpos-=1
-        rpos=pos
-        while rpos<len(key_string) and key_string[rpos].isalnum():
-            rpos+=1
-        self.rpos=rpos
-        self.lpos=lpos
-
-#    def text_changed(self,editable):
-#        self.compute_word_pos()
-#
-#    def move_cursor(self, entry, step, count, extend_selection):
-#        self.compute_word_pos()
-
-    def match_func(self, completion, key_string, iter):
-        self.compute_word_pos()
-        word=key_string[self.lpos:self.rpos]
-        if not word:
-            return False
-        text = self.liststore.get_value(iter, 0)
-#        print key_string, word, text, text.startswith(word)
-        return text.startswith(word)
-
-    def match_selected(self, completion, model, iter):
-        self.compute_word_pos()
-        pos=self.entry.get_property("cursor-position")
-        key_string=self.entry.get_text()
-        new_string=key_string[0:self.lpos]+model[iter][0]+key_string[self.rpos:]
-        new_pos=self.lpos+len(model[iter][0])
-        self.entry.set_text(new_string)
-        self.entry.set_position(new_pos)
-        return True
-
-    def activate_cb(self, entry):
-        text = entry.get_text()
-        if text:
-            if text not in [row[0] for row in self.liststore]:
-                self.liststore.append([text])
-                entry.set_text('')
-        return
-
-
+import completions
 
 class SearchBox(gtk.HBox):
     def __init__(self):
         gtk.HBox.__init__(self)
         self.filter_combo=gtk.ComboBoxEntry()
         self.entry=self.filter_combo.child
-        self.entrycompletion = EntryCompletion(self.entry)
+        self.entrycompletion = completions.SearchCompletion(self.entry)
+        self.entry.add_events(gtk.gdk.FOCUS_CHANGE_MASK)
+        self.entry.connect("focus-in-event",self.entry_focused)
+        self.index=None
 #        self.entry.connect("activate",self.set_filter_text)
 #        self.entry.connect("changed",self.filter_text_changed)
 
@@ -138,6 +76,12 @@ class SearchBox(gtk.HBox):
         self.pack_start(self.filter_combo)
         return
 
+    def entry_focused(self, entry, direction):
+        '''
+        use this to update the list of tags and other metadata for entry completion
+        '''
+        self.entrycompletion.update_keywords(self.index)
+
     def set_text(self,text):
         self.entry.set_text(text)
 
@@ -158,7 +102,6 @@ class SearchBox(gtk.HBox):
         model = combobox.get_model()
         index = combobox.get_active()
         if index > -1:
-            print model[index][0], 'selected'
             if type(self.search_options[index][1])!=str:
                 terms=self.search_options[index][1]()
                 if terms==None:
