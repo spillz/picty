@@ -668,12 +668,8 @@ class Collection(baseobjects.CollectionBase):
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
-<<<<<<< HEAD
             if self.index:
                 self.index.remove(item)
-=======
-            self.index.remove(item)
->>>>>>> Added EntryCompletion support for the search bar (search syntax hints and tag completion tips) and tag entry widgets (tag hints). Still needs lots of testing and improvements. To implement this features requires that metadata be indexed in collections and updated as collections are changed (see the new MetadataIndex class and helper classes in baseobjects.py). Currently only used for indexing image tags (keywords) of LOCALSTORE collections. All collections that aren't derived from LOCALSTORE have their index attribute set to None
             return item
         return None
 
@@ -917,6 +913,7 @@ class Collection(baseobjects.CollectionBase):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self.index:
             self.index.update(item,old_metadata)
 =======
@@ -929,6 +926,10 @@ class Collection(baseobjects.CollectionBase):
 =======
         self.index.update(item,old_metadata)
 >>>>>>> Added EntryCompletion support for the search bar (search syntax hints and tag completion tips) and tag entry widgets (tag hints). Still needs lots of testing and improvements. To implement this features requires that metadata be indexed in collections and updated as collections are changed (see the new MetadataIndex class and helper classes in baseobjects.py). Currently only used for indexing image tags (keywords) of LOCALSTORE collections. All collections that aren't derived from LOCALSTORE have their index attribute set to None
+=======
+        if self.index:
+            self.index.update(item,old_metadata)
+>>>>>>> check if index is None (as it will be for local directories and maybe devices)
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
         if self.load_embedded_thumbs:
