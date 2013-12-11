@@ -644,7 +644,8 @@ class Collection(baseobjects.CollectionBase):
             if add_to_view:
                 for v in self.views:
                     v.add_item(item)
-            self.index.add(item)
+            if self.index:
+                self.index.add(item)
             return True
         except LookupError:
             print 'WARNING: tried to add',item,ind,'to collection',self.id,'but an item with this id was already present'
@@ -667,7 +668,8 @@ class Collection(baseobjects.CollectionBase):
             pluginmanager.mgr.callback_collection('t_collection_item_removed',self,item)
             for v in self.views:
                 v.del_item(item)
-            self.index.remove(item)
+            if self.index:
+                self.index.remove(item)
             return item
         return None
 
@@ -899,7 +901,8 @@ class Collection(baseobjects.CollectionBase):
 
     def item_metadata_update(self,item,old_metadata):
         'collection will receive this call when item metadata has been changed'
-        self.index.update(item,old_metadata)
+        if self.index:
+            self.index.update(item,old_metadata)
     def load_metadata(self,item,missing_only=False,notify_plugins=True):
         'retrieve metadata for an item from the source'
         if self.load_embedded_thumbs:
