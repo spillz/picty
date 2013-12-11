@@ -76,6 +76,91 @@ def create_empty_collection(name,prefs,overwrite_if_exists=False):
     return col_dir,pref_file,data_file
 
 
+class IndexRulesList:
+    def __init__(self,meta_key):
+        self.key = meta_key
+    def add(self,index_item,item):
+        if item.meta and self.key in item.meta:
+            for t in item.meta[self.key]:
+                if t not in index_item:
+                    index_item[t] = set()
+                index_item[t].add(item)
+    def remove(self,index_item,item):
+        if item.meta and self.key in item.meta:
+            for t in item.meta[self.key]:
+                index_item[t].remove(item)
+                if not len(index_item[t]):
+                    del index_item[t]
+    def update(self,index_item,item,old_meta):
+        if old_meta and self.key in old_meta:
+            for t in old_meta[self.key]:
+                index_item[t].remove(item)
+                if not len(index_item[t]):
+                    del index_item[t]
+        if item.meta and self.key in item.meta:
+            for t in item.meta[self.key]:
+                if t not in index_item:
+                    index_item[t] = set()
+                index_item[t].add(item)
+        for t in index_item:
+            print t
+
+class IndexRulesStr:
+    def __init__(self,meta_key):
+        self.key = meta_key
+    def add(self,index_item,item):
+        if item.meta and self.key in item.meta:
+            if t not in index_item:
+                index_item[t] = set()
+            t = item.meta[self.key]
+            index_item[t].add(item)
+    def remove(self,index_item,item):
+        if item.meta and self.key in item.meta:
+            t = item.meta[self.key]
+            index_item[t].remove(item)
+            if not len(index_item[t]):
+                del index_item[t]
+    def update(self,index_item,item,old_meta):
+        if old_meta and self.key in old_meta:
+            t = old_meta[self.key]
+            index_item[t].remove(item)
+            if not len(index_item[t]):
+                del index_item[t]
+        if item.meta and self.key in item.meta:
+            if t not in index_item:
+                index_item[t] = set()
+            t = item.meta[self.key]
+            index_item[t].add(item)
+
+default_rules = {'Keywords': IndexRulesList('Keywords')}
+
+class MetadataIndex:
+    '''
+    Store unique values metadata items
+    the main attributes are
+    `index` is a dict of dicts.
+        index[metadata_item][unique_value] = [Item1, Item2, ...]
+    `rules` a dictionary of rules to add and remove items to the index
+        index[metadata_item] = rules_object
+        a rules object has an add and remove class
+    '''
+    def __init__(self,rules = default_rules):
+        self.rules = rules
+        self.index = {}
+        for r in rules:
+            self.index[r] = {}
+    def add(self,item):
+        for r in self.rules:
+            self.rules[r].add(self.index[r],item)
+    def remove(self,item):
+        for r in self.rules:
+            self.rules[r].remove(self.index[r],item)
+    def update(self,item,old_meta):
+        for r in self.rules:
+            self.rules[r].update(self.index[r],item,old_meta)
+    def __getitem__(self,metadata_item):
+        return self.index[metadata_item]
+
 class CollectionBase:
     '''
     Defines a list of image items, which can be accessed with list-like semantics
@@ -94,6 +179,8 @@ class CollectionBase:
         self.numselected=0
         self.views=[]
         self.active_view=None
+
+        self.index = None
 
         self.name=''
         self.pixbuf=None
@@ -258,8 +345,8 @@ class CollectionBase:
     def rotate_thumbnail(self,item,right=True,interrupt_fn=None):
         'rotate the cached thumbnail image right (clockwise) or left (counter-clockwise)'
         return False
-    def item_metadata_update(self,item):
-        'collection will receive when item metadata has been changed'
+    def item_metadata_update(self,item,old_metadata):
+        'collection will receive when item metadata has been changed (it was previously old_metadata)'
         pass
     def load_metadata(self,item):
         'retrieve metadata for an item from the source'
@@ -382,12 +469,12 @@ class Item(str):
             del self.meta_backup
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.item_metadata_update(self)
+            collection.item_metadata_update(self,old)
     def mark_meta_saved(self,collection=None):
         if self.is_meta_changed()==True:
             del self.meta_backup
         if collection:
-            collection.item_metadata_update(self)
+            collection.item_metadata_update(self,old)
     def set_meta_key(self,key,value,collection=None):
         if self.meta==None:
             return None
@@ -404,7 +491,7 @@ class Item(str):
             del self.meta_backup
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.item_metadata_update(self)
+            collection.item_metadata_update(self,old)
         return self.is_meta_changed()==True
     def init_meta(self,meta,collection=None):
         old=self.meta
@@ -413,7 +500,7 @@ class Item(str):
             del self.meta_backup
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.item_metadata_update(self)
+            collection.item_metadata_update(self,old)
         return True
     def set_meta(self,meta,collection=None):
         if self.is_meta_changed()!=True:
@@ -424,7 +511,7 @@ class Item(str):
             del self.meta_backup
         if collection:
             pluginmanager.mgr.callback_collection('t_collection_item_metadata_changed',collection,self,old)
-            collection.item_metadata_update(self)
+            collection.item_metadata_update(self,old)
         return self.is_meta_changed()==True
     def __getstate__(self):
         odict = self.__dict__.copy() # copy the dict since we change it
