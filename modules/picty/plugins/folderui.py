@@ -174,13 +174,13 @@ class FolderSidebarPlugin(pluginbase.Plugin):
         settings.save_addon_prefs('folder_plugin_settings',data)
     def t_collection_item_added(self,collection,item):
         '''item was added to the collection'''
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         self.folderframe.folder_cloud[collection].add(item)
         self.thread_refresh()
     def t_collection_item_removed(self,collection,item):
         '''item was removed from the collection'''
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         self.folderframe.folder_cloud[collection].remove(item)
         self.thread_refresh()
@@ -196,22 +196,22 @@ class FolderSidebarPlugin(pluginbase.Plugin):
             self.thread_refresh()
     def t_collection_item_added_to_view(self,collection,view,item):
         '''item in collection was added to view'''
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         self.folderframe.folder_cloud_view[view].add(item)
         self.thread_refresh()
     def t_collection_item_removed_from_view(self,collection,view,item):
         '''item in collection was removed from view'''
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         self.folderframe.folder_cloud_view[view].remove(item)
         self.thread_refresh()
     def t_collection_modify_start_hint(self,collection):
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         self.block_refresh[collection]=True
     def t_collection_modify_complete_hint(self,collection):
-        if not collection.local_filesystem:
+        if collection is None or not collection.local_filesystem:
             return
         del self.block_refresh[collection]
         self.thread_refresh()
