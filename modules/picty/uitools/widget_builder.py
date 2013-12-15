@@ -1,23 +1,48 @@
 '''
-This is a set of simple classes to help create user interaction forms allowing dictionary access
-to "named" widgets and a simply mechanism to set and retrieve data values of child widgets
+This is a set of simple widgets that subclass existing gtk widgets to make the creation of user interaction
+forms simpler. There are 3 main features:
+    1. Simpler constructors that make it simpler to nest child widgets into container widgets or initialize data models
+    2. Dictionary access to child widget via "named" widgets of the root container widget
+    3. A simply mechanism to set and retrieve data values of child widgets using get_form_data and set_form_data
+
+A few classes combine multiple widgets together:
+    LabeledEntry
+    LabeledComboBox
+    LabeledWidgets
+
+See the if __name__ == '__main__' block for examples.
+
 '''
 
 ##TODO: Should we add some signal handling helpers (for data valiidation etc)?? (Currently, the caller must set callbacks manually after the construction of the Form object)
-##TODO: Form is currently a VBox or HBox, should something else be supported
+##TODO: Form is currently a VBox or HBox, should something else be supported?
 
 import gtk
 
 def pack_widgets(parent,container,children):
+    '''
+    used to pack widgets into a box using pack_start
+    children is a iterable of tuples that are of the form (string_id, widget, pack_args) or (widget, pack_args)
+    if there is no string_id, the widget will not be added to the dictionary and it's data won't be extracted with
+    the call to get_form_data. It's useful for adding regular gtk widgets that don't have children and data is not
+    required (e.g. a label).
+    '''
     parent.widgets={}
     for c in children:
-        name=c[0]
-        widget=c[1]
-        pack_args=c[2:]
-        parent.widgets[name]=widget
+        if type(c[0]) == str:
+            name=c[0]
+            widget=c[1]
+            pack_args=c[2:]
+            parent.widgets[name]=widget
+        else:
+            widget = c[0]
+            pack_args = c[1:]
         container.pack_start(widget,*pack_args)
 
 def gtk_widget(base,setter=None,getter=None):
+    '''
+    use this wrapper to add a GTK widget in places where a widget_builder widget is expected
+    '''
     class Widget(base):
         def __init__(self,*args):
             base.__init__(self,*args)
@@ -42,6 +67,33 @@ class Entry(gtk.Entry):
 
     def set_form_data(self,values):
         self.set_text(values)
+
+class TextView(gtk.TextView):
+    def __init__(self,default_value=''):
+        gtk.TextView.__init__(self)
+        if default_value:
+            self.get_buffer().set_text(default_value)
+
+    def get_form_data(self):
+        return self.get_buffer().get_text()
+
+    def set_form_data(self,values):
+        self.get_buffer().set_text(values)
+
+class ScrollingTextView(gtk.ScrolledWindow):
+    def __init__(self,default_value=''):
+        gtk.ScrolledWindow.__init__(self)
+        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.text_view = gtk.TextView()
+        self.add(self.text_view)
+        if default_value:
+            self.text_view.get_buffer().set_text(default_value)
+
+    def get_form_data(self):
+        return self.text_view.get_buffer().get_text(*self.text_view.get_buffer().get_bounds())
+
+    def set_form_data(self,values):
+        self.text_view.get_buffer().set_text(values)
 
 
 class LabeledEntry(gtk.HBox):
@@ -281,6 +333,33 @@ class LabeledWidgets(gtk.Table):
         return data
 
 
+class Notebook(gtk.Notebook):
+    def __init__(self,child_pages):
+        '''
+        `child_pages` is a list of tuples of the form (identifier, page label, page widget)
+        '''
+        gtk.Notebook.__init__(self)
+        self.widgets={}
+        for ident,label,widget in child_pages:
+            if isinstance(label,str):
+                label=gtk.Label(label)
+            self.append_page(widget,label)
+            self.widgets[ident]=widget
+
+    def __getitem__(self,key):
+        return self.widgets[key]
+
+    def set_form_data(self,data_dict):
+        for k in data_dict:
+            self.widgets[k].set_form_data(data_dict[k])
+
+    def get_form_data(self):
+        data={}
+        for k in self.widgets:
+            data[k]=self.widgets[k].get_form_data()
+        return data
+
+
 class Box:
     '''
     A Box is a container that adds methods to pack a set of standardized
@@ -401,8 +480,8 @@ if __name__ == '__main__':
 
     window = gtk.Window()
     b=PaddedVBox([
-                ('label',gtk_widget(gtk.Label)('Attendee Preferences')),
-                ('name',LabeledEntry('enter your name','sam')),
+                (gtk.Label('Attendee Preferences'),),
+                ('name',LabeledEntry('name','sam')),
                 ('trees',CheckBox('likes trees?')),
                 ('eats',LabeledComboBox('eats',['soup','salad','burgers'])),
                 ('drinks',HRadioGroup('drinks',['tea','coffee','water'])),

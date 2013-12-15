@@ -16,6 +16,7 @@ ICON_INFO = [
   ('picty-image-write', 'picty-image-write.png'),
   ('picty-transfer', 'picty-transfer.png'),
   ('picty-map', 'picty-map.png'),
+  ('picty-emailer', 'Gnome-emblem-mail.png'),
   ('flickr', 'flickr.png'),
   ]
 
