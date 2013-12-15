@@ -918,7 +918,7 @@ class Collection(baseobjects.CollectionBase):
         'return a stream read the entire photo file from the source (as binary stream)'
         return open(self.get_path(item),'rb')
     def write_file_data(self,dest_item,src_stream):
-        'write the entire photo file (as a stream) to the source (as binary stream)'
+        'write the entire photo file (as a stream) to the dest_item (as binary stream)'
         try:
             f=open(self.get_path(dest_item),'wb')
             f.write(src_stream.read())

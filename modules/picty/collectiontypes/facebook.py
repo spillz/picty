@@ -1325,7 +1325,7 @@ class FacebookCollection(baseobjects.CollectionBase):
         return item.imageurl.split('/')[-1]
 
     def write_file_data(self,dest_item,src_stream):
-        'write the entire photo file (as a stream) to the source (as binary stream)'
+        'write the entire photo file (in `srcstream`) to the `dest_item` (as binary)'
         pass
 
     def get_browser_text(self,item):

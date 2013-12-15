@@ -277,7 +277,7 @@ class CollectionBase:
         'return a filename that can be used when copying to a local filesystem'
         pass
     def write_file_data(self,dest_item,src_stream):
-        'write the entire photo file (as a stream) to the source (as binary stream)'
+        'write the entire photo file (in `srcstream`) to the `dest_item` (as binary)'
         pass
 
 
