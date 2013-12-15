@@ -95,7 +95,7 @@ class MapPlugin(pluginbase.Plugin):
         places = {'Home':(0.0,0.0,1)}
         latlon = None
         place = None
-	source = None
+        source = None
         data = settings.load_addon_prefs('map_plugin_settings')
         if data:
             places = data['places']
