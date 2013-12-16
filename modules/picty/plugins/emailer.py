@@ -285,7 +285,7 @@ class EmailFrame(wb.Notebook):
         password = keyring.get_password(KEYRING_SERVICE_NAME,user)
         if password is not None:
             d['password'].entry.set_text(password)
-            d['box']['remember'].set_active(True)
+            d['remember'].set_active(True)
 
         response=d.run()
         dfd = d.get_form_data()
