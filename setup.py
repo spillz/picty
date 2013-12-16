@@ -35,7 +35,7 @@ if platform.system() != 'Windows':
             ('share/picty/icons',['icons/picty-5-polaroids.png','icons/picty-image-crop.png','icons/picty-image-write.png','icons/picty-rotate-right.png',
                 'icons/picty-image-rotate.png','icons/picty-rotate-left.png','icons/picty-sidebar.png',
                 'icons/picty-polaroids-and-frame.png','icons/picty-transfer.png',
-                'icons/picty-map.png'])
+                'icons/picty-map.png','icons/Gnome-emblem-mail.png'])
             ]
          )
 else:
