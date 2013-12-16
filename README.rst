@@ -2,11 +2,11 @@
 picty - A photo collection manager
 ==================================
 
-.. |picty-logo| image:: icons/picty-polaroids-and-frame.png
-   :align: right
+.. image:: icons/picty-polaroids-and-frame.png
+   :align: center
    :scale: 50 %
 
-picty is a photo manager designed around metadata and a lossless approach to image handling. |picty-logo|
+picty is a photo manager designed around metadata and a lossless approach to image handling.
 
 Key features:
 
