@@ -229,7 +229,12 @@ class EmailFrame(wb.Notebook):
         self['email_page'].set_sensitive(True)
         self['email_page']['error_bar'].show()
         self['email_page']['error_bar']['error'].set_text(data['error'])
-        keyring.delete_password(KEYRING_SERVICE_NAME,data['username']) #assume that the problem was a bad password
+        try:
+            #Not available in all versions of keyring
+            keyring.delete_password(KEYRING_SERVICE_NAME,data['username']) #assume that the problem was a bad password
+        except:
+            #TODO: Better error handling here
+            pass
 
     def email_completed(self,data):
         print 'Email succeeded!'
@@ -285,7 +290,7 @@ class EmailFrame(wb.Notebook):
         password = keyring.get_password(KEYRING_SERVICE_NAME,user)
         if password is not None:
             d['password'].entry.set_text(password)
-            d['box']['remember'].set_active(True)
+            d['remember'].set_active(True)
 
         response=d.run()
         dfd = d.get_form_data()
@@ -296,7 +301,12 @@ class EmailFrame(wb.Notebook):
             if remember and password != '':
                 keyring.set_password(KEYRING_SERVICE_NAME, user, password)
             elif not remember:
-                keyring.delete_password(KEYRING_SERVICE_NAME, user)
+                try:
+                    # only available in newer versions
+                    keyring.delete_password(KEYRING_SERVICE_NAME, user)
+                except:
+                    # maybe give a warning?
+                    pass
             return password
         return None
 
