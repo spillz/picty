@@ -2,7 +2,11 @@
 picty - A photo collection manager
 ==================================
 
-picty is a photo manager designed around metadata and a lossless approach to image handling.
+.. |picty-logo| image:: icons/picty-polaroids-and-frame.png
+   :align: right
+   :scale: 50 %
+
+picty is a photo manager designed around metadata and a lossless approach to image handling. |picty-logo|
 
 Key features:
 
@@ -14,17 +18,17 @@ Key features:
   - Images on cameras, phones and other media devices
   - Photo hosting services (Flickr currently supported)
 
-* picty does not "Import" photos into its own database, it simply provides an interface for accessing them wherever they are. picty does use a cache to keep track of the collection, however.
+* picty does not "Import" photos into its own database, it simply provides an interface for accessing them wherever they are. To keep things snappy and to allow you to browse even if you are offline, picty maintain a cache of thumbnails and metadata.
 
 * Metadata support for the industry standards Exif, IPTC and Xmp
 * Lossless approach:
 
   - picty writes all changes including image edits as metadata. e.g. an image crop is stored as any instruction, the original pixels remain in place
-  - Nothing is written to images until you save your changes. Changes are stored between sessions in a cache file. Easily revert unsaved changes that you don't like.
+  - Changes are stored in picty's collection cache until you save your metadata changes to the images. Easily revert unsaved changes that you don't like.
 
 * Basic image editing:
 
-  - Current support for basic image enhancements such as brightness, contrast, cropping, rotation.
+  - Current support for basic image enhancements such as brightness, contrast, color, cropping, and straightening.
   - More tools coming soon (red eye reduction, levels, curves, noise reduction)
 
 * Image tagging:
@@ -89,6 +93,13 @@ Run the following commands in the terminal::
     bin/picty
 
 or see the INSTALL file for installation information. The benefits of installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
+
+Get Support
+-----------
+
+Support and information is available at google groups: http://groups.google.com/group/pictyphotomanager
+
+Or file an issue on GitHub: https://github.com/spillz/picty/issues
 
 License Information
 -------------------
