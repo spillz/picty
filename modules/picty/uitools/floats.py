@@ -1,5 +1,5 @@
 import gtk
-import widget_tools
+import toolbar_helpers
 
 
 class FloaterBase:
@@ -120,7 +120,7 @@ class FloatingPanelManager:
             p.toggle=gtk.ToggleToolButton(icon_name)
             p.toggle.show()
             if add_to_toolbar:
-                widget_tools.add_item(self.mainframe.toolbar1,p.toggle,p.toggle_panel,title,tooltip_text)
+                toolbar_helpers.add_item(self.mainframe.toolbar1,p.toggle,p.toggle_panel,title,tooltip_text)
         return p
     def remove_panel(self,title):
         p=self.panels[title]

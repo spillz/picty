@@ -49,7 +49,7 @@ from uitools import register_icons
 from uitools import overlay_tools
 from uitools import searchbox
 from uitools import floats
-from uitools.widget_tools import *
+from uitools.toolbar_helpers import *
 
 from fstools import io
 from fstools import fileops
