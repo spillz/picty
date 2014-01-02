@@ -110,12 +110,19 @@ perfectly safe to test picty on your photo collection.
    embedded in the image file). Depending on how many images you have in
    your collection, this could take some time, especially the first run. picty
    stores the information about the collection in a cache file so that
-   loading the collection should be very fast.
+   loading the collection should be very fast after this initial scan has
+   been completed.
 
-   If all has gone well, the main window should eventually display a grid
+   If all has gone well, the main window should display a grid
    of image thumbnails in a notepage like the following:
 
    .. image:: screenshots/new-collection-created.png
+
+   As the scan continues, new images will be added to this page.
+
+   You should notice that while the scan is going on the app remains (mostly) responsive.
+   You can view and edit images while the scan continues in the background.
+
 
 *Next:* Learn about picty's `user interface <user_interface.rst>`_
 
