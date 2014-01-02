@@ -1,0 +1,271 @@
+A Guide for Plugin Developers
+-----------------------------
+
+picty is reasonably easy to develop plugins for if you already have
+a good undertanding of python and pygtk. Look at the current plugins
+in modules/picty/plugins. Usually the easiest way to begin is to start
+with one of the current plugins that offer similar features or interface
+and make changes from there.
+
+Overview of the Source Tree
+---------------------------
+
+Here's a rough guide of what to find where
+
+/
+    - setup.py, windows installer script (picty.iss) and readme information
+
+/bin
+    - contains the executable scripts
+    * picty - the main program
+    * picty-import - a script the open picty with a prompt to import
+         a specified  device
+    * picty-open - a script to open picty on a specified folder or image file
+
+/desktop
+    * Linux desktop integration files (per the Free Desktop spec)
+
+/debian
+    * Debian packaging files
+
+/icons
+    - various icons used in the user interface
+    - plugins also put their icons here
+
+/modules
+    - contains copies of any packages used by picty
+          (in Linux these are installed to /usr/share/picty)
+
+/modules/pyfb
+    - for facebook integration
+
+/modules/picty
+    - main picty package containing
+    * mainframe.py - defines mainframe object and is the parent object of the program
+    * collectionmanager.py - used to enumerate all collections and attached devices, provides the UI interface for opening, closing and managing collections
+    * backend.py - the worker object and various jobs that are run on a single background thread
+    * baseobjects.py - defines the base classes collection objects: Item (representing a photo or video), CollectionBase (collections of items), Index and ViewBase (subset of a collection) .
+    * browser.py - defines the browser - a grid view of images. There can be more than one of these in the UI and they appear as notebook pages.
+    * logger.py - logging tools. currently only full utilized in backend.py, needs to be used everywhere in place of "print" statements
+    * pluginbase.py - defines the base class that all plugins should be derived from
+    * pluginmanager.py - singleton object representing the collection of plugins.
+                    - enumerate plugins, activates and deactivates them, provides methods for alerting plugins to changes
+    * settings.py - global settings for the app that are loaded and saved at startup -- be careful about changing them
+    * simple_parser.py - a parser engine used for image search within a collection
+    * view_support.py - helpers primarily used for image sort and search (module name is misleading)
+    * viewer.py - the image viewer - view and edit images
+
+/modules/picty/_legacy
+    - old functionality that is kept for backward compatibility or stuff that
+      no longer works but might be worth resurrecting one day
+
+/modules/picty/collectiontypes
+    - all of the photo collection types that picty supports are here
+    - they all derive from baseobject.CollectionBase
+    - and implement the required methods (add, remove items, load/save metadata,
+        load/save image data, save collection in cache)
+    - and create dialogs for creating a new instance of a collection
+        and changing collection properties
+    * localstorebin.py - the standard collection type in picty for collections of images in the local filesystem
+    * localstoredb.py - not implemented yet
+    * localdir.py - temporary collection pointing to a set of images in a folder
+               - subclasses from localstorebin
+               - Devices - cameras and USB sticks are subclassed from localdir
+    * flickr.py
+    * facebook.py
+
+/modules/picty/fstools
+    - contains tools for working with the filesystem that works across multiple OSes
+    * dbusserver.py - starts a D-Bus server that allows desktop integration
+    * fileops - threaded copy, delete, move operations
+    * io - various functions for discovering and operating on files
+    * monitor2.py - file system monitoring
+
+/modules/picty/metadata
+    - tools to read/write metadata from images in the local filesystem
+    - attempts to be platform agnostic
+    * metadata1.py - uses pyexiv2 <v0.3
+    * metadata2.py - uses pyexiv2 >= v0.3
+    * pyexiv2_alt.py - alters v0.2 pyexiv2 to handle Rational numbers (e.g. GPS coordinates)
+
+/modules/picty/plugins
+    - all plugins for picty belong here
+    * config.py - picty configuration dialog and about box
+    * crop.py - Crop tool (lossless)
+    * emailer.py - Email tool - resizes and emails selected images using configured email address (uses python-keyring)
+    * enhance.py - Image Enhancements brightness, color, contrast, sharpen (lossless)
+    * folderui.py - Displays a folder tree view of the collection in the left pane
+    * imagewriter.py - Exports a copy of an edited (or original) image
+    * mapui.py - View and place images on a map (reads and sets GPS coordinate metadata)
+    * metadata_viewer.py - View selected metadata about an image
+    * rotate.py - Rotate tool straightens images (lossless)
+    * tagui.py - Displays a tag tree view of the images in the left pane
+    * transfer.py
+
+/modules/picty/uitools
+    - lots of user interface helpers (the most important is widget_builder)
+    * dialogs.py - various prompts and dialogs for editing metadata
+    * floats.py - the floating panel and floating dialog classes and a manager to add them
+                - floating items get a button in the tool bar to show/hide them
+    * overlay_tools.py - code for mouseover buttons that appear above images in the browser
+                       - will eventually replace with something less custom
+    * overlay_widgets.py - overlay one widget above another and hide/show them depending on mouse pointer location
+                         - needs accelerator support so that the can be shown hidden via keyboard
+    * register_icons.py - registers global icons used by picty as stock items
+    * searchbox.py - picty search box + UI for drop down combo box items
+    * toolbar_helpers.py - functions and base classes to manage picty's toolbars
+    * widget_builder.py - wraps/extends basic GTK widgets to make creating nice dialogs in picty simpler
+                        - this is a work in progress, and eventually will be used extensively throughout picty
+
+Object Heirarchy and Application Startup
+----------------------------------------
+
+The main picty object is the mainframe, a gtk.VBox that contains most of the UI for the app.
+The picty script in bin/picty:
+
+* Loads settings
+
+* creates the gtk App
+
+* creates the main app window
+
+* creates and instance of the mainframe and adds it to the main app window.
+
+The constructor for the mainframe creates and is the parent of the following objects
+
+* hover_cmds: the mouse overlay commands for the image browser
+
+* volume_monitor: a GIO Volume Monitor instance (for trackings Devices being added/removed)
+
+* coll_set: A CollectionManager instance that keeps track of picty image collections and devices
+
+* active_collection: a reference to the active_collection
+
+* float_mgr: the floating panel manager that plugins can use to add and remove panels for their UI (and optionally display a toolbar button to show/hide the panel). The image viewer also uses a floating panel for its fullscreen view
+
+* plugmgr: the plugin manager. Plugins are loaded in the mainframe constructor
+
+* browser_nb: a gtk.Notebook containing a collection manager page and picty image Browser objects for collections that are open
+
+* startpage: a reference to the start page that is displayed in browser_nb
+
+* tm: "thread_manager" the backend worker object that runs backgrounds tasks on a worker thread
+
+* viewer_toolbar: a gtk.Toolbar displayed in the image viewer
+
+* iv: the image viewer (there is only one) and its associated image loader (a worker thread that awaits instructions)
+
+* info_bar: a status bar
+
+* toolbar1: a toolbar displayed at the top of the mainframe
+
+    - toolbar contains search, sort widgets and various other tools affecting the active view or the entire collection
+
+* sidebar: for displaying TreeView panes representing different views of the collection (E.g. folder or tag view)
+
+* hpane and hpane_ext: adjustable panes to controlling the size of the sidebar and image viewer relative to the active image browser (or start page)
+
+Plugins are initialized after all of these object are created.
+Then the layout function is called to correctly size and order
+widgets for the screen (including any added by the plugins that
+the framework is aware of - e.g. sidebar panels). Then the D-Bus
+server and worker is started, the last opened collection will be
+reopened and the app will then be ready for the user.
+
+Create a new plugin
+-------------------
+
+The easiest way is to copy one of the existing plugins that offers
+similar functionality (e.g. one of the image editing plugins to
+add a new image edting plugin, or the tagui or folderui plugin to
+add a plugins that adds a new tree view of the collection -
+e.g. an album view)
+
+All plugins are defined as a class derived from pluginbase.Plugin
+and have the following class attributes:
+
+* name - a unique identifying name
+* display_name - plugin name as shown in the plugin configuration tab
+* api_version - API version string (currently '0.1.0') for the plugin API version used
+* version - the plugin's version string (e.g. '0.1.0')
+
+Plugins define their own __init__ function that takes
+no arguments (i.e. only self). Plugins should avoid doing much
+here because they should be kept inactive until their plugin_init
+method is called.
+
+Handler prefixed with t occur on a worker or image viewer thread,
+so be careful about touching UI widgets from these (instead use gtk.idle_add
+to do the UI work on the main thread)
+
+You can override the base plugin methods to handle app activity (see pluginbase.py for more documentation of the methods):
+
+    * plugin_init and plugin_shutdown, these should respectively
+      create and remove the UI associated with the plugin. The shutdown method
+      should stop any running tasks that were started by the plugin.
+
+    * Override other plugin methods prefixed with view_ or collection_ to handle events associated with the active
+      collection or view_ of the collection_. (See the tagui plugin)
+
+    * Image editing tasks should override the plugin methods prefixed with
+      viewer_ or loader_. (See crop, rotate, and enhance plugins)
+
+    * Add/remvoe items to the sidebar with the methods prefixed with sidebar_
+
+As with any other gtk app, you can also connect to GTK signals associated with
+widgets owned by the plugin or other parts of the app.
+
+
+Threading
+---------
+
+picty uses threading extensively to avoid blocking the user from working
+with the app while a long-running task is active. Many of the background
+jobs that affect images in a collection generate callback to the various
+plugin methods, allowing your plugin to respond to changes in the
+collection. For example, the tagui plugin keeps its tag dictionary up to
+date by providing callbacks associated with images being added or remove
+from the view or collection, or images metadata changing.
+
+pluginbase.Plugin methods prefixed with t_ are methods that will be
+called by picty from a job on a worker thread or image viewer thread.
+These handlers should avoid touching any gtk Widgets (use gobject.idle_add)
+
+Use the worker thread, image viewer thread or another background thread
+for the plugins long-running tasks. Tasks that affect groups of
+images should probably subclass from backend.WorkerJob or call the
+convenience method run_as_job
+
+picty does not use much locking, so you need to be careful about making
+changes to images on the main thread while jobs are active on a background
+thread. It's possible that images can be left in an inconsistent state.
+(picty needs to be improved on this front.)
+
+Plugin resources
+----------------
+
+Places icons in the icons folder, and load them as stock items
+using the register_icons.py module. You can put html, or other
+data files that your plugin needs in a subfolder of
+/modules/picty/plugins. Third-party libraries can also
+be added to picty itself instead of the python distribution, but
+its better not to.
+
+User Plugin Data
+-----------------
+
+Use settings.save_addon_prefs and settings.load_addon_prefs to write
+user settings and other data to json formateed text files. The filename
+arugment is a name without path or extension (.json is added by the
+function and the file is placed in the settings_dir directory)
+
+Note: avoid keeping data about images in these files. Use item.meta to
+for data that can be stored in the images themselves. That data will be kept
+in cache until the user writes the data to the files. You can also add an
+attribute to the item itself.
+
+Update the packaging scripts
+----------------------------
+
+Unless you are doing something unusual you should only need to add
+the plugin's 'images or resources to setup.py
