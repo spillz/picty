@@ -143,8 +143,7 @@ class SendMailJob(backend.WorkerJob):
                 gobject.idle_add(self.plugin.email_completed,self.prefs)
             except Exception as e:
                 import traceback
-                traceback.print_exc()
-                self.prefs['error'] = 'Email failed with error message %s'%(e.message)
+                self.prefs['error'] = 'Email failed with error message %s\nDetails\n%s'%(e.message,traceback.format_exc())
                 gobject.idle_add(self.plugin.email_failed,self.prefs)
                 pass ##TODO: notify UI of error
             ## TODO: Clean up images - only remove the temporary copies (commented code below would delete all of the images - not what we want!!)
@@ -225,7 +224,6 @@ class EmailFrame(wb.Notebook):
 
     def email_failed(self,data):
         print 'Email failed!'
-        print data
         self['email_page'].set_sensitive(True)
         self['email_page']['error_bar'].show()
         self['email_page']['error_bar']['error'].set_text(data['error'])
@@ -237,8 +235,7 @@ class EmailFrame(wb.Notebook):
             pass
 
     def email_completed(self,data):
-        print 'Email succeeded!'
-        print data
+        print 'Email sent successfully!'
         self['email_page']['error_bar'].show()
         self['email_page']['error_bar']['error'].set_text(data['error'])
 #        d = self.get_form_data()
@@ -260,9 +257,12 @@ class EmailFrame(wb.Notebook):
         prefs['size'] = int(prefs['size'])
         prefs['apply_edits'] = prefs['apply_edits']==0
         del prefs['header_info']
-        print prefs
 
-        password = keyring.get_password(KEYRING_SERVICE_NAME,prefs['username'])
+        try:
+            password = keyring.get_password(KEYRING_SERVICE_NAME,prefs['username'])
+        except:
+            #TODO: If system keyring daemon is not running, an assertion will throw here -- need to be more informative to the user
+            password = None
         if password is None:
             password = self.password_dialog()
         if password is None or password =='':
@@ -287,7 +287,11 @@ class EmailFrame(wb.Notebook):
         user = fd['config_page']['username']
 
         d['password'].entry.set_visibility(False)
-        password = keyring.get_password(KEYRING_SERVICE_NAME,user)
+        try:
+            password = keyring.get_password(KEYRING_SERVICE_NAME,prefs['username'])
+        except:
+            #TODO: If system keyring daemon is not running, an assertion will throw here -- need to be more informative to the user
+            password = None
         if password is not None:
             d['password'].entry.set_text(password)
             d['remember'].set_active(True)
@@ -299,7 +303,11 @@ class EmailFrame(wb.Notebook):
             password = dfd['password']
             remember = dfd['remember']
             if remember and password != '':
-                keyring.set_password(KEYRING_SERVICE_NAME, user, password)
+                try:
+                    keyring.set_password(KEYRING_SERVICE_NAME, user, password)
+                except:
+                    #TODO: If system keyring daemon is not running, an error will be raised -- need to be more informative to the user
+                    pass
             elif not remember:
                 try:
                     # only available in newer versions

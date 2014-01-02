@@ -140,7 +140,7 @@ class TagSidebarPlugin(pluginbase.Plugin):
         self.worker=mainframe.tm
         self.block_refresh={}
         user_tag_layout=user_tag_layout_default
-        data=settings.load_addon_prefs('tag_plugins_settings')
+        data=settings.load_addon_prefs('tag_plugin_settings')
         if data:
             user_tag_layout = data['tag_layout']
         else:
@@ -667,7 +667,7 @@ class TagFrame(gtk.VBox):
         self.model.insert(None,0,(0,'favorites',None,'<b>Categorized</b>',False,''))
 ##        try:
         for row in usertaginfo:
-            path=row[0]
+            path=tuple(row[0])
             parent=self.model.get_iter(path[0:len(path)-1])
             self.model.append(parent,[row[1],row[2],None,row[3],False,row[4]])
             self.user_tags[row[2]]=gtk.TreeRowReference(self.model,path)
