@@ -16,7 +16,7 @@ The Main Window
 
 The main window has six main components, although some of them may be hidden.
 The picture below shows the main window after opening a collection
-and viewing an image:
+and then viewing an image:
 
 .. image :: screenshots/main-window-annotated-complete.png
 
