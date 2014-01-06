@@ -17,9 +17,8 @@ Topics
 Sidebar Plugins
 ---------------
 
-| `Folder Sidevar <folderui.rst>`_
+| `Folder Sidebar <folderui.rst>`_
 | `Tag Sidebar <tagui.rst>`_
-| `Map Sidebar <mapui.rst>`_
 
 Image Editing Plugins
 ---------------------
@@ -33,5 +32,6 @@ Other Plugins
 -------------
 
 | `Image Transfer <image_transfer.rst>`_
+| `Map Plugin <mapui.rst>`_
 | `Metadata Viewer <metadata_viewer.rst>`_
 | `Emailer <emailer.rst>`_
