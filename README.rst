@@ -6,24 +6,37 @@ picty - A photo collection manager
    :align: center
    :scale: 50 %
 
-picty is a photo manager designed around metadata and a lossless approach to image handling.
+picty is a photo manager designed around metadata and a lossless approach
+to image handling.
+
+    metadata: descriptive and other information about images
+    (created by you, your camera or the programs you use) that are
+    embedded inside image files alongside the pixels.
+
+    lossless: by only ever writing information about images, including
+    image processing instructions, as metadata, the original image pixels
+    are never altered.
 
 Key features:
 
-* Supports big photo collections (20,000 plus images)
-* Open more than one collection at a time and transfer images between them
+* Supports big photo collections (20,000 plus images).
+* Open more than one collection at a time and transfer images between them.
 * Collections are:
 
-  - Folders of images in your local file system
-  - Images on cameras, phones and other media devices
-  - Photo hosting services (Flickr currently supported)
+  - Folders of images in your local file system.
+  - Images on cameras, phones and other media devices.
+  - Photo hosting services (Flickr currently supported).
 
-* picty does not "Import" photos into its own database, it simply provides an interface for accessing them wherever they are. To keep things snappy and to allow you to browse even if you are offline, picty maintain a cache of thumbnails and metadata.
+* picty does not "Import" photos into its own database, it simply provides
+  an interface for accessing them wherever they are. To keep things snappy
+  and to allow you to browse even if you are offline, picty maintain a
+  cache of thumbnails and metadata.
 
-* Metadata support for the industry standards Exif, IPTC and Xmp
+* Reads and writes metadata in industry standard formats Exif, IPTC and Xmp
 * Lossless approach:
 
-  - picty writes all changes including image edits as metadata. e.g. an image crop is stored as any instruction, the original pixels remain in place
+  - picty writes all changes including image edits as metadata. e.g. an image
+    crop is stored as any instruction, the original pixels remain in place
   - Changes are stored in picty's collection cache until you save your metadata changes to the images. Easily revert unsaved changes that you don't like.
 
 * Basic image editing:
