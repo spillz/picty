@@ -14,13 +14,13 @@ everything if that's your thing.
 The Main Window
 ---------------
 
-The main window has five main components, two of which may be hidden.
+The main window has six main components, although some of them may be hidden.
 The picture below shows the main window after opening a collection
 and viewing an image:
 
 .. image :: screenshots/main-window-annotated-complete.png
 
-The five components of the interface are:
+The components of the interface are:
 
 1. **Collections Notebook**: Collections are displayed in a "tabbed"
    notebook, with each page of the notebook representing an open
