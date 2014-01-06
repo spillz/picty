@@ -23,13 +23,13 @@ and viewing an image:
 The five components of the interface are:
 
 1. **Collections Notebook**: Collections are displayed in a "tabbed"
-    notebook, with each page of the notebook representing an open
-    collection. This allows you to have more than one collection open
-    at a time! The content of each page in the notebook is an Image
-    Browser for that collection and the global Image Viewer. The
-    last tab of the notebook (the one with a "+" sign) is the start
-    page that you will use to create, open, close, delete and manage
-    your photo collections and devices.
+   notebook, with each page of the notebook representing an open
+   collection. This allows you to have more than one collection open
+   at a time! The content of each page in the notebook is an Image
+   Browser for that collection and the global Image Viewer. The
+   last tab of the notebook (the one with a "+" sign) is the start
+   page that you will use to create, open, close, delete and manage
+   your photo collections and devices.
 
 2. **Image Browser**: The image browser displays thumbnails of all
    (or a subset) of the photos and videos in your collection or device.
@@ -45,43 +45,44 @@ The five components of the interface are:
    **Main Toolbar**.
 
 3. **Image Viewer**: The image viewer displays an enlarged version of the
-    photos in your collection. You can view images in the image browser
-    by double clicking the mouse on them in the image browser (or by
-    pressing the ``Enter`` key). By default, the viewer will be displayed
-    along side the browser in the main window, but it can also be displayed
-    in fullscreen (press ``Enter``). The viewer will popup a viewer toolbar
-    and information about the image if you move the mouse inside the viewer.
-    (To see the viewer toolbar, move the mouse toward the top of the image
-    view)
+   photos in your collection. You can view images in the image browser
+   by double clicking the mouse on them in the image browser (or by
+   pressing the ``Enter`` key). By default, the viewer will be displayed
+   along side the browser in the main window, but it can also be displayed
+   in fullscreen (press ``Enter``). The viewer will popup a viewer toolbar
+   and information about the image if you move the mouse inside the viewer.
+   (To see the viewer toolbar, move the mouse toward the top of the image
+   view.)
 
 4. **Main Toolbar**: The main toolbar contains a variety of actions that
-    generally affect the collection as a whole or the current view of the
-    collection. For example, there are actions to rescan the collection,
-    save changes to image metadata, and to search for images. There are
-    also shortcuts for various plugins including an email plugins, a
-    mapping plugin, and a plugin that lets you transfer images between
-    collections.
+   generally affect the collection as a whole or the current view of the
+   collection. For example, there are actions to rescan the collection,
+   save changes to image metadata, and to search for images. There are
+   also shortcuts for various plugins including an email plugins, a
+   mapping plugin, and a plugin that lets you transfer images between
+   collections.
 
 5. **Sidebar**: The sidebar displays a tree view of the tag and folder
-    layout of the collection, in the "Tag" and "Folder" tabs, respectively.
-    picty has a very rich tagging interface that makes it easy to manage
-    the tags (i.e. keywords) associated with your images. For example,
-    see all of the images associated with a tag is as simple as double
-    clicking on that tag in the sidebar. You can also browse the items
-    in a particular folder by double clicking on the folder in the "Folder"
-    tab.
+   layout of the collection, in the "Tag" and "Folder" tabs, respectively.
+   picty has a very rich tagging interface that makes it easy to manage
+   the tags (i.e. keywords) associated with your images. For example,
+   to show all of the images associated with a tag in the image browser is
+   as simple as double clicking on that tag in the sidebar. You can also
+   browse the items in a particular folder by double clicking on the folder
+   in the "Folder" tab.
 
 6. **Status Bar**: The status bar displays summary information about the
-    number of images in the collection and in the current view of the
-    collection. It also shows a spinner bar during background activity,
-    such as scanning the collection for new images.
+   number of images in the collection and in the current view of the
+   collection. It also shows a spinner bar during background activity,
+   such as scanning the collection for new images.
 
 
 Keyboard Shortcuts
 ------------------
 
 Here are the current keyboard shortcuts. More shortcuts will be added over
-time until picty can be completely controlled via the keyboard.
+time with the ultimate goal that picty can be completely controlled via
+the keyboard.
 
 +------------------+----------------------------------------------------+
 | **Navigation**                                                        |
