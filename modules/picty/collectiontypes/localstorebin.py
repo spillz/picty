@@ -806,13 +806,22 @@ class Collection(baseobjects.CollectionBase):
             item=baseobjects.Item(self.get_relpath(dest_filename))
             item.mtime=io.get_mtime(dest_filename)
             item.selected=src_item.selected
-            ##TODO: Do we need to do this for all non-local filesystems? (Apparently yes for flickr)
-            if not src_collection.local_filesystem:
+            #copy metadata from the original
+            #TODO: drop metadata not supported by local store?
+            if src_item.meta is not None:
                 item.init_meta(src_item.meta.copy(),self)
-                self.write_metadata(item)
-                self.load_metadata(item,notify_plugins=False)
+            if src_collection.local_filesystem:
+                #for local filesystems lets copy the backup metadata to ensure that the use
+                #will see there is unsaved data. could also just write the metadata first, but
+                #this gives the user a bit more flexibility.
+                if 'meta_backup' in dir(src_item):
+                    item.meta_backup=src_item.meta_backup
             else:
-                self.load_metadata(item,missing_only=True,notify_plugins=False)
+                #the item.meta might contain data that isn't in the original, so lets write
+                #it to the image (since a localstore image should always represent what is in
+                #the image) and then reload it to get anything else that wasn't in item.meta
+                self.write_metadata(item) #potential risk of data loss by writing data here
+                self.load_metadata(item,notify_plugins=False) ##TODO: Shoudln't we notify plugins?
             self.make_thumbnail(item)
             self.add(item) ##todo: should we lock the image browser rendering updates for this call??
             return True
