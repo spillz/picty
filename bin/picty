@@ -28,18 +28,21 @@ import os.path
 try:
     #TODO: relies on __file__ not existing on windows, that's a bit of a hack
     filename=os.path.abspath(__file__)
-    if filename=='/usr/bin/picty':
+    user_local = os.path.expanduser('~/.local')
+    prefix = user_local if filename.startswith(user_local) else '/usr'
+    if filename==prefix+'/bin/picty':
         #installed locations on linux
-        module_path='/usr/share/picty'
-        icon_file='/usr/share/pixmaps/picty.png'
-        splash_file='/usr/share/picty/icons/picty-polaroids-and-frame.png'
+        module_path=prefix+'/share/picty'
+        icon_file = prefix+'/share/pixmaps/picty.png'
+        splash_file=prefix+'/share/picty/icons/picty-polaroids-and-frame.png'
     else:
         #default locations when running from source
         module_path=os.path.join(os.path.split(os.path.split(filename)[0])[0],'modules')
         icon_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'desktop/picty.png')
         splash_file=os.path.join(os.path.split(os.path.split(filename)[0])[0],'icons/picty-polaroids-and-frame.png')
     print 'running picty with module path',module_path
-    sys.path.insert(0,module_path)
+    if prefix == '/usr':
+        sys.path.insert(0,module_path)
 except:
     #installed locations on windows relative to picty.exe
     module_path='modules'

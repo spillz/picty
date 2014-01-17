@@ -21,11 +21,12 @@ ICON_INFO = [
   ]
 
 filename=os.path.abspath(__file__)
-if filename.startswith('/usr/share/picty/picty/uitools/register_icons.py'):
-    icon_path='/usr/share/picty/icons/'
+user_local = os.path.expanduser('~/.local')
+prefix = user_local if filename.startswith(user_local) else '/usr'
+if filename.startswith(prefix):
+    icon_path=prefix+'/share/picty/icons/'
 else:
     icon_path=os.path.join(os.path.split(filename)[0],'..','..','..','icons/')
-print 'REGISTERING ICONS IN',icon_path
 
 def register_iconset(icon_info):
   iconfactory = gtk.IconFactory()
