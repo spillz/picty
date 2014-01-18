@@ -235,8 +235,6 @@ def item_in_region(item,lat0,lon0,lat1,lon1):
             return True
     return False
 
-
-
 def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing_only=False,check_for_sidecar=False,notify_plugins=True):
     if item.meta is not None:
         meta=item.meta.copy()
@@ -277,7 +275,8 @@ def load_metadata(item,collection=None,filename=None,get_thumbnail=False,missing
 
 def save_metadata(item,collection,cache=None,sidecar_on_failure=True):
     '''
-    save the writable key values in item.meta to the image (translating picty native keys to IPTC/XMP/Exif standard keys as necessary)
+    save the writable key values in item.meta to the image (translating picty native keys
+    in the `meta` attribute of item to IPTC/XMP/Exif standard keys as necessary)
     '''
     fname=collection.get_path(item)
     if 'sidecar' in item.__dict__:
