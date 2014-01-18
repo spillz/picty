@@ -1247,6 +1247,7 @@ class MainFrame(gtk.VBox):
             menu.add("Select _All",self.select_all)
             menu.add("Select _None",self.select_none)
             menu.add("_Invert Selection",self.select_invert)
+            self.plugmgr.callback('browser_popup_menu',menu,item,False)
             menu.popup()
             return
 
@@ -1280,6 +1281,7 @@ class MainFrame(gtk.VBox):
         rootmenu.add("Select _All",self.select_all)
         rootmenu.add("Select _None",self.select_none)
         rootmenu.add("_Invert Selection",self.select_invert)
+        self.plugmgr.callback('browser_popup_menu',rootmenu,item,True)
         rootmenu.popup()
 
     def item_make_thumb(self,widget,item):

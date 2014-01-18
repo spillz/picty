@@ -150,6 +150,15 @@ class Plugin(object):
         '''
         called by the framework to register shortcut on mouse over commands
         append a tuple containing the shortcut commands
+        `shortcut_toolbar` is the overlay_tools.OverlayGroup instance
+        '''
+        pass
+    def browser_popup_menu(self,context_menu,item,selection):
+        '''
+        add menu items to the browser right click context menu
+        `context_menu` is an instance of context_menu.ContextMenu, which has a simple interface for adding menu items
+        `item` is the selected item
+        `selection` is True if a multiple items have been selected, otherwise False
         '''
         pass
     def browser_menu_command(self):
