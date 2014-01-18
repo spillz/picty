@@ -270,22 +270,6 @@ class MainFrame(gtk.VBox):
         self.filter_entry.entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
 
-#        self.selection_menu_button=gtk.Button('_Selection')
-#        self.selection_menu_button.connect("clicked",self.selection_popup)
-#        self.selection_menu_button.show()
-#        self.selection_menu=context_menu.ContextMenu()
-#        self.selection_menu.add("Select _All",self.select_all)
-#        self.selection_menu.add("Select _None",self.select_none)
-#        self.selection_menu.add("_Invert Selection",self.select_invert)
-#        self.selection_menu.add("Show All _Selected",self.select_show)
-#        self.selection_menu.add("_Copy Selection...",self.select_copy)
-#        self.selection_menu.add("_Move Selection...",self.select_move)
-#        self.selection_menu.add("_Delete Selection...",self.select_delete)
-#        self.selection_menu.add("Add _Tags",self.select_keyword_add)
-#        self.selection_menu.add("_Remove Tags",self.select_keyword_remove)
-#        self.selection_menu.add("Set Descriptive _Info",self.select_set_info)
-#        self.selection_menu.add("_Batch Manipulation",self.select_batch)
-
         self.toolbar1=gtk.Toolbar()
         self.sidebar_toggle=gtk.ToggleToolButton('picty-sidebar')
         add_item(self.toolbar1,self.sidebar_toggle,self.activate_sidebar,"Sidebar","Toggle the Sidebar")
@@ -820,10 +804,6 @@ class MainFrame(gtk.VBox):
             return self.browser_nb.get_nth_page(self.browser_nb.get_current_page())
         else:
             return None
-
-
-#    def selection_popup(self,widget):
-#        self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def save_all_changes(self,widget):
         self.tm.save_or_revert_view()
