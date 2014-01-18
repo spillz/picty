@@ -49,6 +49,7 @@ from uitools import register_icons
 from uitools import overlay_tools
 from uitools import searchbox
 from uitools import floats
+from uitools import context_menu
 from uitools.toolbar_helpers import *
 
 from fstools import io
@@ -269,28 +270,21 @@ class MainFrame(gtk.VBox):
         self.filter_entry.entry.connect("changed",self.filter_text_changed)
         self.filter_entry.show()
 
-        self.selection_menu_button=gtk.Button('_Selection')
-        self.selection_menu_button.connect("clicked",self.selection_popup)
-        self.selection_menu_button.show()
-        self.selection_menu=gtk.Menu()
-        def menu_add(menu,text,callback):
-            item=gtk.MenuItem(text)
-            item.connect("activate",callback)
-            menu.append(item)
-            item.show()
-        menu_add(self.selection_menu,"Select _All",self.select_all)
-        menu_add(self.selection_menu,"Select _None",self.select_none)
-        menu_add(self.selection_menu,"_Invert Selection",self.select_invert)
-        menu_add(self.selection_menu,"Show All _Selected",self.select_show)
-        menu_add(self.selection_menu,"_Copy Selection...",self.select_copy)
-        menu_add(self.selection_menu,"_Move Selection...",self.select_move)
-        menu_add(self.selection_menu,"_Delete Selection...",self.select_delete)
-        menu_add(self.selection_menu,"Add _Tags",self.select_keyword_add)
-        menu_add(self.selection_menu,"_Remove Tags",self.select_keyword_remove)
-        menu_add(self.selection_menu,"Set Descriptive _Info",self.select_set_info)
-        menu_add(self.selection_menu,"_Batch Manipulation",self.select_batch)
-
-        self.selection_menu.show()
+#        self.selection_menu_button=gtk.Button('_Selection')
+#        self.selection_menu_button.connect("clicked",self.selection_popup)
+#        self.selection_menu_button.show()
+#        self.selection_menu=context_menu.ContextMenu()
+#        self.selection_menu.add("Select _All",self.select_all)
+#        self.selection_menu.add("Select _None",self.select_none)
+#        self.selection_menu.add("_Invert Selection",self.select_invert)
+#        self.selection_menu.add("Show All _Selected",self.select_show)
+#        self.selection_menu.add("_Copy Selection...",self.select_copy)
+#        self.selection_menu.add("_Move Selection...",self.select_move)
+#        self.selection_menu.add("_Delete Selection...",self.select_delete)
+#        self.selection_menu.add("Add _Tags",self.select_keyword_add)
+#        self.selection_menu.add("_Remove Tags",self.select_keyword_remove)
+#        self.selection_menu.add("Set Descriptive _Info",self.select_set_info)
+#        self.selection_menu.add("_Batch Manipulation",self.select_batch)
 
         self.toolbar1=gtk.Toolbar()
         self.sidebar_toggle=gtk.ToggleToolButton('picty-sidebar')
@@ -694,24 +688,19 @@ class MainFrame(gtk.VBox):
             self.coll_set.change_prefs(c,prefs)
 
     def collection_context_menu(self,widget,coll_id):
-        menu=gtk.Menu()
-        def menu_add(menu,text,callback,*args):
-            item=gtk.MenuItem(text)
-            item.connect("activate",callback,*args)
-            menu.append(item)
-            item.show()
+        menu=context_menu.ContextMenu()
         c=self.coll_set[coll_id]
         if c==None:
             return
-        menu_add(menu,"Open",self.collection_open_cb,coll_id)
+        menu.add("Open",self.collection_open_cb,args=(coll_id,))
         if c.is_open:
-            menu_add(menu,"Close",self.collection_close_cb,coll_id)
+            menu.add("Close",self.collection_close_cb,args=(coll_id,))
         if c!=None and c.persistent and c.type!='DEVICE' and not c.is_open:
-            menu_add(menu,"Delete",self.collection_delete_cb,coll_id)
+            menu.add("Delete",self.collection_delete_cb,args=(coll_id,))
         if c!=None and c.browser==None and c.pref_widget is not None and not c.is_open:
-            menu_add(menu,"Properties...",self.collection_properties_cb,coll_id)
-        if len(menu.get_children())>0:
-            menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+            menu.add("Properties...",self.collection_properties_cb,args=(coll_id,))
+        if len(menu.items)>0:
+            menu.popup()
 
     def collection_close(self,widget,browser=None):
         if not browser:
@@ -833,9 +822,8 @@ class MainFrame(gtk.VBox):
             return None
 
 
-    def selection_popup(self,widget):
-        self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
-        #m.attach(gtk.MenuItem())
+#    def selection_popup(self,widget):
+#        self.selection_menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
 
     def save_all_changes(self,widget):
         self.tm.save_or_revert_view()
@@ -1249,89 +1237,70 @@ class MainFrame(gtk.VBox):
             self.iv.set_zoom('out',event.x,event.y)
 
     def popup_item(self,browser,ind,item):
-        ##todo: neeed to create a custom signal to hook into
-        def menu_add(menu,text,callback,*args):
-            item=gtk.MenuItem(text)
-            item.connect("activate",callback,*args)
-            menu.append(item)
-#            item.show()
         try:
             itype=io.get_mime_type(self.active_collection.get_path(item)) ##todo: need a collection based method to handle this
         except:
             itype='unknown'
-        launch_menu=gtk.Menu()
+        launch_menu=context_menu.ContextMenu()
         if itype in settings.custom_launchers:
             for app in settings.custom_launchers[itype]:
-                menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
-        launch_menu.append(gtk.SeparatorMenuItem())
+                launch_menu.add(app[0],self.custom_mime_open,app[1],args=(item,))
+        launch_menu.add_separator()
         for app in io.app_info_get_all_for_type(itype):
-            menu_add(launch_menu,app.get_name(),self.mime_open,app,io.get_uri(self.active_collection.get_path(item)))
+            launch_menu.add(app.get_name(),self.mime_open,app,args=(io.get_uri(self.active_collection.get_path(item)),))
         for app in settings.custom_launchers['default']:
-            menu_add(launch_menu,app[0],self.custom_mime_open,app[1],item)
+            launch_menu.add(app[0],self.custom_mime_open,app[1],args=(item,))
 
-        menu=gtk.Menu()
-        launch_item=gtk.MenuItem("Open with")
-        launch_item.show()
-        launch_item.set_submenu(launch_menu)
-        menu.append(launch_item)
+        menu=context_menu.ContextMenu()
+        menu.add_menu("Open with",launch_menu)
         if item.is_meta_changed():
-            menu_add(menu,'Save Metadata Changes',self.save_item,item)
-            menu_add(menu,'Revert Metadata Changes',self.revert_item,item)
-        menu_add(menu,'Edit Metadata',self.edit_item,item)
-        menu_add(menu,'Rotate Clockwise',self.rotate_item_right,item)
-        menu_add(menu,'Rotate Anti-Clockwise',self.rotate_item_left,item)
-        menu_add(menu,'Delete Image',self.delete_item,item)
-        menu_add(menu,'Recreate Thumbnail',self.item_make_thumb,item)
-        menu_add(menu,'Reload Metadata',self.item_reload_metadata,item)
+            menu.add('Save Metadata Changes',self.save_item,args=(item,))
+            menu.add('Revert Metadata Changes',self.revert_item,args=(item,))
+        menu.add('Edit Metadata',self.edit_item,args=(item,))
+        menu.add('Rotate Clockwise',self.rotate_item_right,args=(item,))
+        menu.add('Rotate Anti-Clockwise',self.rotate_item_left,args=(item,))
+        menu.add('Delete Image',self.delete_item,args=(item,))
+        menu.add('Recreate Thumbnail',self.item_make_thumb,args=(item,))
+        menu.add('Reload Metadata',self.item_reload_metadata,args=(item,))
         if browser.command_highlight_ind>=0 or not item.selected:
-            menu.append(gtk.SeparatorMenuItem())
-            menu_add(menu,"Select _All",self.select_all)
-            menu_add(menu,"Select _None",self.select_none)
-            menu_add(menu,"_Invert Selection",self.select_invert)
-            menu.show_all()
-            menu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+            menu.add_separator()
+            menu.add("Select _All",self.select_all)
+            menu.add("Select _None",self.select_none)
+            menu.add("_Invert Selection",self.select_invert)
+            menu.popup()
             return
 
-        rootmenu=gtk.Menu()
-
-        launch_menu=gtk.Menu()
+        rootmenu=context_menu.ContextMenu()
+        smenu = rootmenu
+        launch_menu=context_menu.ContextMenu()
         for app in io.app_info_get_all_for_type(itype):
-            menu_add(launch_menu,app.get_name(),self.mime_open,app,None)
+            launch_menu.add(app.get_name(),self.mime_open,args=(app,))
 
-        smenu=rootmenu
-        launch_item=gtk.MenuItem("Open with")
-        launch_item.show()
-        launch_item.set_submenu(launch_menu)
-        smenu.append(launch_item)
+        smenu.add_menu("Open with",launch_menu)
 
-        fmenu_item=gtk.MenuItem("File Operations")
-        fmenu=gtk.Menu()
-        menu_add(fmenu,"_Copy...",self.select_copy)
-        menu_add(fmenu,"_Move...",self.select_move)
-        menu_add(fmenu,"_Delete",self.select_delete)
-        fmenu_item.set_submenu(fmenu)
-        rootmenu.append(fmenu_item)
+        fmenu=context_menu.ContextMenu()
+        fmenu.add("_Copy...",self.select_copy)
+        fmenu.add("_Move...",self.select_move)
+        fmenu.add("_Delete",self.select_delete)
+        rootmenu.add_menu("File operations",fmenu)
 
-        rmenu_item=gtk.MenuItem("Rotate")
-        rmenu=gtk.Menu()
-        menu_add(rmenu,"Anti-clockwise",self.select_rotate_left)
-        menu_add(rmenu,"Clockwise",self.select_rotate_left)
-        rmenu_item.set_submenu(rmenu)
-        rootmenu.append(rmenu_item)
+        rmenu=context_menu.ContextMenu()
+        rmenu.add("Anti-clockwise",self.select_rotate_left)
+        rmenu.add("Clockwise",self.select_rotate_left)
+        rootmenu.add_menu("Rotate",rmenu)
 
-        menu_add(smenu,"Show All _Selected",self.select_show)
-        menu_add(smenu,"Add _Tags",self.select_keyword_add)
-        menu_add(smenu,"_Remove Tags",self.select_keyword_remove)
-        menu_add(smenu,"Set Descriptive _Info",self.select_set_info)
-        menu_add(smenu,"Re_load Metadata",self.select_reload_metadata)
-        menu_add(smenu,"Recreate Thumb_nails",self.select_recreate_thumb)
+        smenu.add("Show All _Selected",self.select_show)
+        smenu.add("Add _Tags",self.select_keyword_add)
+        smenu.add("_Remove Tags",self.select_keyword_remove)
+        smenu.add("Set Descriptive _Info",self.select_set_info)
+        smenu.add("Re_load Metadata",self.select_reload_metadata)
+        smenu.add("Recreate Thumb_nails",self.select_recreate_thumb)
 
-        rootmenu.append(gtk.SeparatorMenuItem())
-        menu_add(rootmenu,"Select _All",self.select_all)
-        menu_add(rootmenu,"Select _None",self.select_none)
-        menu_add(rootmenu,"_Invert Selection",self.select_invert)
-        rootmenu.show_all()
-        rootmenu.popup(parent_menu_shell=None, parent_menu_item=None, func=None, button=1, activate_time=0, data=0)
+        rootmenu.add_separator()
+        rootmenu.add("Select _All",self.select_all)
+        rootmenu.add("Select _None",self.select_none)
+        rootmenu.add("_Invert Selection",self.select_invert)
+        rootmenu.popup()
 
     def item_make_thumb(self,widget,item):
         self.tm.recreate_thumb(item)
