@@ -46,7 +46,7 @@ class ImageWriteJob(backend.WorkerJob):
     def __call__(self):
         try:
             if io.equal(self.dest_path,self.src_path):
-                ext = io.get_ext(self.src_path)
+                ext = io.get_ext(self.dest_path)
                 if ext:
                     ext = '.'+ext
                 h,dpath = tempfile.mkstemp(ext)
