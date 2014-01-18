@@ -46,7 +46,10 @@ class ImageWriteJob(backend.WorkerJob):
     def __call__(self):
         try:
             if io.equal(self.dest_path,self.src_path):
-                h,dpath=tempfile.mkstemp('.jpg')
+                ext = io.get_ext(self.src_path)
+                if ext:
+                    ext = '.'+ext
+                h,dpath = tempfile.mkstemp(ext)
             else:
                 dpath = self.dest_path
             self.item.image.save(dpath)
