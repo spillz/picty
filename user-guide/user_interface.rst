@@ -25,11 +25,13 @@ The components of the interface are:
 1. **Collections Notebook**: Collections are displayed in a "tabbed"
    notebook, with each page of the notebook representing an open
    collection. This allows you to have more than one collection open
-   at a time! The content of each page in the notebook is an Image
+   at a time! You can switch between open collections by clickin on its tab.
+   The content of each page in the notebook is an Image
    Browser for that collection and the global Image Viewer. The
    last tab of the notebook (the one with a "+" sign) is the start
    page that you will use to create, open, close, delete and manage
-   your photo collections and devices.
+   your photo collections and devices. Read more about
+   `collections and the collections notebook <collections.rst>`_.
 
 2. **Image Browser**: The image browser displays thumbnails of all
    (or a subset) of the photos and videos in your collection or device.
@@ -42,7 +44,7 @@ The components of the interface are:
    or to other applications. You can restrict the images in the browser
    to a subset of images (called a ``View``, not to be confused with
    the **Image Viewer**) in the collections using the search box in the
-   **Main Toolbar**.
+   **Main Toolbar**. Read more about the `image browser <image_browser.rst>`_.
 
 3. **Image Viewer**: The image viewer displays an enlarged version of the
    photos in your collection. You can view images in the image browser
@@ -52,7 +54,7 @@ The components of the interface are:
    in fullscreen (press ``Enter``). The viewer will popup a viewer toolbar
    and information about the image if you move the mouse inside the viewer.
    (To see the viewer toolbar, move the mouse toward the top of the image
-   view.)
+   view.) Read more about the `image viewer <image_viewer.rst>`_.
 
 4. **Main Toolbar**: The main toolbar contains a variety of actions that
    generally affect the collection as a whole or the current view of the
@@ -60,7 +62,7 @@ The components of the interface are:
    save changes to image metadata, and to search for images. There are
    also shortcuts for various plugins including an email plugins, a
    mapping plugin, and a plugin that lets you transfer images between
-   collections.
+   collections. Read more about the `main toolbar <main_toolbar.rst>`_.
 
 5. **Sidebar**: The sidebar displays a tree view of the tag and folder
    layout of the collection, in the "Tag" and "Folder" tabs, respectively.
@@ -69,12 +71,14 @@ The components of the interface are:
    to show all of the images associated with a tag in the image browser is
    as simple as double clicking on that tag in the sidebar. You can also
    browse the items in a particular folder by double clicking on the folder
-   in the "Folder" tab.
+   in the "Folder" tab. Read more about the `tag <tagui.rst>`_ and
+   `folder <folderui.rst>`_ trees.
 
 6. **Status Bar**: The status bar displays summary information about the
    number of images in the collection and in the current view of the
    collection. It also shows a spinner bar during background activity,
-   such as scanning the collection for new images.
+   such as scanning the collection for new images. Read more about the
+   `status bar <status_bar.rst>`_.
 
 
 Keyboard Shortcuts
@@ -116,7 +120,7 @@ the keyboard.
 +------------------+----------------------------------------------------+
 | ``1``            | Zoom 100% (1 screen pixel = 1 image pixel)         |
 +------------------+----------------------------------------------------+
-| ``0`` or ``*``   | Fit to screen                                      |
+| ``0`` or ``*``   | Fit image to availabe space                        |
 +------------------+----------------------------------------------------+
 | **Other**                                                             |
 +------------------+----------------------------------------------------+
@@ -124,7 +128,7 @@ the keyboard.
 +------------------+----------------------------------------------------+
 | ``Delete``       | Delete selected images                             |
 +------------------+----------------------------------------------------+
-| F11              | Toggle application window fullscreen               |
+| ``F11``          | Toggle application window fullscreen               |
 +------------------+----------------------------------------------------+
 
 *Next:* Learn about how picty handles photo `collections and the collections notebook <collections.rst>`_
