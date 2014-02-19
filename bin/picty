@@ -60,12 +60,6 @@ except:
     import sys
     sys.exit()
 
-
-sett=gtk.settings_get_default()
-sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"picty:main") #gtk.ICON_SIZE_MENU
-sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"picty:main")
-sett.set_property("gtk-button-images",True)
-
 from picty import settings
 
 #on a windows py2exe build, an annoying dialog pops up on exit warning about errors
@@ -108,9 +102,6 @@ class MainWindow:
         self.window.set_title("picty")
         self.window.set_icon_from_file(icon_file)
         self.window.connect("destroy", self.destroy)
-        sett=gtk.settings_get_default()
-        sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"picty:main") #gtk.ICON_SIZE_MENU
-        sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"picty:main")
 
         #configure-event being used to save changes to screen size for start up
         self.window.connect("configure-event", self.app_win_resize)

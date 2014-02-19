@@ -360,6 +360,16 @@ class MainFrame(gtk.VBox):
         pluginmanager.mgr.register_callback('t_collection_item_metadata_changed',self.meta_changed)
         self.show_sig_id=self.sort_toggle.connect_after("realize",self.on_show) ##this is a bit of a hack to ensure the main window shows before a collection is activated or the user is prompted to create a new one
 
+        try:
+            sett=gtk.settings_get_default()
+            sett.set_long_property("gtk-toolbar-icon-size",gtk.ICON_SIZE_SMALL_TOOLBAR,"picty:main") #gtk.ICON_SIZE_MENU
+            sett.set_long_property("gtk-toolbar-style",gtk.TOOLBAR_ICONS,"picty:main")
+            sett.set_property("gtk-button-images",True)
+        except TypeError as e:
+            print 'Warning: unable to override default gtk icon or image style'
+            print '  message was:',e.message
+
+
     def on_show(self,widget):
         self.sort_toggle.disconnect(self.show_sig_id)
         ##open last used collection or
