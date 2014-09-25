@@ -917,14 +917,14 @@ class MainFrame(gtk.VBox):
 
     def select_copy(self,widget):
         sel_dir=self.dir_pick('Copy Selection: Select destination folder')
-        fileops.worker.copy(self.active_browser().active_view,sel_dir,self.update_status)
+        fileops.worker.copy(self.active_collection, self.active_browser().active_view,sel_dir,self.update_status)
 
     def select_move(self,widget):
         sel_dir=self.dir_pick('Move Selection: Select destination folder')
-        fileops.worker.move(self.active_browser().active_view,sel_dir,self.update_status)
+        fileops.worker.move(self.active_collection, self.active_browser().active_view,sel_dir,self.update_status)
 
     def select_delete(self,widget):
-        fileops.worker.delete(self.active_browser().active_collection,self.active_browser().active_view,self.update_status)
+        fileops.worker.delete(self.active_collection, self.active_browser().active_view,self.update_status)
 
     def select_reload_metadata(self,widget):
         self.tm.reload_selected_metadata()

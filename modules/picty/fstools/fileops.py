@@ -82,8 +82,9 @@ class Worker:
             if self.cb:
                 gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Copying '+item.uid)
             try:
-                fin=open(item.uid,'rb')
-                fout=open(os.path.join(self.destdir,os.path.split(item.uid)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
+                path = self.collection.get_path(item)
+                fin=open(path,'rb')
+                fout=open(os.path.join(self.destdir,os.path.split(path)[1]),'wb') ##todo: check exists (and what about perms/attribs?)
                 fout.write(fin.read())
             except:
                 fileoperrors.append(('copy',item,self.destdir))
@@ -91,11 +92,12 @@ class Worker:
             gobject.idle_add(self.cb,None,2.0,'Finished Copying')
         self.active=False
 
-    def copy(self,items,destdir,cb,selected_only=True):
+    def copy(self,collection,items,destdir,cb,selected_only=True):
         if self.active:
             return False
         self.active=True
         self.kill=False
+        self.collection=collection
         if selected_only:
             self.items=[]
             for i in range(len(items)):
@@ -119,18 +121,20 @@ class Worker:
             if self.cb:
                 gobject.idle_add(self.cb,None,1.0*i/len(self.items),'Moving '+item.uid)
             try:
-                os.renames(self.collection.get_path(item),os.path.join(self.destdir,os.path.split(item.uid)[1]))
+                path = self.collection.get_path(item)
+                os.renames(path, os.path.join(self.destdir,os.path.split(path)[1]))
             except:
                 fileoperrors.append(('move',item,self.destdir))
         if self.cb:
             gobject.idle_add(self.cb,None,2.0,'Finished Moving')
         self.active=False
 
-    def move(self,items,destdir,cb,selected_only=True):
+    def move(self,collection,items,destdir,cb,selected_only=True):
         if self.active:
             return False
         self.active=True
         self.kill=False
+        self.collection=collection
         if selected_only:
             self.items=[]
             for i in range(len(items)):
