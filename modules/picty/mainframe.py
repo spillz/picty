@@ -1234,12 +1234,12 @@ class MainFrame(gtk.VBox):
         launch_menu=context_menu.ContextMenu()
         if itype in settings.custom_launchers:
             for app in settings.custom_launchers[itype]:
-                launch_menu.add(app[0],self.custom_mime_open,app[1],args=(item,))
+                launch_menu.add(app[0],self.custom_mime_open,args=(app[1], item))
         launch_menu.add_separator()
         for app in io.app_info_get_all_for_type(itype):
-            launch_menu.add(app.get_name(),self.mime_open,app,args=(io.get_uri(self.active_collection.get_path(item)),))
+            launch_menu.add(app.get_name(),self.mime_open,app,args=(app, io.get_uri(self.active_collection.get_path(item)),))
         for app in settings.custom_launchers['default']:
-            launch_menu.add(app[0],self.custom_mime_open,app[1],args=(item,))
+            launch_menu.add(app[0],self.custom_mime_open,args=(app[1],item))
 
         menu=context_menu.ContextMenu()
         menu.add_menu("Open with",launch_menu)
@@ -1300,7 +1300,7 @@ class MainFrame(gtk.VBox):
     def item_reload_metadata(self,widget,item):
         self.tm.reload_metadata(item)
 
-    def mime_open(self,widget,app_cmd,uri):
+    def mime_open(self, widget, app_cmd, uri):
         if uri:
             app_cmd.launch_uris([uri])
         else:
