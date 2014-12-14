@@ -708,15 +708,15 @@ class FlickrCollection(baseobjects.CollectionBase):
         tokenpath = os.path.join(self.coll_dir(),'flickr-token')
         try:
             self.flickr_client.token.path = tokenpath
-            self.flickr_client.token_cache = LockingTokenCache(api_key)
-        except:
-            pass
-        try:
-            (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
-            if not self.token:
-                from picty.uitools import dialogs
-                result=dialogs.prompt_dialog('Allow Flickr Access','picty has opened a Flickr application authentication page in your web browser. Please give picty access to your flickr account by accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
-            self.flickr_client.get_token_part_two((self.token, self.frob))
+            if flickrapi.__version__>=u'2.0':
+                self.flickr_client.authenticate_via_browser(perms = 'delete')
+            else:
+                #self.flickr_client.token_cache = flickrapi.LockingTokenCache(self.api_key)
+                (self.token, self.frob) = self.flickr_client.get_token_part_one(perms='delete')
+                if not self.token:
+                    from picty.uitools import dialogs
+                    result=dialogs.prompt_dialog('Allow Flickr Access','picty has opened a Flickr application authentication page in your web browser. Please give picty access to your flickr account by accepting the prompt in your web browser. Press "Done" when complete',buttons=('_Done',),default=0)
+                self.flickr_client.get_token_part_two((self.token, self.frob))
             login_resp=self.flickr_client.test_login()
             user=login_resp.find('user')
             self.login_username=user.find('username').text
