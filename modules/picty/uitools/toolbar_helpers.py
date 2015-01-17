@@ -107,6 +107,7 @@ class Toolbar(gtk.Toolbar):
             new_t=ToggleToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
         else:
             new_t=ToolButton(name,action_callback,update_callback,icons,owner,tooltip,priority)
+        new_t.show()
         for i in range(self.get_n_items()):
             t = self.get_nth_item(i)
             if type(t) in (ToolButton, ToggleToolButton):

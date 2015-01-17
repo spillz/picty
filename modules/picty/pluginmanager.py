@@ -53,7 +53,7 @@ class PluginManager():
         ##todo: check for plugin.name conflicts with existing plugins and reject plugin if already present
         self.plugins[name][0]=self.plugins[name][1]()
         self.plugins[name][0].plugin_init(self.mainframe,False)
-        self.plugins[name][0].viewer_register_shortcut(self.mainframe.iv.hover_cmds)
+        self.plugins[name][0].viewer_register_shortcut(self.mainframe.viewer_toolbar)
 
     def disable_plugin(self,name):
         try:
