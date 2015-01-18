@@ -1024,7 +1024,7 @@ class FlickrCollection(baseobjects.CollectionBase):
         return False
 
 
-    def item_metadata_update(self,item):
+    def item_metadata_update(self,item,old_metadata):
         'collection will receive this call when item metadata has been changed. (Intended for use with database backends)'
         pass
 

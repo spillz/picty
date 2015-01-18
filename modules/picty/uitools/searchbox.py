@@ -5,13 +5,20 @@ from datetime import date, datetime, timedelta
 import time
 
 from picty import metadata
+from picty import viewsupport
+
 import dialogs
+import completions
 
 class SearchBox(gtk.HBox):
     def __init__(self):
         gtk.HBox.__init__(self)
         self.filter_combo=gtk.ComboBoxEntry()
         self.entry=self.filter_combo.child
+        self.entrycompletion = completions.SearchCompletion(self.entry)
+        self.entry.add_events(gtk.gdk.FOCUS_CHANGE_MASK)
+        self.entry.connect("focus-in-event",self.entry_focused)
+        self.index=None
 #        self.entry.connect("activate",self.set_filter_text)
 #        self.entry.connect("changed",self.filter_text_changed)
 
@@ -69,6 +76,12 @@ class SearchBox(gtk.HBox):
         self.pack_start(self.filter_combo)
         return
 
+    def entry_focused(self, entry, direction):
+        '''
+        use this to update the list of tags and other metadata for entry completion
+        '''
+        self.entrycompletion.update_keywords(self.index)
+
     def set_text(self,text):
         self.entry.set_text(text)
 
@@ -89,7 +102,6 @@ class SearchBox(gtk.HBox):
         model = combobox.get_model()
         index = combobox.get_active()
         if index > -1:
-            print model[index][0], 'selected'
             if type(self.search_options[index][1])!=str:
                 terms=self.search_options[index][1]()
                 if terms==None:
@@ -100,7 +112,7 @@ class SearchBox(gtk.HBox):
             self.entry.activate()
 
     def tag_cb(self):
-        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separate by spaces (enclose tags with spaces in \"quotes\")")
+        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separated by spaces (enclose tags with spaces in \"quotes\")", completions.TagCompletion)
         if response==1:
             return None
         tags=metadata.tag_split(tag_text)

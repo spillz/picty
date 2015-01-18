@@ -32,6 +32,8 @@ from picty import metadata
 from picty.fstools import io
 from picty import baseobjects
 
+import completions
+
 def box_add(box,widget_data,label_text):
     hbox=gtk.HBox()
     if label_text:
@@ -186,7 +188,7 @@ def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
     dialog.destroy()
     return response
 
-def entry_dialog(title,prompt,default_entry='',buttons=('_OK','_Cancel'),default=0):
+def entry_dialog(title, prompt, completion_class = None, default_entry='', buttons=('_OK','_Cancel'), default=0):
     button_list=[]
     i=0
     for x in buttons:
@@ -202,6 +204,11 @@ def entry_dialog(title,prompt,default_entry='',buttons=('_OK','_Cancel'),default
     edit=gtk.Entry()
     if default_entry:
         edit.set_text(default_entry)
+    if completion_class is not None:
+        from picty import pluginmanager
+        coll = pluginmanager.mgr.mainframe.active_collection
+        if coll is not None:
+            completion_class(edit,coll.index)
     dialog.vbox.pack_start(prompt_label)
     dialog.vbox.pack_start(edit)
     dialog.vbox.show_all()
@@ -273,10 +280,11 @@ def date_range_entry_dialog(title,prompt,default_from=None,default_to=None,butto
 
 
 class BatchMetaDialog(gtk.Dialog):
-    def __init__(self,item):
+    def __init__(self,item,index):
         gtk.Dialog.__init__(self,flags=gtk.DIALOG_NO_SEPARATOR|gtk.DIALOG_MODAL,
                          buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
-        self.set_title('Batch Tag Manipulation')
+        self.set_title('Batch Metadata Manipulation')
+        self.index=index
         tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=3, homogeneous=False)
@@ -328,6 +336,8 @@ class BatchMetaDialog(gtk.Dialog):
         child3.set_text(data)
         child3.set_sensitive(False)
         child3.connect("changed",self.meta_changed,key)
+        if self.index and key=='Keywords':
+            completions.TagCompletion(child3,self.index)
         child1.connect("toggled",self.toggled,child3,key)
         table.attach(child3, left_attach=2, right_attach=3, top_attach=row, bottom_attach=row+1,
                xoptions=gtk.EXPAND|gtk.FILL, yoptions=gtk.EXPAND|gtk.FILL, xpadding=0, ypadding=0)
@@ -463,7 +473,7 @@ class MetaDialog(gtk.Dialog):
         a.add(vbox)
         self.vbox.pack_start(a)
 #        self.vbox.pack_start(vbox,True,True)
-        self.set_title('Edit Descriptive Info')
+        self.set_title('Edit Metadata')
         tags=[t[0:2] for t in metadata.apptags if t[2]]
         rows=len(tags)
         table = gtk.Table(rows=rows, columns=2, homogeneous=False)
@@ -510,6 +520,9 @@ class MetaDialog(gtk.Dialog):
             child2=gtk.Entry()
             child2.set_text(data)
             child2.connect("changed",self.meta_changed,key)
+            if self.collection is not None and self.collection.index is not None:
+                if key=='Keywords':
+                    completions.TagCompletion(child2,self.collection.index)
         else:
             child2=gtk.Label(data)
         table.attach(child2, left_attach=1, right_attach=2, top_attach=row, bottom_attach=row+1,
