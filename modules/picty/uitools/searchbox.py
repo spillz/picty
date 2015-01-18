@@ -112,7 +112,7 @@ class SearchBox(gtk.HBox):
             self.entry.activate()
 
     def tag_cb(self):
-        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separated by spaces (enclose tags with spaces in \"quotes\")")
+        response,tag_text=dialogs.entry_dialog("Search by Tags","Enter tags to search for separated by spaces (enclose tags with spaces in \"quotes\")", completions.TagCompletion)
         if response==1:
             return None
         tags=metadata.tag_split(tag_text)

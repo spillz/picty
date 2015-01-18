@@ -844,11 +844,7 @@ class MainFrame(gtk.VBox):
         prompt_label.set_label(prompt)
         entry=gtk.Entry()
         entry.set_text(default)
-        print '#####################'
-        print completion_class,self.active_collection.index
-        print self.active_collection.index.index
         if completion_class is not None and self.active_collection is not None:
-            print 'setting up completion'
             completion_class(entry,self.active_collection.index)
         hbox=gtk.HBox()
         hbox.pack_start(prompt_label,False)

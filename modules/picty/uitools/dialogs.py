@@ -188,7 +188,7 @@ def prompt_dialog(title,prompt,buttons=('_Yes','_No','_Cancel'),default=0):
     dialog.destroy()
     return response
 
-def entry_dialog(title,prompt,default_entry='',buttons=('_OK','_Cancel'),default=0):
+def entry_dialog(title, prompt, completion_class = None, default_entry='', buttons=('_OK','_Cancel'), default=0):
     button_list=[]
     i=0
     for x in buttons:
@@ -204,6 +204,11 @@ def entry_dialog(title,prompt,default_entry='',buttons=('_OK','_Cancel'),default
     edit=gtk.Entry()
     if default_entry:
         edit.set_text(default_entry)
+    if completion_class is not None:
+        from picty import pluginmanager
+        coll = pluginmanager.mgr.mainframe.active_collection
+        if coll is not None:
+            completion_class(edit,coll.index)
     dialog.vbox.pack_start(prompt_label)
     dialog.vbox.pack_start(edit)
     dialog.vbox.show_all()

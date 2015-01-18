@@ -395,7 +395,8 @@ class TagFrame(gtk.VBox):
         self.delete_user_bitmap(iter)
 
     def add_tag(self,widget,parent):
-        k=self.mainframe.entry_dialog('Add a Tag','Name:')
+        from picty.uitools import completions
+        k=self.mainframe.entry_dialog('Add a Tag','Name:', completions.TagCompletion)
         if not k:
             return
         try:
@@ -417,8 +418,9 @@ class TagFrame(gtk.VBox):
             self.worker.keyword_edit('"%s"'%(k,),False,True,False,backend.EDIT_COLLECTION) ##todo: if this job is busy the request will fail so probably shouldn't actually rename the tag unless the request succeeds
 
     def rename_tag(self,widget,iter):
+        from picty.uitools import completions
         old_key=self.model[iter][self.M_KEY]
-        k=self.mainframe.entry_dialog('Rename Tag','New Name:',old_key)
+        k=self.mainframe.entry_dialog('Rename Tag','New Name:',completions.TagCompletion,old_key)
         if not k or k==old_key:
             return
         rename_response=dialogs.prompt_dialog("Rename Tag",'Would you like to replace the tag "%s" with "%s" for all images in your collection'%(old_key,k))
@@ -452,7 +454,7 @@ class TagFrame(gtk.VBox):
 
     def rename_category(self,widget,iter):
         old_key=self.model[iter][self.M_KEY]
-        k=self.mainframe.entry_dialog('Rename Category','New Name:',old_key)
+        k=self.mainframe.entry_dialog('Rename Category','New Name:', default = old_key)
         if not k or k==old_key:
             return
         try:
