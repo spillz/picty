@@ -10,7 +10,6 @@ from picty import viewsupport
 import dialogs
 import completions
 
-
 class SearchBox(gtk.HBox):
     def __init__(self):
         gtk.HBox.__init__(self)
