@@ -6,7 +6,7 @@ picty - A photo collection manager
    :align: center
    :scale: 50 %
 
-picty is a photo manager designed around metadata and a lossless approach
+picty is a photo manager designed around managing metadata and a lossless approach
 to image handling.
 
     metadata: descriptive and other information about images
@@ -15,7 +15,8 @@ to image handling.
 
     lossless: by only ever writing information about images, including
     image processing instructions, as metadata, the original image pixels
-    are never altered.
+    are never altered allowing you to preserve the images as they were taken
+    on your camera. 
 
 Key features:
 
@@ -29,25 +30,27 @@ Key features:
 
 * picty does not "Import" photos into its own database, it simply provides
   an interface for accessing them wherever they are. To keep things snappy
-  and to allow you to browse even if you are offline, picty maintain a
+  and to allow you to browse even if you are offline, picty maintains a
   cache of thumbnails and metadata.
 
 * Reads and writes metadata in industry standard formats Exif, IPTC and Xmp
+
 * Lossless approach:
 
   - picty writes all changes including image edits as metadata. e.g. an image
-    crop is stored as any instruction, the original pixels remain in place
-  - Changes are stored in picty's collection cache until you save your metadata changes to the images. Easily revert unsaved changes that you don't like.
+    crop is stored as any instruction, the original pixels remain in the file
+  - Changes are stored in picty's collection cache until you save your metadata 
+    changes to the images. You can easily revert unsaved changes that you don't like.
 
 * Basic image editing:
 
   - Current support for basic image enhancements such as brightness, contrast, color, cropping, and straightening.
-  - More tools coming soon (red eye reduction, levels, curves, noise reduction)
+  - Improvements to those tools and other tools coming soon (red eye reduction, levels, curves, noise reduction)
 
 * Image tagging:
 
   - Use standard IPTC and Xmp keywords for image tags
-  - Tag tree view to easily manage your tags and navigate your collection
+  - A tag tree view lets you easily manage your tags and navigate your collection
 
 * Folder view:
 
@@ -55,7 +58,7 @@ Key features:
 
 * Multi-monitor support
 
-  - picty can takes advantage of the extra screen realestate.
+  - picty can be configured to let you browse your collection on one screen and view full screen images on another.
 
 * Customizable
 
