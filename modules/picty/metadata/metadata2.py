@@ -43,7 +43,7 @@ if settings.is_windows:
 
 
 pyexiv2.register_namespace('http://www.picty.net/xmpschema/1.0/','picty')
-##todo: reimplement for xmp support
+##todo: need to improve xmp support such as synchronizing tags across the Iptc
 ##e.g. merge Iptc.Application2.Keywords with Xmp.dc.subject
 
 
@@ -226,7 +226,7 @@ def create_sidecar(item,src,dest):
             im.copy(sidecar,comment=False)
             sidecar.write()
     except:
-        print 'Error creating copying metadata to sidecar for',item,'with filename',dest
+        print 'Error copying metadata to sidecar for',item,'with filename',dest
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
         print 'Using empty sidecar'
@@ -303,7 +303,7 @@ def copy_metadata(src_meta,src_file,destination_file):
         rawmeta_src = Exiv2Metadata(src_file)
         rawmeta_src.read()
     except:
-        print 'Error copying metadata: reading source',src_file
+        print 'Error reading source prior to copying metadata for source file',src_file
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
         return False
@@ -314,7 +314,7 @@ def copy_metadata(src_meta,src_file,destination_file):
         set_exiv2_meta(src_meta,rawmeta_dest)
         rawmeta_dest.write()
     except:
-        print 'Error copying metadata: destination file',destination_file
+        print 'Error copying metadata to destination file',destination_file
         import traceback,sys
         print traceback.format_exc(sys.exc_info()[2])
     return True
@@ -715,7 +715,7 @@ each entry in the tuple is itself a tuple containing:
  * A function to convert a string to the internal rep
  * A function to convert the key to a sortable
  * A tuple of EXIF, IPTC and XMP tags from which to fill the app tag (passed to the callback)
- * A boolean indicator of whether to delete these keys when writing metadata if they aren't present in if the appmeta
+ * A boolean indicator of whether to delete these keys when writing metadata if they aren't present in the appmeta
 '''
 
 apptags=(
@@ -817,21 +817,22 @@ def get_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
             pass
 
 def set_exiv2_meta(app_meta,exiv2_meta,apptags_dict=apptags_dict):
-    print 'Setting Exiv2 data from app_meta',app_meta
+    i=0
     for appkey in apptags_dict:
         try:
             data=apptags_dict[appkey] ##TODO: Check that keys are being removed if the app_meta value is equivalent to empty
             if appkey in app_meta:
-                data[2](exiv2_meta,data[6],app_meta[appkey]) ##todo: only set values that have actually changed?? e.g. could check data[1], but for e.g. orientation should be savable but data[1]=false
+                if data[2](exiv2_meta,data[6]) != app_meta[appkey]:
+                    i+=1
+                    data[2](exiv2_meta,data[6],app_meta[appkey])
             elif data[7] == True:
                 for exiv2_key in data[6]:
                     try:
-                        print 'Removing Key',exiv2_key
                         del exiv2_meta[exiv2_key]
-                    except:
-                        print 'Failed to remove',exiv2_key
+                    except KeyError:
+                        pass
         except:
-            print 'Exiv2 set data failure',appkey
+            print 'Error setting Exiv2 key',appkey
             import traceback,sys
             print traceback.format_exc(sys.exc_info()[2])
 
