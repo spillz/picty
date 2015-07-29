@@ -100,7 +100,7 @@ class TransferImportJob(backend.WorkerJob):
                 print 'transferring all',len(self.items)
             else:
                 self.items=self.collection_src.get_active_view().get_selected_items()
-                self.count=len(self.items)
+            self.count=len(self.items)
         print 'transferring',len(self.items),'items'
 #        if not os.path.exists(self.base_dest_dir): ##TODO: move this to localstore collection (should only call once)
 #            os.makedirs(self.base_dest_dir)
