@@ -102,8 +102,6 @@ class IndexRulesList:
                 if t not in index_item:
                     index_item[t] = set()
                 index_item[t].add(item)
-        for t in index_item:
-            print t
 
 class IndexRulesStr:
     def __init__(self,meta_key):
