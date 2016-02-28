@@ -26,7 +26,7 @@ Key features:
 
   - Folders of images in your local file system.
   - Images on cameras, phones and other media devices.
-  - Photo hosting services (Flickr currently supported).
+  - Images on photo hosting services you use (Flickr currently supported).
 
 * picty does not "Import" photos into its own database, it simply provides
   an interface for accessing them wherever they are. To keep things snappy
@@ -89,6 +89,7 @@ Running picty from source
 The python packages required to run picty are (available in most linux repos)::
 
     python (2.5 - 2.7)
+    python-pil
     python-gtk2
     python-gnome2
     python-pyexiv2
