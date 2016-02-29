@@ -453,6 +453,12 @@ class PrefDialog(gtk.Dialog):
         self.vbox.pack_start(self.pref_box,True,True,20)
         self.add_button("_Cancel",gtk.RESPONSE_REJECT)
         self.ok_button=self.add_button("_Accept Changes",gtk.RESPONSE_ACCEPT)
+        if collection.is_open:
+            label = gtk.Label("Close the collection to change these settings.")
+            label.show()
+            self.vbox.pack_start(label,False, True, 20)
+            self.pref_box.set_sensitive(False)
+            self.ok_button.set_sensitive(False)
         self.vbox.show()
 
     def get_values(self):

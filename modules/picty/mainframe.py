@@ -675,8 +675,8 @@ class MainFrame(gtk.VBox):
             return
         if c.pref_widget is None:
             return
-        if c.browser!=None or c.is_open:
-            return
+#        if c.browser!=None or c.is_open:
+#            return
         old_prefs=c.get_prefs().copy()
         dialog=dialogs.PrefDialog(c)
         response=dialog.run()
@@ -695,7 +695,7 @@ class MainFrame(gtk.VBox):
             menu.add("Close",self.collection_close_cb,args=(coll_id,))
         if c!=None and c.persistent and c.type!='DEVICE' and not c.is_open:
             menu.add("Delete",self.collection_delete_cb,args=(coll_id,))
-        if c!=None and c.browser==None and c.pref_widget is not None and not c.is_open:
+        if c!=None and c.pref_widget is not None:
             menu.add("Properties...",self.collection_properties_cb,args=(coll_id,))
         if len(menu.items)>0:
             menu.popup()

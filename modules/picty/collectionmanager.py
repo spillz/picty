@@ -381,8 +381,6 @@ class CollectionModel(gtk.ListStore):
         else:
             return [id,ci.name,400,False,'brown',ci.pixbuf,False]
 
-
-
 ##Combo entries should look something like this
 ##TODO: Implement separators and improve sorting
 
