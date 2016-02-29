@@ -8,7 +8,7 @@ Homepage: https://launchpad.net/picty
 
 Package: picty
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-pyinotify, python-pyexiv2, python-gtk2, python-gnome2
+Depends: ${shlibs:Depends}, ${misc:Depends}, python, python-pil, python-pyinotify, python-pyexiv2, python-gtk2, python-gnome2
 Recommends: dcraw, totem, python-gdata, python-flickrapi, python-osmgpsmap
 Description: picty Photo Manager
  picty helps you manage your photos.
