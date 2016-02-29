@@ -181,6 +181,8 @@ def save_metadata(item,filename):
     '''
     try:
         print 'Writing metadata for',item.uid
+        if filename.lower().endswith('.crw'):
+            raise IOError("Writing to CRW is not supported. Enable sidecars in collection settings to save your changes.")
         rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         meta=item.meta.copy()
