@@ -52,7 +52,7 @@ class Plugin(object):
         '''when overriding __init__ keep in mind that the gui is NOT ready at this point.
         save gui initialization until plugin_init'''
         pass
-    def run_as_job(self,task_cb,complete_cb,task_priority=900,*args):
+    def run_as_job(self,task_cb,complete_cb,task_priority=900,limit_to_view=False,*args):
         '''
         a simple interface for running task_cb as a background task on the worker thread
         task_cb is a callback defined as task_cb(job, item, continue_cb, *args)
@@ -63,7 +63,7 @@ class Plugin(object):
         don't use this if your task can't be broken up into chunks and needs to be guaranteed it can finish
         '''
         mainframe=self.mainframe
-        j = backend.FlexibleJob(mainframe.tm,mainframe.active_collection,mainframe.active_browser(),task_cb,complete_cb,*args)
+        j = backend.FlexibleJob(mainframe.tm,mainframe.active_collection,mainframe.active_browser(),task_cb,complete_cb,limit_to_view,*args)
         j.priority = task_priority
         self.mainframe.tm.queue_job_instance(j)
     '''CALLBACKS'''

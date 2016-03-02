@@ -283,24 +283,16 @@ class FlickrSyncJob(backend.WorkerJob):
 class FlickrTransferOptionsBox(wb.VBox):
     def __init__(self,collection):
         self.collection=collection
-        wb.VBox.__init__(self,[
-            ('sets',wb.Frame("Add to Set",
-                wb.LabeledWidgets([
-                        ('set','Set:',wb.ComboBoxEntry([],collection.sets.store,1)),
-                    ])
-                )),
-            ('privacy',wb.Frame("Visibility and Permissions",
-                wb.LabeledWidgets([
-                        ('visibility','Visibility:',wb.ComboBox(privacy_levels)),
-                        ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
-                        ('metadata','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
-                    ])
-                )),
-            ])
-        self['privacy']['visibility'].set_active(0)
-        self['privacy']['comment'].set_active(0)
-        self['privacy']['metadata'].set_active(0)
-
+        wb.VBox.__init__(self)
+        with self:
+            with wb.Frame("Add to Set", pack_args = ('sets'))
+                with wb.LabeledWidgets():
+                    wb.ComboBoxEntry([], collection.sets.store, 1, pack_args = ('set', 'Set:'))
+            with wb.Frame("Visibility and Permissions", pack_args = ('privacy')):
+                with wb.LabeledWidgets():
+                    wb.ComboBox(privacy_levels, pack_args = ('visibility','Visibility:') )
+                    wb.ComboBox(permission_levels, pack_args = ('comment','Who Can Comment:'))
+                    wb.ComboBox(permission_levels, pack_args = ('metadata','Who Can Add Metadata:'))
 
     def get_options(self):
         f=self.get_form_data()
@@ -315,24 +307,21 @@ class FlickrTransferOptionsBox(wb.VBox):
 class FlickrMetadataWidget(wb.ModalDialog):
     ##TODO: show the thumbnail and uid
     def __init__(self,item,collection):
-        dialog_data=[]
+        wb.ModalDialog.__init__(self,title='Edit Metadata',buttons=[])
+        with self:
         if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
             self.thumb=wb.gtk_widget(gtk.Image)()
             self.thumb.set_from_pixbuf(item.thumb)
-            dialog_data.append(('thumb',self.thumb))
-        dialog_data.append(
-                ('form',wb.LabeledWidgets([
-                            ('title','Title:',wb.Entry()),
-                            ('tags','Tags:',wb.Entry()),
-                            ('sets','Sets:',wb.Entry()),
-                            ('description','Description:',wb.Entry()),
-                            ('privacy','Visibility:',wb.ComboBox(privacy_levels)),
-                            ('comment','Who Can Comment:',wb.ComboBox(permission_levels)),
-                            ('meta','Who Can Add Metadata:',wb.ComboBox(permission_levels)),
-                       ])
-                    )
-            )
-        wb.ModalDialog.__init__(self,dialog_data,title='Edit Metadata',buttons=[])
+            wb.Pack(self.thumb, pack_args = ('thumb',))
+        with wb.LabeledWidgets(pack_args = ('form',)):
+            wb.Entry(pack_args = ('title', 'Title:'))
+            wb.Entry(pack_args = ('tags', 'Tags:'))
+            wb.Entry(pack_args = ('sets', 'sets:'))
+            wb.Entry(pack_args = ('description', 'Description:'))
+            wb.ComboBox(privacy_levels, pack_args = ('privacy', 'Visibility:'))
+            wb.ComboBox(permission_levels, pack_args = ('comment', 'Who Can Comment:'))
+            wb.ComboBox(permission_levels, pack_args = ('meta', 'Who Can Add Metadata:'))
+
         def dict0(dict,key,no_val=''):
             try:
                 return dict[key]

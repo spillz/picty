@@ -169,10 +169,14 @@ class TransferPlugin(pluginbase.Plugin):
         self.src_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('SELECTOR'),mainframe.coll_set)
         self.dest_combo=collectionmanager.CollectionCombo(mainframe.coll_set.add_model('OPEN_SELECTOR'),mainframe.coll_set)
         self.vbox=gtk.VBox(False,8)
-        combos=wb.LabeledWidgets([
-                ('src','From:',wb.HBox([('combo',self.src_combo),('view',gtk.Button("View"),False)],False,8)),
-                ('dest','To:',wb.HBox([('combo',self.dest_combo),('view',gtk.Button("View"),False)],False,8)),
-            ])
+        combos=wb.LabeledWidgets(2)
+        with combos:
+            with wb.HBox(box_args = (False, 8), pack_args = ('src', 'From:')):
+                wb.Pack(self.src_combo, 'combo')
+                wb.Button("View", pack_args = ('view', False))
+            with wb.HBox(box_args = (False, 8), pack_args = ('dest', 'To:')):
+                wb.Pack(self.dest_combo, 'combo')
+                wb.Button("View", pack_args = ('view', False))
         self.vbox.pack_start(combos)
         self.src_combo.connect("collection-changed",self.src_changed)
         self.dest_combo.connect("collection-changed",self.dest_changed)

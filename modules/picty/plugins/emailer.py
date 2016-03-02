@@ -185,38 +185,31 @@ class EmailPlugin(pluginbase.Plugin):
 class EmailFrame(wb.Notebook):
     def __init__(self,plugin):
         self.mainframe = plugin.mainframe
-        header_box = wb.HBox([
-                ('to_subj',wb.LabeledWidgets([
-                    ('to','To:',wb.Entry('someone@email.com')),
-                    ('subject','Subject:',wb.Entry('Photos')),
-                    ]),True),
-                ('send',wb.Button('SEND'),False,True)
-                ])
-
-        error_bar = wb.HBox([('error',wb.gtk_widget(gtk.Label)(),True),('close_box',wb.gtk_widget(gtk.Button)('Hide'),False)])
-        mail_page = ('email_page','Email',
-            wb.VBox([
-            ('error_bar',error_bar,False),
-            ('header_info',header_box,False),
-            ('message',wb.ScrollingTextView()),
-            (gtk.Label('All selected images in the current browser view will be sent'),False)
-            ])
-            )
-        config_page = ('config_page','Mail Configuration',
-                wb.LabeledWidgets([
-                ('username','Username:',wb.Entry('you@email.com')),
-                ('password','Password:',wb.Button('Enter a password...'),False,False),
-                ('server','SMTP Server:',wb.Entry('smtp.email.com')),
-                ('size','Maximum Image Size:',wb.Entry('1024')),
-                ('apply_edits','Apply Image Edits:',wb.ComboBox(['Yes','No'])),
-                ]))
-        wb.Notebook.__init__(self,[mail_page,config_page])
+        wb.Notebook.__init__(self)
+        with self:
+            with wb.VBox(pack_args = ('email_page','Mail')):
+                with wb.HBox(pack_args = ('error_bar',)):
+                    wb.gtk_widget(gtk.Label)(pack_args = ('error', True))
+                    wb.Button('Close', pack_args = ('close_box', False))
+                with wb.HBox(pack_args = ('header_info',False)):
+                    with wb.LabeledWidgets(2, pack_args = ('to_subj',True)):
+                        wb.Entry('someone@gmail.com', pack_args = ('to', 'To:'))
+                        wb.Entry('Photos', pack_args = ('subject', 'Subject:'))
+                    wb.Button('SEND', pack_args = ('send', False, True))
+                wb.ScrollingTextView(pack_args = ('message',))
+                wb.Pack(gtk.Label('All selected images in the current browser view will be sent'), False)
+            with wb.LabeledWidgets(2, pack_args = ('config_page','Mail Configuration')):
+                wb.Entry('you@email.com', pack_args = ('username','Username:'))
+                wb.Button('Enter a password...', pack_args = ('password','Password:'))
+                wb.Entry('smtp.email.com', pack_args = ('server','SMTP Server:'))
+                wb.Entry('1024', pack_args = ('size','Maximum Image Size:',))
+                wb.ComboBox(['Yes','No'], pack_args = ('apply_edits','Apply Image Edits:',))
         self.show_all()
         self['email_page']['error_bar'].hide()
         self['email_page']['error_bar']['error'].set_property("wrap",True)
         self['email_page']['error_bar']['close_box'].connect("clicked",self.error_close)
         self['email_page']['error_bar']['close_box'].set_image(gtk.image_new_from_stock(gtk.STOCK_CLOSE,gtk.ICON_SIZE_MENU))
-        header_box['send'].connect("clicked",self.do_send)
+        self['email_page']['header_info']['send'].connect("clicked",self.do_send)
         self['config_page']['password'].connect("clicked",self.password_dialog)
 
     def error_close(self,button):
@@ -277,11 +270,10 @@ class EmailFrame(wb.Notebook):
         self.mainframe.tm.queue_job_instance(smj)
 
     def password_dialog(self,*args):
-        d=wb.ModalDialog([
-                        ('password',wb.LabeledEntry('Password:')),
-                        ('remember',wb.CheckBox('Store in keyring')),
-                        ],
-                        title='Enter a Password')
+        d=wb.ModalDialog(title = 'Enter a Password')
+        with d:
+            wb.LabeledEntry('Password:', pack_args = ('password',))
+            wb.CheckBox('Store in keyring', pack_args = ('remember',))
         ##TODO Only allow OK if password is non-empty
         fd = self.get_form_data()
         user = fd['config_page']['username']

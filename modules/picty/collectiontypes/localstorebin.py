@@ -173,12 +173,12 @@ class LocalTransferOptionsBox(gtk.VBox):
         self.base_dir_entry=dialogs.PathnameEntry('','',"Choose transfer directory") ##todo:move PathnameEntry to widgetbuilder
         self.base_dir_entry.set_path(collection.image_dirs[0])
 
-        self.widgets=wb.LabeledWidgets([
-                ('base_dest_dir','Destination Path:',self.base_dir_entry),
-                ('name_scheme','Naming Scheme:',wb.ComboBox([n[0] for n in naming_schemes])),
-                ('action_if_exists','Action if Destination Exists:',wb.ComboBox(exist_actions)),
-            ])
-
+        self.widgets=wb.LabeledWidgets(3)
+        with self.widgets:
+            wb.Pack(self.base_dir_entry, 'base_dest_dir', 'Destination Path:')
+            wb.ComboBox([n[0] for n in naming_schemes], pack_args = ('name_scheme','Naming Scheme:') )
+            wb.ComboBox(exist_actions, pack_args = ('action_if_exists','Action if Destination Exists:') )
+        self.widgets.show_all()
         self.widgets['action_if_exists'].set_active(0)
         self.widgets['name_scheme'].set_active(3)
         self.transfer_box.pack_start(self.widgets)

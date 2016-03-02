@@ -120,18 +120,18 @@ class CropPlugin(pluginbase.Plugin):
         self.constraint_model = gtk.ListStore(int,int,str)
         #todo: save default as json file
 
-        self.crop_bar = wb.PaddedHBox([
-            ('cx',wb.ComboBox(['Lft','Mid','Rgt']),False),
-            ('x',wb.Entry(),False),
-            ('cy',wb.ComboBox(['Top','Mid','Btm']),False),
-            ('y',wb.Entry(),False),
-            ('w',wb.LabeledEntry(' W:'),False),
-            ('h',wb.LabeledEntry(' H:'),False),
-            ('constraints',wb.ComboBox(self.constraints,self.constraint_model),True),
-            ('edit_constraints',wb.Button('...'),False),
-            ('ok',wb.Button('_Apply'),False),
-            ('cancel',wb.Button('_Cancel'),False),
-        ])
+        self.crop_bar = wb.PaddedHBox()
+        with self.crop_bar:
+            wb.ComboBox(['Lft','Mid','Rgt'], pack_args = ('cx',False))
+            wb.Entry(pack_args = ('x',False))
+            wb.ComboBox(['Top','Mid','Btm'], pack_args = ('cy',False))
+            wb.Entry(pack_args = ('y',False))
+            wb.LabeledEntry(' W:', pack_args = ('w',False))
+            wb.LabeledEntry(' H:', pack_args = ('h',False))
+            wb.ComboBox(self.constraints,self.constraint_model, pack_args = ('constraints',True))
+            wb.Button('...', pack_args = ('edit_constraints',False))
+            wb.Button('_Apply', pack_args = ('ok',False))
+            wb.Button('_Cancel', pack_args = ('cancel',False))
         cb=self.crop_bar
         for k in ['x','y']:
             cb[k].set_width_chars(4)

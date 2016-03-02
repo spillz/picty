@@ -111,6 +111,10 @@ class PathnameCombo(gtk.VBox):
                 return
             iter=self.model.iter_next(iter)
         self.combo_entry.child.set_text(path)
+    def get_form_data(self):
+        return self.get_path()
+    def set_form_data(self, value):
+        return self.set_path(value)
 
 
 class PathnameEntry(gtk.VBox):
@@ -138,6 +142,10 @@ class PathnameEntry(gtk.VBox):
         return path
     def set_path(self,path):
         self.path_entry.set_text(path)
+    def get_form_data(self):
+        return self.get_path()
+    def set_form_data(self, value):
+        return self.set_path(value)
 
 
 def file_dialog(title='Choose an Image',default=''):
