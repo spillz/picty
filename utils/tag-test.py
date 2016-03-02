@@ -27,7 +27,31 @@ import sys
 import gtk
 import pyexiv2
 import pango
-from phraymd import settings
+from PIL import Image
+#from picty import settings
+
+def image_to_pixbuf(im):
+    '''
+    convert a PIL image to a gdk pixbuf
+    '''
+    bands=im.getbands()
+    rgba = True if 'A' in bands else False
+    pixbuf=None
+    w,h=im.size
+    if 'R' in bands and 'G' in bands and 'B' in bands:
+        pixbuf=gtk.gdk.pixbuf_new_from_data(im.tostring(), gtk.gdk.COLORSPACE_RGB, rgba, 8, w, h, w*(3+rgba))
+    if 'P' in bands:
+        fmt="gif"
+        file1 = StringIO.StringIO()
+        im.save(file1, fmt)
+        contents = file1.getvalue()
+        file1.close()
+        loader = gtk.gdk.PixbufLoader(fmt)
+        loader.write(contents, len(contents))
+        pixbuf = loader.get_pixbuf()
+        loader.close()
+    return pixbuf
+
 
 def file_dialog(title='Choose an Image',default=''):
     '''
@@ -35,8 +59,8 @@ def file_dialog(title='Choose an Image',default=''):
     '''
     fcd=gtk.FileChooserDialog(title=title, parent=None, action=gtk.FILE_CHOOSER_ACTION_OPEN,
         buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK), backend=None)
-    if not default:
-        default=settings.home_dir
+#    if not default:
+#        default=settings.home_dir
     fcd.set_current_folder(default)
     response=fcd.run()
     image_dir=''
@@ -117,7 +141,10 @@ class MetadataModel3(gtk.TreeStore):
         elif key_type=='Iptc':
             value=str(self.exiv2metadata[key].values) ##todo: repeatable values could be nested as separate rows
         elif key_type=='Xmp':
-            value=str(self.exiv2metadata[key].value) ##todo: repeated values could be nested as separate rows
+            try:
+                value=str(self.exiv2metadata[key].value) ##todo: repeated values could be nested as separate rows
+            except:
+                value= str(self.exiv2metadata[key])
 #        if len(value)>200:
 #            value=value[0:200]+'...'
         return value
@@ -455,17 +482,31 @@ class App(gtk.Window):
             self.set_title("Metadata Viewer")
             return
 
-        self.set_title("Metadata Viewer - %s"%(path,))
         #extract the thumbnail data
         previews = metadata.previews
         if previews:
             preview = previews[-1]
             # Get the largest preview available
             # Create a pixbuf loader to read the thumbnail data
-            pbloader = gtk.gdk.PixbufLoader()
-            pbloader.write(preview.data)
-            pixbuf = pbloader.get_pixbuf()
-            pbloader.close()
+            print len(previews)
+            try:
+                import io
+                im = Image.open(io.BytesIO(preview.data))
+                pixbuf = image_to_pixbuf(im)
+            except IOError:
+                im = Image.open(io.BytesIO(previews[0].data))
+                pixbuf = image_to_pixbuf(im)
+                
+#            print preview
+#            try:
+#                pbloader = gtk.gdk.PixbufLoader()
+#                pbloader.write(preview.data)
+#                pixbuf = pbloader.get_pixbuf()
+#                pbloader.close()
+#            except:
+#                im = Image.open(preview.data)
+#                pixbuf = image_to_pixbuf(im)
+                
             scale=200.0/max(pixbuf.get_width(),pixbuf.get_height())
             if scale<1:
                 w=int(pixbuf.get_width()*scale)
@@ -474,6 +515,7 @@ class App(gtk.Window):
             self.imgwidget.set_from_pixbuf(pixbuf)
         print 'setting model metadata',metadata
         self.model.set_meta(metadata)
+        self.set_title("Metadata Viewer - %s"%(path,))
 
 
 class TagObject(object):
