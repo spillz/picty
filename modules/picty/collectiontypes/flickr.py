@@ -285,14 +285,15 @@ class FlickrTransferOptionsBox(wb.VBox):
         self.collection=collection
         wb.VBox.__init__(self)
         with self:
-            with wb.Frame("Add to Set", pack_args = ('sets'))
-                with wb.LabeledWidgets():
+            with wb.Frame("Add to Set", pack_args = ('sets')):
+                with wb.LabeledWidgets(1):
                     wb.ComboBoxEntry([], collection.sets.store, 1, pack_args = ('set', 'Set:'))
             with wb.Frame("Visibility and Permissions", pack_args = ('privacy')):
-                with wb.LabeledWidgets():
+                with wb.LabeledWidgets(3):
                     wb.ComboBox(privacy_levels, pack_args = ('visibility','Visibility:') )
                     wb.ComboBox(permission_levels, pack_args = ('comment','Who Can Comment:'))
                     wb.ComboBox(permission_levels, pack_args = ('metadata','Who Can Add Metadata:'))
+        self.show_all()
 
     def get_options(self):
         f=self.get_form_data()
@@ -309,18 +310,19 @@ class FlickrMetadataWidget(wb.ModalDialog):
     def __init__(self,item,collection):
         wb.ModalDialog.__init__(self,title='Edit Metadata',buttons=[])
         with self:
-        if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
-            self.thumb=wb.gtk_widget(gtk.Image)()
-            self.thumb.set_from_pixbuf(item.thumb)
-            wb.Pack(self.thumb, pack_args = ('thumb',))
-        with wb.LabeledWidgets(pack_args = ('form',)):
-            wb.Entry(pack_args = ('title', 'Title:'))
-            wb.Entry(pack_args = ('tags', 'Tags:'))
-            wb.Entry(pack_args = ('sets', 'sets:'))
-            wb.Entry(pack_args = ('description', 'Description:'))
-            wb.ComboBox(privacy_levels, pack_args = ('privacy', 'Visibility:'))
-            wb.ComboBox(permission_levels, pack_args = ('comment', 'Who Can Comment:'))
-            wb.ComboBox(permission_levels, pack_args = ('meta', 'Who Can Add Metadata:'))
+            if item.thumb: ##todo: should actually retrieve the thumb (via callback) if not present
+                self.thumb=wb.gtk_widget(gtk.Image)()
+                self.thumb.set_from_pixbuf(item.thumb)
+                wb.Pack(self.thumb, 'thumb',)
+            with wb.LabeledWidgets(7, pack_args = ('form',)):
+                wb.Entry(pack_args = ('title', 'Title:'))
+                wb.Entry(pack_args = ('tags', 'Tags:'))
+                wb.Entry(pack_args = ('sets', 'Sets:'))
+                wb.Entry(pack_args = ('description', 'Description:'))
+                wb.ComboBox(privacy_levels, pack_args = ('privacy', 'Visibility:'))
+                wb.ComboBox(permission_levels, pack_args = ('comment', 'Who Can Comment:'))
+                wb.ComboBox(permission_levels, pack_args = ('meta', 'Who Can Add Metadata:'))
+        self.show_all()
 
         def dict0(dict,key,no_val=''):
             try:
