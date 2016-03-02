@@ -37,9 +37,10 @@ import json
 import time
 
 from picty import settings
-if settings.is_windows:
-    from PIL import Image
-    from PIL import ImageFile
+#Fallback for windows or cases where Gtk can't handle the image
+from PIL import Image
+from PIL import ImageFile
+import io as _io
 
 
 pyexiv2.register_namespace('http://www.picty.net/xmpschema/1.0/','picty')
@@ -62,6 +63,43 @@ class Exiv2Metadata(pyexiv2.ImageMetadata):
                 value=pyexiv2.XmpTag(key,value)
             pyexiv2.ImageMetadata.__setitem__(self,key,value)
 
+def extract_thumbnail_from_metadata(item, rawmeta):
+    previews = rawmeta.previews
+    if previews:
+        print 'opening preview',len(previews)
+        preview_ind = len(previews)-1
+        while True:
+            try:
+                try:
+                    if settings.is_windows: #something is missing from GTK+ on windows -- prevents PixbufLoader from reading the preview images
+                        raise IOError('PixbufLoader not available on windows')
+                    pbloader = gtk.gdk.PixbufLoader()
+                    pbloader.write(previews[preview_ind].data)
+                    pb = pbloader.get_pixbuf()
+                    pbloader.close()
+                    w=pb.get_width()
+                    h=pb.get_height()
+                    a=max(128,w,h)
+                    item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
+                    break
+                except: ##Mostly a workaround for DNGs or Windows PCs
+                    im = Image.open(_io.BytesIO(previews[preview_ind].data))
+#                    p = ImageFile.Parser()
+#                    p.feed(previews[preview_ind].data)
+#                    im = p.close()
+                    from picty import imagemanip
+                    im.thumbnail((128,128),Image.ANTIALIAS)
+                    item.thumb = imagemanip.image_to_pixbuf(im)
+                    break
+            except:
+                if preview_ind == 0:
+                    raise
+                preview_ind = 0
+    else:
+        print 'No usable thumbnail data for', item
+        item.thumb=False
+        return False
+            
 def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
     '''
     load the metadata from the image and convert the keys to a subset that picty understands
@@ -85,29 +123,7 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
         item.meta=meta
         if thumbnail:
             try:
-                previews = rawmeta.previews
-                if previews:
-                    preview = previews[-1] #get the last (usually smallest) image
-                    if settings.is_windows: #something is missing from GTK+ on windows -- prevents PixbufLoader from reading the preview images
-                        p = ImageFile.Parser()
-                        p.feed(preview.data)
-                        im = p.close()
-                        from picty import imagemanip
-                        im.thumbnail((128,128),Image.ANTIALIAS)
-                        item.thumb = imagemanip.image_to_pixbuf(im)
-                    else:
-                        pbloader = gtk.gdk.PixbufLoader()
-                        pbloader.write(preview.data)
-                        pb = pbloader.get_pixbuf()
-                        pbloader.close()
-                        w=pb.get_width()
-                        h=pb.get_height()
-                        a=max(128,w,h)
-                        item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
-                else:
-                    item.thumb=False
-                print 'preview read took',time.time()-t
-
+                extract_thumbnail_from_metadata(item, rawmeta)
             except:
                 print 'Load thumbnail failed for',item.uid
                 import traceback,sys
@@ -139,34 +155,12 @@ def load_thumbnail(item=None,filename=None):
         rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
         try:
-            previews = rawmeta.previews
-            if previews:
-                preview = previews[-1]
-                if settings.is_windows: #something is missing from GTK+ on windows -- prevents PixbufLoader from reading the preview images
-                    p = ImageFile.Parser()
-                    p.feed(preview.data)
-                    im = p.close()
-                    from picty import imagemanip
-                    im.thumbnail((128,128),Image.ANTIALIAS)
-                    item.thumb = imagemanip.image_to_pixbuf(im)
-                else:
-                    pbloader = gtk.gdk.PixbufLoader()
-                    pbloader.write(preview.data)
-                    pb = pbloader.get_pixbuf()
-                    pbloader.close()
-                    w=pb.get_width()
-                    h=pb.get_height()
-                    a=max(128,w,h)
-                    item.thumb=pb.scale_simple(128*w/a,128*h/a,gtk.gdk.INTERP_BILINEAR)
-            else:
-                item.thumb=False
-                return False
+            extract_thumbnail_from_metadata(item, rawmeta)
         except:
-            print 'Load thumbnail failed',item.uid
+            print 'Load thumbnail failed for',item.uid
             import traceback,sys
             print traceback.format_exc(sys.exc_info()[2])
             item.thumb=False
-            return False
     except:
         print 'Error reading metadata for',filename
         import traceback,sys
