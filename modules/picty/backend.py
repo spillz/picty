@@ -243,13 +243,13 @@ class ThumbnailJob(WorkerJob):
 
 
 class FlexibleJob(WorkerJob):
-    def __init__(self,worker,collection,browser,task_cb,complete_cb,*args):
+    def __init__(self, worker, collection, browser, task_cb, complete_cb, limit_to_view = True, *args):
         WorkerJob.__init__(self,'FLEXJOB',900,worker,collection,browser)
         self.task_cb = task_cb
         self.complete_cb = complete_cb
         self.args = args
         self.pos = 0
-        self.limit_to_view = True
+        self.limit_to_view = limit_to_view
 
     def __call__(self):
         jobs=self.worker.jobs
