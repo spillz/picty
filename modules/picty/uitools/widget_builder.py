@@ -91,7 +91,6 @@ def pack_widget(parent, container, widget, pack_args):
         name = pack_args[0]
         pack_args= pack_args[1:]
         parent.widgets[name] = widget
-    print 'packing',parent,container,widget
     container.pack_start(widget,*pack_args)
 
 def gtk_widget(base,setter=None,getter=None):
