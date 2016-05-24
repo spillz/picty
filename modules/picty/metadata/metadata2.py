@@ -35,6 +35,7 @@ import os.path
 import json
 
 import time
+import datetime
 
 from picty import settings
 #Fallback for windows or cases where Gtk can't handle the image
@@ -363,13 +364,13 @@ def conv_date_taken_xmp(metaobject,keys,value=None):
         return True
     date=None
     if keys[0] in metaobject.xmp_keys:
-        date=metaobject[keys].value
+        date=metaobject[keys[0]].raw_value
         if type(date)==str:
-            date=datetime.strptime(date)
+            date=datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
     elif keys[1] in metaobject.xmp_keys: #fallback to other datetime Exif keys
-        date=metaobject[keys].value
+        date=metaobject[keys[1]].raw_value
         if type(date)==str:
-            date=datetime.strptime(date)
+            date=datetime.datetime.strptime(date,'%Y-%m-%dT%H:%M:%S')
     return date
 
 def conv_str(metaobject,keys,value=None):
@@ -754,7 +755,7 @@ apptags=(
 )
 
 apptags_sidecar=(
-("DateTaken","Date Taken",False,conv_date_taken_xmp,None,None,date_as_sortable,("Xmp.exif.DateTimeOriginal","Xmp.exif.DateTimeDigitized"),False),
+("DateTaken","Date Taken",False,conv_date_taken_xmp,None,None,date_as_sortable,("Xmp.photoshop.DateCreated","Xmp.xmp.CreateDate"),False),
 ("Title","Title",True,conv_lang_alt,None,None,None,("Xmp.dc.title",),True),
 ("ImageDescription","Image Description",True,conv_lang_alt,None,None,None,("Xmp.dc.description",),True),
 ("Keywords","Tags",True,conv_keywords_xmp,tag_bind,tag_split,None,("Xmp.dc.subject",),True),
