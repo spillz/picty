@@ -819,7 +819,7 @@ class Collection(baseobjects.CollectionBase):
             if src_item.meta is not None:
                 item.init_meta(src_item.meta.copy(),self)
             if src_collection.local_filesystem:
-                #for local filesystems lets copy the backup metadata to ensure that the use
+                #for local filesystems lets copy the backup metadata to ensure that the user
                 #will see there is unsaved data. could also just write the metadata first, but
                 #this gives the user a bit more flexibility.
                 if 'meta_backup' in dir(src_item):
