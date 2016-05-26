@@ -100,7 +100,7 @@ def extract_thumbnail_from_metadata(item, rawmeta):
         print 'No usable thumbnail data for', item
         item.thumb=False
         return False
-            
+
 def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
     '''
     load the metadata from the image and convert the keys to a subset that picty understands
@@ -118,10 +118,11 @@ def load_metadata(item=None,filename=None,thumbnail=False,missing_only=False):
         meta={}
         get_exiv2_meta(meta,rawmeta)
         if missing_only and item.meta!=None:
-            for k in item.meta:
-                if k in meta:
-                    del meta[k]
-        item.meta=meta
+            for k in meta:
+                if k not in item.meta:
+                    item.meta[k] = meta[k]
+        else:
+            item.meta=meta
         if thumbnail:
             try:
                 extract_thumbnail_from_metadata(item, rawmeta)
@@ -230,18 +231,30 @@ def create_sidecar(item,src,dest):
         return True
     return True
 
-def load_sidecar(item,filename,missing_only=False):
+def load_sidecar(item,filename,missing_only=False, image_filename = None):
+    '''
+    Loads metadata for the image `item` from the sidecar in the path `filename`.
+    If `image_filename` is specified, metadata will first be filled by
+    loading the metadata from that image before updating the `item` with the metadata
+    in the sidecar. If `missing_only` is specified, then the only those fields that aren't
+    already present will be added.
+    '''
     try:
+        meta={}
+        if image_filename is not None:
+            rawmeta = Exiv2Metadata(image_filename)
+            rawmeta.read()
+            get_exiv2_meta(meta, rawmeta)
         print 'Loading sidecar for',item
         rawmeta = Exiv2Metadata(filename)
         rawmeta.read()
-        meta={}
-        get_exiv2_meta(meta,rawmeta,apptags_dict_sidecar)
+        get_exiv2_meta(meta, rawmeta, apptags_dict_sidecar)
         if missing_only and item.meta!=None:
-            for k in item.meta:
-                if k in meta:
-                    del meta[k]
-        item.meta=meta
+            for k in meta:
+                if k not in item.meta:
+                    item.meta[k] = meta[k]
+        else:
+            item.meta=meta
     except:
         print 'Error reading sidecar from',filename
         import traceback,sys
