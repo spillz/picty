@@ -1,7 +1,7 @@
 Installation
 ============
 
-You have two options for running picty: install from binary packages, or download and run the source directly. The windows version lacks some of the features of the linux version.
+You have two options for running picty: install from binary packages on Ubuntu Linux and Windows, or download and run the source directly (Mac, Linux, and Windows). The windows version lacks some of the features of the linux (and Mac) version.
 
 Binary Packages
 ---------------
@@ -63,7 +63,7 @@ You can also install the program into the system, which means picty will show up
 
 *Other Linux*
 
-The basic instructions for Ubuntu and other Debian based systems apply except that you won't be using apt-get to install the packages and the packages may be named slightly differently.
+The basic instructions for Ubuntu and other Debian based systems apply except that you won't be using apt-get to install the packages picty needs and they may be named slightly differently.
 
 Running picty for the First Time
 ================================
@@ -105,7 +105,7 @@ perfectly safe to test picty on your photo collection.
 
    As soon as the collection is created
    picty is going to scan the image folder and (by default) all
-   of its subfolders for photos and videos. Then picty will then generate a
+   of its subfolders for photos and videos. Then picty will generate a
    thumbnail and read a subset of its metadata (tags and other information
    embedded in the image file). Depending on how many images you have in
    your collection, this could take some time, especially the first run. picty
