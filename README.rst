@@ -111,10 +111,12 @@ Run the following commands in the terminal::
 
 or see the INSTALL file for installation information. The benefits of installing are media support, desktop menus, and file manager integration (right click, open with picty for any image).
 
-Get Support
+Documentation and Support
 -----------
 
-Support and information is available at google groups: http://groups.google.com/group/pictyphotomanager
+A very incomplete draft of the user documentation is contained within the source code and can be viewed on `GitHub <https://github.com/spillz/picty/blob/master/user-guide/index.rst>`_.
+
+Support and other information about picty is available at google groups: http://groups.google.com/group/pictyphotomanager
 
 Or file an issue on GitHub: https://github.com/spillz/picty/issues
 
